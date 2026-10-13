@@ -1,0 +1,23 @@
+.env
+.env.*
+!.env.example
+secrets/
+*service-account*.json
+google-services.json
+
+# Flutter build output and local tooling
+.dart_tool/
+.flutter-plugins
+.flutter-plugins-dependencies
+.pub-cache/
+.pub/
+build/
+coverage/
+*.iml
+.idea/
+*.log
+
+# Android signing credentials
+*.jks
+*.keystore
+key.properties
