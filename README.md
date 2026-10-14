@@ -1,17 +1,7 @@
-# filo-app
+# Filo
 
-This repository contains the unified Filo project:
+Filo is an AI-assisted learning management app for Android, designed to bring classroom activities and study materials together in one place.
 
-- `frontend/`: Flutter Android app.
-- `backend/`: backend configuration and future Supabase implementation. Local `.env` files are ignored.
-- `docs/`: requirements, schema, implementation plan, assets, and non-secret project decisions.
+Built for instructors and students, Filo aims to simplify managing classes, sharing learning resources, submitting assignments, and taking quizzes and exams.
 
-The Flutter Android application lives in `frontend/`.
-
-```powershell
-cd frontend
-flutter pub get
-flutter run -d <device-id>
-```
-
-See [frontend/README.md](frontend/README.md) for setup and validation details.
+Its focus is on accessible learning, with offline access to downloaded materials and AI-assisted study tools such as chat, flashcards, and practice quizzes.

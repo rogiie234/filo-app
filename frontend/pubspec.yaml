@@ -1,5 +1,5 @@
 name: filo
-description: "Filo Android hello-world app for verifying the development toolchain."
+description: "Filo Android app with feature-based routing and Supabase integration."
 publish_to: 'none'
 version: 0.1.0+1
 
