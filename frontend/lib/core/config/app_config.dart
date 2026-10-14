@@ -4,6 +4,9 @@ class AppConfig {
   static const environment = String.fromEnvironment('ENV');
   static const supabaseUrl = String.fromEnvironment('SUPABASE_URL');
   static const supabaseAnonKey = String.fromEnvironment('SUPABASE_ANON_KEY');
+  static const googleWebClientId = String.fromEnvironment(
+    'GOOGLE_WEB_CLIENT_ID',
+  );
 
   static void validate() {
     if (environment.trim().isEmpty || supabaseAnonKey.trim().isEmpty) {

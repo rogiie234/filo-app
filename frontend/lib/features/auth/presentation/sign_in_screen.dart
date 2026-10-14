@@ -1,20 +1,29 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:google_sign_in/google_sign_in.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../../../core/supabase/supabase_provider.dart';
+import '../../../core/supabase/native_google_sign_in.dart';
 
 import '../../../core/theme/app_theme.dart';
 import '../../../core/widgets/filo_widgets.dart';
 import '../../classes/application/preview_controller.dart';
 import '../../classes/domain/prototype_models.dart';
 
-class SignInScreen extends ConsumerWidget {
+class SignInScreen extends ConsumerStatefulWidget {
   const SignInScreen({super.key});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) => Scaffold(
+  ConsumerState<SignInScreen> createState() => _SignInScreenState();
+}
+
+class _SignInScreenState extends ConsumerState<SignInScreen> {
+  bool _signingIn = false;
+
+  @override
+  Widget build(BuildContext context) => Scaffold(
     body: SafeArea(
       child: Column(
         children: [
@@ -59,32 +68,10 @@ class SignInScreen extends ConsumerWidget {
             child: Column(
               children: [
                 FiloButton(
-                  label: 'Continue with Google',
+                  label: _signingIn ? 'Signing in…' : 'Continue with Google',
                   secondary: true,
                   icon: Icons.login_rounded,
-                  onPressed: () async {
-                    try {
-                      final launched = await ref
-                          .read(supabaseClientProvider)
-                          .auth
-                          .signInWithOAuth(
-                            OAuthProvider.google,
-                            redirectTo: 'com.filo.filo://login-callback/',
-                            authScreenLaunchMode:
-                                LaunchMode.externalApplication,
-                          );
-                      if (!launched && context.mounted) {
-                        showMessage(context, 'Could not open Google sign-in.');
-                      }
-                    } catch (_) {
-                      if (context.mounted) {
-                        showMessage(
-                          context,
-                          'Could not start Google sign-in. Try again.',
-                        );
-                      }
-                    }
-                  },
+                  onPressed: _signingIn ? null : _signIn,
                 ),
                 const SizedBox(height: 12),
                 TextButton(
@@ -101,6 +88,43 @@ class SignInScreen extends ConsumerWidget {
       ),
     ),
   );
+
+  Future<void> _signIn() async {
+    setState(() => _signingIn = true);
+    try {
+      final client = ref.read(supabaseClientProvider);
+      final google = await ref.read(nativeGoogleSignInProvider.future);
+      await google.signOut();
+      final account = await google.authenticate();
+      final idToken = account.authentication.idToken;
+      if (idToken == null) {
+        throw StateError('Google did not provide a login token.');
+      }
+      await client.auth.signInWithIdToken(
+        provider: OAuthProvider.google,
+        idToken: idToken,
+      );
+      // The existing session gate performs the trusted-device/OTP check.
+    } on GoogleSignInException catch (error) {
+      if (mounted && error.code != GoogleSignInExceptionCode.canceled) {
+        showMessage(
+          context,
+          'Google sign-in failed. Check the Android OAuth configuration and try again.',
+        );
+      }
+    } on StateError catch (error) {
+      if (mounted) showMessage(context, error.message.toString());
+    } catch (_) {
+      if (mounted) {
+        showMessage(
+          context,
+          'Could not sign in. Check your connection and try again.',
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _signingIn = false);
+    }
+  }
 
   Future<void> _explore(BuildContext context, WidgetRef ref) async {
     final role = await showModalBottomSheet<PreviewRole>(
