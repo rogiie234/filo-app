@@ -8,10 +8,10 @@ class App extends ConsumerWidget {
   const App({super.key});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    return MaterialApp.router(
-      theme: AppTheme.light,
-      routerConfig: ref.watch(appRouterProvider),
-    );
-  }
+  Widget build(BuildContext context, WidgetRef ref) => MaterialApp.router(
+    title: 'Filo',
+    debugShowCheckedModeBanner: false,
+    theme: AppTheme.light,
+    routerConfig: ref.watch(appRouterProvider),
+  );
 }

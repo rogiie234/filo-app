@@ -4,11 +4,11 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {
-  testWidgets('root route preserves the prototype screen', (tester) async {
+  testWidgets('root route opens the Filo intro', (tester) async {
     await tester.pumpWidget(const ProviderScope(child: App()));
     await tester.pumpAndSettle();
 
-    expect(find.text('Hello World!'), findsOneWidget);
+    expect(find.text('Learning,\ntogether.'), findsOneWidget);
     expect(find.byType(Scaffold), findsOneWidget);
 
     await tester.pumpWidget(const SizedBox.shrink());
