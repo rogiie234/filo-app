@@ -1,5 +1,6 @@
 import 'package:filo/app.dart';
 import 'package:filo/core/router/app_router.dart';
+import 'package:filo/core/supabase/auth_providers.dart';
 import 'package:filo/features/classes/application/preview_controller.dart';
 import 'package:filo/features/classes/domain/prototype_models.dart';
 import 'package:flutter/material.dart';
@@ -27,7 +28,9 @@ void main() {
     addTearDown(tester.view.resetDevicePixelRatio);
     tester.platformDispatcher.textScaleFactorTestValue = scale;
     addTearDown(tester.platformDispatcher.clearTextScaleFactorTestValue);
-    final container = ProviderContainer();
+    final container = ProviderContainer(
+      overrides: [authUserIdProvider.overrideWith((ref) => Stream.value(null))],
+    );
     addTearDown(container.dispose);
     container.read(previewProvider.notifier).chooseRole(role);
     container.read(appRouterProvider).go(route);
