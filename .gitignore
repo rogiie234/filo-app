@@ -5,6 +5,9 @@ secrets/
 *service-account*.json
 google-services.json
 
+# Local project documentation
+/docs/
+
 # Flutter build output and local tooling
 .dart_tool/
 .flutter-plugins
