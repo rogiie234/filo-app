@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:io';
 
 import 'package:filo/core/supabase/auth_providers.dart';
+import 'package:filo/core/supabase/session_gate.dart';
 import 'package:filo/data/local/app_database.dart';
 import 'package:filo/data/local/database_providers.dart';
 import 'package:filo/data/local/user_database_manager.dart';
@@ -20,6 +21,9 @@ void main() {
       final container = ProviderContainer(
         overrides: [
           authUserIdProvider.overrideWith((ref) => ids.stream),
+          verifiedUserIdProvider.overrideWith(
+            (ref) => ref.watch(authUserIdProvider.future),
+          ),
           userDatabaseManagerProvider.overrideWithValue(manager),
         ],
       );

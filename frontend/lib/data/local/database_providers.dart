@@ -2,7 +2,7 @@ import 'dart:async';
 
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import '../../core/supabase/auth_providers.dart';
+import '../../core/supabase/session_gate.dart';
 import 'app_database.dart';
 import 'user_database_manager.dart';
 
@@ -17,7 +17,10 @@ final userDatabaseManagerProvider = Provider<UserDatabaseManager>((ref) {
 /// A null database means that no account is signed in.
 final accountDatabaseProvider = FutureProvider<AppDatabase?>((ref) async {
   final manager = ref.watch(userDatabaseManagerProvider);
-  final userId = await ref.watch(authUserIdProvider.future);
+  // Lock the previous cache while verification is pending or fails.
+  final verification = ref.watch(verifiedUserIdProvider.future);
+  await manager.close();
+  final userId = await verification;
   if (!ref.mounted) return null;
   if (userId == null) {
     await manager.close();

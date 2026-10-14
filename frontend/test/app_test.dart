@@ -1,5 +1,6 @@
 import 'package:filo/app.dart';
 import 'package:filo/core/supabase/auth_providers.dart';
+import 'package:filo/core/supabase/session_gate.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -10,6 +11,8 @@ void main() {
       ProviderScope(
         overrides: [
           authUserIdProvider.overrideWith((ref) => Stream.value(null)),
+          loginSessionProvider.overrideWith((ref) => Stream.value(null)),
+          verifiedUserIdProvider.overrideWith((ref) async => null),
         ],
         child: const App(),
       ),

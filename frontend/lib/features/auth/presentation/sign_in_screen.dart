@@ -1,6 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
+
+import '../../../core/supabase/supabase_provider.dart';
 
 import '../../../core/theme/app_theme.dart';
 import '../../../core/widgets/filo_widgets.dart';
@@ -59,21 +62,29 @@ class SignInScreen extends ConsumerWidget {
                   label: 'Continue with Google',
                   secondary: true,
                   icon: Icons.login_rounded,
-                  onPressed: () => showDialog<void>(
-                    context: context,
-                    builder: (context) => AlertDialog(
-                      title: const Text('Explore Filo first.'),
-                      content: const Text(
-                        'Sign-in is not connected in this preview. You can explore the sample classrooms without an account.',
-                      ),
-                      actions: [
-                        TextButton(
-                          onPressed: () => Navigator.pop(context),
-                          child: const Text('Got it'),
-                        ),
-                      ],
-                    ),
-                  ),
+                  onPressed: () async {
+                    try {
+                      final launched = await ref
+                          .read(supabaseClientProvider)
+                          .auth
+                          .signInWithOAuth(
+                            OAuthProvider.google,
+                            redirectTo: 'com.filo.filo://login-callback/',
+                            authScreenLaunchMode:
+                                LaunchMode.externalApplication,
+                          );
+                      if (!launched && context.mounted) {
+                        showMessage(context, 'Could not open Google sign-in.');
+                      }
+                    } catch (_) {
+                      if (context.mounted) {
+                        showMessage(
+                          context,
+                          'Could not start Google sign-in. Try again.',
+                        );
+                      }
+                    }
+                  },
                 ),
                 const SizedBox(height: 12),
                 TextButton(
