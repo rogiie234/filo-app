@@ -54,21 +54,40 @@ end;
 $$;
 
 -- Restrictive policies AND with existing policies, preventing permissive bypass.
+-- A manually applied gate may already exist without a migration-history row.
+-- Preserve matching policies, but refuse to silently accept a different gate.
 do $$
-declare r record;
+declare r record; existing_policy record;
 begin
-  for r in select tablename from pg_tables where schemaname = 'public'
+  for r in
+    select schemaname, tablename from pg_tables
+    where schemaname = 'public'
+       or (schemaname = 'storage' and tablename = 'objects')
   loop
-    execute format('alter table public.%I enable row level security', r.tablename);
-    execute format('create policy require_verified_session on public.%I as restrictive for all to authenticated using (public.current_user_ok()) with check (public.current_user_ok())', r.tablename);
+    if r.schemaname = 'public' then
+      execute format('alter table public.%I enable row level security', r.tablename);
+    end if;
+
+    select * into existing_policy from pg_policies
+      where schemaname = r.schemaname and tablename = r.tablename
+        and policyname = 'require_verified_session';
+    if found then
+      if existing_policy.permissive is distinct from 'RESTRICTIVE'
+        or existing_policy.roles is distinct from array['authenticated']::name[]
+        or existing_policy.cmd is distinct from 'ALL'
+        or coalesce(existing_policy.qual, '') not in
+          ('current_user_ok()', 'public.current_user_ok()')
+        or coalesce(existing_policy.with_check, '') not in
+          ('current_user_ok()', 'public.current_user_ok()') then
+        raise exception 'Conflicting require_verified_session policy on %.%',
+          r.schemaname, r.tablename;
+      end if;
+    else
+      execute format('create policy require_verified_session on %I.%I as restrictive for all to authenticated using (public.current_user_ok()) with check (public.current_user_ok())', r.schemaname, r.tablename);
+    end if;
   end loop;
 end;
 $$;
-
--- Storage metadata and private file access obey the same gate.
-create policy require_verified_session on storage.objects
-  as restrictive for all to authenticated
-  using (public.current_user_ok()) with check (public.current_user_ok());
 
 -- Explicit guards on client-callable SECURITY DEFINER functions.
 create or replace function public.my_role() returns user_role
