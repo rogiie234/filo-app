@@ -4,11 +4,13 @@ import 'package:go_router/go_router.dart';
 
 import '../../features/assessments/presentation/new_assessment_screen.dart';
 import '../../features/auth/presentation/sign_in_screen.dart';
+import '../../features/auth/presentation/session_screen.dart';
 import '../../features/classes/presentation/classes_screen.dart';
 import '../../features/classes/presentation/class_screen.dart';
 import '../../features/onboarding/presentation/intro_screen.dart';
 import '../../features/posts/presentation/create_post_screen.dart';
 import '../widgets/filo_widgets.dart';
+import '../supabase/session_gate.dart';
 
 final appRouterProvider = Provider<GoRouter>((ref) {
   final router = GoRouter(
@@ -19,6 +21,16 @@ final appRouterProvider = Provider<GoRouter>((ref) {
         path: '/sign-in',
         builder: (context, state) => const SignInScreen(),
       ),
+      // Both entries pass through session verification and profile lookup.
+      // App keeps the account Navigator mounted while the URL changes.
+      for (final path in ['/onboarding', '/home'])
+        GoRoute(
+          path: path,
+          builder: (context, state) =>
+              ref.read(loginSessionProvider).asData?.value == null
+              ? const SignInScreen()
+              : const SessionScreen(),
+        ),
       GoRoute(
         path: '/classes',
         builder: (context, state) => const ClassesScreen(),

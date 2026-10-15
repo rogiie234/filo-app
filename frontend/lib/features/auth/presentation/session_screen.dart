@@ -11,6 +11,7 @@ import '../../../core/supabase/session_gate.dart';
 import '../../../core/supabase/supabase_provider.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/widgets/filo_widgets.dart';
+import '../../onboarding/presentation/account_setup_screen.dart';
 
 final otpClockProvider = Provider<DateTime Function()>((ref) => DateTime.now);
 
@@ -217,6 +218,7 @@ class _SessionScreenState extends ConsumerState<SessionScreen> {
   Widget build(BuildContext context) {
     final verification = ref.watch(verifiedUserIdProvider);
     final verified = verification.asData?.value != null;
+    if (verified) return const AccountSetupScreen();
     final checking = verification.isLoading;
     final session = ref.watch(loginSessionProvider).asData?.value;
     final rawEmail = session?.user.email;

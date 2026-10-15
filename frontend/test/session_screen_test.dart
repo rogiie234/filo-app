@@ -7,13 +7,21 @@ import 'package:http/http.dart' as http;
 import 'package:http/testing.dart';
 import 'package:filo/core/supabase/supabase_provider.dart';
 import 'package:filo/core/supabase/session_gate.dart';
+import 'package:filo/data/local/database_providers.dart';
 import 'package:filo/core/theme/app_theme.dart';
 import 'package:filo/features/auth/presentation/session_screen.dart';
+import 'package:filo/features/onboarding/data/profile_repository.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+
+class _NewAccountProfiles extends ProfileRepository {
+  _NewAccountProfiles(super.client);
+  @override
+  Future<AccountProfile?> fetch() async => null;
+}
 
 void main() {
   final session = Session(
@@ -40,6 +48,17 @@ void main() {
     tester.view.devicePixelRatio = 1;
     addTearDown(tester.view.resetPhysicalSize);
     addTearDown(tester.view.resetDevicePixelRatio);
+    SupabaseClient? profileClient;
+    if (verified) {
+      profileClient = await tester.runAsync(
+        () async => SupabaseClient(
+          'https://example.supabase.co',
+          'test-key',
+          authOptions: const AuthClientOptions(autoRefreshToken: false),
+        ),
+      );
+      addTearDown(() => tester.runAsync(profileClient!.dispose));
+    }
     await tester.pumpWidget(
       ProviderScope(
         overrides: [
@@ -48,6 +67,12 @@ void main() {
           ),
           if (now != null) otpClockProvider.overrideWithValue(now),
           if (client != null) supabaseClientProvider.overrideWithValue(client),
+          if (verified)
+            accountDatabaseProvider.overrideWith((ref) async => null),
+          if (verified)
+            profileRepositoryProvider.overrideWithValue(
+              _NewAccountProfiles(profileClient!),
+            ),
           deviceHashProvider.overrideWith((ref) async => "device-hash"),
           loginSessionProvider.overrideWith((ref) => Stream.value(session)),
           verifiedUserIdProvider.overrideWith(
@@ -239,12 +264,11 @@ void main() {
     });
   }
 
-  testWidgets('verified state has friendly success copy and no OTP actions', (
+  testWidgets('verified state proceeds to profile setup with no OTP actions', (
     tester,
   ) async {
-    await launch(tester, verified: true);
-    expect(find.text('You’re all set.'), findsOneWidget);
-    expect(find.text('Device confirmed'), findsOneWidget);
+    await launch(tester, verified: true, throughApp: true);
+    expect(find.text('Choose your role'), findsOneWidget);
     expect(find.text('Send code'), findsNothing);
     expect(find.text('Verify code'), findsNothing);
     expect(tester.takeException(), isNull);
