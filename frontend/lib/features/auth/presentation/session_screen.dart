@@ -12,6 +12,8 @@ import '../../../core/supabase/supabase_provider.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/widgets/filo_widgets.dart';
 
+final otpClockProvider = Provider<DateTime Function()>((ref) => DateTime.now);
+
 class SessionScreen extends ConsumerStatefulWidget {
   const SessionScreen({super.key});
   @override
@@ -27,14 +29,16 @@ class _SessionScreenState extends ConsumerState<SessionScreen> {
   bool _busy = false, _error = false, _locked = false;
   int get _seconds => _resendAt == null
       ? 0
-      : (_resendAt!.difference(DateTime.now()).inMilliseconds / 1000)
+      : (_resendAt!.difference(ref.read(otpClockProvider)()).inMilliseconds /
+                1000)
             .ceil()
             .clamp(0, 600);
   bool get _canResend =>
       !_busy &&
       _seconds == 0 &&
       (!_locked ||
-          (_expiresAt != null && !DateTime.now().isBefore(_expiresAt!)));
+          (_expiresAt != null &&
+              !ref.read(otpClockProvider)().isBefore(_expiresAt!)));
 
   void _countdown() {
     _timer?.cancel();
@@ -101,7 +105,9 @@ class _SessionScreenState extends ConsumerState<SessionScreen> {
         case 'OTP_RESEND_TOO_SOON':
           final seconds = data['retry_after'];
           if (seconds is int) {
-            _resendAt = DateTime.now().add(Duration(seconds: seconds));
+            _resendAt = ref
+                .read(otpClockProvider)()
+                .add(Duration(seconds: seconds));
             _countdown();
           }
           _feedback(
@@ -141,7 +147,7 @@ class _SessionScreenState extends ConsumerState<SessionScreen> {
 
   Future<void> _send() => _perform(() async {
     final hash = await ref.read(deviceHashProvider.future);
-    final requestedAt = DateTime.now();
+    final requestedAt = ref.read(otpClockProvider)();
     final response = await ref
         .read(supabaseClientProvider)
         .functions
@@ -153,9 +159,9 @@ class _SessionScreenState extends ConsumerState<SessionScreen> {
       _challenge = data['challenge_id'] as String;
       _locked = false;
       _code.clear();
-      _resendAt = DateTime.now().add(
-        Duration(seconds: data['resend_after'] as int? ?? 60),
-      );
+      _resendAt = ref
+          .read(otpClockProvider)()
+          .add(Duration(seconds: data['resend_after'] as int? ?? 60));
       _expiresAt = requestedAt.add(
         Duration(seconds: data['expires_in'] as int? ?? 600),
       );
@@ -213,8 +219,14 @@ class _SessionScreenState extends ConsumerState<SessionScreen> {
     final verified = verification.asData?.value != null;
     final checking = verification.isLoading;
     final session = ref.watch(loginSessionProvider).asData?.value;
-    final email = session?.user.email ?? 'your Google email';
+    final rawEmail = session?.user.email;
+    final at = rawEmail?.indexOf('@') ?? -1;
     final sent = _challenge != null;
+    final email = !sent
+        ? rawEmail ?? 'your Google email'
+        : rawEmail != null && at > 0
+        ? '${rawEmail[0]}***${rawEmail.substring(at)}'
+        : 'your Google email';
     return Scaffold(
       appBar: AppBar(
         title: const Brand(),
@@ -359,10 +371,17 @@ class _SessionScreenState extends ConsumerState<SessionScreen> {
                                 focusNode: _focus,
                                 enabled: !_busy && !_locked,
                                 keyboardType: TextInputType.number,
+                                // Codes must not be rewritten by keyboard predictions.
+                                autocorrect: false,
+                                enableSuggestions: false,
+                                enableIMEPersonalizedLearning: false,
+                                enableInlinePrediction: false,
+                                smartDashesType: SmartDashesType.disabled,
+                                smartQuotesType: SmartQuotesType.disabled,
                                 textInputAction: TextInputAction.done,
-                                autofillHints: const [
-                                  AutofillHints.oneTimeCode,
-                                ],
+                                // Delayed OS OTP autofill can restore digits after
+                                // the user deletes them. Keep this field manual.
+                                autofillHints: null,
                                 maxLength: 6,
                                 textAlign: TextAlign.center,
                                 style: const TextStyle(

@@ -6,6 +6,7 @@ secrets/
 google-services.json
 
 # Local project documentation
+AGENTS.md
 /docs/
 /backend/OTP_TESTING.md
 

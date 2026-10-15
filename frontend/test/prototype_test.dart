@@ -1,3 +1,4 @@
+import 'package:filo/core/connectivity/connectivity_provider.dart';
 import 'package:filo/app.dart';
 import 'package:filo/core/router/app_router.dart';
 import 'package:filo/core/supabase/auth_providers.dart';
@@ -31,6 +32,7 @@ void main() {
     addTearDown(tester.platformDispatcher.clearTextScaleFactorTestValue);
     final container = ProviderContainer(
       overrides: [
+        connectivityProvider.overrideWith((ref) => Stream.value(true)),
         authUserIdProvider.overrideWith((ref) => Stream.value(null)),
         loginSessionProvider.overrideWith((ref) => Stream.value(null)),
         verifiedUserIdProvider.overrideWith((ref) async => null),
@@ -58,6 +60,23 @@ void main() {
     await tester.pumpAndSettle();
     expect(find.text('Your classes'), findsOneWidget);
     expect(find.text('Introduction to Computing'), findsOneWidget);
+  });
+
+  testWidgets('all intro pages advance and About Filo restarts the intro', (
+    tester,
+  ) async {
+    await launch(tester);
+    for (final title in ['Small steps.\nBig wins.', 'Stay curious.']) {
+      await tester.tap(find.text('Next'));
+      await tester.pumpAndSettle();
+      expect(find.text(title), findsOneWidget);
+    }
+    await tester.tap(find.text('Get started'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('About Filo'));
+    await tester.pumpAndSettle();
+    expect(find.text('Learning,\ntogether.'), findsOneWidget);
+    expect(find.text('Next'), findsOneWidget);
   });
 
   testWidgets('student navigation, file filters, and pending join request', (

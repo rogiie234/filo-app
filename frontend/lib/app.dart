@@ -21,7 +21,14 @@ class App extends ConsumerWidget {
       final login = ref.watch(loginSessionProvider);
       final database = ref.watch(accountDatabaseProvider);
       if (login.asData?.value != null) {
-        return SessionScreen(key: ValueKey(login.asData!.value!.user.id));
+        // Replacing the router child here also removes its Navigator/Overlay.
+        // Keep authentication screens inside a route so text editing and
+        // selection can find the overlay required by EditableText.
+        return Navigator(
+          key: ValueKey(login.asData!.value!.user.id),
+          onGenerateRoute: (_) =>
+              MaterialPageRoute<void>(builder: (_) => const SessionScreen()),
+        );
       }
       // Unmount the old account's screens while switching database files.
       if (database.isLoading) {
