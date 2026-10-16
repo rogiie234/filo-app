@@ -11,6 +11,9 @@ class ClassRoom {
     this.archived = false,
     this.schoolYear,
     this.joinCode,
+    this.instructorPhotoUrl,
+    this.instructorAvatarPath,
+    this.bannerPath,
   });
   final String id;
   final String section;
@@ -21,6 +24,7 @@ class ClassRoom {
   final bool archived;
   final String? schoolYear;
   final String? joinCode;
+  final String? instructorPhotoUrl, instructorAvatarPath, bannerPath;
 }
 
 class ClassPost {

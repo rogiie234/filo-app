@@ -12,6 +12,11 @@ class FiloColors {
   static const border = Color(0xFFD9E2DA);
   static const tint = Color(0xFFF0F5F0);
   static const lime = Color(0xFFE0F0A6);
+  static const surface = Colors.white;
+  static const onBanner = Colors.white;
+  static const bannerOverlay = Color(0xB314231E);
+  static const warningInk = Color(0xFF8A5200);
+  static const error = Color(0xFFBA1A1A);
   static const warning = Color(0xFFFFF1D6);
 }
 

@@ -10,6 +10,7 @@ import '../../onboarding/data/profile_repository.dart';
 import '../../../core/connectivity/connectivity_provider.dart';
 import '../../../core/supabase/supabase_provider.dart';
 import 'class_screen.dart';
+import 'classes_widgets.dart';
 import 'create_class_screen.dart';
 import '../domain/prototype_models.dart';
 
@@ -43,9 +44,15 @@ class _ClassesScreenState extends ConsumerState<ClassesScreen> {
         .where(
           (room) => '${room.section} ${room.course} ${room.instructor}'
               .toLowerCase()
-              .contains(_query.toLowerCase()),
+              .contains(_query.trim().toLowerCase()),
         )
         .toList();
+    final loading =
+        cards.isLoading ||
+        (live &&
+            online &&
+            sync.isLoading &&
+            (cards.asData?.value.isEmpty ?? true));
     return Scaffold(
       appBar: AppBar(
         automaticallyImplyLeading: false,
@@ -53,22 +60,25 @@ class _ClassesScreenState extends ConsumerState<ClassesScreen> {
         toolbarHeight: 76,
         actions: [
           IconButton(
-            tooltip: live ? 'Saved classes' : 'Preview information',
-            icon: const Icon(Icons.info_outline_rounded),
-            onPressed: () => showMessage(
-              context,
-              live
-                  ? 'Your classes are saved on this phone. Pull down to refresh.'
-                  : 'Sample classrooms. Changes stay in this preview session.',
+            tooltip: 'Notifications',
+            icon: const RedDotBadge(
+              visible: false,
+              child: Icon(Icons.notifications_none_rounded),
             ),
+            onPressed: () =>
+                showMessage(context, 'Notifications will be available here.'),
           ),
           Padding(
             padding: const EdgeInsets.only(right: 16),
-            child: IconButton.filledTonal(
+            child: IconButton(
               tooltip: live ? 'Your account' : 'Change preview role',
               onPressed: _roleMenu,
-              icon: Icon(
-                student ? Icons.school_rounded : Icons.auto_stories_rounded,
+              icon: FiloAvatar(
+                name:
+                    widget.profile?.name ??
+                    (student ? 'Student' : 'Instructor'),
+                url: widget.profile?.photoUrl,
+                path: widget.profile?.avatarPath,
               ),
             ),
           ),
@@ -77,12 +87,9 @@ class _ClassesScreenState extends ConsumerState<ClassesScreen> {
       body: _refresh(
         ListView(
           physics: const AlwaysScrollableScrollPhysics(),
-          padding: const EdgeInsets.fromLTRB(24, 12, 24, 24),
+          padding: const EdgeInsets.fromLTRB(24, 12, 24, 104),
           children: [
-            if (live && !online)
-              const FiloPanel(
-                child: Text("You're offline. Showing saved content."),
-              ),
+            if (live && !online) const OfflineBanner(),
             if (live && sync.hasError)
               FiloPanel(
                 child: Column(
@@ -99,29 +106,13 @@ class _ClassesScreenState extends ConsumerState<ClassesScreen> {
                   ],
                 ),
               ),
-            if (cards.isLoading) const LinearProgressIndicator(),
+
             if (cards.hasError)
               const FiloPanel(
                 child: Text(
                   'Could not read saved classes. Try reopening the app.',
                 ),
               ),
-            Wrap(
-              spacing: 8,
-              runSpacing: 4,
-              children: [
-                if (!live)
-                  const Chip(
-                    label: Text('Preview · sample data'),
-                    visualDensity: VisualDensity.compact,
-                  ),
-                Chip(
-                  label: Text(student ? 'Student' : 'Instructor'),
-                  visualDensity: VisualDensity.compact,
-                ),
-              ],
-            ),
-            const SizedBox(height: 20),
             Row(
               children: [
                 Expanded(
@@ -151,19 +142,37 @@ class _ClassesScreenState extends ConsumerState<ClassesScreen> {
               decoration: const InputDecoration(
                 hintText: 'Find a class',
                 prefixIcon: Icon(Icons.search_rounded),
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.all(Radius.circular(999)),
+                ),
+                enabledBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.all(Radius.circular(999)),
+                  borderSide: BorderSide(color: FiloColors.border),
+                ),
               ),
               onChanged: (value) => setState(() => _query = value),
             ),
             const SizedBox(height: 24),
-            if (rooms.isEmpty && !cards.isLoading && !cards.hasError)
+            if (rooms.isEmpty && !loading && !cards.hasError && !sync.hasError)
               EmptyState(
-                title: _query.isEmpty ? 'No classes yet.' : 'No classes found.',
-                message: _query.isNotEmpty
+                title: !online
+                    ? 'No saved classes found.'
+                    : _query.trim().isEmpty
+                    ? 'No classes yet.'
+                    : 'No classes found.',
+                message: !online
+                    ? 'Connect to the internet to refresh your classes.'
+                    : _query.trim().isNotEmpty
                     ? 'Try another course, section, or instructor.'
                     : student
                     ? 'Join a class using the code from your instructor.'
                     : 'Create a class to get started.',
               ),
+            if (loading) ...const [
+              ClassCardSkeleton(),
+              ClassCardSkeleton(),
+              ClassCardSkeleton(),
+            ],
             for (final room in rooms.where((room) => !room.archived))
               _classTile(room),
             if (rooms.any((room) => room.archived)) ...[
@@ -188,41 +197,47 @@ class _ClassesScreenState extends ConsumerState<ClassesScreen> {
           ],
         ),
       ),
-      bottomNavigationBar: SafeArea(
-        child: Padding(
-          padding: const EdgeInsets.fromLTRB(24, 12, 24, 20),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              if (!online)
-                Padding(
-                  padding: const EdgeInsets.only(bottom: 8),
-                  child: Text(
-                    student
-                        ? 'Connect to the internet to join a class.'
-                        : 'Connect to the internet to create a class.',
-                  ),
-                ),
-              student
-                  ? FiloButton(
-                      label: 'Join class',
-                      icon: Icons.add_rounded,
-                      onPressed: online ? _join : null,
-                    )
-                  : FiloButton(
-                      label: live ? 'Create class' : 'Explore a class',
-                      icon: live
-                          ? Icons.add_rounded
-                          : Icons.arrow_forward_rounded,
-                      onPressed: !online
-                          ? null
-                          : live
-                          ? _create
-                          : () => context.push('/classes/it119'),
-                    ),
-            ],
-          ),
+      floatingActionButtonLocation: FloatingActionButtonLocation.centerFloat,
+      floatingActionButton: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 24),
+        child: FiloButton(
+          label: student ? 'Join class' : 'Create class',
+          icon: Icons.add_rounded,
+          onPressed: !online
+              ? null
+              : student
+              ? _join
+              : live
+              ? _create
+              : () => context.push('/classes/it119'),
         ),
+      ),
+      bottomNavigationBar: NavigationBar(
+        selectedIndex: 0,
+        onDestinationSelected: (index) {
+          if (index != 0)
+            showMessage(context, 'This area will be available soon.');
+        },
+        destinations: [
+          const NavigationDestination(
+            icon: Icon(Icons.school_outlined),
+            selectedIcon: Icon(Icons.school_rounded),
+            label: 'Classes',
+          ),
+          NavigationDestination(
+            icon: const Icon(Icons.checklist_rounded),
+            label: student ? 'To-do' : 'To review',
+          ),
+          const NavigationDestination(
+            icon: Icon(Icons.folder_outlined),
+            label: 'Files',
+          ),
+          if (student)
+            const NavigationDestination(
+              icon: Icon(Icons.auto_awesome_outlined),
+              label: 'AI Study',
+            ),
+        ],
       ),
     );
   }
@@ -236,7 +251,7 @@ class _ClassesScreenState extends ConsumerState<ClassesScreen> {
 
   Widget _classTile(ClassRoom room) => Padding(
     padding: const EdgeInsets.only(bottom: 16),
-    child: _ClassCard(
+    child: ClassCard(
       room: room,
       pendingRequests: widget.profile?.role == AccountRole.instructor
           ? ref.watch(pendingClassRequestsProvider).asData?.value[room.id] ?? 0
@@ -366,112 +381,6 @@ class _ClassesScreenState extends ConsumerState<ClassesScreen> {
       ),
     );
   }
-}
-
-class _ClassCard extends StatelessWidget {
-  const _ClassCard({
-    required this.room,
-    required this.onTap,
-    this.pendingRequests = 0,
-  });
-  final ClassRoom room;
-  final VoidCallback? onTap;
-  final int pendingRequests;
-  @override
-  Widget build(BuildContext context) => Material(
-    color: Colors.white,
-    borderRadius: BorderRadius.circular(28),
-    clipBehavior: Clip.antiAlias,
-    child: InkWell(
-      onTap: onTap,
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Container(
-            width: double.infinity,
-            padding: const EdgeInsets.all(24),
-            color: Color(room.color),
-            child: Row(
-              children: [
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        room.section,
-                        style: const TextStyle(
-                          color: Colors.white,
-                          fontSize: 26,
-                          fontWeight: FontWeight.w900,
-                        ),
-                      ),
-                      const SizedBox(height: 8),
-                      Text(
-                        room.course,
-                        style: const TextStyle(
-                          color: Colors.white,
-                          fontSize: 16,
-                          fontWeight: FontWeight.w700,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-                const SizedBox(width: 12),
-                const Icon(
-                  Icons.auto_stories_rounded,
-                  color: Colors.white,
-                  size: 42,
-                ),
-              ],
-            ),
-          ),
-          Padding(
-            padding: const EdgeInsets.all(20),
-            child: Row(
-              children: [
-                CircleAvatar(
-                  radius: 18,
-                  backgroundColor: FiloColors.tint,
-                  child: Text(
-                    room.instructor.trim().isEmpty
-                        ? '?'
-                        : room.instructor.trim()[0],
-                    style: const TextStyle(fontWeight: FontWeight.w800),
-                  ),
-                ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: Text(
-                    room.instructor,
-                    style: const TextStyle(fontWeight: FontWeight.w700),
-                  ),
-                ),
-                Badge(
-                  isLabelVisible: pendingRequests > 0,
-                  child: Icon(
-                    room.pending
-                        ? Icons.hourglass_top_rounded
-                        : Icons.arrow_forward_rounded,
-                    color: FiloColors.primary,
-                    size: 20,
-                  ),
-                ),
-              ],
-            ),
-          ),
-          if (room.pending)
-            const Padding(
-              padding: EdgeInsets.fromLTRB(20, 0, 20, 16),
-              child: Text(
-                'Waiting for approval',
-                style: TextStyle(color: Color(0xFF8A5200)),
-              ),
-            ),
-        ],
-      ),
-    ),
-  );
 }
 
 class _JoinSheet extends ConsumerStatefulWidget {

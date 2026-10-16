@@ -65,6 +65,9 @@ final classCardsProvider = StreamProvider.autoDispose<List<ClassRoom>>((
         archived: room.archivedAt != null,
         schoolYear: room.schoolYear,
         joinCode: room.joinCode,
+        instructorPhotoUrl: owner?.googlePhotoUrl,
+        instructorAvatarPath: owner?.avatarPath,
+        bannerPath: room.bannerPath,
       );
     }).toList(),
   );

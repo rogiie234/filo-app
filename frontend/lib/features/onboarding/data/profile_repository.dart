@@ -26,12 +26,14 @@ class AccountProfile {
       role = AccountRole.values.byName(json['role'] as String),
       name = json['display_name'] as String,
       email = json['email'] as String?,
-      school = json['school'] as String?;
+      school = json['school'] as String?,
+      photoUrl = json['google_photo_url'] as String?,
+      avatarPath = json['avatar_path'] as String?;
 
   final String id;
   final AccountRole role;
   final String name;
-  final String? email, school;
+  final String? email, school, photoUrl, avatarPath;
 }
 
 final profileRepositoryProvider = Provider<ProfileRepository>(
