@@ -12,6 +12,8 @@ import '../../onboarding/data/profile_repository.dart';
 import '../domain/prototype_models.dart';
 import 'class_students_screen.dart';
 import 'class_classmates_screen.dart';
+import 'class_banner_screen.dart';
+import '../../../core/supabase/supabase_provider.dart';
 import '../../../core/connectivity/connectivity_provider.dart';
 
 class ClassScreen extends ConsumerStatefulWidget {
@@ -25,10 +27,13 @@ class ClassScreen extends ConsumerStatefulWidget {
 class _ClassScreenState extends ConsumerState<ClassScreen> {
   int _tab = 0;
   String _filter = 'All';
+  String? _openedSection;
+  bool _checkingAccess = false;
 
   @override
   Widget build(BuildContext context) {
     final live = widget.profile != null;
+    if (live) ref.watch(classSyncLifecycleProvider);
     final cards = live ? ref.watch(classCardsProvider) : null;
     if (live && cards!.isLoading) {
       return Scaffold(
@@ -50,18 +55,40 @@ class _ClassScreenState extends ConsumerState<ClassScreen> {
       (room) => room.id == widget.classId && !room.pending,
     );
     if (matches.isEmpty) {
+      if (live &&
+          cards!.hasValue &&
+          _openedSection != null &&
+          !_checkingAccess &&
+          !_busy) {
+        _checkingAccess = true;
+        WidgetsBinding.instance.addPostFrameCallback((_) => _accessLost());
+      }
       return Scaffold(
         appBar: AppBar(title: const Text('Class unavailable')),
         body: Center(
-          child: TextButton(
-            onPressed: () =>
-                live ? Navigator.pop(context) : context.go('/classes'),
-            child: const Text('Back to classes'),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              if (live)
+                TextButton(
+                  onPressed: () async {
+                    await ref.read(classSyncProvider.notifier).refresh();
+                    if (mounted) setState(() {});
+                  },
+                  child: const Text('Refresh'),
+                ),
+              TextButton(
+                onPressed: () =>
+                    live ? Navigator.pop(context) : context.go('/classes'),
+                child: const Text('Back to classes'),
+              ),
+            ],
           ),
         ),
       );
     }
     final room = matches.first;
+    _openedSection = room.section;
     final instructor = state.role == PreviewRole.instructor;
     final pendingCount = live && instructor
         ? ref
@@ -109,15 +136,31 @@ class _ClassScreenState extends ConsumerState<ClassScreen> {
           ),
         ],
       ),
-      body: _refresh(
-        IndexedStack(
-          index: _tab,
-          children: [
-            _stream(state, room),
-            ClassFiles(hasSamples: !live && room.id == 'it119'),
-            _classwork(state, room),
-          ],
-        ),
+      body: Column(
+        children: [
+          if (room.archived)
+            const Padding(
+              padding: EdgeInsets.all(12),
+              child: Text('This class is archived.'),
+            ),
+          if (live && ref.watch(classSyncProvider).hasError)
+            TextButton(
+              onPressed: () => ref.read(classSyncProvider.notifier).refresh(),
+              child: const Text('Could not refresh. Retry'),
+            ),
+          Expanded(
+            child: _refresh(
+              IndexedStack(
+                index: _tab,
+                children: [
+                  _stream(state, room),
+                  ClassFiles(hasSamples: !live && room.id == 'it119'),
+                  _classwork(state, room),
+                ],
+              ),
+            ),
+          ),
+        ],
       ),
       bottomNavigationBar: Column(
         mainAxisSize: MainAxisSize.min,
@@ -130,7 +173,7 @@ class _ClassScreenState extends ConsumerState<ClassScreen> {
                 child: FiloButton(
                   label: _tab == 0 ? 'Create post' : 'New assessment',
                   icon: Icons.add_rounded,
-                  onPressed: live
+                  onPressed: live || room.archived
                       ? null
                       : () => context.push(
                           '/classes/${room.id}/${_tab == 0 ? 'post/new' : 'assessment/new'}',
@@ -285,16 +328,146 @@ class _ClassScreenState extends ConsumerState<ClassScreen> {
           children: [
             const ListTile(title: Text('Class settings')),
             ListTile(
+              title: const Text('Change banner'),
+              subtitle: room.archived
+                  ? const Text('Restore this class before changing its banner.')
+                  : null,
+              onTap: _busy || room.archived
+                  ? null
+                  : () {
+                      Navigator.pop(sheet);
+                      Navigator.of(context).push(
+                        MaterialPageRoute<void>(
+                          builder: (_) => ClassBannerScreen(classId: room.id),
+                        ),
+                      );
+                    },
+            ),
+            ListTile(
+              title: const Text('Delete class'),
+              onTap: _busy
+                  ? null
+                  : () {
+                      Navigator.pop(sheet);
+                      _deleteClass(room);
+                    },
+            ),
+            ListTile(
               title: Text(room.archived ? 'Restore class' : 'Archive class'),
-              onTap: () {
-                Navigator.pop(sheet);
-                _classAction(room, archive: true);
-              },
+              onTap: _busy
+                  ? null
+                  : () {
+                      Navigator.pop(sheet);
+                      _classAction(room, archive: true);
+                    },
             ),
           ],
         ),
       ),
     );
+  }
+
+  Future<void> _accessLost() async {
+    if (!mounted) return;
+    try {
+      if (widget.profile!.role == AccountRole.student) {
+        final client = ref.read(supabaseClientProvider);
+        final membership = await client
+            .from('class_members')
+            .select('status')
+            .eq('class_id', widget.classId)
+            .eq('student_id', client.auth.currentUser!.id)
+            .maybeSingle();
+        if (mounted && membership?['status'] == 'removed') {
+          showMessage(context, 'You were removed from $_openedSection');
+          Navigator.pop(context);
+        }
+      }
+    } catch (_) {
+      // A failed lookup is not evidence of removal. Retry after another refresh.
+    } finally {
+      if (mounted) _checkingAccess = false;
+    }
+  }
+
+  Future<void> _deleteClass(ClassRoom room) async {
+    if (_busy || ref.read(connectivityProvider).asData?.value != true) {
+      showMessage(context, 'Connect to the internet to manage this class.');
+      return;
+    }
+    final input = TextEditingController();
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (dialog) => StatefulBuilder(
+        builder: (dialog, update) => AlertDialog(
+          title: Text('Delete ${room.section}?'),
+          content: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                const Text(
+                  'This class will be hidden from you and your students. You can restore it within 14 days. After that, the class, posts, submissions, quizzes, grades, and server files will be permanently deleted. Files already downloaded to devices will stay.',
+                ),
+                Text(
+                  'Type the section name exactly as shown to confirm: ${room.section}',
+                ),
+                TextField(
+                  controller: input,
+                  onChanged: (_) => update(() {}),
+                  decoration: InputDecoration(
+                    labelText: 'Section name',
+                    errorText:
+                        input.text.isNotEmpty && input.text != room.section
+                        ? "The section name doesn't match. Type it exactly as shown."
+                        : null,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(dialog, false),
+              child: const Text('Cancel'),
+            ),
+            TextButton(
+              onPressed: input.text == room.section
+                  ? () => Navigator.pop(dialog, true)
+                  : null,
+              child: const Text('Delete class'),
+            ),
+          ],
+        ),
+      ),
+    );
+    // The dialog may still be animating out; dispose after its route transition.
+    Future<void>.delayed(const Duration(seconds: 1), input.dispose);
+    if (confirmed != true || !mounted || _busy) return;
+    if (ref.read(connectivityProvider).asData?.value != true) {
+      showMessage(context, 'Connect to the internet to manage this class.');
+      return;
+    }
+    setState(() => _busy = true);
+    try {
+      final repository = await ref.read(classRepositoryProvider.future);
+      if (repository == null) throw StateError('Sign in required');
+      await repository.delete(room.id, room.section);
+      if (mounted) {
+        showMessage(
+          context,
+          'Class deleted. Restore it from Recently deleted within 14 days.',
+        );
+        Navigator.pop(context);
+      }
+    } catch (_) {
+      if (mounted)
+        showMessage(
+          context,
+          "We couldn't confirm the deletion. Refresh your classes before trying again.",
+        );
+    } finally {
+      if (mounted) setState(() => _busy = false);
+    }
   }
 
   Future<void> _leave(ClassRoom room) => _classAction(room);

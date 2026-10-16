@@ -12,6 +12,7 @@ import '../../../core/supabase/supabase_provider.dart';
 import 'class_screen.dart';
 import 'classes_widgets.dart';
 import 'create_class_screen.dart';
+import 'recently_deleted_screen.dart';
 import '../domain/prototype_models.dart';
 
 class ClassesScreen extends ConsumerStatefulWidget {
@@ -181,6 +182,17 @@ class _ClassesScreenState extends ConsumerState<ClassesScreen> {
               for (final room in rooms.where((room) => room.archived))
                 _classTile(room),
             ],
+            if (live && !student)
+              ListTile(
+                leading: const Icon(Icons.delete_outline),
+                title: const Text('Recently deleted'),
+                subtitle: const Text('Restore classes within 14 days'),
+                onTap: () => Navigator.of(context).push(
+                  MaterialPageRoute<void>(
+                    builder: (_) => const RecentlyDeletedScreen(),
+                  ),
+                ),
+              ),
             const SizedBox(height: 8),
             const Row(
               children: [

@@ -20,6 +20,7 @@ class ClassRepository {
   final ClassRemote remote;
   final String userId;
   Future<void>? _pending;
+  bool _classSnapshotLoaded = false;
 
   Stream<List<CacheClassesData>> watchClasses() =>
       (database.select(database.cacheClasses)
@@ -45,13 +46,16 @@ class ClassRepository {
         'class_members',
         since: cursors['class_members'],
       ),
-      'classes': await remote.read('classes', since: cursors['classes']),
+      // A previous version could advance the cursor without clearing null
+      // fields. Reconcile a full snapshot once per repository lifetime so an
+      // ordinary refresh also repairs those already-stale cached rows.
+      'classes': await remote.read(
+        'classes',
+        since: _classSnapshotLoaded ? cursors['classes'] : null,
+      ),
     };
     final inventory = await remote.read('classes', inventory: true);
-    final visible = inventory
-        .where((r) => r['deleted_at'] == null)
-        .map((r) => r['id'] as String)
-        .toSet();
+    final visible = inventory.map((r) => r['id'] as String).toSet();
     final cached = (await db.select(db.cacheClasses).get())
         .map((r) => r.id)
         .toSet();
@@ -83,13 +87,14 @@ class ClassRepository {
       }
       for (final row in changes['classes']!) {
         if (!visible.contains(row['id']) ||
-            row['deleted_at'] != null ||
             (row['owner_id'] != userId && revoked.contains(row['id']))) {
           continue;
         }
         await db
             .into(db.cacheClasses)
-            .insertOnConflictUpdate(CacheClassesData.fromJson(_cacheJson(row)));
+            .insertOnConflictUpdate(
+              CacheClassesData.fromJson(_cacheJson(row)).toCompanion(false),
+            );
       }
       for (final row in await db.select(db.cacheClasses).get()) {
         if (!visible.contains(row.id) ||
@@ -132,6 +137,38 @@ class ClassRepository {
             );
       }
     });
+    // Only mark reconciliation complete after the whole cache commits.
+    _classSnapshotLoaded = true;
+  }
+
+  Future<dynamic> _restoreClass(String id, {required bool deleted}) async {
+    final result = await mutate(
+      deleted ? 'restore_deleted_class' : 'restore_class',
+      {'p_class': id},
+    );
+    // Read back the affected row even if an incremental checkpoint would skip
+    // it. A successful void RPC alone does not confirm the displayed state.
+    final rows = await remote.read('classes', id: id);
+    if (rows.length != 1 ||
+        rows.single['id'] != id ||
+        !rows.single.containsKey('deleted_at') ||
+        rows.single['deleted_at'] != null ||
+        (!deleted &&
+            (!rows.single.containsKey('archived_at') ||
+                rows.single['archived_at'] != null))) {
+      throw StateError('Class restoration could not be confirmed');
+    }
+    final restored = CacheClassesData.fromJson(_cacheJson(rows.single));
+    await database
+        .into(database.cacheClasses)
+        .insertOnConflictUpdate(restored.toCompanion(false));
+    final saved = await (database.select(
+      database.cacheClasses,
+    )..where((c) => c.id.equals(id))).getSingle();
+    if (saved.deletedAt != null || (!deleted && saved.archivedAt != null)) {
+      throw StateError('Restored class cache could not be confirmed');
+    }
+    return result;
   }
 
   Future<dynamic> mutate(String function, ClassRow parameters) async {
@@ -173,10 +210,8 @@ class ClassRepository {
   Future<dynamic> leave(String id) => mutate('leave_class', {'p_class': id});
   Future<dynamic> archive(String id) =>
       mutate('archive_class', {'p_class': id});
-  Future<dynamic> restore(String id) =>
-      mutate('restore_class', {'p_class': id});
+  Future<dynamic> restore(String id) => _restoreClass(id, deleted: false);
   Future<dynamic> delete(String id, String section) =>
       mutate('delete_class', {'p_class': id, 'p_section': section});
-  Future<dynamic> restoreDeleted(String id) =>
-      mutate('restore_deleted_class', {'p_class': id});
+  Future<dynamic> restoreDeleted(String id) => _restoreClass(id, deleted: true);
 }

@@ -166,7 +166,9 @@ final classSyncLifecycleProvider = Provider.autoDispose<void>((ref) {
   Future<void> pull() async {
     // Defer initial work until this provider has finished building.
     await Future<void>.value();
-    if (!disposed) await ref.read(classSyncProvider.notifier).refresh();
+    if (!disposed && ref.read(connectivityProvider).asData?.value == true) {
+      await ref.read(classSyncProvider.notifier).refresh();
+    }
   }
 
   ref.watch(classRepositoryProvider);
@@ -175,10 +177,40 @@ final classSyncLifecycleProvider = Provider.autoDispose<void>((ref) {
       unawaited(pull());
     }
   });
-  final listener = AppLifecycleListener(onResume: () => unawaited(pull()));
+  var foreground = true;
+  final listener = AppLifecycleListener(
+    onResume: () {
+      foreground = true;
+      unawaited(pull());
+    },
+    onPause: () => foreground = false,
+    onHide: () => foreground = false,
+  );
+  final timer = Timer.periodic(const Duration(seconds: 30), (_) {
+    if (foreground) unawaited(pull());
+  });
   unawaited(pull());
   ref.onDispose(() {
     disposed = true;
     listener.dispose();
+    timer.cancel();
   });
 });
+
+// Owner-visible tombstones are cached separately from normal class cards.
+final deletedClassesProvider =
+    StreamProvider.autoDispose<List<CacheClassesData>>((ref) async* {
+      final repository = await ref.watch(classRepositoryProvider.future);
+      if (repository == null) {
+        yield [];
+        return;
+      }
+      final db = repository.database;
+      yield* (db.select(db.cacheClasses)
+            ..where(
+              (c) =>
+                  c.ownerId.equals(repository.userId) & c.deletedAt.isNotNull(),
+            )
+            ..orderBy([(c) => OrderingTerm.desc(c.deletedAt)]))
+          .watch();
+    });
