@@ -30,11 +30,14 @@ class App extends ConsumerWidget {
               MaterialPageRoute<void>(builder: (_) => const SessionScreen()),
         );
       }
-      // Unmount the old account's screens while switching database files.
-      if (database.isLoading) {
+      // Public screens must not wait for the previous account's SQLite cleanup.
+      // The database provider still closes/serializes files before another
+      // account can open them; signed-in screens remain verification-gated.
+      final signedOut = login.asData != null && login.asData!.value == null;
+      if (!signedOut && database.isLoading) {
         return const Scaffold(body: Center(child: CircularProgressIndicator()));
       }
-      if (database.hasError) {
+      if (!signedOut && database.hasError) {
         return Scaffold(
           body: Center(
             child: Column(

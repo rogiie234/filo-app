@@ -8,6 +8,9 @@ class ClassRoom {
     required this.instructor,
     required this.color,
     this.pending = false,
+    this.archived = false,
+    this.schoolYear,
+    this.joinCode,
   });
   final String id;
   final String section;
@@ -15,6 +18,9 @@ class ClassRoom {
   final String instructor;
   final int color;
   final bool pending;
+  final bool archived;
+  final String? schoolYear;
+  final String? joinCode;
 }
 
 class ClassPost {

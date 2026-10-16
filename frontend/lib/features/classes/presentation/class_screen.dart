@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
@@ -6,10 +7,14 @@ import '../../../core/theme/app_theme.dart';
 import '../../../core/widgets/filo_widgets.dart';
 import '../../files/presentation/class_files.dart';
 import '../application/preview_controller.dart';
+import '../application/class_providers.dart';
+import '../../onboarding/data/profile_repository.dart';
 import '../domain/prototype_models.dart';
+import 'class_students_screen.dart';
 
 class ClassScreen extends ConsumerStatefulWidget {
-  const ClassScreen({super.key, required this.classId});
+  const ClassScreen({super.key, required this.classId, this.profile});
+  final AccountProfile? profile;
   final String classId;
   @override
   ConsumerState<ClassScreen> createState() => _ClassScreenState();
@@ -21,7 +26,24 @@ class _ClassScreenState extends ConsumerState<ClassScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final state = ref.watch(previewProvider);
+    final live = widget.profile != null;
+    final cards = live ? ref.watch(classCardsProvider) : null;
+    if (live && cards!.isLoading) {
+      return Scaffold(
+        appBar: AppBar(title: const Text('Class')),
+        body: const Center(child: CircularProgressIndicator()),
+      );
+    }
+    final state = !live
+        ? ref.watch(previewProvider)
+        : PreviewState(
+            role: widget.profile!.role == AccountRole.instructor
+                ? PreviewRole.instructor
+                : PreviewRole.student,
+            classes: cards!.asData?.value ?? [],
+            posts: const [],
+            assessments: const [],
+          );
     final matches = state.classes.where(
       (room) => room.id == widget.classId && !room.pending,
     );
@@ -30,7 +52,8 @@ class _ClassScreenState extends ConsumerState<ClassScreen> {
         appBar: AppBar(title: const Text('Class unavailable')),
         body: Center(
           child: TextButton(
-            onPressed: () => context.go('/classes'),
+            onPressed: () =>
+                live ? Navigator.pop(context) : context.go('/classes'),
             child: const Text('Back to classes'),
           ),
         ),
@@ -38,12 +61,19 @@ class _ClassScreenState extends ConsumerState<ClassScreen> {
     }
     final room = matches.first;
     final instructor = state.role == PreviewRole.instructor;
+    final pendingCount = live && instructor
+        ? ref
+                  .watch(pendingClassRequestsProvider)
+                  .asData
+                  ?.value[widget.classId] ??
+              0
+        : 0;
     return Scaffold(
       appBar: AppBar(
         leading: IconButton(
           tooltip: 'Back to classes',
           icon: const Icon(Icons.arrow_back_rounded),
-          onPressed: () => context.pop(),
+          onPressed: () => live ? Navigator.pop(context) : context.pop(),
         ),
         title: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -63,7 +93,10 @@ class _ClassScreenState extends ConsumerState<ClassScreen> {
         actions: [
           IconButton(
             tooltip: 'Class details',
-            icon: const Icon(Icons.more_horiz_rounded),
+            icon: Badge(
+              isLabelVisible: pendingCount > 0,
+              child: const Icon(Icons.more_horiz_rounded),
+            ),
             onPressed: () => showModalBottomSheet<void>(
               context: context,
               showDragHandle: true,
@@ -74,6 +107,33 @@ class _ClassScreenState extends ConsumerState<ClassScreen> {
                     mainAxisSize: MainAxisSize.min,
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
+                      if (live && instructor) ...[
+                        ListTile(
+                          contentPadding: EdgeInsets.zero,
+                          leading: Badge(
+                            isLabelVisible: pendingCount > 0,
+                            child: const Icon(Icons.people_outline_rounded),
+                          ),
+                          title: const Text('Students'),
+                          subtitle: Text(
+                            pendingCount > 0
+                                ? '$pendingCount pending ${pendingCount == 1 ? 'request' : 'requests'}'
+                                : 'Enrolled students and join requests',
+                          ),
+                          trailing: const Icon(Icons.chevron_right_rounded),
+                          onTap: () {
+                            Navigator.pop(context);
+                            Navigator.of(this.context).push(
+                              MaterialPageRoute<void>(
+                                builder: (_) => ClassStudentsScreen(
+                                  classId: widget.classId,
+                                ),
+                              ),
+                            );
+                          },
+                        ),
+                        const Divider(),
+                      ],
                       Text(
                         'Class details',
                         style: Theme.of(context).textTheme.titleLarge,
@@ -84,7 +144,28 @@ class _ClassScreenState extends ConsumerState<ClassScreen> {
                         style: Theme.of(context).textTheme.bodyLarge,
                       ),
                       const SizedBox(height: 16),
-                      const Text('Preview classroom · sample data'),
+                      if (!live)
+                        const Text('Preview classroom \u00b7 sample data'),
+                      if (live) ...[
+                        Text('School Year: ${room.schoolYear ?? ''}'),
+                        const SizedBox(height: 12),
+                        Text('Class code: ${room.joinCode ?? ''}'),
+                        TextButton.icon(
+                          icon: const Icon(Icons.copy_rounded),
+                          label: const Text('Copy code'),
+                          onPressed: room.joinCode == null
+                              ? null
+                              : () async {
+                                  await Clipboard.setData(
+                                    ClipboardData(text: room.joinCode!),
+                                  );
+                                  if (context.mounted) {
+                                    showMessage(context, 'Class code copied.');
+                                  }
+                                },
+                        ),
+                        if (room.archived) const Text('Archived - read-only'),
+                      ],
                     ],
                   ),
                 ),
@@ -93,13 +174,15 @@ class _ClassScreenState extends ConsumerState<ClassScreen> {
           ),
         ],
       ),
-      body: IndexedStack(
-        index: _tab,
-        children: [
-          _stream(state, room),
-          ClassFiles(hasSamples: room.id == 'it119'),
-          _classwork(state, room),
-        ],
+      body: _refresh(
+        IndexedStack(
+          index: _tab,
+          children: [
+            _stream(state, room),
+            ClassFiles(hasSamples: !live && room.id == 'it119'),
+            _classwork(state, room),
+          ],
+        ),
       ),
       bottomNavigationBar: Column(
         mainAxisSize: MainAxisSize.min,
@@ -112,10 +195,21 @@ class _ClassScreenState extends ConsumerState<ClassScreen> {
                 child: FiloButton(
                   label: _tab == 0 ? 'Create post' : 'New assessment',
                   icon: Icons.add_rounded,
-                  onPressed: () => context.push(
-                    '/classes/${room.id}/${_tab == 0 ? 'post/new' : 'assessment/new'}',
-                  ),
+                  onPressed: live
+                      ? null
+                      : () => context.push(
+                          '/classes/${room.id}/${_tab == 0 ? 'post/new' : 'assessment/new'}',
+                        ),
                 ),
+              ),
+            ),
+          if (live && instructor && _tab != 1)
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 24),
+              child: Text(
+                room.archived
+                    ? 'This class is archived and read-only.'
+                    : 'Posting and assessments are not available yet.',
               ),
             ),
           NavigationBar(
@@ -144,9 +238,17 @@ class _ClassScreenState extends ConsumerState<ClassScreen> {
     );
   }
 
+  Widget _refresh(Widget child) => widget.profile == null
+      ? child
+      : RefreshIndicator(
+          onRefresh: () => ref.read(classSyncProvider.notifier).refresh(),
+          child: child,
+        );
+
   Widget _stream(PreviewState state, ClassRoom room) {
     final posts = state.posts.where((post) => post.classId == room.id);
     return ListView(
+      physics: const AlwaysScrollableScrollPhysics(),
       key: PageStorageKey('stream-${room.id}'),
       padding: const EdgeInsets.all(24),
       children: [
@@ -276,6 +378,7 @@ class _ClassScreenState extends ConsumerState<ClassScreen> {
     final visibleAssignments = _filter == 'All' || _filter == 'Assignments';
     final visibleQuizzes = _filter == 'All' || _filter == 'Quizzes';
     return ListView(
+      physics: const AlwaysScrollableScrollPhysics(),
       key: PageStorageKey('classwork-${room.id}'),
       padding: const EdgeInsets.all(24),
       children: [

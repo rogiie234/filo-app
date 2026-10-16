@@ -1,3 +1,5 @@
+import 'package:filo/features/classes/application/class_providers.dart';
+import 'package:filo/core/connectivity/connectivity_provider.dart';
 import 'package:filo/features/onboarding/application/notification_permission.dart';
 import 'package:filo/features/onboarding/data/profile_repository.dart';
 import 'package:filo/features/onboarding/presentation/account_setup_screen.dart';
@@ -82,6 +84,10 @@ void main() {
     await tester.pumpWidget(
       ProviderScope(
         overrides: [
+          classRepositoryProvider.overrideWith((ref) async => null),
+          classCardsProvider.overrideWith((ref) => Stream.value([])),
+          classSyncLifecycleProvider.overrideWith((ref) {}),
+          connectivityProvider.overrideWith((ref) => Stream.value(true)),
           profileRepositoryProvider.overrideWithValue(repository),
           notificationPermissionProvider.overrideWithValue(notifications),
           onboardingUserProvider.overrideWithValue(
@@ -163,14 +169,14 @@ void main() {
         await tap(tester, 'Retry');
         expect(repository.inserts, 1);
         await tap(tester, 'Enable notifications');
-        expect(find.text('Home'), findsOneWidget);
-        expect(find.text('${role.label} account'), findsOneWidget);
+        expect(find.text('Your classes'), findsOneWidget);
+        expect(find.text(role.label), findsOneWidget);
         expect(notifications.done, true);
         expect(notifications.requests, 1);
         expect(find.text('Choose your role'), findsNothing);
         await tester.binding.handlePopRoute();
         await tester.pumpAndSettle();
-        expect(find.text('Home'), findsOneWidget);
+        expect(find.text('Your classes'), findsOneWidget);
       },
     );
   }
@@ -185,7 +191,7 @@ void main() {
       repository.failLookup = false;
       repository.saved = profile(AccountRole.instructor);
       await tap(tester, 'Retry');
-      expect(find.text('Instructor account'), findsOneWidget);
+      expect(find.text('Instructor'), findsOneWidget);
       expect(find.text('Enable notifications'), findsNothing);
     },
   );
@@ -199,7 +205,7 @@ void main() {
       await launch(tester, repository, notifications);
       expect(find.text('Choose your role'), findsNothing);
       await tap(tester, 'Not now');
-      expect(find.text('Home'), findsOneWidget);
+      expect(find.text('Your classes'), findsOneWidget);
       expect(notifications.done, true);
       expect(notifications.requests, 0);
     },

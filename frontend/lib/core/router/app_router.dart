@@ -69,6 +69,14 @@ final appRouterProvider = Provider<GoRouter>((ref) {
       ),
     ),
   );
+  ref.listen(loginSessionProvider, (previous, next) {
+    if (next.asData != null &&
+        next.asData!.value == null &&
+        previous?.asData?.value != null) {
+      // Clear any protected route left behind by the signed-in Navigator.
+      router.go('/sign-in');
+    }
+  });
   ref.onDispose(router.dispose);
   return router;
 });
