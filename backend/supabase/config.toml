@@ -435,3 +435,9 @@ entrypoint = "./functions/verify-otp/index.ts"
 # Specifies static files to be bundled with the function. Supports glob patterns.
 # For example, if you want to serve static HTML pages in your function:
 # static_files = [ "./functions/verify-otp/*.html" ]
+
+[functions.purge-deleted]
+enabled = true
+verify_jwt = false
+entrypoint = './functions/purge-deleted/index.ts'
+
