@@ -11,6 +11,8 @@ import '../application/class_providers.dart';
 import '../../onboarding/data/profile_repository.dart';
 import '../domain/prototype_models.dart';
 import 'class_students_screen.dart';
+import 'class_classmates_screen.dart';
+import '../../../core/connectivity/connectivity_provider.dart';
 
 class ClassScreen extends ConsumerStatefulWidget {
   const ClassScreen({super.key, required this.classId, this.profile});
@@ -97,85 +99,13 @@ class _ClassScreenState extends ConsumerState<ClassScreen> {
         ),
         actions: [
           IconButton(
-            tooltip: 'Class details',
+            tooltip: 'Class menu',
             icon: Badge(
               isLabelVisible: pendingCount > 0,
+              backgroundColor: Colors.red,
               child: const Icon(Icons.more_horiz_rounded),
             ),
-            onPressed: () => showModalBottomSheet<void>(
-              context: context,
-              showDragHandle: true,
-              builder: (context) => SafeArea(
-                child: Padding(
-                  padding: const EdgeInsets.fromLTRB(24, 0, 24, 24),
-                  child: Column(
-                    mainAxisSize: MainAxisSize.min,
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      if (live && instructor) ...[
-                        ListTile(
-                          contentPadding: EdgeInsets.zero,
-                          leading: Badge(
-                            isLabelVisible: pendingCount > 0,
-                            child: const Icon(Icons.people_outline_rounded),
-                          ),
-                          title: const Text('Students'),
-                          subtitle: Text(
-                            pendingCount > 0
-                                ? '$pendingCount pending ${pendingCount == 1 ? 'request' : 'requests'}'
-                                : 'Enrolled students and join requests',
-                          ),
-                          trailing: const Icon(Icons.chevron_right_rounded),
-                          onTap: () {
-                            Navigator.pop(context);
-                            Navigator.of(this.context).push(
-                              MaterialPageRoute<void>(
-                                builder: (_) => ClassStudentsScreen(
-                                  classId: widget.classId,
-                                ),
-                              ),
-                            );
-                          },
-                        ),
-                        const Divider(),
-                      ],
-                      Text(
-                        'Class details',
-                        style: Theme.of(context).textTheme.titleLarge,
-                      ),
-                      const SizedBox(height: 16),
-                      Text(
-                        '${room.section}\n${room.course}\n${room.instructor}',
-                        style: Theme.of(context).textTheme.bodyLarge,
-                      ),
-                      const SizedBox(height: 16),
-                      if (!live)
-                        const Text('Preview classroom \u00b7 sample data'),
-                      if (live) ...[
-                        Text('School Year: ${room.schoolYear ?? ''}'),
-                        const SizedBox(height: 12),
-                        Text('Class code: ${room.joinCode ?? ''}'),
-                        TextButton.icon(
-                          icon: const Icon(Icons.copy_rounded),
-                          label: const Text('Copy code'),
-                          onPressed: room.joinCode == null
-                              ? null
-                              : () async {
-                                  await Clipboard.setData(
-                                    ClipboardData(text: room.joinCode!),
-                                  );
-                                  if (context.mounted) {
-                                    showMessage(context, 'Class code copied.');
-                                  }
-                                },
-                        ),
-                        if (room.archived) const Text('Archived - read-only'),
-                      ],
-                    ],
-                  ),
-                ),
-              ),
-            ),
+            onPressed: () => _menu(room, live, instructor, pendingCount),
           ),
         ],
       ),
@@ -241,6 +171,204 @@ class _ClassScreenState extends ConsumerState<ClassScreen> {
         ],
       ),
     );
+  }
+
+  bool _busy = false;
+
+  void _menu(ClassRoom room, bool live, bool instructor, int pendingCount) {
+    showModalBottomSheet<void>(
+      context: context,
+      showDragHandle: true,
+      builder: (sheet) => SafeArea(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            ListTile(
+              leading: const Icon(Icons.info_outline),
+              title: const Text('Class details'),
+              onTap: () {
+                Navigator.pop(sheet);
+                _details(room, live, instructor);
+              },
+            ),
+            if (live)
+              ListTile(
+                leading: Badge(
+                  isLabelVisible: instructor && pendingCount > 0,
+                  backgroundColor: Colors.red,
+                  child: const Icon(Icons.people_outline),
+                ),
+                title: Text(instructor ? 'Students' : 'Classmates'),
+                onTap: () {
+                  Navigator.pop(sheet);
+                  Navigator.of(context).push(
+                    MaterialPageRoute<void>(
+                      builder: (_) => instructor
+                          ? ClassStudentsScreen(classId: room.id)
+                          : ClassClassmatesScreen(classId: room.id),
+                    ),
+                  );
+                },
+              ),
+            if (live)
+              ListTile(
+                leading: Icon(
+                  instructor ? Icons.settings_outlined : Icons.exit_to_app,
+                ),
+                title: Text(instructor ? 'Class settings' : 'Leave class'),
+                onTap: _busy
+                    ? null
+                    : () {
+                        Navigator.pop(sheet);
+                        if (instructor) {
+                          _settings(room);
+                        } else {
+                          _leave(room);
+                        }
+                      },
+              ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  void _details(ClassRoom room, bool live, bool instructor) {
+    showModalBottomSheet<void>(
+      context: context,
+      showDragHandle: true,
+      builder: (sheet) => SafeArea(
+        child: SingleChildScrollView(
+          padding: const EdgeInsets.all(24),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                'Class details',
+                style: Theme.of(sheet).textTheme.titleLarge,
+              ),
+              const SizedBox(height: 16),
+              Text('${room.section}\n${room.course}\n${room.instructor}'),
+              if (live) Text('School Year: ${room.schoolYear ?? ''}'),
+              if (live && instructor) ...[
+                Text('Class code: ${room.joinCode ?? ''}'),
+                TextButton.icon(
+                  icon: const Icon(Icons.copy),
+                  label: const Text('Copy code'),
+                  onPressed: room.joinCode == null
+                      ? null
+                      : () async {
+                          await Clipboard.setData(
+                            ClipboardData(text: room.joinCode!),
+                          );
+                          if (sheet.mounted)
+                            showMessage(sheet, 'Class code copied.');
+                        },
+                ),
+              ],
+              if (room.archived) const Text('Archived - read-only'),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  void _settings(ClassRoom room) {
+    showModalBottomSheet<void>(
+      context: context,
+      showDragHandle: true,
+      builder: (sheet) => SafeArea(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const ListTile(title: Text('Class settings')),
+            ListTile(
+              title: Text(room.archived ? 'Restore class' : 'Archive class'),
+              onTap: () {
+                Navigator.pop(sheet);
+                _classAction(room, archive: true);
+              },
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Future<void> _leave(ClassRoom room) => _classAction(room);
+
+  Future<void> _classAction(ClassRoom room, {bool archive = false}) async {
+    if (_busy) return;
+    if (ref.read(connectivityProvider).asData?.value != true) {
+      showMessage(context, 'Connect to the internet to manage this class.');
+      return;
+    }
+    final label = archive
+        ? (room.archived ? 'Restore class' : 'Archive class')
+        : 'Leave class';
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (dialog) => AlertDialog(
+        title: Text(
+          archive
+              ? '${room.archived ? 'Restore' : 'Archive'} ${room.section}?'
+              : 'Leave ${room.section}?',
+        ),
+        content: Text(
+          archive
+              ? (room.archived
+                    ? 'Students will regain access to class activities.'
+                    : 'Students will keep read-only access to materials and grades. No one can post, submit new work, or take quizzes. New join requests will be closed. You can restore this class later.')
+              : 'You will lose access to this class. Your downloaded files will stay on your device. Your submissions and grades will stay with your instructor. To rejoin, you will need to send a new request for approval.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(dialog, false),
+            child: const Text('Cancel'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(dialog, true),
+            child: Text(label),
+          ),
+        ],
+      ),
+    );
+    if (confirmed != true || !mounted || _busy) return;
+    if (ref.read(connectivityProvider).asData?.value != true) {
+      showMessage(context, 'Connect to the internet to manage this class.');
+      return;
+    }
+    setState(() => _busy = true);
+    try {
+      final repository = await ref.read(classRepositoryProvider.future);
+      if (repository == null) throw StateError('Sign in required');
+      if (archive) {
+        if (room.archived) {
+          await repository.restore(room.id);
+        } else {
+          await repository.archive(room.id);
+        }
+      } else {
+        await repository.leave(room.id);
+      }
+      if (mounted) {
+        showMessage(
+          context,
+          archive ? 'Class updated.' : 'You left the class.',
+        );
+        if (!archive) Navigator.pop(context);
+      }
+    } catch (_) {
+      if (mounted)
+        showMessage(
+          context,
+          "We couldn't confirm the change. Refresh the class before trying again.",
+        );
+    } finally {
+      if (mounted) setState(() => _busy = false);
+    }
   }
 
   Widget _refresh(Widget child) => widget.profile == null

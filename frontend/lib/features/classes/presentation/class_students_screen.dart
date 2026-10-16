@@ -72,6 +72,54 @@ class _ClassStudentsScreenState extends ConsumerState<ClassStudentsScreen> {
     }
   }
 
+  Future<void> _remove(ClassStudent student, String section) async {
+    if (_busy || ref.read(connectivityProvider).asData?.value != true) return;
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (dialog) => AlertDialog(
+        title: Text('Remove ${student.name} from $section?'),
+        content: const Text(
+          'They will lose access to this class. Their submissions and grades will be kept, and downloaded files will stay on their device. To rejoin, they will need to send a new request for approval.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(dialog, false),
+            child: const Text('Cancel'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(dialog, true),
+            child: const Text('Remove student'),
+          ),
+        ],
+      ),
+    );
+    if (confirmed != true ||
+        !mounted ||
+        _busy ||
+        ref.read(connectivityProvider).asData?.value != true)
+      return;
+    final rooms = ref.read(classCardsProvider).asData?.value ?? [];
+    if (!rooms.any((room) => room.id == widget.classId && !room.archived))
+      return;
+    setState(() {
+      _busy = true;
+      _message = null;
+    });
+    try {
+      final repository = await ref.read(classMemberRepositoryProvider.future);
+      if (repository == null) throw StateError('Sign in required');
+      await repository.remove(widget.classId, student.membership.studentId);
+      if (mounted) showMessage(context, '${student.name} removed.');
+    } catch (_) {
+      if (mounted)
+        setState(
+          () => _message = "We couldn't confirm the change. Refresh the class before trying again.",
+        );
+    } finally {
+      if (mounted) setState(() => _busy = false);
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final students = ref.watch(classStudentsProvider(widget.classId));
@@ -103,7 +151,7 @@ class _ClassStudentsScreenState extends ConsumerState<ClassStudentsScreen> {
             if (!online)
               const FiloPanel(
                 child: Text(
-                  "You're offline. Connect to approve or decline requests.",
+                  "You're offline. Connect to manage students and requests.",
                 ),
               ),
             if (room?.archived == true)
@@ -154,7 +202,12 @@ class _ClassStudentsScreenState extends ConsumerState<ClassStudentsScreen> {
                 icon: Icons.done_all_rounded,
                 onPressed: canDecide ? () => _decide() : null,
               ),
-            if (pending.isEmpty && !students.isLoading && !students.hasError)
+            if (pending.isEmpty &&
+                !students.isLoading &&
+                !students.hasError &&
+                online &&
+                !sync.isLoading &&
+                !sync.hasError)
               const Text('No pending requests.'),
             for (final student in pending)
               Padding(
@@ -200,7 +253,12 @@ class _ClassStudentsScreenState extends ConsumerState<ClassStudentsScreen> {
               style: Theme.of(context).textTheme.headlineSmall,
             ),
             const SizedBox(height: 12),
-            if (active.isEmpty && !students.isLoading && !students.hasError)
+            if (active.isEmpty &&
+                !students.isLoading &&
+                !students.hasError &&
+                online &&
+                !sync.isLoading &&
+                !sync.hasError)
               const Text('No enrolled students yet.'),
             for (final student in active)
               ListTile(
@@ -212,6 +270,12 @@ class _ClassStudentsScreenState extends ConsumerState<ClassStudentsScreen> {
                 ),
                 title: Text(student.name),
                 subtitle: const Text('Enrolled'),
+                trailing: TextButton(
+                  onPressed: canDecide
+                      ? () => _remove(student, room!.section)
+                      : null,
+                  child: const Text('Remove'),
+                ),
               ),
           ],
         ),
