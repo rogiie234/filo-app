@@ -367,8 +367,7 @@ class _ClassesScreenState extends ConsumerState<ClassesScreen> {
           if (repository == null) throw StateError('Sign in required');
           final result = await repository.requestJoin(code);
           return switch (result) {
-            'requested' =>
-              "Request sent. We'll notify you when your instructor approves.",
+            'requested' => 'Request sent. Your instructor needs to approve it before you can open the class.',
             'not_found' =>
               'Class code not found. Check the code and try again.',
             'already_member' => "You're already in this class.",
@@ -457,6 +456,10 @@ class _JoinSheetState extends ConsumerState<_JoinSheet> {
     ),
   );
   Future<void> _submit() async {
+    if (_busy ||
+        (!widget.preview &&
+            ref.read(connectivityProvider).asData?.value != true))
+      return;
     final code = _code.text.trim().toUpperCase();
     if (!RegExp(r'^[A-Z0-9]{6}$').hasMatch(code)) {
       setState(() => _error = 'Enter the 6-character class code.');
@@ -478,9 +481,10 @@ class _JoinSheetState extends ConsumerState<_JoinSheet> {
       Navigator.pop(context);
     } catch (_) {
       if (mounted) {
-        setState(
-          () => _error = 'Could not send your request. Check your connection and try again.',
-        );
+        const message =
+            "We couldn't confirm your join request. Refresh your classes before trying again.";
+        setState(() => _error = message);
+        showMessage(context, message);
       }
     } finally {
       if (mounted) setState(() => _busy = false);

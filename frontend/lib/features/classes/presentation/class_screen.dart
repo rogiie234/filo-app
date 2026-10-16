@@ -88,6 +88,11 @@ class _ClassScreenState extends ConsumerState<ClassScreen> {
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
             ),
+            if (live && instructor && room.joinCode != null)
+              Text(
+                'Class code: ${room.joinCode}',
+                style: const TextStyle(fontSize: 12),
+              ),
           ],
         ),
         actions: [
