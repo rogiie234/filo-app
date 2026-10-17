@@ -33,7 +33,10 @@ class SupabaseClassRemote implements ClassRemote {
       }
       if (id != null) query = query.eq('id', id);
       if (after != null) query = query.gt('id', after);
-      final page = await query.order('id').limit(500);
+      final page = await query
+          .order('id')
+          .limit(500)
+          .timeout(const Duration(seconds: 20));
       rows.addAll(page);
       if (page.isEmpty) return rows;
       // Continue until empty, including servers configured below our page size.

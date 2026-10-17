@@ -102,6 +102,15 @@ class ClassRepository {
           await (db.delete(
             db.cacheClasses,
           )..where((c) => c.id.equals(row.id))).go();
+          // Rejoining must fetch a full post snapshot, even when posts did not
+          // change during the student's absence.
+          await (db.delete(db.syncState)..where(
+                (s) => s.syncedTableName.isIn([
+                  'posts:${row.id}',
+                  'post_attachments:${row.id}',
+                ]),
+              ))
+              .go();
         }
       }
       final classIds = (await db.select(db.cacheClasses).get())

@@ -8,6 +8,7 @@ import '../../../core/widgets/filo_widgets.dart';
 import '../../files/presentation/class_files.dart';
 import '../application/preview_controller.dart';
 import '../application/class_providers.dart';
+import '../../posts/application/post_providers.dart';
 import '../../onboarding/data/profile_repository.dart';
 import '../domain/prototype_models.dart';
 import 'class_students_screen.dart';
@@ -33,9 +34,12 @@ class _ClassScreenState extends ConsumerState<ClassScreen> {
   @override
   Widget build(BuildContext context) {
     final live = widget.profile != null;
-    if (live) ref.watch(classSyncLifecycleProvider);
+    if (live) {
+      ref.watch(classSyncLifecycleProvider);
+      ref.watch(postSyncLifecycleProvider(widget.classId));
+    }
     final cards = live ? ref.watch(classCardsProvider) : null;
-    if (live && cards!.isLoading) {
+    if (live && cards!.isLoading && !cards.hasValue && !cards.hasError) {
       return Scaffold(
         appBar: AppBar(title: const Text('Class')),
         body: const Center(child: CircularProgressIndicator()),
@@ -48,7 +52,9 @@ class _ClassScreenState extends ConsumerState<ClassScreen> {
                 ? PreviewRole.instructor
                 : PreviewRole.student,
             classes: cards!.asData?.value ?? [],
-            posts: const [],
+            posts:
+                ref.watch(streamPostsProvider(widget.classId)).asData?.value ??
+                const [],
             assessments: const [],
           );
     final matches = state.classes.where(
@@ -550,12 +556,23 @@ class _ClassScreenState extends ConsumerState<ClassScreen> {
   Widget _refresh(Widget child) => widget.profile == null
       ? child
       : RefreshIndicator(
-          onRefresh: () => ref.read(classSyncProvider.notifier).refresh(),
+          onRefresh: () async {
+            try {
+              ref.invalidate(postSyncProvider(widget.classId));
+              await ref.read(postSyncProvider(widget.classId).future);
+            } catch (_) {
+              /* Error and Retry are rendered above the cached posts. */
+            }
+          },
           child: child,
         );
 
   Widget _stream(PreviewState state, ClassRoom room) {
     final posts = state.posts.where((post) => post.classId == room.id);
+    final live = widget.profile != null;
+    final cached = live ? ref.watch(streamPostsProvider(room.id)) : null;
+    final sync = live ? ref.watch(postSyncProvider(room.id)) : null;
+    final online = ref.watch(connectivityProvider).asData?.value == true;
     return ListView(
       physics: const AlwaysScrollableScrollPhysics(),
       key: PageStorageKey('stream-${room.id}'),
@@ -568,7 +585,39 @@ class _ClassScreenState extends ConsumerState<ClassScreen> {
           style: TextStyle(color: FiloColors.secondary),
         ),
         const SizedBox(height: 24),
-        if (posts.isEmpty)
+        if (live && (cached!.hasError || sync!.hasError))
+          TextButton(
+            onPressed: online
+                ? () {
+                    ref.invalidate(streamPostsProvider(room.id));
+                    ref.invalidate(postSyncProvider(room.id));
+                  }
+                : null,
+            child: const Text('Could not refresh posts. Retry'),
+          ),
+        if (live &&
+            posts.isEmpty &&
+            !cached!.hasError &&
+            !sync!.hasError &&
+            (cached.isLoading || sync.isLoading))
+          const Center(child: CircularProgressIndicator()),
+        if (live && posts.isEmpty && !online)
+          const Text('Connect to the internet to load posts for this class.'),
+        if (live &&
+            posts.isEmpty &&
+            online &&
+            cached!.hasValue &&
+            !cached.hasError &&
+            sync!.hasValue &&
+            !sync.isLoading &&
+            !sync.hasError)
+          EmptyState(
+            title: 'No posts yet',
+            message: state.role == PreviewRole.instructor
+                ? 'Share an announcement, material, or assignment with your class.'
+                : 'Announcements, materials, and assignments from your instructor will appear here.',
+          ),
+        if (!live && posts.isEmpty)
           const EmptyState(
             title: 'Nothing posted yet.',
             message: 'New ideas and class updates will appear here.',
