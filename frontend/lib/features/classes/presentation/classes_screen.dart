@@ -227,8 +227,9 @@ class _ClassesScreenState extends ConsumerState<ClassesScreen> {
       bottomNavigationBar: NavigationBar(
         selectedIndex: 0,
         onDestinationSelected: (index) {
-          if (index != 0)
+          if (index != 0) {
             showMessage(context, 'This area will be available soon.');
+          }
         },
         destinations: [
           const NavigationDestination(
@@ -470,8 +471,9 @@ class _JoinSheetState extends ConsumerState<_JoinSheet> {
   Future<void> _submit() async {
     if (_busy ||
         (!widget.preview &&
-            ref.read(connectivityProvider).asData?.value != true))
+            ref.read(connectivityProvider).asData?.value != true)) {
       return;
+    }
     final code = _code.text.trim().toUpperCase();
     if (!RegExp(r'^[A-Z0-9]{6}$').hasMatch(code)) {
       setState(() => _error = 'Enter the 6-character class code.');

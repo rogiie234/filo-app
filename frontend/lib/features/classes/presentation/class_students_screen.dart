@@ -96,11 +96,13 @@ class _ClassStudentsScreenState extends ConsumerState<ClassStudentsScreen> {
     if (confirmed != true ||
         !mounted ||
         _busy ||
-        ref.read(connectivityProvider).asData?.value != true)
+        ref.read(connectivityProvider).asData?.value != true) {
       return;
+    }
     final rooms = ref.read(classCardsProvider).asData?.value ?? [];
-    if (!rooms.any((room) => room.id == widget.classId && !room.archived))
+    if (!rooms.any((room) => room.id == widget.classId && !room.archived)) {
       return;
+    }
     setState(() {
       _busy = true;
       _message = null;
@@ -111,10 +113,11 @@ class _ClassStudentsScreenState extends ConsumerState<ClassStudentsScreen> {
       await repository.remove(widget.classId, student.membership.studentId);
       if (mounted) showMessage(context, '${student.name} removed.');
     } catch (_) {
-      if (mounted)
+      if (mounted) {
         setState(
           () => _message = "We couldn't confirm the change. Refresh the class before trying again.",
         );
+      }
     } finally {
       if (mounted) setState(() => _busy = false);
     }
@@ -272,7 +275,7 @@ class _ClassStudentsScreenState extends ConsumerState<ClassStudentsScreen> {
                 subtitle: const Text('Enrolled'),
                 trailing: TextButton(
                   onPressed: canDecide
-                      ? () => _remove(student, room!.section)
+                      ? () => _remove(student, room.section)
                       : null,
                   child: const Text('Remove'),
                 ),
