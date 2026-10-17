@@ -14,6 +14,7 @@ import '../domain/prototype_models.dart';
 import 'class_students_screen.dart';
 import 'classes_widgets.dart' show OfflineBanner;
 import '../../posts/presentation/stream_post_card.dart';
+import '../../posts/presentation/post_detail_screen.dart';
 import 'class_classmates_screen.dart';
 import 'class_banner_screen.dart';
 import '../../../core/supabase/supabase_provider.dart';
@@ -651,6 +652,15 @@ class _ClassScreenState extends ConsumerState<ClassScreen> {
   }
 
   void _openStreamPost(ClassPost post) {
+    if (widget.profile != null) {
+      Navigator.of(context).push(
+        MaterialPageRoute<void>(
+          builder: (_) =>
+              PostDetailScreen(classId: post.classId, postId: post.id),
+        ),
+      );
+      return;
+    }
     showModalBottomSheet<void>(
       context: context,
       showDragHandle: true,
