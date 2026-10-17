@@ -39,10 +39,13 @@ class StreamPostCard extends StatelessWidget {
     required this.post,
     required this.instructor,
     required this.onOpen,
+    this.onEdit,
+    this.onDelete,
   });
   final ClassPost post;
   final bool instructor;
   final VoidCallback onOpen;
+  final VoidCallback? onEdit, onDelete;
 
   @override
   Widget build(BuildContext context) {
@@ -94,9 +97,30 @@ class StreamPostCard extends StatelessWidget {
                     PopupMenuButton<String>(
                       tooltip: 'Post menu',
                       icon: const Icon(Icons.more_vert),
-                      onSelected: (_) => onOpen(),
-                      itemBuilder: (_) => const [
-                        PopupMenuItem(value: 'view', child: Text('View post')),
+                      onSelected: (action) {
+                        if (action == 'edit') {
+                          onEdit?.call();
+                        } else if (action == 'delete') {
+                          onDelete?.call();
+                        } else {
+                          onOpen();
+                        }
+                      },
+                      itemBuilder: (_) => [
+                        const PopupMenuItem(
+                          value: 'view',
+                          child: Text('View post'),
+                        ),
+                        PopupMenuItem(
+                          value: 'edit',
+                          enabled: onEdit != null,
+                          child: const Text('Edit'),
+                        ),
+                        PopupMenuItem(
+                          value: 'delete',
+                          enabled: onDelete != null,
+                          child: const Text('Delete'),
+                        ),
                       ],
                     )
                   else
@@ -137,6 +161,7 @@ class StreamPostCard extends StatelessWidget {
                   ),
                 ],
               ),
+              if (post.points != null) Text('${post.points} points'),
               if (post.assignment) ...[
                 const SizedBox(height: 12),
                 Row(

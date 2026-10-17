@@ -14,8 +14,9 @@ import '../../../core/theme/app_theme.dart';
 import '../../../core/widgets/filo_widgets.dart';
 
 class CreatePostScreen extends ConsumerStatefulWidget {
-  const CreatePostScreen({super.key, required this.classId});
+  const CreatePostScreen({super.key, required this.classId, this.postId});
   final String classId;
+  final String? postId;
   @override
   ConsumerState<CreatePostScreen> createState() => _CreatePostScreenState();
 }
@@ -27,6 +28,69 @@ class _CreatePostScreenState extends ConsumerState<CreatePostScreen> {
   final _points = TextEditingController(text: '100');
   final List<_Attachment> _attachments = [];
   bool _busy = false;
+  bool _loaded = false;
+  String? _kind;
+  DateTime? _originalDue;
+  final List<_Attachment> _originalAttachments = [];
+
+  @override
+  void initState() {
+    super.initState();
+    if (widget.postId != null) {
+      _busy = true;
+      WidgetsBinding.instance.addPostFrameCallback((_) => _loadEdit());
+    }
+  }
+
+  Future<void> _loadEdit() async {
+    try {
+      final row = await _client
+          .from('posts')
+          .select()
+          .eq('id', widget.postId!)
+          .eq('class_id', widget.classId)
+          .isFilter('deleted_at', null)
+          .single();
+      final files = await _client
+          .from('post_attachments')
+          .select()
+          .eq('post_id', widget.postId!)
+          .isFilter('deleted_at', null)
+          .order('sort_order');
+      if (!mounted) return;
+      _title.text = row['title'] as String;
+      _message.text = row['body'] as String? ?? '';
+      _kind = row['kind'] as String;
+      _submission = _kind == 'assignment';
+      _points.text = '${row['points'] ?? 100}';
+      _due = row['due_at'] == null
+          ? null
+          : DateTime.parse(row['due_at'] as String).toLocal();
+      _originalDue = _due;
+      _late = row['accept_late'] as bool;
+      _allowFiles = row['allow_files'] as bool;
+      _maxFiles = row['max_files'] as int;
+      for (final row in files) {
+        final a = _Attachment(
+          row['name'] as String,
+          id: row['id'] as String,
+          url: row['url'] as String?,
+          size: row['size_bytes'] as int?,
+        );
+        a.storagePath = row['storage_path'] as String?;
+        a.ready = true;
+        _attachments.add(a);
+        _originalAttachments.add(a);
+      }
+      _loaded = true;
+      _error = null;
+    } catch (_) {
+      _error = 'Could not load this post. Reopen Edit to retry.';
+    } finally {
+      if (mounted) setState(() => _busy = false);
+    }
+  }
+
   bool _allowFiles = true;
   int _maxFiles = 5;
   String? _postId;
@@ -57,11 +121,18 @@ class _CreatePostScreenState extends ConsumerState<CreatePostScreen> {
     return PopScope(
       canPop: !_busy,
       child: Scaffold(
-        appBar: AppBar(title: const Text('Create post')),
+        appBar: AppBar(
+          title: Text(widget.postId == null ? 'Create post' : 'Edit post'),
+        ),
         body: Form(
           key: _form,
           child: AbsorbPointer(
-            absorbing: _busy || _postId != null || _uncertain,
+            absorbing:
+                !writable ||
+                (widget.postId != null && !_loaded) ||
+                _busy ||
+                _postId != null ||
+                _uncertain,
             child: ListView(
               padding: const EdgeInsets.all(24),
               children: [
@@ -160,12 +231,15 @@ class _CreatePostScreenState extends ConsumerState<CreatePostScreen> {
                           'Require submission',
                           style: TextStyle(fontWeight: FontWeight.w800),
                         ),
-                        subtitle: const Text(
-                          'Turn this post into an assignment',
+                        subtitle: Text(
+                          widget.postId != null
+                              ? 'Post type cannot change.'
+                              : 'Turn this post into an assignment',
                         ),
                         value: _submission,
-                        onChanged: (value) =>
-                            setState(() => _submission = value),
+                        onChanged: widget.postId != null
+                            ? null
+                            : (value) => setState(() => _submission = value),
                       ),
                       if (_submission) ...[
                         const SizedBox(height: 20),
@@ -272,7 +346,7 @@ class _CreatePostScreenState extends ConsumerState<CreatePostScreen> {
                           ),
                           trailing: a.failed
                               ? TextButton(
-                                  onPressed: online && !_busy
+                                  onPressed: online && writable && !_busy
                                       ? () => _retry(a)
                                       : null,
                                   child: const Text('Retry'),
@@ -281,7 +355,9 @@ class _CreatePostScreenState extends ConsumerState<CreatePostScreen> {
                         ),
                     if (_postId != null)
                       TextButton(
-                        onPressed: online && !_busy ? _deletePost : null,
+                        onPressed: online && writable && !_busy
+                            ? _deletePost
+                            : null,
                         child: const Text('Delete post'),
                       ),
                     FiloButton(
@@ -289,9 +365,15 @@ class _CreatePostScreenState extends ConsumerState<CreatePostScreen> {
                           ? 'Done'
                           : _uncertain
                           ? 'Refresh'
+                          : widget.postId != null
+                          ? 'Save changes'
                           : 'Post',
                       icon: Icons.send_rounded,
-                      onPressed: !online || !writable || _busy
+                      onPressed:
+                          !online ||
+                              !writable ||
+                              _busy ||
+                              (widget.postId != null && !_loaded)
                           ? null
                           : _postId != null
                           ? () => Navigator.of(context).pop()
@@ -317,7 +399,7 @@ class _CreatePostScreenState extends ConsumerState<CreatePostScreen> {
     final now = DateTime.now();
     final date = await showDatePicker(
       context: context,
-      initialDate: _due ?? now,
+      initialDate: _due != null && _due!.isAfter(now) ? _due! : now,
       firstDate: DateTime(now.year, now.month, now.day),
       lastDate: DateTime(now.year + 2),
     );
@@ -411,7 +493,10 @@ class _CreatePostScreenState extends ConsumerState<CreatePostScreen> {
 
   Future<void> _post() async {
     if (!_online || _busy || !_form.currentState!.validate()) return;
-    if (_submission && (_due == null || !_due!.isAfter(DateTime.now()))) {
+    if (_submission &&
+        (_due == null ||
+            (!_due!.isAfter(DateTime.now()) &&
+                (widget.postId == null || _due != _originalDue)))) {
       showMessage(context, 'Choose a due date and time in the future.');
       return;
     }
@@ -432,36 +517,68 @@ class _CreatePostScreenState extends ConsumerState<CreatePostScreen> {
           room['deleted_at'] != null) {
         throw StateError('read only');
       }
-      // A stable client ID allows uncertain responses to be resolved without duplicating a post.
-      await _client
-          .from('posts')
-          .insert({
-            'id': _publicationId,
-            'class_id': widget.classId,
-            'author_id': repository.userId,
-            'kind': _submission
-                ? 'assignment'
-                : _attachments.isNotEmpty
-                ? 'material'
-                : 'announcement',
-            'title': _title.text.trim(),
-            'body': _message.text.trim().isEmpty ? null : _message.text.trim(),
-            'points': _submission ? int.parse(_points.text) : null,
-            'due_at': _submission ? _due!.toUtc().toIso8601String() : null,
-            'accept_late': _late,
-            'allow_files': _allowFiles,
-            'max_files': _maxFiles,
-          })
-          .timeout(const Duration(seconds: 30));
-      _postId = _publicationId;
+      final values = <String, dynamic>{
+        'title': _title.text.trim(),
+        'body': _message.text.trim().isEmpty ? null : _message.text.trim(),
+        'points': _submission ? int.parse(_points.text) : null,
+        'due_at': _submission ? _due!.toUtc().toIso8601String() : null,
+        'accept_late': _late,
+        'allow_files': _allowFiles,
+        'max_files': _maxFiles,
+      };
+      if (widget.postId != null) {
+        await _client
+            .from('posts')
+            .update(values)
+            .eq('id', widget.postId!)
+            .eq('class_id', widget.classId)
+            .isFilter('deleted_at', null)
+            .select('id')
+            .single();
+        // Tombstone removals before additions so the shared ten-slot cap is respected.
+        for (final a in _originalAttachments.where(
+          (a) => !_attachments.contains(a),
+        )) {
+          await _client
+              .from('post_attachments')
+              .update({'deleted_at': DateTime.now().toUtc().toIso8601String()})
+              .eq('id', a.id)
+              .select('id')
+              .single();
+        }
+        _postId = widget.postId;
+      } else {
+        await _client
+            .from('posts')
+            .insert({
+              ...values,
+              'id': _publicationId,
+              'class_id': widget.classId,
+              'author_id': repository.userId,
+              'kind': _submission
+                  ? 'assignment'
+                  : _attachments.isNotEmpty
+                  ? 'material'
+                  : 'announcement',
+            })
+            .timeout(const Duration(seconds: 30));
+        _postId = _publicationId;
+      }
       if (mounted) setState(() {});
       for (final a in _attachments) {
         await _upload(a);
       }
       await _refresh();
+      if (widget.postId != null &&
+          mounted &&
+          _attachments.every((a) => a.ready)) {
+        Navigator.of(context).pop();
+      }
     } on PostgrestException catch (error) {
       if (_postId != null) {
         _error = 'Post saved. Could not refresh the Stream. Refresh to retry.';
+      } else if (widget.postId != null) {
+        _error = 'Could not save all changes. Retry Save changes; some changes may already be saved.';
       } else if (error.code == '23505') {
         _uncertain = true;
         _error = 'This post may already be published. Use Refresh to continue.';
@@ -476,7 +593,9 @@ class _CreatePostScreenState extends ConsumerState<CreatePostScreen> {
         );
       }
     } catch (_) {
-      if (_postId == null) {
+      if (widget.postId != null && _postId == null) {
+        _error = 'Could not confirm all changes. Retry Save changes; some changes may already be saved.';
+      } else if (_postId == null) {
         _uncertain = true;
         _error = "We couldn't confirm whether your post was published. Refresh the Stream before trying again.";
       } else {
@@ -675,8 +794,9 @@ class _LinkDialogState extends State<_LinkDialog> {
 }
 
 class _Attachment {
-  _Attachment(this.name, {this.file, this.url, this.size});
-  final String id = const Uuid().v4();
+  _Attachment(this.name, {String? id, this.file, this.url, this.size})
+    : id = id ?? const Uuid().v4();
+  final String id;
   final String name;
   final PlatformFile? file;
   final int? size;

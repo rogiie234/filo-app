@@ -667,10 +667,104 @@ class _ClassScreenState extends ConsumerState<ClassScreen> {
               post: post,
               instructor: state.role == PreviewRole.instructor,
               onOpen: () => _openStreamPost(post),
+              onEdit:
+                  live &&
+                      online &&
+                      !room.archived &&
+                      !_deletingPosts.contains(post.id)
+                  ? () => Navigator.of(context).push(
+                      MaterialPageRoute<void>(
+                        builder: (_) =>
+                            CreatePostScreen(classId: room.id, postId: post.id),
+                      ),
+                    )
+                  : null,
+              onDelete:
+                  live &&
+                      online &&
+                      !room.archived &&
+                      !_deletingPosts.contains(post.id)
+                  ? () => _deleteStreamPost(post)
+                  : null,
             ),
           ),
       ],
     );
+  }
+
+  final Set<String> _deletingPosts = {};
+
+  Future<void> _deleteStreamPost(ClassPost post) async {
+    if (!_deletingPosts.add(post.id)) return;
+    setState(() {});
+    try {
+      final confirmed = await showDialog<bool>(
+        context: context,
+        builder: (dialogContext) => AlertDialog(
+          title: const Text('Delete this post?'),
+          content: const Text(
+            'This post will no longer be available in the class. Its attached files will be removed from the server. Files already downloaded to phones will stay on those devices.',
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(dialogContext, false),
+              child: const Text('Cancel'),
+            ),
+            TextButton(
+              onPressed: () => Navigator.pop(dialogContext, true),
+              child: const Text('Delete post'),
+            ),
+          ],
+        ),
+      );
+      if (confirmed != true || !mounted) return;
+      if (ref.read(connectivityProvider).asData?.value != true) {
+        throw StateError('offline');
+      }
+      final client = ref.read(supabaseClientProvider);
+      final room = await client
+          .from('classes')
+          .select('owner_id,archived_at,deleted_at')
+          .eq('id', post.classId)
+          .single();
+      if (room['owner_id'] != client.auth.currentUser?.id ||
+          room['archived_at'] != null ||
+          room['deleted_at'] != null) {
+        throw StateError('read only');
+      }
+      // Remove server objects while the live parent still grants storage access.
+      final files = await client
+          .from('post_attachments')
+          .select('storage_path')
+          .eq('post_id', post.id);
+      final paths = files
+          .map((a) => a['storage_path'])
+          .whereType<String>()
+          .toList();
+      if (paths.isNotEmpty) {
+        await client.storage.from('materials').remove(paths);
+      }
+      await client
+          .from('posts')
+          .update({'deleted_at': DateTime.now().toUtc().toIso8601String()})
+          .eq('id', post.id)
+          .eq('class_id', post.classId)
+          .select('id')
+          .single();
+      final repository = await ref.read(postRepositoryProvider.future);
+      await repository?.sync(post.classId);
+      ref.invalidate(postSyncProvider(post.classId));
+    } catch (_) {
+      if (mounted) {
+        showMessage(
+          context,
+          'Could not confirm deletion. Refresh and try again.',
+        );
+      }
+    } finally {
+      _deletingPosts.remove(post.id);
+      if (mounted) setState(() {});
+    }
   }
 
   void _openStreamPost(ClassPost post) {
