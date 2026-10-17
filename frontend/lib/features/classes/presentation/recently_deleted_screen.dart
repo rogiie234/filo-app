@@ -39,8 +39,9 @@ class _RecentlyDeletedState extends ConsumerState<RecentlyDeletedScreen> {
         ref.read(connectivityProvider).asData?.value != true ||
         !DateTime.now().toUtc().isBefore(
           room.deletedAt!.toUtc().add(const Duration(days: 14)),
-        ))
+        )) {
       return;
+    }
     setState(() => _busy = room.id);
     try {
       final repository = await ref.read(classRepositoryProvider.future);
@@ -48,11 +49,12 @@ class _RecentlyDeletedState extends ConsumerState<RecentlyDeletedScreen> {
       await repository.restoreDeleted(room.id);
       if (mounted) showMessage(context, 'Class restored.');
     } catch (_) {
-      if (mounted)
+      if (mounted) {
         showMessage(
           context,
           "We couldn't confirm the restore. Refresh before retrying. Classes can only be restored within 14 days.",
         );
+      }
     } finally {
       if (mounted) setState(() => _busy = null);
     }

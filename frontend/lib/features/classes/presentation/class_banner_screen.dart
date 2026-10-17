@@ -64,8 +64,9 @@ class _ClassBannerState extends ConsumerState<ClassBannerScreen> {
   Future<void> _save() async {
     if (_busy ||
         _picking ||
-        ref.read(connectivityProvider).asData?.value != true)
+        ref.read(connectivityProvider).asData?.value != true) {
       return;
+    }
     setState(() {
       _busy = true;
       _error = null;
@@ -108,10 +109,11 @@ class _ClassBannerState extends ConsumerState<ClassBannerScreen> {
         Navigator.pop(context);
       }
     } catch (_) {
-      if (mounted)
+      if (mounted) {
         setState(
           () => _error = 'Could not confirm the banner change. Your selection is kept. Refresh the class before retrying.',
         );
+      }
     } finally {
       if (mounted) setState(() => _busy = false);
     }

@@ -83,8 +83,9 @@ class _CreateClassScreenState extends ConsumerState<CreateClassScreen> {
   Future<void> _create() async {
     if (_busy ||
         _picking ||
-        ref.read(connectivityProvider).asData?.value != true)
+        ref.read(connectivityProvider).asData?.value != true) {
       return;
+    }
     if (_created == null && !_form.currentState!.validate()) return;
     setState(() {
       _busy = true;

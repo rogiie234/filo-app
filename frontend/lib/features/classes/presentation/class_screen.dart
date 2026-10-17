@@ -305,8 +305,9 @@ class _ClassScreenState extends ConsumerState<ClassScreen> {
                           await Clipboard.setData(
                             ClipboardData(text: room.joinCode!),
                           );
-                          if (sheet.mounted)
+                          if (sheet.mounted) {
                             showMessage(sheet, 'Class code copied.');
+                          }
                         },
                 ),
               ],
@@ -460,11 +461,12 @@ class _ClassScreenState extends ConsumerState<ClassScreen> {
         Navigator.pop(context);
       }
     } catch (_) {
-      if (mounted)
+      if (mounted) {
         showMessage(
           context,
           "We couldn't confirm the deletion. Refresh your classes before trying again.",
         );
+      }
     } finally {
       if (mounted) setState(() => _busy = false);
     }
@@ -534,11 +536,12 @@ class _ClassScreenState extends ConsumerState<ClassScreen> {
         if (!archive) Navigator.pop(context);
       }
     } catch (_) {
-      if (mounted)
+      if (mounted) {
         showMessage(
           context,
           "We couldn't confirm the change. Refresh the class before trying again.",
         );
+      }
     } finally {
       if (mounted) setState(() => _busy = false);
     }
