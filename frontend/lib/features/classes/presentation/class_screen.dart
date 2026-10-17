@@ -12,6 +12,8 @@ import '../../posts/application/post_providers.dart';
 import '../../onboarding/data/profile_repository.dart';
 import '../domain/prototype_models.dart';
 import 'class_students_screen.dart';
+import 'classes_widgets.dart' show OfflineBanner;
+import '../../posts/presentation/stream_post_card.dart';
 import 'class_classmates_screen.dart';
 import 'class_banner_screen.dart';
 import '../../../core/supabase/supabase_provider.dart';
@@ -193,7 +195,9 @@ class _ClassScreenState extends ConsumerState<ClassScreen> {
               child: Text(
                 room.archived
                     ? 'This class is archived and read-only.'
-                    : 'Posting and assessments are not available yet.',
+                    : _tab == 0
+                    ? 'Creating posts is not available yet.'
+                    : 'Assessments are not available yet.',
               ),
             ),
           NavigationBar(
@@ -568,7 +572,13 @@ class _ClassScreenState extends ConsumerState<ClassScreen> {
         );
 
   Widget _stream(PreviewState state, ClassRoom room) {
-    final posts = state.posts.where((post) => post.classId == room.id);
+    final posts = state.posts.where((post) => post.classId == room.id).toList()
+      ..sort((a, b) {
+        final date = (b.createdAt ?? DateTime(1970)).compareTo(
+          a.createdAt ?? DateTime(1970),
+        );
+        return date != 0 ? date : b.id.compareTo(a.id);
+      });
     final live = widget.profile != null;
     final cached = live ? ref.watch(streamPostsProvider(room.id)) : null;
     final sync = live ? ref.watch(postSyncProvider(room.id)) : null;
@@ -585,6 +595,8 @@ class _ClassScreenState extends ConsumerState<ClassScreen> {
           style: TextStyle(color: FiloColors.secondary),
         ),
         const SizedBox(height: 24),
+        if (live && ref.watch(connectivityProvider).asData?.value == false)
+          const OfflineBanner(),
         if (live && (cached!.hasError || sync!.hasError))
           TextButton(
             onPressed: online
@@ -600,7 +612,7 @@ class _ClassScreenState extends ConsumerState<ClassScreen> {
             !cached!.hasError &&
             !sync!.hasError &&
             (cached.isLoading || sync.isLoading))
-          const Center(child: CircularProgressIndicator()),
+          const StreamPostSkeleton(),
         if (live && posts.isEmpty && !online)
           const Text('Connect to the internet to load posts for this class.'),
         if (live &&
@@ -611,11 +623,14 @@ class _ClassScreenState extends ConsumerState<ClassScreen> {
             sync!.hasValue &&
             !sync.isLoading &&
             !sync.hasError)
-          EmptyState(
-            title: 'No posts yet',
-            message: state.role == PreviewRole.instructor
-                ? 'Share an announcement, material, or assignment with your class.'
-                : 'Announcements, materials, and assignments from your instructor will appear here.',
+          FiloPanel(
+            color: FiloColors.tint,
+            child: EmptyState(
+              title: 'No posts yet',
+              message: state.role == PreviewRole.instructor
+                  ? 'Share an announcement, material, or assignment with your class.'
+                  : 'Announcements, materials, and assignments from your instructor will appear here.',
+            ),
           ),
         if (!live && posts.isEmpty)
           const EmptyState(
@@ -625,102 +640,45 @@ class _ClassScreenState extends ConsumerState<ClassScreen> {
         for (final post in posts)
           Padding(
             padding: const EdgeInsets.only(bottom: 16),
-            child: FiloPanel(
-              color: FiloColors.tint,
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Row(
-                    children: [
-                      CircleAvatar(
-                        radius: 20,
-                        backgroundColor: Colors.white,
-                        child: Icon(
-                          post.assignment
-                              ? Icons.assignment_outlined
-                              : post.attachments.isNotEmpty
-                              ? Icons.description_outlined
-                              : Icons.campaign_outlined,
-                          size: 22,
-                        ),
-                      ),
-                      const SizedBox(width: 12),
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              room.instructor,
-                              style: const TextStyle(
-                                fontWeight: FontWeight.w800,
-                              ),
-                            ),
-                            Text(
-                              post.assignment
-                                  ? 'Assignment'
-                                  : post.attachments.isNotEmpty
-                                  ? 'Material'
-                                  : 'Announcement',
-                              style: const TextStyle(
-                                color: FiloColors.secondary,
-                                fontSize: 12,
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 20),
-                  Text(
-                    post.title,
-                    style: Theme.of(context).textTheme.titleMedium,
-                  ),
-                  const SizedBox(height: 8),
-                  Text(
-                    post.message,
-                    style: Theme.of(context).textTheme.bodyLarge,
-                  ),
-                  if (post.assignment) ...[
-                    const SizedBox(height: 16),
-                    Wrap(
-                      spacing: 8,
-                      runSpacing: 4,
-                      children: [
-                        Chip(
-                          avatar: const Icon(Icons.schedule_rounded, size: 16),
-                          label: Text(post.dueLabel ?? 'No due date'),
-                        ),
-                        Chip(label: Text('${post.points} points')),
-                      ],
-                    ),
-                  ],
-                  for (final attachment in post.attachments)
-                    Padding(
-                      padding: const EdgeInsets.only(top: 12),
-                      child: FiloPanel(
-                        padding: const EdgeInsets.all(12),
-                        child: Row(
-                          children: [
-                            const Icon(Icons.attach_file_rounded, size: 20),
-                            const SizedBox(width: 8),
-                            Expanded(
-                              child: Text(
-                                attachment,
-                                style: const TextStyle(
-                                  fontWeight: FontWeight.w700,
-                                ),
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ),
-                ],
-              ),
+            child: StreamPostCard(
+              post: post,
+              instructor: state.role == PreviewRole.instructor,
+              onOpen: () => _openStreamPost(post),
             ),
           ),
       ],
+    );
+  }
+
+  void _openStreamPost(ClassPost post) {
+    showModalBottomSheet<void>(
+      context: context,
+      showDragHandle: true,
+      isScrollControlled: true,
+      builder: (sheet) => SafeArea(
+        child: SingleChildScrollView(
+          padding: const EdgeInsets.all(24),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(post.title, style: Theme.of(sheet).textTheme.titleLarge),
+              const SizedBox(height: 16),
+              Text(post.message),
+              if (post.assignment) ...[
+                const SizedBox(height: 16),
+                Text(streamDueLabel(sheet, post)),
+                if (post.points != null) Text('${post.points} points'),
+              ],
+              for (final name in post.attachments)
+                ListTile(
+                  leading: const Icon(Icons.attach_file),
+                  title: Text(name),
+                ),
+            ],
+          ),
+        ),
+      ),
     );
   }
 

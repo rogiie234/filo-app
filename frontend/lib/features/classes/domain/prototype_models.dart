@@ -34,6 +34,9 @@ class ClassPost {
     required this.title,
     required this.message,
     this.assignment = false,
+    this.kind,
+    this.createdAt,
+    this.dueAt,
     this.points,
     this.dueLabel,
     this.attachments = const [],
@@ -43,6 +46,15 @@ class ClassPost {
   final String title;
   final String message;
   final bool assignment;
+  final String? kind;
+  final DateTime? createdAt, dueAt;
+  String get postType =>
+      kind ??
+      (assignment
+          ? 'assignment'
+          : attachments.isNotEmpty
+          ? 'material'
+          : 'announcement');
   final int? points;
   final String? dueLabel;
   final List<String> attachments;
