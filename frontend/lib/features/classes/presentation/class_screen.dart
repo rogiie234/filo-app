@@ -12,6 +12,8 @@ import '../../posts/application/post_providers.dart';
 import '../../onboarding/data/profile_repository.dart';
 import '../domain/prototype_models.dart';
 import 'class_students_screen.dart';
+import 'classwork_list.dart';
+import '../../submissions/presentation/assignment_detail_screen.dart';
 import 'classes_widgets.dart' show OfflineBanner;
 import '../../posts/presentation/stream_post_card.dart';
 import '../../posts/presentation/post_detail_screen.dart';
@@ -31,7 +33,6 @@ class ClassScreen extends ConsumerStatefulWidget {
 
 class _ClassScreenState extends ConsumerState<ClassScreen> {
   int _tab = 0;
-  String _filter = 'All';
   String? _openedSection;
   bool _checkingAccess = false;
 
@@ -159,15 +160,19 @@ class _ClassScreenState extends ConsumerState<ClassScreen> {
               child: const Text('Could not refresh. Retry'),
             ),
           Expanded(
-            child: _refresh(
-              IndexedStack(
-                index: _tab,
-                children: [
-                  _stream(state, room),
-                  ClassFiles(hasSamples: !live && room.id == 'it119'),
-                  _classwork(state, room),
-                ],
-              ),
+            child: IndexedStack(
+              index: _tab,
+              children: [
+                _refresh(_stream(state, room)),
+                ClassworkList(
+                  classId: room.id,
+                  instructor: instructor,
+                  live: live,
+                  previewPosts: state.posts,
+                  onOpen: _openStreamPost,
+                ),
+                _refresh(ClassFiles(hasSamples: !live && room.id == 'it119')),
+              ],
             ),
           ),
         ],
@@ -175,7 +180,7 @@ class _ClassScreenState extends ConsumerState<ClassScreen> {
       bottomNavigationBar: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          if (instructor && _tab != 1)
+          if (instructor && _tab != 2)
             SafeArea(
               bottom: false,
               child: Padding(
@@ -210,7 +215,7 @@ class _ClassScreenState extends ConsumerState<ClassScreen> {
                 ),
               ),
             ),
-          if (live && instructor && _tab != 1)
+          if (live && instructor && _tab != 2)
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 24),
               child: Text(
@@ -233,14 +238,14 @@ class _ClassScreenState extends ConsumerState<ClassScreen> {
                 label: 'Stream',
               ),
               NavigationDestination(
-                icon: Icon(Icons.folder_outlined),
-                selectedIcon: Icon(Icons.folder_rounded),
-                label: 'Files',
-              ),
-              NavigationDestination(
                 icon: Icon(Icons.assignment_outlined),
                 selectedIcon: Icon(Icons.assignment_rounded),
                 label: 'Classwork',
+              ),
+              NavigationDestination(
+                icon: Icon(Icons.folder_outlined),
+                selectedIcon: Icon(Icons.folder_rounded),
+                label: 'Files',
               ),
             ],
           ),
@@ -772,7 +777,10 @@ class _ClassScreenState extends ConsumerState<ClassScreen> {
       Navigator.of(context).push(
         MaterialPageRoute<void>(
           builder: (_) =>
-              PostDetailScreen(classId: post.classId, postId: post.id),
+              widget.profile!.role == AccountRole.student &&
+                  post.postType == 'assignment'
+              ? AssignmentDetailScreen(classId: post.classId, postId: post.id)
+              : PostDetailScreen(classId: post.classId, postId: post.id),
         ),
       );
       return;
@@ -807,165 +815,4 @@ class _ClassScreenState extends ConsumerState<ClassScreen> {
       ),
     );
   }
-
-  Widget _classwork(PreviewState state, ClassRoom room) {
-    final assignments = state.posts.where(
-      (post) => post.classId == room.id && post.assignment,
-    );
-    final assessments = state.assessments.where(
-      (assessment) =>
-          assessment.classId == room.id &&
-          (!assessment.draft || state.role == PreviewRole.instructor),
-    );
-    final visibleAssignments = _filter == 'All' || _filter == 'Assignments';
-    final visibleQuizzes = _filter == 'All' || _filter == 'Quizzes';
-    return ListView(
-      physics: const AlwaysScrollableScrollPhysics(),
-      key: PageStorageKey('classwork-${room.id}'),
-      padding: const EdgeInsets.all(24),
-      children: [
-        Text('Classwork', style: Theme.of(context).textTheme.headlineMedium),
-        const SizedBox(height: 8),
-        const Text(
-          'Make space for your next small win.',
-          style: TextStyle(color: FiloColors.secondary),
-        ),
-        const SizedBox(height: 20),
-        Wrap(
-          spacing: 8,
-          children: [
-            for (final filter in ['All', 'Assignments', 'Quizzes'])
-              ChoiceChip(
-                label: Text(filter),
-                selected: _filter == filter,
-                onSelected: (_) => setState(() => _filter = filter),
-              ),
-          ],
-        ),
-        const SizedBox(height: 24),
-        if ((!visibleAssignments || assignments.isEmpty) &&
-            (!visibleQuizzes || assessments.isEmpty))
-          const EmptyState(
-            title: 'No classwork yet.',
-            message: 'Your next learning adventure will appear here.',
-          ),
-        if (visibleAssignments)
-          for (final assignment in assignments)
-            _workCard(
-              title: assignment.title,
-              label: assignment.dueLabel ?? 'No due date',
-              details: '${assignment.points} points · Assignment',
-              icon: Icons.assignment_outlined,
-              onTap: () => _detail(assignment.title, assignment.message),
-            ),
-        if (visibleQuizzes)
-          for (final assessment in assessments)
-            _workCard(
-              title: assessment.title,
-              label: assessment.draft
-                  ? 'Draft · instructor only'
-                  : 'Published in preview',
-              details:
-                  '${assessment.questions.length} questions · ${assessment.points} points · ${assessment.minutes} min',
-              icon: Icons.quiz_outlined,
-              onTap: () => _detail(
-                assessment.title,
-                assessment.questions
-                    .map((question) => question.prompt)
-                    .join('\n\n'),
-              ),
-            ),
-      ],
-    );
-  }
-
-  Widget _workCard({
-    required String title,
-    required String label,
-    required String details,
-    required IconData icon,
-    required VoidCallback onTap,
-  }) => Padding(
-    padding: const EdgeInsets.only(bottom: 12),
-    child: Material(
-      color: Colors.white,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(24),
-        side: const BorderSide(color: FiloColors.border),
-      ),
-      clipBehavior: Clip.antiAlias,
-      child: InkWell(
-        onTap: onTap,
-        child: Padding(
-          padding: const EdgeInsets.all(20),
-          child: Row(
-            children: [
-              Icon(icon, size: 28, color: FiloColors.primary),
-              const SizedBox(width: 16),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      title,
-                      style: const TextStyle(
-                        fontSize: 16,
-                        fontWeight: FontWeight.w800,
-                      ),
-                    ),
-                    const SizedBox(height: 6),
-                    Text(
-                      details,
-                      style: const TextStyle(
-                        color: FiloColors.secondary,
-                        fontSize: 12,
-                      ),
-                    ),
-                    const SizedBox(height: 6),
-                    Text(
-                      label,
-                      style: const TextStyle(
-                        color: FiloColors.primary,
-                        fontWeight: FontWeight.w700,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-              const SizedBox(width: 8),
-              const Icon(Icons.chevron_right_rounded),
-            ],
-          ),
-        ),
-      ),
-    ),
-  );
-
-  void _detail(String title, String message) => showModalBottomSheet<void>(
-    context: context,
-    isScrollControlled: true,
-    showDragHandle: true,
-    builder: (context) => SafeArea(
-      child: SingleChildScrollView(
-        padding: const EdgeInsets.fromLTRB(24, 0, 24, 24),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            const Chip(label: Text('Classwork preview')),
-            const SizedBox(height: 12),
-            Text(title, style: Theme.of(context).textTheme.titleLarge),
-            const SizedBox(height: 16),
-            Text(message, style: Theme.of(context).textTheme.bodyLarge),
-            const SizedBox(height: 24),
-            FiloButton(
-              label: 'Back to classwork',
-              secondary: true,
-              onPressed: () => Navigator.pop(context),
-            ),
-          ],
-        ),
-      ),
-    ),
-  );
 }
