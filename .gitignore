@@ -26,3 +26,6 @@ coverage/
 *.jks
 *.keystore
 key.properties
+
+# Installed JavaScript and Deno dependencies
+node_modules/
