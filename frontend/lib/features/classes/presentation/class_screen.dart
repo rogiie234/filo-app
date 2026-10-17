@@ -15,6 +15,7 @@ import 'class_students_screen.dart';
 import 'classes_widgets.dart' show OfflineBanner;
 import '../../posts/presentation/stream_post_card.dart';
 import '../../posts/presentation/post_detail_screen.dart';
+import '../../posts/presentation/create_post_screen.dart';
 import 'class_classmates_screen.dart';
 import 'class_banner_screen.dart';
 import '../../../core/supabase/supabase_provider.dart';
@@ -182,11 +183,30 @@ class _ClassScreenState extends ConsumerState<ClassScreen> {
                 child: FiloButton(
                   label: _tab == 0 ? 'Create post' : 'New assessment',
                   icon: Icons.add_rounded,
-                  onPressed: live || room.archived
+                  onPressed:
+                      room.archived ||
+                          (live &&
+                              (_tab != 0 ||
+                                  ref
+                                          .watch(connectivityProvider)
+                                          .asData
+                                          ?.value !=
+                                      true))
                       ? null
-                      : () => context.push(
-                          '/classes/${room.id}/${_tab == 0 ? 'post/new' : 'assessment/new'}',
-                        ),
+                      : () {
+                          if (live && _tab == 0) {
+                            Navigator.of(context).push(
+                              MaterialPageRoute<void>(
+                                builder: (_) =>
+                                    CreatePostScreen(classId: room.id),
+                              ),
+                            );
+                          } else {
+                            context.push(
+                              '/classes/${room.id}/${_tab == 0 ? 'post/new' : 'assessment/new'}',
+                            );
+                          }
+                        },
                 ),
               ),
             ),
@@ -197,7 +217,9 @@ class _ClassScreenState extends ConsumerState<ClassScreen> {
                 room.archived
                     ? 'This class is archived and read-only.'
                     : _tab == 0
-                    ? 'Creating posts is not available yet.'
+                    ? (ref.watch(connectivityProvider).asData?.value == true
+                          ? ''
+                          : 'Connect to the internet to post or upload files.')
                     : 'Assessments are not available yet.',
               ),
             ),
