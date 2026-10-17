@@ -108,6 +108,9 @@ class ClassRepository {
                 (s) => s.syncedTableName.isIn([
                   'posts:${row.id}',
                   'post_attachments:${row.id}',
+                  'submissions:${row.id}',
+                  'submission_items:${row.id}',
+                  'submission_grades:${row.id}',
                 ]),
               ))
               .go();
