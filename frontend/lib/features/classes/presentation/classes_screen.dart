@@ -11,6 +11,8 @@ import '../../../core/connectivity/connectivity_provider.dart';
 import '../../../core/supabase/supabase_provider.dart';
 import 'class_screen.dart';
 import '../../grading/presentation/work_queue_screen.dart';
+import '../../drive_backup/data/drive_backup_service.dart';
+import '../../drive_backup/presentation/drive_backup_screen.dart';
 import 'classes_widgets.dart';
 import 'create_class_screen.dart';
 import 'recently_deleted_screen.dart';
@@ -31,7 +33,10 @@ class _ClassesScreenState extends ConsumerState<ClassesScreen> {
   Widget build(BuildContext context) {
     final state = ref.watch(previewProvider);
     final live = widget.profile != null;
-    if (live) ref.watch(classSyncLifecycleProvider);
+    if (live) {
+      ref.watch(classSyncLifecycleProvider);
+      ref.watch(driveBackupProvider);
+    }
     final cards = live
         ? ref.watch(classCardsProvider)
         : AsyncData(state.classes);
@@ -347,6 +352,18 @@ class _ClassesScreenState extends ConsumerState<ClassesScreen> {
                 onTap: () async {
                   Navigator.pop(sheetContext);
                   await ref.read(supabaseClientProvider).auth.signOut();
+                },
+              ),
+              ListTile(
+                title: const Text('Drive backup'),
+                leading: const Icon(Icons.cloud_upload_outlined),
+                onTap: () {
+                  Navigator.pop(sheetContext);
+                  Navigator.of(context).push(
+                    MaterialPageRoute<void>(
+                      builder: (_) => const DriveBackupScreen(),
+                    ),
+                  );
                 },
               ),
             ],

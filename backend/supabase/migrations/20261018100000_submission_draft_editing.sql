@@ -2,6 +2,9 @@
 -- Submission status/timing/ownership fields remain RPC-only.
 begin;
 
+-- DEV may already contain this policy from an earlier manual application.
+-- Replace it atomically with the canonical definition before recording migration.
+drop policy if exists submissions_update_comment on public.submissions;
 create policy submissions_update_comment on public.submissions
 for update to authenticated
 using (

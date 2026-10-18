@@ -24,10 +24,26 @@ changes. `accountDatabaseProvider` opens the matching file, closes on logout and
 switches files on account changes. `App` watches it, gates screens during opening,
 and remounts screen state for a different account. Repositories should await
 `ref.watch(accountDatabaseProvider.future)` and handle null as signed out.
-Google sign-in remains a preview button; the lifecycle wiring reacts to Supabase
-sessions but does not implement OAuth, OTP, server sync or cached screen queries.
+Google sign-in, verified-session/OTP gating and feature repositories are now
+implemented separately; this account manager owns only cache isolation/lifetime.
 Files live under application support in `databases/<user-id>.sqlite`.
 
 Generate: `dart run build_runner build`.
 Verify: `flutter test test/data/local/app_database_test.dart`.
 Auth lifecycle: `flutter test test/data/local/auth_database_test.dart`.
+
+
+Schema v3 adds `drive_backup_settings` and `drive_backup_jobs` through explicit
+migration SQL in AppDatabase (including new installs). They are a dedicated
+per-account Drive upload outbox; generated Drift table bindings are unchanged.
+Settings hold enablement, Wi-Fi-only (default true), bound Google ID, stable
+folder ID and selected-queue last-success. Jobs hold immutable private file
+snapshots, content digest, stable remote ID, confirmed offset, status and timing.
+Google tokens are not stored here; resumable session URLs use secure storage.
+Backups run while foregrounded, resume on app reopen/reconnect and stop for
+account switches. OFF pauses pending work and retains it; it never deletes Drive
+copies. Verified completion removes the private queue snapshot, preserving the
+user-selected source file. Completed content is deduplicated per Filo account.
+No automatic full-library/background Android worker is included.
+
+The commands above are reference owner checks, not a record that they were run.

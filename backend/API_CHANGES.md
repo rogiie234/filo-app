@@ -42,3 +42,60 @@ New migration `0011_grade_missing.sql`: `grade_missing(p_post uuid, p_student uu
 Creates a submission or converts a draft to `status=turned_in`, `submitted_at=null`, `unsubmit_until=null`, `is_late=false`, no comment or item metadata. Draft item metadata is discarded to avoid exposing unfinished private contents; SQL does not remove Storage blobs, which remain for class purge. Confirm conversion in the grading UI before calling. Calls save_grade for the same score/feedback rules. Save remains hidden until Return; returned rows count as graded by non-null returned_at, even without submitted_at. Existing policies and turn_in/unsubmit guards lock student changes. Former members retain records for instructor history but cannot see class grades until active membership is restored, per existing lifecycle policy.
 
 On uncertain outcomes, refresh the post/student submission and grade first. Repeating grade_missing after success is refused as already turned in; edit via save_grade using the resulting submission ID. Apply migrations with your existing migration-history workflow: 0011 is deliberately the requested version and sorts before timestamped versions, so existing dev history may require the CLI include-all option. Do not rename or edit applied files. Neither migration has been applied here.
+
+
+## M6 materials download and incremental pull contract - 2026-10-18
+
+Prepared source only. No migration application, SQL, HTTP, device test or timing was run.
+
+### Signed materials downloads
+
+Use the existing Supabase Storage API, not a new database RPC:
+
+```dart
+final url = await supabase.storage.from('materials')
+    .createSignedUrl('$classId/$postId/$fileName', 3600);
+```
+
+Lifetime: **3,600 seconds (60 minutes)**. Sign only when downloading; never persist signed URLs as attachment paths. REST equivalent: `POST /storage/v1/object/sign/materials/CLASS_ID/POST_ID/FILE` with project API key, verified user's `Authorization: Bearer JWT`, JSON `{"expiresIn":3600}`. Resolve returned relative `signedURL` against the project's `/storage/v1` base. GET that URL for the bytes. Use ordinary user JWTs, never service_role. Pending/removed/left/non-members cannot mint links. Existing valid URLs remain bearer capabilities until expiry, including after membership revocation; possession is sufficient to download. An expiry failure requires rechecking current access and requesting a new URL, then retrying once; permission denial must stop retrying. Offline: keep local downloads available and defer new downloads until connected.
+
+### Incremental pulls
+
+Apply `20261018130000_sync_pull_support.sql` on DEV after existing migrations. Adds full `(updated_at, primary_key)` indexes, server INSERT timestamps, notification read-mark timestamps and active-member class-tombstone visibility. Existing BEFORE UPDATE triggers already replace timestamps with server `now()` (transaction time); phone clocks never choose the watermark. Do not send updated_at in writes. This migration does not replace frontend full-refresh loaders or implement a sync worker.
+
+Maintained SQL shapes: [tests/sync_pull_queries.sql](tests/sync_pull_queries.sql). **200 rows per page**. All ordering is explicitly ascending. Use each table's own watermark and persist the complete timestamp without rounding to milliseconds. First page uses `updated_at >= LOWER`; next pages add `(updated_at, PK) > (CURSOR_TIME, CURSOR_ID)`, keeping LOWER fixed. PK is `submission_id` for submission_grades and `id` elsewhere. Do not use offset or updated_at-only paging: more than 200 equal timestamps would otherwise skip or repeat forever.
+
+PostgREST equivalent for subsequent pages (encode bound values):
+
+```text
+/rest/v1/posts?select=*&updated_at=gte.LOWER
+ &or=(updated_at.gt.CURSOR_TIME,and(updated_at.eq.CURSOR_TIME,id.gt.CURSOR_ID))
+ &order=updated_at.asc,id.asc&limit=200
+```
+
+Omit `or` on the first page. Keep RLS and scope filters on every page. Never add `deleted_at=is.null` to a delta read. Upsert by PK, apply tombstones locally, and atomically commit each page and cursor. After the final empty page, save the maximum received timestamp as the next LOWER and restart inclusively next cycle (upsert duplicate IDs). On failure retain last committed cursor and retry; do not advance a failed page or erase usable offline data. Account switch uses separate caches/watermarks.
+
+Timestamp ties are handled by the PK cursor, but timestamp polling is not a commit-ordered change feed: a long transaction can commit an older `now()` after a cursor has passed it, and RLS visibility can change without touching child timestamps. Reconcile full visible snapshots on join/approval, Return/results release, access changes and periodically; reset relevant cursors. On removed/left membership or a class tombstone, evict cached class content and stop pulls for that class. Physical deletion also needs snapshot reconciliation (class purge after 14 days). No claim of exactly-once or lossless concurrent transaction delivery.
+
+Coverage: profiles, device_tokens, notification_settings, classes, class_members, posts, post_attachments, submissions, submission_items, submission_grades, quizzes, questions, exam_sessions, exam_answers, bank_questions, notifications. RLS still limits which caller can read each (exam tables remain instructor-only; students use existing exam RPCs). Read question_options as a complete instructor-owned snapshot with questions; it lacks updated_at and tombstones. Answer keys remain instructor-only snapshot/RPC data. second_chances is an append-only instructor audit snapshot. leave_events, OTP/session records and ai_usage_log are not phone pull tables. Hard-deleted device/settings/notification rows require snapshot reconciliation. Do not expose answer keys or server-only tables to make generic sync work.
+
+### Conditional Drive handoff
+
+M6-SA-01 retention is not recorded; enablement is pending that decision and owner project access. No Android authorization or backup uploader exists in inspected source. If retained: request `https://www.googleapis.com/auth/drive.file` only when backup is enabled, create a normal Drive folder `Filo Backup`, store its per-account ID, and use Drive v3 `files.create` resumable uploads. Google access token is distinct from the Supabase JWT. Do not broaden scopes or put tokens/session URLs in logs. See decisions.md for setup and verification limits.
+
+
+## M6 Drive implementation handoff - 2026-10-18
+
+Supersedes the earlier conditional/absent implementation note: owner explicitly retained Drive backup and authorized implementation. Source is now under frontend/lib/features/drive_backup, reachable from the account avatar menu. No new Supabase endpoint, SQL migration, server-held Google credential or service account is used. Cloud Drive API enablement/consent changes and owner runtime acceptance remain pending.
+
+- Folder: Filo Backup; scope: https://www.googleapis.com/auth/drive.file; one-way selected-file backup.
+- Authorization: native GoogleSignIn7.2 authorizationClient.authorizeScopes on enable; noninteractive authorizationForScopes on retries; same Google email as Filo login plus persisted Google ID. A Supabase bearer JWT is never a Drive API credential.
+- REST: GET /drive/v3/files/generateIds; GET /drive/v3/files/ID for reconciliation; POST /drive/v3/files for folder; POST /upload/drive/v3/files?uploadType=resumable for new files; PATCH same-ID upload endpoint when restarting an existing incomplete file; PUT session Location with Content-Range.1MiB chunks,308 Range resume,404/410 session restart,200/201 completion followed by size/MD5 validation. Persist generated IDs before remote creation to avoid uncertain-response duplicates. No broad Drive listing or scope expansion.
+- Dedicated durable local backup outbox: account SQLite v3 drive_backup_settings/drive_backup_jobs; encrypted per-account session URLs via FlutterSecureStorage. Foreground reconnect/resume/minute retries; OFF pauses pending jobs and keeps Drive copies. Wi-Fi-only defaults ON and also applies to manual Retry. Completion deletes only private queue snapshots, not selected source files. Last success is selected-queue completion, not full-library backup.
+- Existing Class Files remains sample-only, so choose real local files through the Android system file picker. DriveBackupService.enqueue(File,name) is the future local-file-library integration point. Completed content is deduplicated within an account. No full-download-library/background-terminated upload/restore behavior is claimed.
+- Google Cloud project filo-app-58815 still needs Drive API enabled and drive.file declared under Data Access, with configured audience/test users. Basic/non-sensitive scope verification guidance and precise app-created-or-explicitly-shared scope semantics are recorded in docs/decisions.md. Owner checks include small and20MiB uploads, interruption/resume/dedupe, permission revoke/deny, Wi-Fi preference, account isolation and unrelated Drive-file denial. No assistant tests, builds, analysis, live calls or timings.
+
+
+## M6 storage/sync acceptance update - 2026-10-18
+
+Owner explicitly accepted M6-BE-01 and M6-BE-02 in full, including previously pending full-table/performance acceptance. Both have status **Complete - accepted**. Earlier prepared/pending statements are historical for those tasks; no unexecuted cases or unmeasured performance numbers are represented as verified. M6-BE-03 Drive Cloud setup/runtime acceptance remains separate and pending. See docs/decisions.md for evidence and limits. No assistant tests or remote actions.
