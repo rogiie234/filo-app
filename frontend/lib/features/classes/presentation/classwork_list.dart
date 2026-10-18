@@ -1,5 +1,9 @@
 import 'dart:async';
 
+import '../../grading/presentation/submissions_screen.dart';
+import '../../grading/presentation/gradebook_screen.dart';
+import '../../grading/presentation/my_grades_screen.dart';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
@@ -192,6 +196,21 @@ class _ClassworkListState extends ConsumerState<ClassworkList> {
           style: TextStyle(color: FiloColors.secondary),
         ),
         const SizedBox(height: 20),
+        if (live)
+          Padding(
+            padding: const EdgeInsets.only(bottom: 16),
+            child: OutlinedButton.icon(
+              icon: Icon(student ? Icons.grading : Icons.table_chart_outlined),
+              label: Text(student ? 'My grades' : 'Gradebook'),
+              onPressed: () => Navigator.of(context).push(
+                MaterialPageRoute<void>(
+                  builder: (_) => student
+                      ? MyGradesScreen(classId: id)
+                      : GradebookScreen(classId: id),
+                ),
+              ),
+            ),
+          ),
         if (live && !online)
           const Padding(
             padding: EdgeInsets.only(bottom: 16),
@@ -286,7 +305,18 @@ class _ClassworkListState extends ConsumerState<ClassworkList> {
                 post: post,
                 status: student ? statusFor(post) : null,
                 showStatus: student,
-                onTap: () => widget.onOpen(post),
+                onTap: () {
+                  if (live && !student) {
+                    Navigator.of(context).push(
+                      MaterialPageRoute<void>(
+                        builder: (_) =>
+                            SubmissionsScreen(classId: id, postId: post.id),
+                      ),
+                    );
+                  } else {
+                    widget.onOpen(post);
+                  }
+                },
               ),
             ),
       ],

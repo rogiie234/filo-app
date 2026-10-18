@@ -49,7 +49,7 @@ class PostAttachmentRepository {
       }
       if (after != null) query = query.gt('id', after);
       final page = await query
-          .order('id')
+          .order('id', ascending: true)
           .limit(500)
           .timeout(const Duration(seconds: 20));
       rows.addAll(

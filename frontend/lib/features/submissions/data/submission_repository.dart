@@ -171,7 +171,7 @@ class SubmissionRepository {
           query = query.gt(primaryKey, after);
         }
         final page = await query
-            .order(primaryKey)
+            .order(primaryKey, ascending: true)
             .limit(500)
             .timeout(const Duration(seconds: 20));
         rows.addAll(
