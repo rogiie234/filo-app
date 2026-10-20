@@ -99,3 +99,103 @@ Supersedes the earlier conditional/absent implementation note: owner explicitly 
 ## M6 storage/sync acceptance update - 2026-10-18
 
 Owner explicitly accepted M6-BE-01 and M6-BE-02 in full, including previously pending full-table/performance acceptance. Both have status **Complete - accepted**. Earlier prepared/pending statements are historical for those tasks; no unexecuted cases or unmeasured performance numbers are represented as verified. M6-BE-03 Drive Cloud setup/runtime acceptance remains separate and pending. See docs/decisions.md for evidence and limits. No assistant tests or remote actions.
+
+
+## M7 quiz builder backend - 2026-10-20
+
+Status: PREPARED; not deployed or executed. M7-SA-01 owner accepted retaining the question bank and prohibiting deletion after a student starts. M7-BE-01/02/03 and quiz security checklist items 2/5 remain pending owner DEV results.
+
+Apply, in order, after the existing repository migrations:
+1. `20261020100000_quiz_publish_security.sql`
+2. `20261020110000_atomic_questions_and_bank.sql`
+
+### Atomic question RPCs
+
+`save_question(p_quiz uuid, p_question jsonb) -> jsonb`, authenticated verified owning instructor only, on a nondeleted quiz in an active class with `locked_at IS NULL`.
+
+```json
+{
+  "id": null,
+  "type": "multiple_choice",
+  "prompt": "Which answer is correct?",
+  "points": 1,
+  "explanation": null,
+  "position": 0,
+  "options": ["First", "Second"],
+  "correct_option_index": 1
+}
+```
+
+- Required common fields: `type`, nonblank string `prompt` (max 1000 characters), integer `points` (1?1000), and integer `position` (0?2147483647). Optional `explanation` is null or a string of at most 500 characters. Text is preserved, not truncated.
+- `id` omitted/null/empty creates a database UUID. A supplied UUID must already belong to this quiz; it never creates a row with a client-supplied ID or moves a question.
+- Multiple choice: `options` contains 2?10 nonblank text strings, each max 500 characters; `correct_option_index` is a zero-based integer selecting exactly one option.
+- True/false: `correct_boolean` must be a JSON boolean, including `false` (not the string `"false"`).
+- Identification: `accepted_answers` contains 1?10 nonblank text strings. No new per-answer character cap is imposed. Existing grading normalization is unchanged.
+- Essay needs no key. Irrelevant type-specific payload fields are ignored; the saved rows contain only the selected type's options/key.
+- Return: `{"question_id":"UUID","option_ids":["UUID", "UUID"]}`. Option IDs follow input order, or `[]` for non-MC. An edit preserves the question ID and `ai_generated`, replaces all option IDs and the key, and clears obsolete type data. A failed call rolls back rows, IDs, keys, totals and essay flag together.
+
+`reorder_questions(p_quiz uuid, p_ordered_ids uuid[]) -> void` has the same authorization/state checks. Supply every current question ID exactly once, without foreign IDs, duplicates, null elements or multidimensional arrays. Empty array is valid only for an empty quiz. Positions become 0..N-1 atomically; null input is invalid.
+
+New RPC errors: `42501` for authorization/inaccessible/archived/deleted quiz; `22023` for invalid input, foreign question ID, invalid permutation or locked state. Internal validators/lock helpers have no client EXECUTE grant. Neither RPC is granted to anon. Existing publish error messages/signature remain intact; repeat publication returns the existing row without new notifications.
+
+### Edit/deletion/security changes
+
+Publishing and first start lock the parent quiz row; content triggers, atomic saves, reordering and direct soft deletion serialize against it. A publish on a deleted/inaccessible quiz is refused. Only active class members receive inbox rows; this does not guarantee push delivery. Question moves check both parents and refresh both totals. Options/keys cannot be reparented. Option/key guards pin their question rows before resolving parents.
+
+After a start, instructor edits to questions/options/keys, instructions, type, time limit, opens, both shuffles, show-answers, passing percentage and `deleted_at` are refused (`22023`). Title and a closing time satisfying the existing window constraint remain editable. Drafts and published quizzes without starts can still be soft-deleted. No new instructor hard-delete grant is added. Server lifecycle/result updates and class purge remain permitted.
+
+Clients should refetch after an uncertain response before creating another new question: an empty-ID save is not an idempotency-key API. `40P01`/`40001` mean the transaction aborted and may be retried as a whole after refetch; do not repeat only the options/key portion. Do not queue quiz authoring/submission offline. Existing direct draft-table grants remain for compatibility, with strengthened locks; the app should use `save_question` for atomic writes.
+
+### Question-bank stored shape
+
+- MC: `options = [{"text":"First","is_correct":false},{"text":"Second","is_correct":true}]`, exactly one correct flag; `answer = null`.
+- True/false: `options = null`, `answer = {"boolean":false}`.
+- Identification: `options = null`, `answer = {"accepted":["Answer","Alternative"]}`.
+- Essay: `options = null`, `answer = null`.
+
+Verified instructors can operate only on their own rows. Deletion is `UPDATE deleted_at`; client hard DELETE is revoked. Own tombstones remain selectable for synchronization. Content writes validate the same prompt/points/explanation/type limits as atomic saves and clear unused options/answer fields. Pure tombstone updates remain possible for legacy rows without rewriting malformed old content. No bulk rewrite of existing bank data occurs.
+
+To copy: map option texts in array order and locate the true flag as `correct_option_index`; map `answer.boolean` to `correct_boolean` or `answer.accepted` to `accepted_answers`. Omit the bank ID from the new-question payload. Copies get independent question/option IDs and no bank foreign key. Later bank edits/deletion cannot modify quiz copies.
+
+Owner execution: `backend/tests/quizzes.sql`, `backend/tests/question_bank.sql`, and the selected blocks in `backend/tests/quiz_concurrency.sql`. See `backend/tests/README.md` M7 instructions. No migration application, test execution, remote ledger verification, checklist acceptance or runtime success is claimed here.
+
+
+## M7 question-delete cascade correction - 2026-10-20
+
+Prepared migration `20261020120000_quiz_question_delete_cascade.sql`, after the two initial M7 migrations. No RPC signature/grant or table shape changes.
+
+The existing lifecycle guard resolves options/keys through their parent question. During FK cascade deletion the parent is already absent, so an authenticated instructor's question DELETE can be refused. guard_question_edits now validates/locks the parent quiz, deletes the answer key then options in BEFORE DELETE while the question is visible to child RLS/lifecycle guards, and allows the parent deletion. These writes are one atomic SQL statement; a failure rolls them all back. Existing owner, archived/deleted class and locked-quiz checks remain. Server purge remains supported; no trigger-depth/GUC bypass or weakened access policy is introduced.
+
+Owner reported quiz summary 193 PASS / 9 FAIL; first failures remove incomplete MC/TF/identification, followed by publish/inbox/student-start failures. Source establishes the cascade defect; exact remote error details were requested and runtime correction remains unverified. Apply only this new pending migration if the earlier two are already applied, then run the ENTIRE latest quizzes.sql. The script requires this guard and adds per-type parent-and-child deletion assertions. All M7/checklist acceptance remains pending. Assistant did not apply migrations or execute tests.
+
+
+## M7 owner-reported quiz SQL acceptance - 2026-10-20
+
+Owner supplied the latest quiz summary: 215 passed, 0 failed, overall PASS, failures []. This supersedes the prior 193 PASS / 9 FAIL quiz run and pending quiz-script correction status. Accepted on owner-reported DEV execution: publishing validation/idempotency/inbox, totals and cascade deletion, content/settings/delete locks, atomic save/reorder and rollback checks, direct-table student isolation across attempt states, and the quiz portion of protected-column permissions (security checklist 2 and quiz-related portion of 5).
+
+Evidence is the owner's summary after the corrective migration handoff; assistant did not execute SQL or independently inspect deployed definitions/migration history. This is acceptance of quizzes.sql coverage, not a claim that every M7 task is complete. question_bank.sql and selected two-session quiz_concurrency.sql checks remain pending, including setup/cleanup and both race orderings. Mobile/HTTP/push/offline acceptance remains outside this SQL evidence. No repeat quiz run is requested absent further changes or failures.
+
+
+## M7 owner-reported question-bank SQL acceptance - 2026-10-20
+
+Owner supplied question_bank.sql summary: 65 passed, 0 failed, overall PASS, failures []. Question-bank SQL coverage accepted on owner-reported DEV execution: verified instructor ownership/role isolation, all four stored shapes and copies through save_question, boundary validation, soft-deletion tombstones and independent quiz copies. M7-BE-03 accepted within this SQL scope. Combined owner-reported results: quizzes.sql 215 PASS/0 FAIL and question_bank.sql 65 PASS/0 FAIL.
+
+This supersedes pending bank-script statements above. Planned selected-block two-session quiz_concurrency.sql checks remain pending, including fixture cleanup; broad M7 completion is not claimed yet. No repeat of passed quiz/bank scripts is requested absent new changes or defects. Assistant did not run tests, SQL, live checks, builds or static analysis; migration history, HTTP/mobile/push/offline and race behavior were not independently verified. No disposable materials created.
+
+
+## M7 guided two-session outcomes and timed publication - 2026-10-21
+
+Owner supplied guided results after bank acceptance: student-start-before-save refused with 22023; save-before-start returned both Committed edit and Original; delete-before-start refused start with Quiz not found; start-before-delete refused with 22023 A started quiz cannot be deleted. Final inspection rows all matched: publish notifications=1, blocked Late edit questions=0, deleted quiz attempts=0, retained started quiz attempts=1, and started quiz still locked/undeleted=1. First fixture cleanup returned set_config {} without reported error. These are owner-reported functional outcomes; screenshots alone did not establish simultaneous lock waits for all cases.
+
+Owner then recreated dedicated fixtures for publication timing. Screenshot shows A using pg_sleep(30), and B's timed publication returning quiz a7be0001-0000-4000-8000-000000000011 with waited_seconds=29.3. This supports owner-run concurrent-publication serialization/lock-wait acceptance; elapsed duration includes the call, not a separately sampled pg_locks measurement. No new timing claims are made for start/save/delete orderings. Fresh timed-run notification count and fixture cleanup remain pending next owner query. No repeat of passed quiz/bank suites requested and no blanket concurrency stress, HTTP/mobile or deployment-ledger acceptance inferred.
+
+Assistant recorded evidence only; no tests, SQL execution, builds, static analysis or live verification. No disposable materials created. Prior statements that all concurrency evidence is pending are superseded within the specific functional/timed-publication scope above.
+
+
+## M7 backend acceptance and final fixture cleanup - 2026-10-21
+
+Owner supplied final result: PASS: one notification; test fixtures removed. The provided query checks dedicated fixture provenance and exactly one quiz notification before deleting the fixture class/Auth users/profiles in a transaction. Accepted as owner-reported successful final check/cleanup, not independent remote inspection.
+
+M7-BE-01, M7-BE-02 and M7-BE-03 are Complete ? accepted for the requested DEV SQL/backend scope on cumulative owner evidence: quizzes.sql 215 PASS/0 FAIL; question_bank.sql 65 PASS/0 FAIL; guided start/save/delete functional outcomes and all five stored-state checks matched; concurrent publishing call took 29.3 seconds while A held its transaction for 30 seconds; exactly one notification confirmed and fresh fixtures removed. SQL security checklist 2 and the quiz-related portion of 5 accepted. This supersedes earlier pending task/bank/publication cleanup statements.
+
+Limits retained: start/save/delete lock-wait durations were not separately measured; no blanket concurrency stress, fresh full migration replay, HTTP/mobile/push/offline behavior or independent migration-ledger verification is claimed. Assistant did not execute tests, migrations, SQL/live checks, builds or static analysis. No additional owner tests requested for completed scope absent new changes/defects. Maintained regression scripts remain; no disposable materials created locally.
