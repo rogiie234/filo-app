@@ -1,7 +1,6 @@
 import 'dart:async';
 import 'dart:io';
 
-import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -12,6 +11,7 @@ import '../../../core/supabase/supabase_provider.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/widgets/filo_widgets.dart';
 import '../../onboarding/presentation/account_setup_screen.dart';
+import 'session_loading_view.dart';
 
 final otpClockProvider = Provider<DateTime Function()>((ref) => DateTime.now);
 
@@ -24,7 +24,7 @@ class SessionScreen extends ConsumerStatefulWidget {
 class _SessionScreenState extends ConsumerState<SessionScreen> {
   final _code = TextEditingController();
   final _focus = FocusNode();
-  String? _challenge, _message, _diagnostic;
+  String? _challenge, _message;
   DateTime? _resendAt, _expiresAt;
   Timer? _timer;
   bool _busy = false, _error = false, _locked = false;
@@ -122,7 +122,7 @@ class _SessionScreenState extends ConsumerState<SessionScreen> {
           );
         case 'OTP_SEND_FAILED':
           _feedback(
-            'We couldn’t send your code. Please try again in a moment.',
+            'We couldn\u2019t send your code. Please try again in a moment.',
             error: true,
           );
         default:
@@ -195,31 +195,12 @@ class _SessionScreenState extends ConsumerState<SessionScreen> {
     _focus.unfocus();
     ref.invalidate(verifiedUserIdProvider);
   });
-  Future<void> _checkReads() => _perform(() async {
-    final client = ref.read(supabaseClientProvider);
-    try {
-      final profiles = await client.from('profiles').select('id');
-      final classes = await client.from('classes').select('id');
-      if (mounted) {
-        setState(
-          () => _diagnostic =
-              'Visible rows: profiles ${profiles.length}, classes ${classes.length}.',
-        );
-      }
-    } on PostgrestException catch (error) {
-      if (error.code != '42501') rethrow;
-      if (mounted) {
-        setState(() => _diagnostic = 'Access denied by database security.');
-      }
-    }
-  });
-
   @override
   Widget build(BuildContext context) {
     final verification = ref.watch(verifiedUserIdProvider);
-    final verified = verification.asData?.value != null;
-    if (verified) return const AccountSetupScreen();
-    final checking = verification.isLoading;
+    if (verification.asData?.value != null) {
+      return const AccountSetupScreen();
+    }
     final session = ref.watch(loginSessionProvider).asData?.value;
     final rawEmail = session?.user.email;
     final at = rawEmail?.indexOf('@') ?? -1;
@@ -245,254 +226,257 @@ class _SessionScreenState extends ConsumerState<SessionScreen> {
           const SizedBox(width: 8),
         ],
       ),
-      body: SafeArea(
-        child: Center(
-          child: SingleChildScrollView(
-            padding: const EdgeInsets.fromLTRB(24, 12, 24, 32),
-            child: ConstrainedBox(
-              constraints: const BoxConstraints(maxWidth: 440),
-              child: Column(
-                children: [
-                  const SizedBox(height: 8),
-                  Mascot(pose: verified ? 'cheerful' : 'curious', size: 156),
-                  const SizedBox(height: 20),
-                  Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Icon(
-                        verified
-                            ? Icons.check_circle_rounded
-                            : Icons.shield_outlined,
-                        size: 18,
-                        color: FiloColors.primary,
-                      ),
-                      const SizedBox(width: 8),
-                      Flexible(
-                        child: Text(
-                          verified
-                              ? 'Device confirmed'
-                              : 'A quick security check',
-                          textAlign: TextAlign.center,
-                          style: const TextStyle(
-                            color: FiloColors.primary,
-                            fontWeight: FontWeight.w800,
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 12),
-                  Text(
-                    verified
-                        ? 'You’re all set.'
-                        : checking
-                        ? 'One moment…'
-                        : 'Let’s make sure\nit’s you.',
-                    textAlign: TextAlign.center,
-                    style: Theme.of(context).textTheme.headlineMedium,
-                  ),
-                  const SizedBox(height: 12),
-                  Text(
-                    verified
-                        ? 'This device is ready for Filo. We’ll recognize it the next time you sign in.'
-                        : checking
-                        ? 'We’re checking this device before you continue.'
-                        : sent
-                        ? 'We sent a 6-digit code to $email. Enter it to verify this device. The code expires in 10 minutes.'
-                        : 'One little check to keep your account safe. We’ll send a 6-digit code to your Google email.',
-                    textAlign: TextAlign.center,
-                    style: const TextStyle(
-                      color: FiloColors.secondary,
-                      fontSize: 16,
-                      height: 1.5,
-                    ),
-                  ),
-                  const SizedBox(height: 24),
-                  if (checking)
-                    const Padding(
-                      padding: EdgeInsets.all(24),
-                      child: CircularProgressIndicator(),
-                    )
-                  else if (verification.hasError)
-                    FiloPanel(
-                      child: Column(
-                        children: [
-                          const Icon(
-                            Icons.info_outline_rounded,
-                            color: FiloColors.secondary,
-                          ),
-                          const SizedBox(height: 12),
-                          const Text(
-                            'We couldn’t check this device. Please try again.',
-                            textAlign: TextAlign.center,
-                          ),
-                          const SizedBox(height: 16),
-                          FiloButton(
-                            label: 'Try again',
-                            onPressed: () =>
-                                ref.invalidate(verifiedUserIdProvider),
-                          ),
-                        ],
-                      ),
-                    )
-                  else if (!verified)
-                    FiloPanel(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.stretch,
-                        children: [
-                          if (!sent) ...[
-                            const Icon(
-                              Icons.mark_email_unread_outlined,
-                              size: 28,
+      body: verification.isLoading
+          ? SessionLoadingView(message: _message, error: _error)
+          : SafeArea(
+              child: SingleChildScrollView(
+                keyboardDismissBehavior:
+                    ScrollViewKeyboardDismissBehavior.onDrag,
+                padding: const EdgeInsets.fromLTRB(24, 16, 24, 40),
+                child: Align(
+                  alignment: Alignment.topCenter,
+                  child: ConstrainedBox(
+                    constraints: const BoxConstraints(maxWidth: 440),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: [
+                        const Center(child: Mascot(pose: 'curious', size: 156)),
+                        const SizedBox(height: 24),
+                        const Row(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            FiloIcon(
+                              FiloIcons.shield,
+                              size: 18,
                               color: FiloColors.primary,
                             ),
-                            const SizedBox(height: 12),
-                            Text(
-                              email,
-                              textAlign: TextAlign.center,
-                              style: const TextStyle(
-                                fontSize: 16,
-                                fontWeight: FontWeight.w800,
-                              ),
-                            ),
-                            const SizedBox(height: 20),
-                            FiloButton(
-                              label: _busy ? 'Sending code…' : 'Send code',
-                              icon: _busy ? null : Icons.arrow_forward_rounded,
-                              onPressed: _busy ? null : _send,
-                            ),
-                          ] else ...[
-                            const Text(
-                              'Verification code',
-                              style: TextStyle(fontWeight: FontWeight.w800),
-                            ),
-                            const SizedBox(height: 10),
-                            AutofillGroup(
-                              child: TextField(
-                                controller: _code,
-                                focusNode: _focus,
-                                enabled: !_busy && !_locked,
-                                keyboardType: TextInputType.number,
-                                // Codes must not be rewritten by keyboard predictions.
-                                autocorrect: false,
-                                enableSuggestions: false,
-                                enableIMEPersonalizedLearning: false,
-                                enableInlinePrediction: false,
-                                smartDashesType: SmartDashesType.disabled,
-                                smartQuotesType: SmartQuotesType.disabled,
-                                textInputAction: TextInputAction.done,
-                                // Delayed OS OTP autofill can restore digits after
-                                // the user deletes them. Keep this field manual.
-                                autofillHints: null,
-                                maxLength: 6,
-                                textAlign: TextAlign.center,
-                                style: const TextStyle(
-                                  fontSize: 28,
-                                  fontWeight: FontWeight.w800,
-                                  letterSpacing: 8,
-                                ),
-                                inputFormatters: [
-                                  FilteringTextInputFormatter.digitsOnly,
-                                ],
-                                decoration: const InputDecoration(
-                                  hintText: '000000',
-                                  counterText: '',
-                                  hintStyle: TextStyle(
-                                    color: FiloColors.border,
-                                  ),
-                                ),
-                                onSubmitted: (_) {
-                                  if (!_busy && !_locked) _verify();
-                                },
-                              ),
-                            ),
-                            const SizedBox(height: 20),
-                            FiloButton(
-                              label: _busy ? 'Please wait…' : 'Verify code',
-                              onPressed: _busy || _locked ? null : _verify,
-                            ),
-                            const SizedBox(height: 8),
-                            TextButton(
-                              onPressed: _canResend ? _send : null,
+                            SizedBox(width: 8),
+                            Flexible(
                               child: Text(
-                                _seconds > 0
-                                    ? 'Resend in ${_seconds}s'
-                                    : 'Resend code',
-                              ),
-                            ),
-                            const Text(
-                              'No email yet? Check your spam folder.',
-                              textAlign: TextAlign.center,
-                              style: TextStyle(
-                                color: FiloColors.secondary,
-                                fontSize: 13,
+                                'A quick security check',
+                                textAlign: TextAlign.center,
+                                style: TextStyle(
+                                  color: FiloColors.primary,
+                                  fontSize: 14,
+                                  fontWeight: FontWeight.w800,
+                                ),
                               ),
                             ),
                           ],
-                        ],
-                      ),
-                    ),
-                  if (_message != null)
-                    Padding(
-                      padding: const EdgeInsets.only(top: 16),
-                      child: Semantics(
-                        liveRegion: true,
-                        child: FiloPanel(
-                          color: _error ? FiloColors.warning : FiloColors.tint,
-                          padding: const EdgeInsets.all(16),
-                          child: Row(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Icon(
-                                _error
-                                    ? Icons.info_outline_rounded
-                                    : Icons.check_circle_outline_rounded,
-                                size: 20,
+                        ),
+                        const SizedBox(height: 12),
+                        Semantics(
+                          header: true,
+                          child: const Text(
+                            'Let\u2019s make sure\nit\u2019s you.',
+                            textAlign: TextAlign.center,
+                            style: TextStyle(
+                              fontSize: 28,
+                              height: 1.2,
+                              fontWeight: FontWeight.w800,
+                              color: FiloColors.ink,
+                            ),
+                          ),
+                        ),
+                        const SizedBox(height: 12),
+                        Text(
+                          sent
+                              ? 'We sent a 6-digit code to $email. Enter it to verify this device. The code expires in 10 minutes.'
+                              : 'One little check to keep your account safe. We\u2019ll send a 6-digit code to your Google email.',
+                          textAlign: TextAlign.center,
+                          style: const TextStyle(
+                            color: FiloColors.secondary,
+                            fontSize: 15,
+                            fontWeight: FontWeight.w500,
+                            height: 1.5,
+                          ),
+                        ),
+                        if (_message != null) ...[
+                          const SizedBox(height: 20),
+                          Semantics(
+                            liveRegion: true,
+                            child: FiloPanel(
+                              color: _error
+                                  ? FiloColors.warning
+                                  : FiloColors.tint,
+                              padding: const EdgeInsets.all(16),
+                              child: Row(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  FiloIcon(
+                                    _error
+                                        ? FiloIcons.info
+                                        : FiloIcons.checkCircle,
+                                    color: _error
+                                        ? FiloColors.warningInk
+                                        : FiloColors.primary,
+                                    size: 20,
+                                  ),
+                                  const SizedBox(width: 10),
+                                  Expanded(child: Text(_message!)),
+                                ],
                               ),
-                              const SizedBox(width: 10),
-                              Expanded(child: Text(_message!)),
-                            ],
+                            ),
                           ),
-                        ),
-                      ),
-                    ),
-                  if (kDebugMode && session != null)
-                    Padding(
-                      padding: const EdgeInsets.only(top: 24),
-                      child: ExpansionTile(
-                        title: const Text(
-                          'Developer checks',
-                          style: TextStyle(fontSize: 13),
-                        ),
-                        tilePadding: EdgeInsets.zero,
-                        children: [
-                          Text(
-                            'Session ID present: ${_hasSessionId(session.accessToken)}',
-                          ),
-                          TextButton(
-                            onPressed: _busy ? null : _checkReads,
-                            child: const Text('Check profile and class access'),
-                          ),
-                          if (_diagnostic != null)
-                            Text(_diagnostic!, textAlign: TextAlign.center),
                         ],
-                      ),
+                        const SizedBox(height: 24),
+                        if (verification.hasError)
+                          FiloPanel(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.stretch,
+                              children: [
+                                const FiloIcon(
+                                  FiloIcons.info,
+                                  color: FiloColors.primary,
+                                  size: 28,
+                                ),
+                                const SizedBox(height: 12),
+                                const Text(
+                                  'We couldn\u2019t check this device. Please try again.',
+                                  textAlign: TextAlign.center,
+                                ),
+                                const SizedBox(height: 20),
+                                FiloButton(
+                                  label: 'Try again',
+                                  onPressed: () =>
+                                      ref.invalidate(verifiedUserIdProvider),
+                                ),
+                              ],
+                            ),
+                          )
+                        else
+                          FiloPanel(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.stretch,
+                              children: [
+                                if (!sent) ...[
+                                  Row(
+                                    children: [
+                                      Container(
+                                        width: 44,
+                                        height: 44,
+                                        decoration: BoxDecoration(
+                                          color: FiloColors.tint,
+                                          borderRadius: BorderRadius.circular(
+                                            14,
+                                          ),
+                                        ),
+                                        child: const FiloIcon(
+                                          FiloIcons.email,
+                                          color: FiloColors.primary,
+                                        ),
+                                      ),
+                                      const SizedBox(width: 12),
+                                      Expanded(
+                                        child: Text(
+                                          email,
+                                          style: const TextStyle(
+                                            color: FiloColors.ink,
+                                            fontSize: 14,
+                                            fontWeight: FontWeight.w800,
+                                          ),
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                  const SizedBox(height: 24),
+                                  FiloButton(
+                                    label: _busy
+                                        ? 'Sending code\u2026'
+                                        : 'Send code',
+                                    busy: _busy,
+                                    icon: _busy ? null : FiloIcons.forward,
+                                    animateArrow: true,
+                                    onPressed: _busy ? null : _send,
+                                  ),
+                                ] else ...[
+                                  const Text(
+                                    'Verification code',
+                                    style: TextStyle(
+                                      fontWeight: FontWeight.w800,
+                                      color: FiloColors.ink,
+                                    ),
+                                  ),
+                                  const SizedBox(height: 12),
+                                  AutofillGroup(
+                                    child: TextField(
+                                      controller: _code,
+                                      focusNode: _focus,
+                                      enabled: !_busy && !_locked,
+                                      keyboardType: TextInputType.number,
+                                      autocorrect: false,
+                                      enableSuggestions: false,
+                                      enableIMEPersonalizedLearning: false,
+                                      enableInlinePrediction: false,
+                                      smartDashesType: SmartDashesType.disabled,
+                                      smartQuotesType: SmartQuotesType.disabled,
+                                      textInputAction: TextInputAction.done,
+                                      // Keep OTP entry manual: delayed OS autofill can restore deleted digits.
+                                      autofillHints: null,
+                                      maxLength: 6,
+                                      textAlign: TextAlign.center,
+                                      style: const TextStyle(
+                                        fontSize: 24,
+                                        fontWeight: FontWeight.w800,
+                                        letterSpacing: 4,
+                                      ),
+                                      inputFormatters: [
+                                        FilteringTextInputFormatter.digitsOnly,
+                                      ],
+                                      decoration: const InputDecoration(
+                                        labelText: 'Verification code',
+                                        floatingLabelBehavior:
+                                            FloatingLabelBehavior.never,
+                                        hintText: '000000',
+                                        counterText: '',
+                                        hintStyle: TextStyle(
+                                          color: FiloColors.secondary,
+                                        ),
+                                      ),
+                                      onSubmitted: (_) {
+                                        if (!_busy && !_locked) _verify();
+                                      },
+                                    ),
+                                  ),
+                                  const SizedBox(height: 20),
+                                  FiloButton(
+                                    label: _busy
+                                        ? 'Please wait\u2026'
+                                        : 'Verify code',
+                                    busy: _busy,
+                                    onPressed: _busy || _locked
+                                        ? null
+                                        : _verify,
+                                  ),
+                                  const SizedBox(height: 8),
+                                  TextButton(
+                                    onPressed: _canResend ? _send : null,
+                                    child: Text(
+                                      _seconds > 0
+                                          ? 'Resend in ${_seconds}s'
+                                          : 'Resend code',
+                                    ),
+                                  ),
+                                  const SizedBox(height: 4),
+                                  const Text(
+                                    'No email yet? Check your spam folder.',
+                                    textAlign: TextAlign.center,
+                                    style: TextStyle(
+                                      color: FiloColors.secondary,
+                                      fontSize: 13,
+                                      height: 1.4,
+                                    ),
+                                  ),
+                                ],
+                              ],
+                            ),
+                          ),
+                      ],
                     ),
-                ],
+                  ),
+                ),
               ),
             ),
-          ),
-        ),
-      ),
     );
-  }
-
-  bool _hasSessionId(String token) {
-    try {
-      sessionIdFromToken(token);
-      return true;
-    } catch (_) {
-      return false;
-    }
   }
 }

@@ -1,10 +1,8 @@
-import 'dart:async';
-
 import 'package:drift/drift.dart';
-import 'package:flutter/widgets.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/connectivity/connectivity_provider.dart';
+import '../../../core/sync/sync_providers.dart';
 import '../../../core/supabase/supabase_provider.dart';
 import '../../../data/local/app_database.dart';
 import '../../classes/application/class_providers.dart';
@@ -113,30 +111,14 @@ final postSyncProvider = FutureProvider.autoDispose.family<void, String>((
 ) async {
   final online = ref.watch(connectivityProvider).asData?.value == true;
   if (!online) return;
-  final repository = await ref.watch(postRepositoryProvider.future);
-  if (ref.mounted) await repository?.sync(classId);
+  final coordinator = await ref.watch(syncCoordinatorProvider.future);
+  if (ref.mounted) await coordinator?.run();
 });
 
 final postSyncLifecycleProvider = Provider.autoDispose.family<void, String>((
   ref,
   classId,
 ) {
-  ref.listen(postSyncProvider(classId), (_, _) {});
-  var foreground = true;
-  void pull() => ref.invalidate(postSyncProvider(classId));
-  final listener = AppLifecycleListener(
-    onResume: () {
-      foreground = true;
-      pull();
-    },
-    onPause: () => foreground = false,
-    onHide: () => foreground = false,
-  );
-  final timer = Timer.periodic(const Duration(seconds: 30), (_) {
-    if (foreground && !ref.read(postSyncProvider(classId)).isLoading) pull();
-  });
-  ref.onDispose(() {
-    timer.cancel();
-    listener.dispose();
-  });
+  ref.watch(syncLifecycleProvider);
+  ref.watch(postSyncProvider(classId));
 });

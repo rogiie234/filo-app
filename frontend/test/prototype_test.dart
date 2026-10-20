@@ -28,6 +28,10 @@ void main() {
     tester.view.devicePixelRatio = 1;
     addTearDown(tester.view.resetPhysicalSize);
     addTearDown(tester.view.resetDevicePixelRatio);
+    // Keep fixture settling deterministic while the intro has ambient motion.
+    tester.platformDispatcher.accessibilityFeaturesTestValue =
+        const FakeAccessibilityFeatures(disableAnimations: true);
+    addTearDown(tester.platformDispatcher.clearAccessibilityFeaturesTestValue);
     tester.platformDispatcher.textScaleFactorTestValue = scale;
     addTearDown(tester.platformDispatcher.clearTextScaleFactorTestValue);
     final container = ProviderContainer(
@@ -48,18 +52,14 @@ void main() {
     return container;
   }
 
-  testWidgets('intro leads to sign-in and student preview', (tester) async {
+  testWidgets('intro leads to sign-in without a preview entry', (tester) async {
     await launch(tester);
     expect(find.text('Learning,\ntogether.'), findsOneWidget);
     await tester.tap(find.text('Skip intro'));
     await tester.pumpAndSettle();
     expect(find.text('Hello,\ncurious mind.'), findsOneWidget);
-    await tester.tap(find.text('Explore the preview'));
-    await tester.pumpAndSettle();
-    await tester.tap(find.text('Student'));
-    await tester.pumpAndSettle();
-    expect(find.text('Your classes'), findsOneWidget);
-    expect(find.text('Introduction to Computing'), findsOneWidget);
+    expect(find.text('Explore the preview'), findsNothing);
+    expect(find.text('Continue with Google'), findsOneWidget);
   });
 
   testWidgets('all intro pages advance and About Filo restarts the intro', (

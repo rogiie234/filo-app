@@ -2,6 +2,12 @@ import 'package:flutter/material.dart';
 
 import '../theme/app_theme.dart';
 
+export 'filo_button.dart';
+export 'filo_bottom_sheet.dart';
+export 'filo_confirmation_dialog.dart';
+export 'filo_icon.dart';
+export 'filo_notice_dialog.dart';
+
 class Brand extends StatelessWidget {
   const Brand({super.key});
   @override
@@ -43,50 +49,6 @@ class Mascot extends StatelessWidget {
         height: size,
         fit: BoxFit.cover,
         cacheWidth: (size * MediaQuery.devicePixelRatioOf(context)).round(),
-      ),
-    ),
-  );
-}
-
-class FiloButton extends StatelessWidget {
-  const FiloButton({
-    super.key,
-    required this.label,
-    required this.onPressed,
-    this.icon,
-    this.secondary = false,
-  });
-  final String label;
-  final VoidCallback? onPressed;
-  final IconData? icon;
-  final bool secondary;
-  @override
-  Widget build(BuildContext context) => DecoratedBox(
-    decoration: BoxDecoration(
-      color: secondary ? FiloColors.mint : FiloColors.edge,
-      borderRadius: BorderRadius.circular(32),
-    ),
-    child: Padding(
-      padding: const EdgeInsets.only(bottom: 4),
-      child: FilledButton(
-        style: FilledButton.styleFrom(
-          backgroundColor: secondary ? Colors.white : FiloColors.primary,
-          foregroundColor: secondary ? FiloColors.ink : Colors.white,
-          minimumSize: const Size(double.infinity, 56),
-          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
-          side: secondary ? const BorderSide(color: FiloColors.border) : null,
-        ),
-        onPressed: onPressed,
-        child: Row(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Flexible(child: Text(label, textAlign: TextAlign.center)),
-            if (icon != null) ...[
-              const SizedBox(width: 12),
-              Icon(icon, size: 20),
-            ],
-          ],
-        ),
       ),
     ),
   );

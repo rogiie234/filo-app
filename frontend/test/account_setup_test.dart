@@ -2,6 +2,7 @@ import 'package:filo/features/classes/application/class_providers.dart';
 import 'package:filo/core/connectivity/connectivity_provider.dart';
 import 'package:filo/features/onboarding/application/notification_permission.dart';
 import 'package:filo/features/onboarding/data/profile_repository.dart';
+import 'package:filo/features/onboarding/domain/profile_photo.dart';
 import 'package:filo/features/onboarding/presentation/account_setup_screen.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -34,6 +35,8 @@ class FakeProfiles extends ProfileRepository {
     required String name,
     required String school,
     required bool consent,
+    ProfilePhotoDraft? photo,
+    bool useGooglePhoto = false,
   }) async {
     if (saved != null) return saved!;
     inserts++;

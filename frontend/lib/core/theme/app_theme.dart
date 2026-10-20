@@ -13,6 +13,9 @@ class FiloColors {
   static const tint = Color(0xFFF0F5F0);
   static const lime = Color(0xFFE0F0A6);
   static const surface = Colors.white;
+  static const disabledButtonFill = Color(0xFFE2E8E2);
+  static const disabledButtonInk = Color(0xFF4F625A);
+  static const disabledButtonBorder = Color(0xFFCCD7CE);
   static const onBanner = Colors.white;
   static const bannerOverlay = Color(0xB314231E);
   static const warningInk = Color(0xFF8A5200);

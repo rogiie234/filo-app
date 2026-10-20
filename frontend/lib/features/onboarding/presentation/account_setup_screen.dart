@@ -1,11 +1,24 @@
+import 'dart:ui' as ui;
+
+import 'package:image_picker/image_picker.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../core/supabase/supabase_provider.dart';
+import '../../../core/connectivity/connectivity_provider.dart';
+import '../../../data/local/database_providers.dart';
+import '../../../core/theme/app_theme.dart';
+import '../../../core/widgets/filo_widgets.dart';
+import '../../auth/presentation/session_loading_view.dart';
+import 'role_selection_view.dart';
+import 'account_details_view.dart';
+import 'notification_prompt_view.dart';
 import '../../home/presentation/home_screen.dart';
 import '../application/notification_permission.dart';
 import '../data/profile_repository.dart';
+import '../domain/profile_photo.dart';
 
 class AccountSetupScreen extends ConsumerStatefulWidget {
   const AccountSetupScreen({super.key});
@@ -19,7 +32,9 @@ class _AccountSetupScreenState extends ConsumerState<AccountSetupScreen> {
   AccountRole? _role;
   AccountProfile? _profile;
   String _stage = 'loading';
-  String? _error;
+  String? _error, _photoError;
+  ProfilePhotoDraft? _photo;
+  bool _pickingPhoto = false, _useGooglePhoto = false;
   bool _consent = false, _busy = false;
 
   @override
@@ -45,7 +60,28 @@ class _AccountSetupScreenState extends ConsumerState<AccountSetupScreen> {
       _error = null;
     });
     try {
-      final profile = await ref.read(profileRepositoryProvider).fetch();
+      final online = await ref.read(connectivityProvider.future);
+      AccountProfile? profile;
+      if (online) {
+        profile = await ref
+            .read(profileRepositoryProvider)
+            .fetch()
+            .timeout(const Duration(seconds: 20));
+      } else {
+        final db = await ref.read(accountDatabaseProvider.future);
+        final user = ref.read(supabaseClientProvider).auth.currentUser;
+        final cached = user == null ? null : await db?.readProfile(user.id);
+        if (cached == null) throw StateError('No offline profile');
+        profile = AccountProfile.fromJson({
+          'id': cached.id,
+          'role': cached.role,
+          'display_name': cached.displayName,
+          'email': cached.email,
+          'school': cached.school,
+          'google_photo_url': cached.googlePhotoUrl,
+          'avatar_path': cached.avatarPath,
+        });
+      }
       if (!mounted) return;
       if (profile == null) {
         setState(() => _stage = 'role');
@@ -86,30 +122,77 @@ class _AccountSetupScreenState extends ConsumerState<AccountSetupScreen> {
   Future<void> _confirmRole() async {
     final role = _role;
     if (role == null) return;
-    final confirmed = await showDialog<bool>(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: Text('Continue as ${role.label}?'),
-        content: Text(
+    final confirmed = await showFiloConfirmation(
+      context,
+      title: 'Continue as ${role.label}?',
+      message:
           'Your account will use the ${role.label} role. You cannot change your role after your profile is created.',
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context, false),
-            child: const Text('Go back'),
-          ),
-          FilledButton(
-            onPressed: () => Navigator.pop(context, true),
-            child: const Text('Confirm role'),
-          ),
-        ],
-      ),
+      confirmLabel: 'Confirm role',
+      icon: role == AccountRole.student ? FiloIcons.student : FiloIcons.book,
     );
     if (confirmed == true && mounted) setState(() => _stage = 'details');
   }
 
+  Future<void> _pickPhoto() async {
+    if (_busy || _pickingPhoto) return;
+    FocusScope.of(context).unfocus();
+    setState(() {
+      _pickingPhoto = true;
+      _photoError = null;
+    });
+    try {
+      final image = await ImagePicker().pickImage(
+        source: ImageSource.gallery,
+        maxWidth: 512,
+        maxHeight: 512,
+        imageQuality: 80,
+        requestFullMetadata: false,
+      );
+      if (image == null) return;
+      if (await image.length() > ProfilePhotoDraft.maxBytes) {
+        throw const FormatException(
+          'Choose a profile photo smaller than 512 KB.',
+        );
+      }
+      final draft = ProfilePhotoDraft.fromBytes(await image.readAsBytes());
+      // Reject unreadable image data before replacing the existing preview.
+      final codec = await ui.instantiateImageCodec(
+        draft.bytes,
+        targetWidth: 256,
+      );
+      try {
+        final frame = await codec.getNextFrame();
+        frame.image.dispose();
+      } finally {
+        codec.dispose();
+      }
+      if (mounted) {
+        setState(() {
+          _photo = draft;
+          _useGooglePhoto = false;
+        });
+      }
+    } catch (error) {
+      if (mounted) {
+        setState(
+          () => _photoError = error is FormatException
+              ? error.message
+              : error is PlatformException &&
+                    [
+                      'photo_access_denied',
+                      'photo_access_restricted',
+                    ].contains(error.code)
+              ? 'Photo access is blocked. Allow photo access in Android settings, then try again.'
+              : 'Could not open this photo. Try choosing another image.',
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _pickingPhoto = false);
+    }
+  }
+
   Future<void> _save() async {
-    if (_busy || !_valid) return;
+    if (_busy || _pickingPhoto || !_valid) return;
     setState(() {
       _busy = true;
       _error = null;
@@ -122,13 +205,16 @@ class _AccountSetupScreenState extends ConsumerState<AccountSetupScreen> {
             name: _name.text,
             school: _school.text,
             consent: _consent,
+            photo: _photo,
+            useGooglePhoto: _useGooglePhoto,
           );
       if (mounted) await _afterSave(profile);
-    } catch (_) {
+    } catch (error) {
       if (mounted) {
         setState(
-          () => _error =
-              'We couldn’t finish setting up your account. Please try again.',
+          () => _error = error is ProfilePhotoSaveException
+              ? 'Your account was created, but we couldn\u2019t save your photo. Retry, or use your Google photo to continue.'
+              : 'We couldn\u2019t finish setting up your account. Please try again.',
         );
       }
     } finally {
@@ -171,18 +257,16 @@ class _AccountSetupScreenState extends ConsumerState<AccountSetupScreen> {
 
   void _privacy() => showDialog<void>(
     context: context,
-    builder: (context) => AlertDialog(
-      title: const Text('Privacy Notice'),
-      content: const SingleChildScrollView(
-        child: Text(
-          'Filo collects your name, email address, profile photo, school, and selected role to set up your account. It stores your class activity, including submissions, grades, and counts of leaving the app during exams, to provide learning and assessment features. Filo also records device and login verification information to protect account access.\n\n'
-          'When you use AI features, Filo sends your requests and the text needed for those features, including text from learning materials you select, to Google for processing with Gemini. Avoid including passwords or sensitive personal information in AI requests.',
+    builder: (context) => const FiloNoticeDialog(
+      title: 'Privacy Notice',
+      sections: [
+        FiloNoticeSection(
+          heading: 'Your information',
+          body: 'Filo collects your name, email address, profile photo, school, and selected role to set up your account. It stores your class activity, including submissions, grades, and counts of leaving the app during exams, to provide learning and assessment features. Filo also records device and login verification information to protect account access.',
         ),
-      ),
-      actions: [
-        TextButton(
-          onPressed: () => Navigator.pop(context),
-          child: const Text('Close'),
+        FiloNoticeSection(
+          heading: 'AI processing',
+          body: 'When you use AI features, Filo sends your requests and the text needed for those features, including text from learning materials you select, to Google for processing with Gemini. Avoid including passwords or sensitive personal information in AI requests.',
         ),
       ],
     ),
@@ -191,179 +275,80 @@ class _AccountSetupScreenState extends ConsumerState<AccountSetupScreen> {
   @override
   Widget build(BuildContext context) {
     if (_stage == 'home') return HomeScreen(profile: _profile!);
+    if (_stage == 'loading') {
+      return PopScope(
+        canPop: false,
+        child: Scaffold(
+          appBar: AppBar(title: const Brand(), toolbarHeight: 76),
+          body: const SessionLoadingView(
+            statusText: 'Getting your account ready.',
+          ),
+        ),
+      );
+    }
+    if (_stage == 'role') {
+      return RoleSelectionView(
+        selectedRole: _role,
+        onSelected: (role) => setState(() => _role = role),
+        onContinue: _confirmRole,
+      );
+    }
+    if (_stage == 'notifications') {
+      return NotificationPromptView(
+        busy: _busy,
+        onEnable: () => _finishNotifications(true),
+        onSkip: () => _finishNotifications(false),
+      );
+    }
     final user = ref.watch(onboardingUserProvider);
     final photo =
         user.userMetadata?['avatar_url'] ?? user.userMetadata?['picture'];
+    if (_stage == 'details') {
+      return AccountDetailsView(
+        name: _name,
+        school: _school,
+        email: user.email ?? '',
+        role: _role!.label,
+        photoUrl: photo is String ? photo : null,
+        photoBytes: _photo?.bytes,
+        photoBusy: _pickingPhoto,
+        photoError: _photoError,
+        onChangePhoto: _pickPhoto,
+        onResetPhoto: () {
+          if (_busy || _pickingPhoto) return;
+          setState(() {
+            _photo = null;
+            _useGooglePhoto = true;
+            _photoError = null;
+          });
+        },
+        consent: _consent,
+        valid: _valid && !_pickingPhoto,
+        busy: _busy,
+        error: _error,
+        onEdited: () => setState(() {}),
+        onConsentChanged: (value) => setState(() => _consent = value),
+        onPrivacy: _privacy,
+        onSave: _save,
+      );
+    }
     return PopScope(
       canPop: false,
       child: Scaffold(
-        appBar: AppBar(
-          title: const Text(
-            'Set up your account',
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-          ),
-          actions: [
-            TextButton(
-              onPressed: _busy
-                  ? null
-                  : () async {
-                      await ref.read(supabaseClientProvider).auth.signOut();
-                    },
-              child: const Text('Sign out'),
-            ),
-          ],
-        ),
         body: SafeArea(
-          child: Center(
+          child: Align(
+            alignment: _stage == 'role'
+                ? Alignment.topCenter
+                : Alignment.center,
             child: ConstrainedBox(
               constraints: const BoxConstraints(maxWidth: 520),
               child: ListView(
                 shrinkWrap: true,
                 padding: const EdgeInsets.all(24),
                 children: [
-                  if (_stage == 'loading')
-                    const Center(child: CircularProgressIndicator()),
                   if (_stage == 'lookupError') ...[
                     Text(_error!),
                     FilledButton(onPressed: _load, child: const Text('Retry')),
-                  ],
-                  if (_stage == 'role') ...[
-                    Text(
-                      'Choose your role',
-                      style: Theme.of(context).textTheme.headlineMedium,
-                    ),
-                    const SizedBox(height: 16),
-                    const Text(
-                      'Choose carefully. You cannot change your role later.',
-                    ),
-                    const SizedBox(height: 16),
-                    for (final role in AccountRole.values)
-                      Padding(
-                        padding: const EdgeInsets.only(bottom: 12),
-                        child: OutlinedButton(
-                          onPressed: () => setState(() => _role = role),
-                          child: Row(
-                            children: [
-                              Icon(
-                                _role == role
-                                    ? Icons.radio_button_checked
-                                    : Icons.radio_button_unchecked,
-                              ),
-                              const SizedBox(width: 12),
-                              Expanded(child: Text(role.label)),
-                            ],
-                          ),
-                        ),
-                      ),
-                    FilledButton(
-                      onPressed: _role == null ? null : _confirmRole,
-                      child: const Text('Continue'),
-                    ),
-                  ],
-                  if (_stage == 'details') ...[
-                    Text(
-                      'Your details',
-                      style: Theme.of(context).textTheme.headlineMedium,
-                    ),
-                    const SizedBox(height: 16),
-                    Center(
-                      child: ClipOval(
-                        child: SizedBox(
-                          width: 80,
-                          height: 80,
-                          child: photo is String
-                              ? Image.network(
-                                  photo,
-                                  fit: BoxFit.cover,
-                                  errorBuilder: (_, error, stack) =>
-                                      const Icon(Icons.person, size: 64),
-                                )
-                              : const Icon(Icons.person, size: 64),
-                        ),
-                      ),
-                    ),
-                    const SizedBox(height: 16),
-                    TextField(
-                      controller: _name,
-                      enabled: !_busy,
-                      maxLength: 80,
-                      decoration: const InputDecoration(labelText: 'Name'),
-                      onChanged: (_) => setState(() {}),
-                    ),
-                    TextField(
-                      controller: _school,
-                      enabled: !_busy,
-                      maxLength: 120,
-                      decoration: const InputDecoration(
-                        labelText: 'School (optional)',
-                      ),
-                      onChanged: (_) => setState(() {}),
-                    ),
-                    ListTile(
-                      contentPadding: EdgeInsets.zero,
-                      title: const Text('Email'),
-                      subtitle: Text(user.email ?? ''),
-                      trailing: const Icon(Icons.lock_outline),
-                    ),
-                    ListTile(
-                      contentPadding: EdgeInsets.zero,
-                      title: const Text('Role'),
-                      subtitle: Text(_role!.label),
-                      trailing: const Icon(Icons.lock_outline),
-                    ),
-                    TextButton(
-                      onPressed: _privacy,
-                      child: const Text('Read Privacy Notice'),
-                    ),
-                    CheckboxListTile(
-                      contentPadding: EdgeInsets.zero,
-                      value: _consent,
-                      onChanged: _busy
-                          ? null
-                          : (value) =>
-                                setState(() => _consent = value ?? false),
-                      title: const Text(
-                        'I have read and agree to the Privacy Notice. I understand that using AI features sends my requests and relevant text to Google for processing.',
-                      ),
-                    ),
-                    if (_error != null)
-                      Semantics(liveRegion: true, child: Text(_error!)),
-                    FilledButton(
-                      onPressed: _valid && !_busy ? _save : null,
-                      child: Text(
-                        _busy
-                            ? 'Creating account…'
-                            : _error != null
-                            ? 'Retry'
-                            : 'Create account',
-                      ),
-                    ),
-                  ],
-                  if (_stage == 'notifications') ...[
-                    Text(
-                      'Stay up to date',
-                      style: Theme.of(context).textTheme.headlineMedium,
-                    ),
-                    const SizedBox(height: 16),
-                    const Text(
-                      'Enable notifications for class updates, deadlines, and grades. You can change notification access in Android settings.',
-                    ),
-                    const SizedBox(height: 24),
-                    FilledButton(
-                      onPressed: _busy
-                          ? null
-                          : () => _finishNotifications(true),
-                      child: Text(
-                        _busy ? 'Continuing…' : 'Enable notifications',
-                      ),
-                    ),
-                    TextButton(
-                      onPressed: _busy
-                          ? null
-                          : () => _finishNotifications(false),
-                      child: const Text('Not now'),
-                    ),
                   ],
                 ],
               ),

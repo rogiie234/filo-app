@@ -16,6 +16,7 @@ class App extends ConsumerWidget {
     title: 'Filo',
     debugShowCheckedModeBanner: false,
     theme: AppTheme.light,
+    themeMode: ThemeMode.light,
     routerConfig: ref.watch(appRouterProvider),
     builder: (context, child) {
       final login = ref.watch(loginSessionProvider);

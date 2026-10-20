@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../../core/widgets/filo_icon.dart';
 import '../../../core/connectivity/connectivity_provider.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../classes/application/class_providers.dart';
@@ -25,14 +26,14 @@ class GradeStatusChip extends StatelessWidget {
   final String status;
   @override
   Widget build(BuildContext context) => Chip(
-    avatar: Icon(
+    avatar: FiloIcon(
       status.startsWith('Graded')
-          ? Icons.check_circle_outline
+          ? FiloIcons.checkCircle
           : status == 'Late'
-          ? Icons.schedule
+          ? FiloIcons.clock
           : status == 'Missing'
-          ? Icons.error_outline
-          : Icons.assignment_outlined,
+          ? FiloIcons.error
+          : FiloIcons.assessment,
       size: 18,
     ),
     label: Text(status),
@@ -279,7 +280,7 @@ class _SubmissionsScreenState extends ConsumerState<SubmissionsScreen> {
                 TextField(
                   decoration: const InputDecoration(
                     labelText: 'Search students',
-                    prefixIcon: Icon(Icons.search),
+                    prefixIcon: FiloIcon(FiloIcons.search),
                   ),
                   onChanged: (v) => setState(() => _search = v),
                 ),

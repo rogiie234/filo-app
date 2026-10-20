@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../../core/widgets/filo_icon.dart';
 import '../../../core/connectivity/connectivity_provider.dart';
 import '../../../core/supabase/supabase_provider.dart';
 import '../../../data/local/app_database.dart';
@@ -92,7 +93,7 @@ class _PostDetailScreenState extends ConsumerState<PostDetailScreen> {
                     ref.invalidate(postSyncProvider(widget.classId));
                   }
                 : null,
-            icon: const Icon(Icons.refresh),
+            icon: const FiloIcon(FiloIcons.refresh),
           ),
         ],
       ),

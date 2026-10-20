@@ -3,6 +3,7 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../../../core/supabase/supabase_provider.dart';
 import '../../../core/supabase/session_gate.dart';
+import '../domain/profile_photo.dart';
 
 final onboardingUserProvider = Provider<User>((ref) {
   final user =
@@ -60,6 +61,8 @@ class ProfileRepository {
     required String name,
     required String school,
     required bool consent,
+    ProfilePhotoDraft? photo,
+    bool useGooglePhoto = false,
   }) async {
     if (!consent ||
         name.trim().isEmpty ||
@@ -73,7 +76,8 @@ class ProfileRepository {
     }
     // An earlier insert may have committed even when its response was lost.
     final existing = await fetch();
-    if (existing != null) return existing;
+    if (existing != null)
+      return _completePhoto(existing, photo, useGooglePhoto);
     try {
       final json = await client
           .from('profiles')
@@ -91,12 +95,59 @@ class ProfileRepository {
           })
           .select()
           .single();
-      return AccountProfile.fromJson(json);
+      return _completePhoto(
+        AccountProfile.fromJson(json),
+        photo,
+        useGooglePhoto,
+      );
     } on PostgrestException catch (error) {
       if (error.code != '23505') rethrow;
       final saved = await fetch();
       if (saved == null) rethrow;
-      return saved;
+      return _completePhoto(saved, photo, useGooglePhoto);
+    }
+  }
+
+  Future<AccountProfile> _completePhoto(
+    AccountProfile profile,
+    ProfilePhotoDraft? photo,
+    bool useGooglePhoto,
+  ) async {
+    if (photo == null && (!useGooglePhoto || profile.avatarPath == null))
+      return profile;
+    final path = photo == null
+        ? null
+        : '${profile.id}/${photo.id}.${photo.extension}';
+    if (profile.avatarPath == path) return profile;
+    try {
+      // avatar_path is UPDATE-only by the existing column grants.
+      // Persist the profile first, then upload privately and confirm its path.
+      if (client.auth.currentUser?.id != profile.id)
+        throw StateError('Account changed');
+      if (photo != null)
+        await client.storage
+            .from('avatars')
+            .uploadBinary(
+              path!,
+              photo.bytes,
+              fileOptions: FileOptions(
+                upsert: true,
+                contentType: photo.contentType,
+              ),
+            );
+      if (client.auth.currentUser?.id != profile.id)
+        throw StateError('Account changed');
+      final json = await client
+          .from('profiles')
+          .update({'avatar_path': path})
+          .eq('id', profile.id)
+          .select()
+          .single();
+      return AccountProfile.fromJson(json);
+    } catch (_) {
+      // Do not delete an upload after an ambiguous response: its path update
+      // may already have committed. Fetch on retry reconciles the saved row.
+      throw const ProfilePhotoSaveException();
     }
   }
 }

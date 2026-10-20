@@ -7,6 +7,11 @@ environment:
   sdk: ^3.13.5
 
 dependencies:
+  flutter_animate: ^4.5.2
+  dio: ^5.11.0
+  pdfrx: ^2.6.5
+  open_filex: ^4.7.0
+  workmanager: ^0.10.7
   share_plus: ^13.3.1
   file_picker: ^13.1.0
   uuid: ^4.5.1
@@ -38,8 +43,24 @@ flutter:
   uses-material-design: true
   assets:
     - assets/brand/
-    - assets/mascots/
+    # Keep this list in sync when adding mascot PNGs.
+    - assets/mascots/waving.png
+    - assets/mascots/curious.png
+    - assets/mascots/cheerful.png
+    - assets/mascots/sleepy.png
+    - assets/mascots/thinking.png
+    - assets/mascots/confused.png
+    - assets/mascots/confused_notepad.png
+    - assets/mascots/cheerful_note.png
+    - assets/mascots/waiting.png
+    - assets/fonts/phosphor/LICENSE
   fonts:
     - family: Nunito
       fonts:
         - asset: assets/fonts/Nunito.ttf
+    - family: FiloPhosphorRegular
+      fonts:
+        - asset: assets/fonts/phosphor/Phosphor-Regular.ttf
+    - family: FiloPhosphorFill
+      fonts:
+        - asset: assets/fonts/phosphor/Phosphor-Fill.ttf

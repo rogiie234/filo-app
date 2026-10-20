@@ -3,6 +3,7 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:url_launcher/url_launcher.dart';
 
+import '../../../core/widgets/filo_icon.dart';
 import '../../../core/connectivity/connectivity_provider.dart';
 import '../../../core/supabase/supabase_provider.dart';
 import '../../classes/application/class_providers.dart';
@@ -455,15 +456,15 @@ class _GradeScreenState extends ConsumerState<GradeScreen> {
                       }
                       final file = item['kind'] == 'file';
                       return ListTile(
-                        leading: Icon(
+                        leading: FiloIcon(
                           file
                               ? ('${item['mime_type']}'.startsWith('image/')
-                                    ? Icons.image_outlined
+                                    ? FiloIcons.image
                                     : '${item['mime_type']}' ==
                                           'application/pdf'
-                                    ? Icons.picture_as_pdf_outlined
-                                    : Icons.insert_drive_file_outlined)
-                              : Icons.link,
+                                    ? FiloIcons.pdf
+                                    : FiloIcons.file)
+                              : FiloIcons.link,
                         ),
                         title: Text('${item['name'] ?? item['url'] ?? 'File'}'),
                         subtitle: Text(

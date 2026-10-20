@@ -1,12 +1,22 @@
+import 'package:flutter/foundation.dart'
+    show LicenseEntryWithLineBreaks, LicenseRegistry;
+import 'package:flutter/services.dart' show rootBundle;
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import 'app.dart';
 import 'core/config/app_config.dart';
+import 'core/sync/background_sync.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  LicenseRegistry.addLicense(() async* {
+    final license = await rootBundle.loadString(
+      'assets/fonts/phosphor/LICENSE',
+    );
+    yield LicenseEntryWithLineBreaks(['Phosphor Icons'], license);
+  });
   try {
     AppConfig.validate();
   } on StateError catch (error) {
@@ -26,6 +36,11 @@ Future<void> main() async {
       ),
     );
     return;
+  }
+  try {
+    await initializeBackgroundSync();
+  } catch (_) {
+    /* Foreground sync remains available. */
   }
   runApp(const ProviderScope(child: App()));
 }

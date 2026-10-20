@@ -46,11 +46,14 @@ class DriveApi {
       Uri.https('www.googleapis.com', path, query);
 
   Future<void> authorize({required bool interactive}) async {
-    final authorization = interactive
-        ? await account.authorizationClient.authorizeScopes([driveFileScope])
-        : await account.authorizationClient.authorizationForScopes([
-            driveFileScope,
-          ]);
+    // Reuse an existing grant; consent UI is only a fallback on enable.
+    var authorization = await account.authorizationClient
+        .authorizationForScopes([driveFileScope]);
+    if (authorization == null && interactive && !_closed) {
+      authorization = await account.authorizationClient.authorizeScopes([
+        driveFileScope,
+      ]);
+    }
     if (authorization == null) {
       throw const DrivePermissionRequired(
         'Drive permission is needed. Turn Drive backup on again.',
@@ -99,7 +102,7 @@ class DriveApi {
           accessToken: _token!,
         );
         _token = null;
-        return request(
+        return await request(
           method,
           uri,
           headers: headers,
@@ -204,6 +207,29 @@ class DriveApi {
       throw const DriveFailure('Unexpected Drive upload address.');
     }
     return uri;
+  }
+
+  Future<void> createEmptyFile(
+    String id,
+    String folder,
+    String name,
+    String digest,
+  ) async {
+    final response = await request(
+      'POST',
+      endpoint('/drive/v3/files'),
+      headers: {'Content-Type': 'application/json'},
+      body: utf8.encode(
+        jsonEncode({
+          'id': id,
+          'name': name,
+          'parents': [folder],
+          'mimeType': 'application/octet-stream',
+          'appProperties': {'filoBackup': 'v1', 'digest': digest},
+        }),
+      ),
+    );
+    if (response.status != 409) requireSuccess(response);
   }
 
   Future<DriveResponse> uploadStatus(Uri uri, int size) =>

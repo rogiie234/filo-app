@@ -73,7 +73,7 @@ class ClassClassmatesScreen extends ConsumerWidget {
                     for (final row in rows)
                       ListTile(
                         leading: const CircleAvatar(
-                          child: Icon(Icons.person_outline),
+                          child: FiloIcon(FiloIcons.person),
                         ),
                         title: Text(
                           row['display_name'] as String? ?? 'Student',

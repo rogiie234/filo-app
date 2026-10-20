@@ -13,7 +13,11 @@ import 'class_screen.dart';
 import '../../grading/presentation/work_queue_screen.dart';
 import '../../drive_backup/data/drive_backup_service.dart';
 import '../../drive_backup/presentation/drive_backup_screen.dart';
+import '../../files/presentation/my_files_screen.dart';
+import '../../../core/sync/sync_providers.dart';
+import '../../../core/sync/background_sync.dart';
 import 'classes_widgets.dart';
+import 'classes_empty_state.dart';
 import 'create_class_screen.dart';
 import 'recently_deleted_screen.dart';
 import '../domain/prototype_models.dart';
@@ -26,8 +30,15 @@ class ClassesScreen extends ConsumerStatefulWidget {
 }
 
 class _ClassesScreenState extends ConsumerState<ClassesScreen> {
+  final _search = TextEditingController();
   String _query = '';
   int _destination = 0;
+
+  @override
+  void dispose() {
+    _search.dispose();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -36,6 +47,7 @@ class _ClassesScreenState extends ConsumerState<ClassesScreen> {
     if (live) {
       ref.watch(classSyncLifecycleProvider);
       ref.watch(driveBackupProvider);
+      ref.watch(syncLifecycleProvider);
     }
     final cards = live
         ? ref.watch(classCardsProvider)
@@ -71,7 +83,7 @@ class _ClassesScreenState extends ConsumerState<ClassesScreen> {
             tooltip: 'Notifications',
             icon: const RedDotBadge(
               visible: false,
-              child: Icon(Icons.notifications_none_rounded),
+              child: FiloIcon(FiloIcons.notifications),
             ),
             onPressed: () =>
                 showMessage(context, 'Notifications will be available here.'),
@@ -92,14 +104,21 @@ class _ClassesScreenState extends ConsumerState<ClassesScreen> {
           ),
         ],
       ),
-      body: live && _destination == 1
+      body: live && _destination == 2
+          ? const MyFilesScreen()
+          : live && _destination == 1
           ? WorkQueueScreen(student: student, embedded: true)
           : _refresh(
               ListView(
                 physics: const AlwaysScrollableScrollPhysics(),
-                padding: const EdgeInsets.fromLTRB(24, 12, 24, 104),
+                keyboardDismissBehavior:
+                    ScrollViewKeyboardDismissBehavior.onDrag,
+                padding: const EdgeInsets.fromLTRB(24, 16, 24, 112),
                 children: [
-                  if (live && !online) const OfflineBanner(),
+                  if (live && !online) ...const [
+                    OfflineBanner(),
+                    SizedBox(height: 16),
+                  ],
                   if (live && sync.hasError)
                     FiloPanel(
                       child: Column(
@@ -125,6 +144,8 @@ class _ClassesScreenState extends ConsumerState<ClassesScreen> {
                         'Could not read saved classes. Try reopening the app.',
                       ),
                     ),
+                  if ((live && sync.hasError) || cards.hasError)
+                    const SizedBox(height: 16),
                   Row(
                     children: [
                       Expanded(
@@ -133,31 +154,57 @@ class _ClassesScreenState extends ConsumerState<ClassesScreen> {
                           children: [
                             Text(
                               'Your classes',
-                              style: Theme.of(context).textTheme.headlineMedium,
+                              style: const TextStyle(
+                                fontSize: 28,
+                                fontWeight: FontWeight.w800,
+                                height: 1.2,
+                                color: FiloColors.ink,
+                              ),
                             ),
                             const SizedBox(height: 8),
                             const Text(
                               'A good place to grow.',
                               style: TextStyle(
                                 color: FiloColors.secondary,
-                                fontSize: 16,
+                                fontSize: 15,
+                                fontWeight: FontWeight.w500,
+                                height: 1.5,
                               ),
                             ),
                           ],
                         ),
                       ),
-                      const Mascot(size: 92),
+                      if (rooms.isNotEmpty || loading) ...[
+                        const SizedBox(width: 16),
+                        const Mascot(size: 72),
+                      ],
                     ],
                   ),
                   const SizedBox(height: 24),
                   TextField(
-                    decoration: const InputDecoration(
+                    controller: _search,
+                    textInputAction: TextInputAction.search,
+                    onSubmitted: (_) => FocusScope.of(context).unfocus(),
+                    decoration: InputDecoration(
                       hintText: 'Find a class',
-                      prefixIcon: Icon(Icons.search_rounded),
-                      border: OutlineInputBorder(
+                      labelText: 'Find a class',
+                      floatingLabelBehavior: FloatingLabelBehavior.never,
+                      prefixIcon: const FiloIcon(FiloIcons.search),
+                      prefixIconColor: FiloColors.primary,
+                      suffixIcon: _query.isEmpty
+                          ? null
+                          : IconButton(
+                              tooltip: 'Clear search',
+                              icon: const FiloIcon(FiloIcons.close),
+                              onPressed: () {
+                                _search.clear();
+                                setState(() => _query = '');
+                              },
+                            ),
+                      border: const OutlineInputBorder(
                         borderRadius: BorderRadius.all(Radius.circular(999)),
                       ),
-                      enabledBorder: OutlineInputBorder(
+                      enabledBorder: const OutlineInputBorder(
                         borderRadius: BorderRadius.all(Radius.circular(999)),
                         borderSide: BorderSide(color: FiloColors.border),
                       ),
@@ -169,16 +216,16 @@ class _ClassesScreenState extends ConsumerState<ClassesScreen> {
                       !loading &&
                       !cards.hasError &&
                       !sync.hasError)
-                    EmptyState(
-                      title: !online
+                    ClassesEmptyState(
+                      title: _query.trim().isNotEmpty
+                          ? 'No classes found.'
+                          : !online
                           ? 'No saved classes found.'
-                          : _query.trim().isEmpty
-                          ? 'No classes yet.'
-                          : 'No classes found.',
-                      message: !online
-                          ? 'Connect to the internet to refresh your classes.'
-                          : _query.trim().isNotEmpty
+                          : 'No classes yet.',
+                      message: _query.trim().isNotEmpty
                           ? 'Try another course, section, or instructor.'
+                          : !online
+                          ? 'Connect to the internet to refresh your classes.'
                           : student
                           ? 'Join a class using the code from your instructor.'
                           : 'Create a class to get started.',
@@ -201,7 +248,7 @@ class _ClassesScreenState extends ConsumerState<ClassesScreen> {
                   ],
                   if (live && !student)
                     ListTile(
-                      leading: const Icon(Icons.delete_outline),
+                      leading: const FiloIcon(FiloIcons.delete),
                       title: const Text('Recently deleted'),
                       subtitle: const Text('Restore classes within 14 days'),
                       onTap: () => Navigator.of(context).push(
@@ -210,34 +257,18 @@ class _ClassesScreenState extends ConsumerState<ClassesScreen> {
                         ),
                       ),
                     ),
-                  const SizedBox(height: 8),
-                  const Row(
-                    children: [
-                      Icon(
-                        Icons.eco_outlined,
-                        size: 18,
-                        color: FiloColors.secondary,
-                      ),
-                      SizedBox(width: 8),
-                      Expanded(
-                        child: Text(
-                          'One class. A world of possibilities.',
-                          style: TextStyle(color: FiloColors.secondary),
-                        ),
-                      ),
-                    ],
-                  ),
                 ],
               ),
             ),
+      floatingActionButtonAnimator: FloatingActionButtonAnimator.noAnimation,
       floatingActionButtonLocation: FloatingActionButtonLocation.centerFloat,
-      floatingActionButton: _destination == 1
+      floatingActionButton: _destination != 0
           ? null
           : Padding(
               padding: const EdgeInsets.symmetric(horizontal: 24),
               child: FiloButton(
                 label: student ? 'Join class' : 'Create class',
-                icon: Icons.add_rounded,
+                icon: FiloIcons.add,
                 onPressed: !online
                     ? null
                     : student
@@ -247,45 +278,66 @@ class _ClassesScreenState extends ConsumerState<ClassesScreen> {
                     : () => context.push('/classes/it119'),
               ),
             ),
-      bottomNavigationBar: NavigationBar(
-        selectedIndex: _destination,
-        onDestinationSelected: (index) {
-          if (index <= 1 && live) {
-            setState(() => _destination = index);
-          } else if (index != 0) {
-            showMessage(context, 'This area will be available soon.');
-          }
-        },
-        destinations: [
-          const NavigationDestination(
-            icon: Icon(Icons.school_outlined),
-            selectedIcon: Icon(Icons.school_rounded),
-            label: 'Classes',
-          ),
-          NavigationDestination(
-            icon: Badge(
-              isLabelVisible:
-                  live &&
-                  !student &&
-                  ref.watch(workQueueProvider(false)).entries.isNotEmpty,
-              label: Text(
-                live && !student
-                    ? '${ref.watch(workQueueProvider(false)).entries.length}'
-                    : '',
+      bottomNavigationBar: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          if (live) _SyncErrorStatus(),
+          NavigationBar(
+            animationDuration: Duration.zero,
+            selectedIndex: _destination,
+            onDestinationSelected: (index) {
+              if (index <= 2 && live) {
+                setState(() => _destination = index);
+              } else if (index != 0) {
+                showMessage(context, 'This area will be available soon.');
+              }
+            },
+            destinations: [
+              const NavigationDestination(
+                icon: FiloIcon(FiloIcons.student),
+                selectedIcon: FiloIcon(FiloIcons.studentSelected),
+                label: 'Classes',
               ),
-              child: const Icon(Icons.checklist_rounded),
-            ),
-            label: student ? 'To-do' : 'To review',
+              NavigationDestination(
+                icon: Badge(
+                  isLabelVisible:
+                      live &&
+                      !student &&
+                      ref.watch(workQueueProvider(false)).entries.isNotEmpty,
+                  label: Text(
+                    live && !student
+                        ? '${ref.watch(workQueueProvider(false)).entries.length}'
+                        : '',
+                  ),
+                  child: const FiloIcon(FiloIcons.checklist),
+                ),
+                selectedIcon: Badge(
+                  isLabelVisible:
+                      live &&
+                      !student &&
+                      ref.watch(workQueueProvider(false)).entries.isNotEmpty,
+                  label: Text(
+                    live && !student
+                        ? '${ref.watch(workQueueProvider(false)).entries.length}'
+                        : '',
+                  ),
+                  child: const FiloIcon(FiloIcons.checklistSelected),
+                ),
+                label: student ? 'To-do' : 'To review',
+              ),
+              const NavigationDestination(
+                icon: FiloIcon(FiloIcons.folder),
+                selectedIcon: FiloIcon(FiloIcons.folderSelected),
+                label: 'Files',
+              ),
+              if (student)
+                const NavigationDestination(
+                  icon: FiloIcon(FiloIcons.sparkle),
+                  selectedIcon: FiloIcon(FiloIcons.sparkleSelected),
+                  label: 'AI Study',
+                ),
+            ],
           ),
-          const NavigationDestination(
-            icon: Icon(Icons.folder_outlined),
-            label: 'Files',
-          ),
-          if (student)
-            const NavigationDestination(
-              icon: Icon(Icons.auto_awesome_outlined),
-              label: 'AI Study',
-            ),
         ],
       ),
     );
@@ -335,7 +387,8 @@ class _ClassesScreenState extends ConsumerState<ClassesScreen> {
 
   Future<void> _roleMenu() async {
     if (widget.profile != null) {
-      await showModalBottomSheet<void>(
+      await showFiloBottomSheet<void>(
+        title: 'Your account',
         context: context,
         showDragHandle: true,
         builder: (sheetContext) => SafeArea(
@@ -348,15 +401,20 @@ class _ClassesScreenState extends ConsumerState<ClassesScreen> {
               ),
               ListTile(
                 title: const Text('Sign out'),
-                leading: const Icon(Icons.logout_rounded),
+                leading: const FiloIcon(FiloIcons.logout),
                 onTap: () async {
                   Navigator.pop(sheetContext);
+                  try {
+                    await stopBackgroundSync();
+                  } catch (_) {
+                    /* Sign-out must remain available. */
+                  }
                   await ref.read(supabaseClientProvider).auth.signOut();
                 },
               ),
               ListTile(
                 title: const Text('Drive backup'),
-                leading: const Icon(Icons.cloud_upload_outlined),
+                leading: const FiloIcon(FiloIcons.cloudUpload),
                 onTap: () {
                   Navigator.pop(sheetContext);
                   Navigator.of(context).push(
@@ -372,7 +430,8 @@ class _ClassesScreenState extends ConsumerState<ClassesScreen> {
       );
       return;
     }
-    await showModalBottomSheet<void>(
+    await showFiloBottomSheet<void>(
+      title: 'Preview role',
       context: context,
       showDragHandle: true,
       builder: (context) => SafeArea(
@@ -381,7 +440,7 @@ class _ClassesScreenState extends ConsumerState<ClassesScreen> {
           children: [
             ListTile(
               title: const Text('Student preview'),
-              leading: const Icon(Icons.school_rounded),
+              leading: const FiloIcon(FiloIcons.studentSelected),
               onTap: () {
                 ref
                     .read(previewProvider.notifier)
@@ -391,7 +450,7 @@ class _ClassesScreenState extends ConsumerState<ClassesScreen> {
             ),
             ListTile(
               title: const Text('Instructor preview'),
-              leading: const Icon(Icons.auto_stories_rounded),
+              leading: const FiloIcon(FiloIcons.book),
               onTap: () {
                 ref
                     .read(previewProvider.notifier)
@@ -401,7 +460,7 @@ class _ClassesScreenState extends ConsumerState<ClassesScreen> {
             ),
             ListTile(
               title: const Text('Back to welcome'),
-              leading: const Icon(Icons.logout_rounded),
+              leading: const FiloIcon(FiloIcons.logout),
               onTap: () {
                 Navigator.pop(context);
                 this.context.go('/sign-in');
@@ -414,7 +473,8 @@ class _ClassesScreenState extends ConsumerState<ClassesScreen> {
   }
 
   Future<void> _join() async {
-    await showModalBottomSheet<void>(
+    await showFiloBottomSheet<void>(
+      title: null,
       context: context,
       isScrollControlled: true,
       showDragHandle: true,
@@ -463,19 +523,17 @@ class _JoinSheetState extends ConsumerState<_JoinSheet> {
 
   @override
   Widget build(BuildContext context) => SafeArea(
-    child: SingleChildScrollView(
-      padding: EdgeInsets.fromLTRB(
-        24,
-        0,
-        24,
-        24 + MediaQuery.viewInsetsOf(context).bottom,
-      ),
+    child: Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 24),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(
-            'Find your classroom.',
-            style: Theme.of(context).textTheme.titleLarge,
+          Semantics(
+            header: true,
+            child: Text(
+              'Find your classroom.',
+              style: Theme.of(context).textTheme.titleLarge,
+            ),
           ),
           const SizedBox(height: 8),
           Text(
@@ -503,8 +561,9 @@ class _JoinSheetState extends ConsumerState<_JoinSheet> {
               child: Text('Connect to the internet to join a class.'),
             ),
           FiloButton(
-            label: _busy ? 'Sending?' : 'Request to join',
-            icon: Icons.arrow_forward_rounded,
+            label: _busy ? 'Sending\u2026' : 'Request to join',
+            busy: _busy,
+            icon: FiloIcons.forward,
             onPressed:
                 _busy ||
                     (!widget.preview &&
@@ -551,5 +610,50 @@ class _JoinSheetState extends ConsumerState<_JoinSheet> {
     } finally {
       if (mounted) setState(() => _busy = false);
     }
+  }
+}
+
+class _SyncErrorStatus extends ConsumerWidget {
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final online = ref.watch(connectivityProvider).asData?.value == true;
+    final sync = ref.watch(syncCoordinatorProvider).asData?.value;
+    if (sync == null) return const SizedBox.shrink();
+    return ListenableBuilder(
+      listenable: sync,
+      builder: (context, _) {
+        // Routine timestamps/sync activity stay out of the navigation area.
+        if (sync.errors.isEmpty) return const SizedBox.shrink();
+        return Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 24),
+          child: Row(
+            children: [
+              const ExcludeSemantics(
+                child: FiloIcon(
+                  FiloIcons.info,
+                  size: 18,
+                  color: FiloColors.secondary,
+                ),
+              ),
+              const SizedBox(width: 8),
+              Expanded(
+                child: Text(
+                  !online
+                      ? "You're offline. Some changes haven't synced."
+                      : 'Some changes could not sync.',
+                  style: Theme.of(context).textTheme.bodySmall,
+                ),
+              ),
+              TextButton(
+                onPressed: sync.syncing || !online
+                    ? null
+                    : () => sync.run(retryFailed: true),
+                child: const Text('Retry sync'),
+              ),
+            ],
+          ),
+        );
+      },
+    );
   }
 }

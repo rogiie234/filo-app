@@ -47,3 +47,22 @@ user-selected source file. Completed content is deduplicated per Filo account.
 No automatic full-library/background Android worker is included.
 
 The commands above are reference owner checks, not a record that they were run.
+
+
+M6 schema v4 adds generated Drift local_folders/local_files and indexes. Their
+class IDs/source IDs are plain text, without cloud-cache FKs, so class eviction
+retains downloaded files. Files live under application support/files/USER_ID;
+folder display names are independent of physical IDs. file_settings stores the
+storage notice/last-sync display; sync_payloads and sync_cursors preserve remote
+JSON/full-precision server timestamps. outbox_schedule stores due times/claim
+leases. Drive v3 bookkeeping remains in its dedicated tables, while all library
+backup actions now enter the generic outbox and complete local_files.backed_up_at.
+Existing schema v2/v3 databases upgrade without resetting cached/local data.
+Generated bindings were regenerated, not hand-edited. No tests were run.
+
+Drive v4 jobs also bind local_file_id uniquely (digest is verification data, not
+library identity), preserving distinct files with identical contents. Legacy v3
+job IDs/remote IDs remain intact through the table migration. Pending private
+snapshots/session keys are cleaned on local deletion with safe account paths;
+remote files remain. A previously verified session/device marker in secure
+storage permits offline cache reopening; a new/unverified session cannot use it.

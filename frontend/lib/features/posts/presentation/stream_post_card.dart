@@ -25,10 +25,10 @@ class PostTypeIcon extends StatelessWidget {
   Widget build(BuildContext context) => CircleAvatar(
     backgroundColor: FiloColors.surface,
     foregroundColor: FiloColors.primary,
-    child: Icon(switch (type) {
-      'assignment' => Icons.assignment_outlined,
-      'material' => Icons.description_outlined,
-      _ => Icons.campaign_outlined,
+    child: FiloIcon(switch (type) {
+      'assignment' => FiloIcons.assessment,
+      'material' => FiloIcons.document,
+      _ => FiloIcons.announcement,
     }),
   );
 }
@@ -96,7 +96,7 @@ class StreamPostCard extends StatelessWidget {
                   if (instructor)
                     PopupMenuButton<String>(
                       tooltip: 'Post menu',
-                      icon: const Icon(Icons.more_vert),
+                      icon: const FiloIcon(FiloIcons.moreVertical),
                       onSelected: (action) {
                         if (action == 'edit') {
                           onEdit?.call();
@@ -127,7 +127,7 @@ class StreamPostCard extends StatelessWidget {
                     IconButton(
                       tooltip: 'Open post',
                       onPressed: onOpen,
-                      icon: const Icon(Icons.chevron_right_rounded),
+                      icon: const FiloIcon(FiloIcons.chevronRight),
                     ),
                 ],
               ),
@@ -149,8 +149,8 @@ class StreamPostCard extends StatelessWidget {
               const SizedBox(height: 16),
               Row(
                 children: [
-                  const Icon(
-                    Icons.attach_file_rounded,
+                  const FiloIcon(
+                    FiloIcons.attachment,
                     size: 18,
                     color: FiloColors.secondary,
                   ),
@@ -167,7 +167,7 @@ class StreamPostCard extends StatelessWidget {
                 Row(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    const Icon(Icons.schedule_rounded, size: 18),
+                    const FiloIcon(FiloIcons.clock, size: 18),
                     const SizedBox(width: 6),
                     Expanded(child: Text(streamDueLabel(context, post))),
                   ],

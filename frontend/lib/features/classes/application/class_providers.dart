@@ -1,10 +1,7 @@
-import 'dart:async';
-
-import 'package:flutter/widgets.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:drift/drift.dart';
 
-import '../../../core/connectivity/connectivity_provider.dart';
+import '../../../core/sync/sync_providers.dart';
 import '../../../core/supabase/session_gate.dart';
 import '../../../core/supabase/supabase_provider.dart';
 import '../../../data/local/app_database.dart';
@@ -153,8 +150,8 @@ class ClassSync extends AsyncNotifier<void> {
   Future<void> refresh() async {
     state = const AsyncLoading();
     final result = await AsyncValue.guard(() async {
-      final repository = await ref.read(classRepositoryProvider.future);
-      if (ref.mounted) await repository?.sync();
+      final coordinator = await ref.read(syncCoordinatorProvider.future);
+      if (ref.mounted) await coordinator?.run();
     });
     if (ref.mounted) state = result;
   }
@@ -162,39 +159,7 @@ class ClassSync extends AsyncNotifier<void> {
 
 // Mounted by the signed-in Classes screen and retained while opening a class.
 final classSyncLifecycleProvider = Provider.autoDispose<void>((ref) {
-  var disposed = false;
-  Future<void> pull() async {
-    // Defer initial work until this provider has finished building.
-    await Future<void>.value();
-    if (!disposed && ref.read(connectivityProvider).asData?.value == true) {
-      await ref.read(classSyncProvider.notifier).refresh();
-    }
-  }
-
-  ref.watch(classRepositoryProvider);
-  ref.listen(connectivityProvider, (previous, next) {
-    if (next.asData?.value == true && previous?.asData?.value != true) {
-      unawaited(pull());
-    }
-  });
-  var foreground = true;
-  final listener = AppLifecycleListener(
-    onResume: () {
-      foreground = true;
-      unawaited(pull());
-    },
-    onPause: () => foreground = false,
-    onHide: () => foreground = false,
-  );
-  final timer = Timer.periodic(const Duration(seconds: 30), (_) {
-    if (foreground) unawaited(pull());
-  });
-  unawaited(pull());
-  ref.onDispose(() {
-    disposed = true;
-    listener.dispose();
-    timer.cancel();
-  });
+  ref.watch(syncLifecycleProvider);
 });
 
 // Owner-visible tombstones are cached separately from normal class cards.

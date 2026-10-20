@@ -6,6 +6,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:share_plus/share_plus.dart';
 
+import '../../../core/widgets/filo_icon.dart';
 import '../../../core/connectivity/connectivity_provider.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../classes/application/class_providers.dart';
@@ -195,12 +196,12 @@ class _GradebookScreenState extends ConsumerState<GradebookScreen> {
               segments: const [
                 ButtonSegment(
                   value: false,
-                  icon: Icon(Icons.list),
+                  icon: FiloIcon(FiloIcons.list),
                   label: Text('List'),
                 ),
                 ButtonSegment(
                   value: true,
-                  icon: Icon(Icons.table_chart_outlined),
+                  icon: FiloIcon(FiloIcons.spreadsheet),
                   label: Text('Table'),
                 ),
               ],
@@ -261,7 +262,7 @@ class _GradebookScreenState extends ConsumerState<GradebookScreen> {
                     children: [
                       TextButton.icon(
                         onPressed: _refresh,
-                        icon: const Icon(Icons.refresh),
+                        icon: const FiloIcon(FiloIcons.refresh),
                         label: const Text('Refresh'),
                       ),
                       Expanded(
@@ -300,7 +301,7 @@ class _GradebookScreenState extends ConsumerState<GradebookScreen> {
     );
   }
 
-  Widget _former(GradingData data, List<Json> members) => ExpansionTile(
+  Widget _former(GradingData data, List<Json> members) => FiloExpansionTile(
     title: Text('Former students (${members.length})'),
     children: [for (final member in members) _student(data, member)],
   );
@@ -308,12 +309,12 @@ class _GradebookScreenState extends ConsumerState<GradebookScreen> {
     final id = member['student_id'].toString();
     final total = data.total(id);
     return ListTile(
-      leading: const CircleAvatar(child: Icon(Icons.person_outline)),
+      leading: const CircleAvatar(child: FiloIcon(FiloIcons.person)),
       title: Text(gradebookName(member)),
       subtitle: Text(
         '${gradebookTotal(total)}${total.hasUnreturned ? '\nIncludes grades not returned' : ''}',
       ),
-      trailing: const Icon(Icons.chevron_right),
+      trailing: const FiloIcon(FiloIcons.chevronRight),
       onTap: () => Navigator.of(context).push(
         MaterialPageRoute<void>(
           builder: (_) => _StudentGradesScreen(

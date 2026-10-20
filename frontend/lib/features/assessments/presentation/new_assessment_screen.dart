@@ -83,7 +83,7 @@ class _NewAssessmentScreenState extends ConsumerState<NewAssessmentScreen> {
               keyboardType: TextInputType.number,
               decoration: const InputDecoration(
                 labelText: 'Time limit (minutes)',
-                suffixIcon: Icon(Icons.schedule_rounded),
+                suffixIcon: FiloIcon(FiloIcons.clock),
               ),
               validator: (value) {
                 final minutes = int.tryParse(value ?? '');
@@ -108,7 +108,7 @@ class _NewAssessmentScreenState extends ConsumerState<NewAssessmentScreen> {
               padding: const EdgeInsets.all(16),
               child: Row(
                 children: [
-                  const Icon(Icons.auto_awesome_rounded),
+                  const FiloIcon(FiloIcons.sparkle),
                   const SizedBox(width: 12),
                   const Expanded(
                     child: Text(
@@ -122,7 +122,7 @@ class _NewAssessmentScreenState extends ConsumerState<NewAssessmentScreen> {
             const SizedBox(height: 12),
             OutlinedButton.icon(
               onPressed: _samples,
-              icon: const Icon(Icons.auto_awesome_rounded),
+              icon: const FiloIcon(FiloIcons.sparkle),
               label: const Text('Generate with AI'),
             ),
             const SizedBox(height: 28),
@@ -148,7 +148,7 @@ class _NewAssessmentScreenState extends ConsumerState<NewAssessmentScreen> {
               ),
             OutlinedButton.icon(
               onPressed: () => setState(() => _questions.add(_QuestionDraft())),
-              icon: const Icon(Icons.add_rounded),
+              icon: const FiloIcon(FiloIcons.add),
               label: const Text('Add question'),
             ),
             if (_error != null)
@@ -175,7 +175,7 @@ class _NewAssessmentScreenState extends ConsumerState<NewAssessmentScreen> {
             children: [
               FiloButton(
                 label: 'Publish',
-                icon: Icons.arrow_forward_rounded,
+                icon: FiloIcons.forward,
                 onPressed: () => _save(false),
               ),
               TextButton(
@@ -205,7 +205,7 @@ class _NewAssessmentScreenState extends ConsumerState<NewAssessmentScreen> {
             if (_questions.length > 1)
               IconButton(
                 tooltip: 'Remove question ${index + 1}',
-                icon: const Icon(Icons.delete_outline_rounded),
+                icon: const FiloIcon(FiloIcons.delete),
                 onPressed: () async {
                   final remove = await confirmAction(
                     context,
@@ -333,18 +333,19 @@ class _NewAssessmentScreenState extends ConsumerState<NewAssessmentScreen> {
   );
 
   Future<void> _samples() async {
-    final add = await showModalBottomSheet<bool>(
+    final add = await showFiloBottomSheet<bool>(
+      title: 'Sample questions',
       context: context,
       showDragHandle: true,
       isScrollControlled: true,
       builder: (context) => SafeArea(
-        child: SingleChildScrollView(
-          padding: const EdgeInsets.fromLTRB(24, 0, 24, 24),
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 24),
           child: Column(
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              const Icon(Icons.auto_awesome_rounded, size: 32),
+              const FiloIcon(FiloIcons.sparkle, size: 32),
               const SizedBox(height: 16),
               Text(
                 'A starting point.',

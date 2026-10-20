@@ -5,6 +5,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/connectivity/connectivity_provider.dart';
 import '../../../core/widgets/filo_widgets.dart';
+import '../../../core/theme/app_theme.dart';
 import '../../classes/application/class_providers.dart';
 import '../../classes/domain/prototype_models.dart';
 import '../../classes/presentation/classes_widgets.dart' show OfflineBanner;
@@ -15,6 +16,7 @@ import '../../submissions/domain/assignment_status.dart';
 import '../../submissions/presentation/assignment_detail_screen.dart';
 import '../application/grading_providers.dart';
 import 'grade_screen.dart';
+import 'todo_widgets.dart';
 
 class WorkQueueEntry {
   const WorkQueueEntry(
@@ -182,6 +184,7 @@ class WorkQueueScreen extends ConsumerStatefulWidget {
 
 class _WorkQueueScreenState extends ConsumerState<WorkQueueScreen> {
   final Set<String> _busy = {};
+  String _taskFilter = 'All';
   Timer? _clock;
   @override
   void initState() {
@@ -222,10 +225,198 @@ class _WorkQueueScreenState extends ConsumerState<WorkQueueScreen> {
     }
   }
 
+  Widget _studentBody(WorkQueueData queue, bool online) {
+    const groups = ['Overdue', 'Today', 'This week', 'Later', 'Done'];
+    final visible = queue.entries
+        .where(
+          (entry) => switch (_taskFilter) {
+            'Done' => entry.group == 'Done',
+            'To do' => entry.group != 'Done',
+            _ => true,
+          },
+        )
+        .toList();
+    final empty = queue.entries.isEmpty;
+    return RefreshIndicator(
+      onRefresh: _refresh,
+      child: ListView(
+        physics: const AlwaysScrollableScrollPhysics(),
+        padding: const EdgeInsets.fromLTRB(24, 16, 24, 32),
+        children: [
+          Semantics(
+            header: true,
+            child: const Text(
+              'To-do',
+              style: TextStyle(
+                fontSize: 28,
+                fontWeight: FontWeight.w800,
+                height: 1.2,
+                color: FiloColors.ink,
+              ),
+            ),
+          ),
+          const SizedBox(height: 8),
+          const Text(
+            'Assignments, organized by due date.',
+            style: TextStyle(
+              fontSize: 15,
+              fontWeight: FontWeight.w500,
+              height: 1.5,
+              color: FiloColors.secondary,
+            ),
+          ),
+          const SizedBox(height: 20),
+          Wrap(
+            spacing: 8,
+            runSpacing: 8,
+            children: [
+              for (final filter in ['All', 'To do', 'Done'])
+                ChoiceChip(
+                  label: Text(filter),
+                  selected: _taskFilter == filter,
+                  selectedColor: FiloColors.selected,
+                  backgroundColor: FiloColors.surface,
+                  labelStyle: TextStyle(
+                    color: _taskFilter == filter
+                        ? FiloColors.ink
+                        : FiloColors.secondary,
+                    fontWeight: FontWeight.w700,
+                  ),
+                  side: BorderSide(
+                    color: _taskFilter == filter
+                        ? FiloColors.primary
+                        : FiloColors.border,
+                  ),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 10,
+                    vertical: 8,
+                  ),
+                  materialTapTargetSize: MaterialTapTargetSize.padded,
+                  onSelected: (_) => setState(() => _taskFilter = filter),
+                ),
+            ],
+          ),
+          const SizedBox(height: 20),
+          if (!online) ...const [OfflineBanner(), SizedBox(height: 16)],
+          if (queue.failed) ...[
+            FiloPanel(
+              color: FiloColors.tint,
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  const Text(
+                    'Could not refresh work.',
+                    style: TextStyle(color: FiloColors.ink, height: 1.4),
+                  ),
+                  const SizedBox(height: 8),
+                  Align(
+                    alignment: Alignment.centerLeft,
+                    child: TextButton.icon(
+                      onPressed: online ? _refresh : null,
+                      icon: const FiloIcon(FiloIcons.refresh, size: 18),
+                      label: const Text('Retry'),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(height: 16),
+          ],
+          if (queue.loading && empty)
+            for (var i = 0; i < 3; i++)
+              const Padding(
+                padding: EdgeInsets.only(bottom: 12),
+                child: TodoTaskSkeleton(),
+              ),
+          if (!queue.loading && !queue.failed && visible.isEmpty)
+            TodoEmptyState(
+              mascotPose: _taskFilter == 'Done' ? 'waiting' : 'cheerful_note',
+              title: !queue.loaded
+                  ? 'No saved work.'
+                  : _taskFilter == 'Done'
+                  ? 'No completed work yet.'
+                  : "You're all caught up.",
+              message: !queue.loaded
+                  ? 'Connect to the internet and refresh.'
+                  : _taskFilter == 'Done'
+                  ? 'Completed assignments will appear here.'
+                  : !empty
+                  ? 'Check Done to view submitted work.'
+                  : 'Assignments will appear here when your instructor posts them.',
+            ),
+          for (final group in groups)
+            if (visible.any((entry) => entry.group == group)) ...[
+              Padding(
+                padding: const EdgeInsets.only(top: 8, bottom: 12),
+                child: Semantics(
+                  header: true,
+                  child: Row(
+                    children: [
+                      Expanded(
+                        child: Text(
+                          group,
+                          style: const TextStyle(
+                            fontSize: 18,
+                            fontWeight: FontWeight.w800,
+                            color: FiloColors.ink,
+                          ),
+                        ),
+                      ),
+                      Text(
+                        '${visible.where((entry) => entry.group == group).length}',
+                        style: const TextStyle(
+                          fontSize: 14,
+                          fontWeight: FontWeight.w700,
+                          color: FiloColors.secondary,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+              for (final entry in visible.where(
+                (entry) => entry.group == group,
+              ))
+                Padding(
+                  padding: const EdgeInsets.only(bottom: 12),
+                  child: TodoTaskCard(
+                    title: entry.title,
+                    classLabel:
+                        '${entry.room.section} \u00b7 ${entry.room.course}',
+                    status: entry.status,
+                    points: entry.points,
+                    dueLabel: entry.time == null
+                        ? 'No due date'
+                        : 'Due ${MaterialLocalizations.of(context).formatMediumDate(entry.time!.toLocal())} ${MaterialLocalizations.of(context).formatTimeOfDay(TimeOfDay.fromDateTime(entry.time!.toLocal()))}',
+                    onTap: () => Navigator.of(context).push(
+                      MaterialPageRoute<void>(
+                        builder: (_) => AssignmentDetailScreen(
+                          classId: entry.room.id,
+                          postId: entry.postId,
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+            ],
+        ],
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final queue = ref.watch(workQueueProvider(widget.student));
     final online = ref.watch(connectivityProvider).asData?.value == true;
+    if (widget.student) {
+      final body = _studentBody(queue, online);
+      return widget.embedded
+          ? body
+          : Scaffold(
+              appBar: AppBar(),
+              body: SafeArea(child: body),
+            );
+    }
     final groups = widget.student
         ? ['Overdue', 'Today', 'This week', 'Later', 'Done']
         : ['To grade', 'Graded, not returned'];
@@ -271,10 +462,8 @@ class _WorkQueueScreenState extends ConsumerState<WorkQueueScreen> {
               for (final entry in queue.entries.where((e) => e.group == group))
                 Card(
                   child: ListTile(
-                    leading: Icon(
-                      widget.student
-                          ? Icons.assignment_outlined
-                          : Icons.person_outline,
+                    leading: FiloIcon(
+                      widget.student ? FiloIcons.assessment : FiloIcons.person,
                     ),
                     title: Text(
                       widget.student ? entry.title : entry.studentName!,
@@ -293,10 +482,10 @@ class _WorkQueueScreenState extends ConsumerState<WorkQueueScreen> {
                         ),
                         if (widget.student) Text('${entry.points ?? 0} points'),
                         Chip(
-                          avatar: Icon(
+                          avatar: FiloIcon(
                             entry.status == 'Late' || entry.status == 'Missing'
-                                ? Icons.schedule
-                                : Icons.check_circle_outline,
+                                ? FiloIcons.clock
+                                : FiloIcons.checkCircle,
                             size: 16,
                           ),
                           label: Text(

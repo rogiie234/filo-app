@@ -167,12 +167,12 @@ class _CreatePostScreenState extends ConsumerState<CreatePostScreen> {
                   children: [
                     OutlinedButton.icon(
                       onPressed: _attachments.length < 10 ? _attach : null,
-                      icon: const Icon(Icons.attach_file_rounded),
+                      icon: const FiloIcon(FiloIcons.attachment),
                       label: const Text('Attach file'),
                     ),
                     OutlinedButton.icon(
                       onPressed: _attachments.length < 10 ? _addLink : null,
-                      icon: const Icon(Icons.link_rounded),
+                      icon: const FiloIcon(FiloIcons.link),
                       label: const Text('Add link'),
                     ),
                   ],
@@ -189,10 +189,10 @@ class _CreatePostScreenState extends ConsumerState<CreatePostScreen> {
                       padding: const EdgeInsets.fromLTRB(16, 8, 8, 8),
                       child: Row(
                         children: [
-                          Icon(
+                          FiloIcon(
                             attachment.drive
-                                ? Icons.add_to_drive
-                                : Icons.attach_file_rounded,
+                                ? FiloIcons.drive
+                                : FiloIcons.attachment,
                             size: 20,
                           ),
                           const SizedBox(width: 8),
@@ -212,7 +212,7 @@ class _CreatePostScreenState extends ConsumerState<CreatePostScreen> {
                           ),
                           IconButton(
                             tooltip: 'Remove attachment',
-                            icon: const Icon(Icons.close_rounded),
+                            icon: const FiloIcon(FiloIcons.close),
                             onPressed: () =>
                                 setState(() => _attachments.remove(attachment)),
                           ),
@@ -261,7 +261,7 @@ class _CreatePostScreenState extends ConsumerState<CreatePostScreen> {
                         const SizedBox(height: 16),
                         OutlinedButton.icon(
                           onPressed: _pickDue,
-                          icon: const Icon(Icons.calendar_today_outlined),
+                          icon: const FiloIcon(FiloIcons.calendar),
                           label: Text(
                             _due == null ? 'Set due date and time' : _dueLabel,
                           ),
@@ -368,7 +368,7 @@ class _CreatePostScreenState extends ConsumerState<CreatePostScreen> {
                           : widget.postId != null
                           ? 'Save changes'
                           : 'Post',
-                      icon: Icons.send_rounded,
+                      icon: FiloIcons.send,
                       onPressed:
                           !online ||
                               !writable ||

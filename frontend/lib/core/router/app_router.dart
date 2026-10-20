@@ -10,6 +10,8 @@ import '../../features/classes/presentation/class_screen.dart';
 import '../../features/onboarding/presentation/intro_screen.dart';
 import '../../features/posts/presentation/create_post_screen.dart';
 import '../widgets/filo_widgets.dart';
+import '../theme/animation_constants.dart';
+import '../theme/app_theme.dart';
 import '../supabase/session_gate.dart';
 
 final appRouterProvider = Provider<GoRouter>((ref) {
@@ -19,7 +21,25 @@ final appRouterProvider = Provider<GoRouter>((ref) {
       GoRoute(path: '/', builder: (context, state) => const IntroScreen()),
       GoRoute(
         path: '/sign-in',
-        builder: (context, state) => const SignInScreen(),
+        // Sign-in is a separate auth step, not a fourth intro/hero morph.
+        pageBuilder: (context, state) => CustomTransitionPage<void>(
+          key: state.pageKey,
+          transitionDuration: FiloAnimation.signInTransitionDuration,
+          reverseTransitionDuration: FiloAnimation.signInTransitionDuration,
+          child: const SignInScreen(),
+          transitionsBuilder: (context, animation, secondaryAnimation, child) {
+            if (MediaQuery.disableAnimationsOf(context)) return child;
+            return ColoredBox(
+              color: FiloColors.background,
+              child: FadeTransition(
+                opacity: animation.drive(
+                  CurveTween(curve: FiloAnimation.signInTransitionCurve),
+                ),
+                child: child,
+              ),
+            );
+          },
+        ),
       ),
       // Both entries pass through session verification and profile lookup.
       // App keeps the account Navigator mounted while the URL changes.

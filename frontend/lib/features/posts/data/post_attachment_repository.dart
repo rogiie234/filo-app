@@ -33,7 +33,7 @@ class PostAttachmentRepository {
     }
     return client.storage
         .from('materials')
-        .createSignedUrl(row['storage_path'] as String, 300);
+        .createSignedUrl(row['storage_path'] as String, 3600);
   }
 
   Future<List<ClassRow>> readChanges(String classId, DateTime? since) async {

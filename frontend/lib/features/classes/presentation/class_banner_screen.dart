@@ -163,7 +163,7 @@ class _ClassBannerState extends ConsumerState<ClassBannerScreen> {
             ),
             TextButton.icon(
               onPressed: editable ? _pickBanner : null,
-              icon: const Icon(Icons.add_photo_alternate_outlined),
+              icon: const FiloIcon(FiloIcons.addImage),
               label: Text(_picking ? 'Opening photos…' : 'Upload banner image'),
             ),
             const Text('JPG, PNG, or WebP · up to 2 MB'),

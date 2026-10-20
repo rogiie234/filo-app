@@ -157,7 +157,7 @@ class _CreateClassScreenState extends ConsumerState<CreateClassScreen> {
           leading: IconButton(
             tooltip: 'Back to classes',
             onPressed: _busy || _picking ? null : () => Navigator.pop(context),
-            icon: const Icon(Icons.arrow_back_rounded),
+            icon: const FiloIcon(FiloIcons.back),
           ),
         ),
         body: Form(
@@ -236,7 +236,7 @@ class _CreateClassScreenState extends ConsumerState<CreateClassScreen> {
               ),
               TextButton.icon(
                 onPressed: editable ? _pickBanner : null,
-                icon: const Icon(Icons.add_photo_alternate_outlined),
+                icon: const FiloIcon(FiloIcons.addImage),
                 label: Text(
                   _picking ? 'Opening photos…' : 'Upload banner image',
                 ),
@@ -310,7 +310,7 @@ class _CreateClassScreenState extends ConsumerState<CreateClassScreen> {
                       : _bannerImage != null && !_bannerSaved
                       ? 'Retry saving banner'
                       : 'Retry loading class',
-                  icon: _busy ? null : Icons.add_rounded,
+                  icon: _busy ? null : FiloIcons.add,
                   onPressed: _busy || _picking
                       ? null
                       : _writeUnconfirmed

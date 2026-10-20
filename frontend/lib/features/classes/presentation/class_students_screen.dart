@@ -202,7 +202,7 @@ class _ClassStudentsScreenState extends ConsumerState<ClassStudentsScreen> {
             if (pending.isNotEmpty)
               FiloButton(
                 label: 'Approve all',
-                icon: Icons.done_all_rounded,
+                icon: FiloIcons.checks,
                 onPressed: canDecide ? () => _decide() : null,
               ),
             if (pending.isEmpty &&
@@ -234,7 +234,7 @@ class _ClassStudentsScreenState extends ConsumerState<ClassStudentsScreen> {
                             onPressed: canDecide
                                 ? () => _decide(student: student)
                                 : null,
-                            icon: const Icon(Icons.check_rounded),
+                            icon: const FiloIcon(FiloIcons.check),
                             label: const Text('Approve'),
                           ),
                           OutlinedButton(

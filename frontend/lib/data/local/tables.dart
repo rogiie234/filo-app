@@ -414,3 +414,54 @@ class Outbox extends Table {
     'CHECK (json_valid(payload))',
   ];
 }
+
+// SCHEMA10.3: local-only rows deliberately have no FK into cloud caches.
+// Leaving a class or clearing its cache must never delete downloaded files.
+@DataClassName('LocalFolderRecord')
+@TableIndex.sql(
+  'CREATE INDEX local_folders_parent_name ON local_folders(parent_id, name COLLATE NOCASE);',
+)
+@TableIndex.sql(
+  'CREATE INDEX local_folders_name ON local_folders(name COLLATE NOCASE);',
+)
+@TableIndex.sql(
+  'CREATE UNIQUE INDEX local_folders_class ON local_folders(class_id) WHERE class_id IS NOT NULL;',
+)
+class LocalFolders extends Table {
+  TextColumn get id => text()();
+  TextColumn get parentId => text().nullable().references(LocalFolders, #id)();
+  TextColumn get name => text()();
+  TextColumn get classId => text().nullable()();
+  DateTimeColumn get createdAt => dateTime()();
+  DateTimeColumn get updatedAt => dateTime()();
+  @override
+  Set<Column> get primaryKey => {id};
+}
+
+@DataClassName('LocalFileRecord')
+@TableIndex.sql(
+  'CREATE INDEX local_files_folder_name ON local_files(folder_id, name COLLATE NOCASE);',
+)
+@TableIndex.sql(
+  'CREATE INDEX local_files_name ON local_files(name COLLATE NOCASE);',
+)
+@TableIndex.sql(
+  'CREATE UNIQUE INDEX local_files_attachment ON local_files(source_attachment_id) WHERE source_attachment_id IS NOT NULL;',
+)
+class LocalFiles extends Table {
+  TextColumn get id => text()();
+  TextColumn get folderId => text().nullable().references(LocalFolders, #id)();
+  TextColumn get name => text()();
+  TextColumn get relativePath => text()();
+  TextColumn get mimeType => text().nullable()();
+  IntColumn get size => integer()();
+  TextColumn get source => text()();
+  TextColumn get sourceAttachmentId => text().nullable()();
+  TextColumn get classId => text().nullable()();
+  TextColumn get sourcePostId => text().nullable()();
+  DateTimeColumn get backedUpAt => dateTime().nullable()();
+  DateTimeColumn get createdAt => dateTime()();
+  DateTimeColumn get updatedAt => dateTime()();
+  @override
+  Set<Column> get primaryKey => {id};
+}

@@ -5,50 +5,54 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:url_launcher/url_launcher.dart';
 
+import '../../../core/theme/app_theme.dart';
+import '../../../core/widgets/filo_widgets.dart';
 import '../data/drive_backup_service.dart';
+import '../../../core/sync/sync_providers.dart';
+import '../../files/application/files_providers.dart';
 
 class DriveBackupScreen extends ConsumerWidget {
   const DriveBackupScreen({super.key});
 
   Future<void> _enable(BuildContext context, DriveBackupService service) async {
-    final accepted = await showDialog<bool>(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Allow Drive backup?'),
-        content: const Text(
+    final accepted = await showFiloConfirmation(
+      context,
+      title: 'Allow Drive backup?',
+      icon: FiloIcons.cloudUpload,
+      message:
           'Filo needs permission to create and manage the backup files it '
           'creates in your Google Drive. This permission does not give Filo '
           'access to all your Drive files. You can use local files without '
           'turning on backup.',
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context, false),
-            child: const Text('Not now'),
-          ),
-          FilledButton(
-            onPressed: () => Navigator.pop(context, true),
-            child: const Text('Continue to Google'),
-          ),
-        ],
-      ),
+      confirmLabel: 'Continue to Google',
+      cancelLabel: 'Not now',
     );
     if (accepted == true && service.active) {
       await service.enable();
     }
   }
 
-  Future<void> _choose(BuildContext context, DriveBackupService service) async {
+  Future<void> _choose(
+    BuildContext context,
+    WidgetRef ref,
+    DriveBackupService service,
+  ) async {
     try {
-      final result = await FilePicker.platform.pickFiles();
-      if (result == null || !service.active) {
+      final picked = await FilePicker.pickFile();
+      if (picked == null || !service.active) {
         return;
       }
-      final picked = result.files.single;
       if (picked.path == null) {
         throw StateError('No local path');
       }
-      await service.enqueue(File(picked.path!), picked.name);
+      final repository = await ref.read(filesRepositoryProvider.future);
+      if (repository == null) {
+        return;
+      }
+      await repository.importFile(File(picked.path!), picked.name, null);
+      await service.queueLibrary();
+      await (await ref.read(syncCoordinatorProvider.future))
+          ?.run(retryFailed: true);
     } catch (_) {
       if (context.mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -65,125 +69,398 @@ class DriveBackupScreen extends ConsumerWidget {
     final backup = ref.watch(driveBackupProvider);
     return Scaffold(
       appBar: AppBar(title: const Text('Drive backup')),
-      body: backup.when(
-        loading: () => const Center(child: CircularProgressIndicator()),
-        error: (_, _) => Center(
-          child: TextButton(
-            onPressed: () => ref.invalidate(driveBackupProvider),
-            child: const Text('Could not open backup. Retry'),
+      body: SafeArea(
+        top: false,
+        child: backup.when(
+          loading: () => const Center(
+            child: CircularProgressIndicator(
+              semanticsLabel: 'Loading Drive backup',
+            ),
           ),
-        ),
-        data: (service) => service == null
-            ? const Center(child: Text('Sign in to use Drive backup.'))
-            : ListenableBuilder(
-                listenable: service,
-                builder: (context, _) => ListView(
-                  padding: const EdgeInsets.all(24),
-                  children: [
-                    const Text(
-                      'Save copies of files from this phone to your own Google '
-                      'Drive, in a folder named Filo Backup. Backup is one-way.',
-                    ),
-                    const SizedBox(height: 12),
-                    SwitchListTile(
-                      contentPadding: EdgeInsets.zero,
-                      title: const Text('Turn on Drive backup'),
-                      value: service.enabled,
-                      onChanged: service.busy && !service.enabled
-                          ? null
-                          : (value) async {
-                              if (value) {
-                                await _enable(context, service);
-                              } else {
-                                await service.disable();
-                              }
-                            },
-                    ),
-                    SwitchListTile(
-                      contentPadding: EdgeInsets.zero,
-                      title: const Text('Back up on Wi-Fi only'),
-                      subtitle: const Text(
-                        'Wait for Wi-Fi before uploading to save mobile data.',
-                      ),
-                      value: service.wifiOnly,
-                      onChanged: service.busy ? null : service.setWifiOnly,
-                    ),
-                    const SizedBox(height: 16),
-                    const Text(
-                      'Choose downloaded files with Android’s file picker. '
-                      'Only selected files are backed up. Keep Filo open to '
-                      'upload; pending files resume when you reopen it.',
-                    ),
-                    const SizedBox(height: 12),
-                    FilledButton.icon(
-                      onPressed: service.enabled && !service.busy
-                          ? () => _choose(context, service)
-                          : null,
-                      icon: const Icon(Icons.add_rounded),
-                      label: const Text('Choose a file to back up'),
-                    ),
-                    OutlinedButton.icon(
-                      onPressed:
-                          service.enabled &&
-                              !service.busy &&
-                              service.pendingCount > 0
-                          ? service.run
-                          : null,
-                      icon: const Icon(Icons.cloud_upload_outlined),
-                      label: const Text('Back up now / Retry'),
-                    ),
-                    if (service.busy) const LinearProgressIndicator(),
-                    const SizedBox(height: 16),
-                    Semantics(liveRegion: true, child: Text(service.message)),
-                    const SizedBox(height: 12),
-                    Text(
-                      service.lastSuccess == null
-                          ? 'No backups yet.'
-                          : 'Last selected-file backup: '
-                                '${MaterialLocalizations.of(context).formatMediumDate(DateTime.parse(service.lastSuccess!).toLocal())}, '
-                                '${TimeOfDay.fromDateTime(DateTime.parse(service.lastSuccess!).toLocal()).format(context)}',
-                    ),
-                    Text('${service.pendingCount} files pending'),
-                    const SizedBox(height: 16),
-                    for (final job in service.jobs)
-                      ListTile(
-                        contentPadding: EdgeInsets.zero,
-                        leading: Icon(
-                          job['status'] == 'complete'
-                              ? Icons.cloud_done_outlined
-                              : Icons.cloud_upload_outlined,
-                        ),
-                        title: Text(job['name'] as String),
-                        subtitle: Text(
-                          job['status'] == 'complete'
-                              ? '${job['size']} bytes backed up'
-                                    '${(job['elapsed_ms'] as int? ?? 0) > 0 ? ' · ${((job['elapsed_ms'] as int) / 1000).toStringAsFixed(2)} s (latest upload attempt)' : ''}'
-                              : '${job['uploaded']} / ${job['size']} bytes',
-                        ),
-                      ),
-                    TextButton.icon(
-                      onPressed: () async {
-                        final opened = await launchUrl(
-                          Uri.parse('https://drive.google.com/drive/my-drive'),
-                          mode: LaunchMode.externalApplication,
-                        );
-                        if (!opened && context.mounted) {
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            const SnackBar(
-                              content: Text(
-                                'Open drive.google.com in your browser.',
-                              ),
-                            ),
-                          );
-                        }
-                      },
-                      icon: const Icon(Icons.open_in_new),
-                      label: const Text('View Google Drive'),
-                    ),
-                  ],
+          error: (_, _) => _BackupUnavailable(
+            message: 'Could not open backup.',
+            onRetry: () => ref.invalidate(driveBackupProvider),
+          ),
+          data: (service) => service == null
+              ? const _BackupUnavailable(
+                  message: 'Sign in to use Drive backup.',
+                )
+              : ListenableBuilder(
+                  listenable: service,
+                  builder: (context, _) => _content(context, ref, service),
                 ),
-              ),
+        ),
       ),
     );
   }
+
+  Widget _content(
+    BuildContext context,
+    WidgetRef ref,
+    DriveBackupService service,
+  ) {
+    final canBackUp = service.enabled && !service.busy;
+    final email = service.client.auth.currentUser?.email;
+    final last = DateTime.tryParse(service.lastSuccess ?? '')?.toLocal();
+    final lastLabel = last == null
+        ? 'No backups yet.'
+        : 'Last backup: '
+              '${MaterialLocalizations.of(context).formatMediumDate(last)}, '
+              '${TimeOfDay.fromDateTime(last).format(context)}';
+    return Center(
+      child: ConstrainedBox(
+        constraints: const BoxConstraints(maxWidth: 600),
+        child: CustomScrollView(
+          slivers: [
+            SliverPadding(
+              padding: const EdgeInsets.fromLTRB(24, 16, 24, 0),
+              sliver: SliverToBoxAdapter(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    const Align(
+                      alignment: Alignment.centerLeft,
+                      child: _BackupIcon(icon: FiloIcons.cloudUpload, size: 72),
+                    ),
+                    const SizedBox(height: 20),
+                    const Text(
+                      'Back up your files.',
+                      style: TextStyle(
+                        fontSize: 28,
+                        height: 1.2,
+                        fontWeight: FontWeight.w800,
+                        color: FiloColors.ink,
+                      ),
+                    ),
+                    const SizedBox(height: 10),
+                    const Text(
+                      'Save copies of files from this phone to your own Google '
+                      'Drive, in a folder named Filo Backup. Backup is one-way.',
+                      style: TextStyle(
+                        fontSize: 15,
+                        height: 1.5,
+                        color: FiloColors.secondary,
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
+                    const SizedBox(height: 16),
+                    if (email != null && email.isNotEmpty) ...[
+                      Text(
+                        email,
+                        style: const TextStyle(
+                          fontSize: 15,
+                          height: 1.4,
+                          fontWeight: FontWeight.w800,
+                          color: FiloColors.ink,
+                        ),
+                      ),
+                      const SizedBox(height: 8),
+                    ],
+                    const Text(
+                      'Use your Google account to save copies of your files. '
+                      'Google may ask you to allow Drive access.',
+                      style: TextStyle(
+                        fontSize: 14,
+                        height: 1.5,
+                        color: FiloColors.secondary,
+                      ),
+                    ),
+                    const SizedBox(height: 24),
+                    FiloPanel(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 16,
+                        vertical: 8,
+                      ),
+                      child: Column(
+                        children: [
+                          SwitchListTile(
+                            contentPadding: EdgeInsets.zero,
+                            title: const Text(
+                              'Turn on Drive backup',
+                              style: TextStyle(fontWeight: FontWeight.w800),
+                            ),
+                            value: service.enabled,
+                            onChanged: service.busy && !service.enabled
+                                ? null
+                                : (value) async {
+                                    if (value) {
+                                      await _enable(context, service);
+                                    } else {
+                                      await service.disable();
+                                    }
+                                  },
+                          ),
+                          const Divider(color: FiloColors.border, height: 16),
+                          SwitchListTile(
+                            contentPadding: EdgeInsets.zero,
+                            title: const Text(
+                              'Back up on Wi-Fi only',
+                              style: TextStyle(fontWeight: FontWeight.w700),
+                            ),
+                            subtitle: const Text(
+                              'Wait for Wi-Fi before uploading to save mobile data.',
+                              style: TextStyle(
+                                color: FiloColors.secondary,
+                                height: 1.4,
+                              ),
+                            ),
+                            value: service.wifiOnly,
+                            onChanged: service.busy
+                                ? null
+                                : service.setWifiOnly,
+                          ),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(height: 16),
+                    FiloPanel(
+                      color: FiloColors.tint,
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.stretch,
+                        children: [
+                          Row(
+                            children: [
+                              ExcludeSemantics(
+                                child: FiloIcon(
+                                  service.enabled
+                                      ? FiloIcons.cloudUpload
+                                      : FiloIcons.drive,
+                                  color: FiloColors.primary,
+                                  size: 22,
+                                ),
+                              ),
+                              const SizedBox(width: 10),
+                              Expanded(
+                                child: Text(
+                                  service.enabled
+                                      ? 'Backup status'
+                                      : 'Drive backup is off',
+                                  style: const TextStyle(
+                                    fontSize: 17,
+                                    fontWeight: FontWeight.w800,
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                          const SizedBox(height: 12),
+                          Semantics(
+                            liveRegion: true,
+                            child: Text(
+                              service.message,
+                              style: const TextStyle(fontSize: 15, height: 1.5),
+                            ),
+                          ),
+                          if (service.busy) ...[
+                            const SizedBox(height: 16),
+                            const LinearProgressIndicator(
+                              semanticsLabel: 'Drive backup in progress',
+                              minHeight: 4,
+                            ),
+                          ],
+                          const SizedBox(height: 16),
+                          const Divider(color: FiloColors.border, height: 1),
+                          const SizedBox(height: 16),
+                          Text(
+                            lastLabel,
+                            style: const TextStyle(
+                              fontWeight: FontWeight.w700,
+                              height: 1.5,
+                            ),
+                          ),
+                          const SizedBox(height: 6),
+                          Text(
+                            '${service.pendingCount} files pending',
+                            style: const TextStyle(color: FiloColors.secondary),
+                          ),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(height: 24),
+                    FiloButton(
+                      label: 'Back up now / Retry',
+                      icon: FiloIcons.cloudUpload,
+                      busy: service.busy,
+                      onPressed: canBackUp
+                          ? () async {
+                              await service.queueLibrary();
+                              await (await ref.read(
+                                syncCoordinatorProvider.future,
+                              ))?.run(retryFailed: true);
+                            }
+                          : null,
+                    ),
+                    const SizedBox(height: 12),
+                    FiloButton(
+                      secondary: true,
+                      label: 'Choose a file to back up',
+                      icon: FiloIcons.add,
+                      onPressed: canBackUp
+                          ? () => _choose(context, ref, service)
+                          : null,
+                    ),
+                    const SizedBox(height: 16),
+                    const Text(
+                      'Choose downloaded files with Android\u2019s file picker. '
+                      'All files in My Files are backed up. Keep Filo open to '
+                      'upload; pending files resume when you reopen it.',
+                      style: TextStyle(
+                        fontSize: 13,
+                        height: 1.5,
+                        color: FiloColors.secondary,
+                      ),
+                    ),
+                    if (service.jobs.isNotEmpty) ...[
+                      const SizedBox(height: 28),
+                      const Text(
+                        'Files in backup',
+                        style: TextStyle(
+                          fontSize: 20,
+                          fontWeight: FontWeight.w800,
+                        ),
+                      ),
+                      const SizedBox(height: 12),
+                    ],
+                  ],
+                ),
+              ),
+            ),
+            SliverPadding(
+              padding: const EdgeInsets.symmetric(horizontal: 24),
+              sliver: SliverList.builder(
+                itemCount: service.jobs.length,
+                itemBuilder: (context, index) {
+                  final job = service.jobs[index];
+                  final complete = job['status'] == 'complete';
+                  return Padding(
+                    padding: const EdgeInsets.only(bottom: 10),
+                    child: FiloPanel(
+                      padding: const EdgeInsets.all(16),
+                      child: Row(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          _BackupIcon(
+                            icon: complete
+                                ? FiloIcons.cloudReady
+                                : FiloIcons.cloudUpload,
+                          ),
+                          const SizedBox(width: 12),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  job['name'] as String,
+                                  style: const TextStyle(
+                                    fontSize: 15,
+                                    fontWeight: FontWeight.w800,
+                                    height: 1.4,
+                                  ),
+                                ),
+                                const SizedBox(height: 6),
+                                Text(
+                                  complete
+                                      ? '${job['size']} bytes backed up'
+                                            '${(job['elapsed_ms'] as int? ?? 0) > 0 ? ' \u00b7 ${((job['elapsed_ms'] as int) / 1000).toStringAsFixed(2)} s (latest upload attempt)' : ''}'
+                                      : '${job['uploaded']} / ${job['size']} bytes',
+                                  style: const TextStyle(
+                                    fontSize: 13,
+                                    color: FiloColors.secondary,
+                                    height: 1.4,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  );
+                },
+              ),
+            ),
+            SliverPadding(
+              padding: const EdgeInsets.fromLTRB(24, 16, 24, 32),
+              sliver: SliverToBoxAdapter(
+                child: TextButton.icon(
+                  style: TextButton.styleFrom(minimumSize: const Size(48, 48)),
+                  onPressed: () async {
+                    final opened = await launchUrl(
+                      Uri.parse('https://drive.google.com/drive/my-drive'),
+                      mode: LaunchMode.externalApplication,
+                    );
+                    if (!opened && context.mounted) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(
+                          content: Text(
+                            'Open drive.google.com in your browser.',
+                          ),
+                        ),
+                      );
+                    }
+                  },
+                  icon: const FiloIcon(FiloIcons.openExternal),
+                  label: const Text('View Google Drive'),
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _BackupIcon extends StatelessWidget {
+  const _BackupIcon({required this.icon, this.size = 40});
+  final IconData icon;
+  final double size;
+  @override
+  Widget build(BuildContext context) => ExcludeSemantics(
+    child: Container(
+      width: size,
+      height: size,
+      decoration: BoxDecoration(
+        color: FiloColors.selected,
+        borderRadius: BorderRadius.circular(size * .32),
+      ),
+      child: FiloIcon(icon, size: size * .5, color: FiloColors.primary),
+    ),
+  );
+}
+
+class _BackupUnavailable extends StatelessWidget {
+  const _BackupUnavailable({required this.message, this.onRetry});
+  final String message;
+  final VoidCallback? onRetry;
+  @override
+  Widget build(BuildContext context) => Center(
+    child: SingleChildScrollView(
+      padding: const EdgeInsets.all(24),
+      child: ConstrainedBox(
+        constraints: const BoxConstraints(maxWidth: 480),
+        child: FiloPanel(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const _BackupIcon(icon: FiloIcons.drive, size: 64),
+              const SizedBox(height: 20),
+              Text(
+                message,
+                textAlign: TextAlign.center,
+                style: const TextStyle(
+                  fontSize: 18,
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+              if (onRetry != null) ...[
+                const SizedBox(height: 20),
+                FiloButton(label: 'Retry', onPressed: onRetry),
+              ],
+            ],
+          ),
+        ),
+      ),
+    ),
+  );
 }

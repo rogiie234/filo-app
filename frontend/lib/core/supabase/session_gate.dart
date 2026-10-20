@@ -1,3 +1,5 @@
+import 'dart:async';
+import 'dart:io';
 import 'dart:convert';
 import 'dart:math';
 
@@ -7,6 +9,7 @@ import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import 'supabase_provider.dart';
+import '../connectivity/connectivity_provider.dart';
 
 final deviceHashProvider = FutureProvider<String>((ref) async {
   const storage = FlutterSecureStorage();
@@ -42,26 +45,70 @@ String sessionIdFromToken(String token) {
   return id;
 }
 
-/// Server verification must succeed before account data can be opened.
+bool offlineSessionMatches(String saved, String sessionId, String deviceHash) {
+  try {
+    final record = jsonDecode(saved) as Map<String, dynamic>;
+    return record['session_id'] == sessionId &&
+        record['device_hash'] == deviceHash;
+  } catch (_) {
+    return false;
+  }
+}
+
+/// Offline access is limited to an already verified session on this device.
+/// This unlocks the local account cache only; backend RLS remains authoritative.
 final verifiedUserIdProvider = FutureProvider<String?>((ref) async {
   final session = await ref.watch(loginSessionProvider.future);
   if (session == null) return null;
-  sessionIdFromToken(session.accessToken);
+  final sessionId = sessionIdFromToken(session.accessToken);
   final hash = await ref.watch(deviceHashProvider.future);
+  final online = await ref.watch(connectivityProvider.future);
   final client = ref.watch(supabaseClientProvider);
-  final device = await client.rpc(
-    'check_device_session',
-    params: {'p_device_hash': hash},
-  );
-  if (device is! Map ||
-      device['needs_otp'] != false ||
-      device['verified'] != true) {
-    return null;
+  const storage = FlutterSecureStorage();
+  final key = 'filo.offline_verified.${session.user.id}';
+  Future<String?> offline() async {
+    final saved = await storage.read(key: key);
+    if (!ref.mounted ||
+        client.auth.currentSession?.accessToken != session.accessToken ||
+        saved == null)
+      return null;
+    return offlineSessionMatches(saved, sessionId, hash)
+        ? session.user.id
+        : null;
   }
-  final verified = await client.rpc('is_session_verified');
-  if (!ref.mounted ||
-      client.auth.currentSession?.accessToken != session.accessToken) {
-    return null;
+
+  if (!online) return await offline();
+  try {
+    final device = await client
+        .rpc('check_device_session', params: {'p_device_hash': hash})
+        .timeout(const Duration(seconds: 20));
+    if (!ref.mounted ||
+        client.auth.currentSession?.accessToken != session.accessToken)
+      return null;
+    if (device is! Map ||
+        device['needs_otp'] != false ||
+        device['verified'] != true) {
+      await storage.delete(key: key);
+      return null;
+    }
+    final verified = await client
+        .rpc('is_session_verified')
+        .timeout(const Duration(seconds: 20));
+    if (!ref.mounted ||
+        client.auth.currentSession?.accessToken != session.accessToken)
+      return null;
+    if (verified != true) {
+      await storage.delete(key: key);
+      return null;
+    }
+    await storage.write(
+      key: key,
+      value: jsonEncode({'session_id': sessionId, 'device_hash': hash}),
+    );
+    return ref.mounted ? session.user.id : null;
+  } on TimeoutException {
+    return await offline();
+  } on SocketException {
+    return await offline();
   }
-  return verified == true ? session.user.id : null;
 });

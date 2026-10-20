@@ -1,4 +1,5 @@
 import 'package:filo/app.dart';
+import 'package:filo/core/connectivity/connectivity_provider.dart';
 import 'package:filo/core/supabase/auth_providers.dart';
 
 import 'dart:convert';
@@ -73,6 +74,7 @@ void main() {
             profileRepositoryProvider.overrideWithValue(
               _NewAccountProfiles(profileClient!),
             ),
+          connectivityProvider.overrideWith((ref) => Stream.value(true)),
           deviceHashProvider.overrideWith((ref) async => "device-hash"),
           loginSessionProvider.overrideWith((ref) => Stream.value(session)),
           verifiedUserIdProvider.overrideWith(

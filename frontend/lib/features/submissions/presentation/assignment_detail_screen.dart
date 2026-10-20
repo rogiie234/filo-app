@@ -798,7 +798,7 @@ class _AssignmentDetailScreenState
                       await _refresh();
                     }
                   : null,
-              icon: const Icon(Icons.refresh),
+              icon: const FiloIcon(FiloIcons.refresh),
             ),
           ],
         ),
@@ -920,12 +920,12 @@ class _AssignmentDetailScreenState
                               for (final item in _items)
                                 ListTile(
                                   contentPadding: EdgeInsets.zero,
-                                  leading: Icon(
+                                  leading: FiloIcon(
                                     item.kind == 'text'
-                                        ? Icons.notes
+                                        ? FiloIcons.notes
                                         : item.kind == 'link'
-                                        ? Icons.link
-                                        : Icons.insert_drive_file_outlined,
+                                        ? FiloIcons.link
+                                        : FiloIcons.file,
                                   ),
                                   title: Text(
                                     item.name ??
@@ -1096,7 +1096,9 @@ class _AssignmentDetailScreenState
                                     if (_post!.allowFiles)
                                       TextButton.icon(
                                         onPressed: canWrite ? _pickFile : null,
-                                        icon: const Icon(Icons.attach_file),
+                                        icon: const FiloIcon(
+                                          FiloIcons.attachment,
+                                        ),
                                         label: const Text('Add file'),
                                       ),
                                     TextButton.icon(
@@ -1110,14 +1112,14 @@ class _AssignmentDetailScreenState
                                                   5
                                           ? _addLink
                                           : null,
-                                      icon: const Icon(Icons.link),
+                                      icon: const FiloIcon(FiloIcons.link),
                                       label: const Text('Add link'),
                                     ),
                                     TextButton.icon(
                                       onPressed: canWrite
                                           ? () => _text(textItem)
                                           : null,
-                                      icon: const Icon(Icons.notes),
+                                      icon: const FiloIcon(FiloIcons.notes),
                                       label: Text(
                                         textItem == null
                                             ? 'Add text'
@@ -1129,9 +1131,7 @@ class _AssignmentDetailScreenState
                                         onPressed: canWrite
                                             ? () => _photo(ImageSource.camera)
                                             : null,
-                                        icon: const Icon(
-                                          Icons.camera_alt_outlined,
-                                        ),
+                                        icon: const FiloIcon(FiloIcons.camera),
                                         label: const Text('Take photo'),
                                       ),
                                     if (_post!.allowFiles)
@@ -1139,9 +1139,7 @@ class _AssignmentDetailScreenState
                                         onPressed: canWrite
                                             ? () => _photo(ImageSource.gallery)
                                             : null,
-                                        icon: const Icon(
-                                          Icons.photo_library_outlined,
-                                        ),
+                                        icon: const FiloIcon(FiloIcons.images),
                                         label: const Text('Choose photo'),
                                       ),
                                   ],
@@ -1242,7 +1240,7 @@ class _AssignmentDetailScreenState
                             : const SizedBox.shrink()
                       : FiloButton(
                           label: _busy ? 'Saving…' : 'Turn in',
-                          icon: Icons.check_rounded,
+                          icon: FiloIcons.check,
                           onPressed:
                               canWrite &&
                                   _fileRestriction == null &&

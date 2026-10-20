@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../../core/widgets/filo_icon.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/connectivity/connectivity_provider.dart';
 import '../../../core/supabase/supabase_provider.dart';
@@ -12,13 +13,17 @@ import '../domain/prototype_models.dart';
 // Private Storage URLs are scoped to the current account and renewed on reconnect.
 final classImageProvider = FutureProvider.autoDispose
     .family<String?, (String, String)>((ref, key) async {
-      if (ref.watch(connectivityProvider).asData?.value != true) return null;
+      if (ref.watch(connectivityProvider).asData?.value != true) {
+        return null;
+      }
       final client = ref.watch(supabaseClientProvider);
       final userId = await ref.watch(verifiedUserIdProvider.future);
-      if (userId == null || !ref.mounted) return null;
+      if (userId == null || !ref.mounted) {
+        return null;
+      }
       final renewal = Timer(const Duration(minutes: 50), ref.invalidateSelf);
       ref.onDispose(renewal.cancel);
-      return client.storage.from(key.$1).createSignedUrl(key.$2, 3600);
+      return await client.storage.from(key.$1).createSignedUrl(key.$2, 3600);
     });
 
 class ClassImage extends ConsumerWidget {
@@ -37,7 +42,9 @@ class ClassImage extends ConsumerWidget {
     final resolved = path != null && path!.isNotEmpty
         ? ref.watch(classImageProvider((bucket, path!))).asData?.value ?? url
         : url;
-    if (resolved == null || resolved.isEmpty) return fallback;
+    if (resolved == null || resolved.isEmpty) {
+      return fallback;
+    }
     return Image.network(
       resolved,
       fit: BoxFit.cover,
@@ -102,17 +109,32 @@ class RedDotBadge extends StatelessWidget {
 class ApprovalChip extends StatelessWidget {
   const ApprovalChip({super.key});
   @override
-  Widget build(BuildContext context) => const Chip(
-    backgroundColor: FiloColors.warning,
-    side: BorderSide.none,
-    avatar: Icon(
-      Icons.hourglass_top_rounded,
-      size: 18,
-      color: FiloColors.warningInk,
+  Widget build(BuildContext context) => Container(
+    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+    decoration: BoxDecoration(
+      color: FiloColors.warning,
+      borderRadius: BorderRadius.circular(14),
     ),
-    label: Text(
-      'Waiting for approval',
-      style: TextStyle(color: FiloColors.warningInk),
+    child: const Row(
+      children: [
+        ExcludeSemantics(
+          child: FiloIcon(
+            FiloIcons.pending,
+            size: 18,
+            color: FiloColors.warningInk,
+          ),
+        ),
+        SizedBox(width: 8),
+        Expanded(
+          child: Text(
+            'Waiting for approval',
+            style: TextStyle(
+              color: FiloColors.warningInk,
+              fontWeight: FontWeight.w700,
+            ),
+          ),
+        ),
+      ],
     ),
   );
 }
@@ -129,7 +151,7 @@ class OfflineBanner extends StatelessWidget {
     ),
     child: const Row(
       children: [
-        Icon(Icons.cloud_off_rounded, color: FiloColors.ink),
+        FiloIcon(FiloIcons.offline, color: FiloColors.ink),
         SizedBox(width: 12),
         Expanded(child: Text("You're offline. Showing saved content.")),
       ],
@@ -152,7 +174,7 @@ class ClassCardSkeleton extends StatelessWidget {
         ),
         child: Column(
           children: [
-            Container(height: 140, color: FiloColors.mint),
+            Container(height: 148, color: FiloColors.mint),
             Padding(
               padding: const EdgeInsets.all(20),
               child: Row(
@@ -189,153 +211,236 @@ class ClassCard extends StatelessWidget {
   final VoidCallback? onTap;
   final int pendingRequests;
   @override
-  Widget build(BuildContext context) => Semantics(
-    button: !room.pending,
-    enabled: !room.pending,
-    child: Opacity(
-      opacity: room.pending ? .72 : 1,
-      child: Material(
-        color: FiloColors.surface,
-        borderRadius: BorderRadius.circular(28),
-        clipBehavior: Clip.antiAlias,
-        child: InkWell(
-          onTap: room.pending ? null : onTap,
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Stack(
-                children: [
-                  Positioned.fill(
-                    child: ColoredBox(
-                      color: Color(room.color),
-                      child: ClassImage(
-                        path: room.bannerPath,
-                        bucket: 'banners',
-                        fallback: const Align(
-                          alignment: Alignment.topRight,
-                          child: Padding(
-                            padding: EdgeInsets.all(20),
-                            child: Icon(
-                              Icons.auto_stories_rounded,
-                              color: FiloColors.onBanner,
-                              size: 64,
-                            ),
-                          ),
+  Widget build(BuildContext context) {
+    final enabled = !room.pending && onTap != null;
+    return Semantics(
+      button: true,
+      enabled: enabled,
+      child: Container(
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(28),
+          boxShadow: const [
+            BoxShadow(
+              color: Color(0x1014423A),
+              blurRadius: 12,
+              offset: Offset(0, 4),
+            ),
+          ],
+        ),
+        child: Material(
+          color: room.pending ? FiloColors.tint : FiloColors.surface,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(28),
+            side: const BorderSide(color: FiloColors.border),
+          ),
+          clipBehavior: Clip.antiAlias,
+          child: InkWell(
+            onTap: enabled ? onTap : null,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                Stack(
+                  children: [
+                    Positioned.fill(
+                      child: ColoredBox(
+                        color: Color(room.color),
+                        child: ClassImage(
+                          path: room.bannerPath,
+                          bucket: 'banners',
+                          fallback: const SizedBox.expand(),
                         ),
                       ),
                     ),
-                  ),
-                  if (room.bannerPath != null)
+                    // Keep text readable on custom colors and bright photos.
                     const Positioned.fill(
                       child: DecoratedBox(
                         decoration: BoxDecoration(
                           gradient: LinearGradient(
-                            begin: Alignment.topCenter,
-                            end: Alignment.bottomCenter,
+                            begin: Alignment.topRight,
+                            end: Alignment.bottomLeft,
                             colors: [FiloColors.bannerOverlay, FiloColors.ink],
                           ),
                         ),
                       ),
                     ),
-                  Padding(
-                    padding: const EdgeInsets.all(24),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          room.section,
-                          style: const TextStyle(
-                            color: FiloColors.onBanner,
-                            fontSize: 28,
-                            fontWeight: FontWeight.w900,
-                          ),
-                        ),
-                        const SizedBox(height: 20),
-                        Row(
-                          children: [
-                            FiloAvatar(
-                              name: room.instructor,
-                              url: room.instructorPhotoUrl,
-                              path: room.instructorAvatarPath,
-                              size: 36,
-                            ),
-                            const SizedBox(width: 12),
-                            Expanded(
-                              child: Text(
-                                room.instructor,
-                                style: const TextStyle(
-                                  color: FiloColors.onBanner,
-                                  fontWeight: FontWeight.w700,
+                    Padding(
+                      padding: const EdgeInsets.all(24),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Row(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Expanded(
+                                child: Text(
+                                  room.section,
+                                  style: const TextStyle(
+                                    color: FiloColors.onBanner,
+                                    fontSize: 26,
+                                    height: 1.25,
+                                    fontWeight: FontWeight.w900,
+                                  ),
                                 ),
                               ),
-                            ),
-                          ],
-                        ),
-                      ],
-                    ),
-                  ),
-                ],
-              ),
-              Padding(
-                padding: const EdgeInsets.all(20),
-                child: Row(
-                  children: [
-                    const Icon(
-                      Icons.menu_book_rounded,
-                      color: FiloColors.primary,
-                    ),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      child: Text(
-                        room.course,
-                        style: Theme.of(context).textTheme.titleMedium,
-                      ),
-                    ),
-                    const SizedBox(width: 8),
-                    Semantics(
-                      label: pendingRequests > 0
-                          ? 'Pending join requests'
-                          : null,
-                      child: RedDotBadge(
-                        visible: pendingRequests > 0,
-                        child: Icon(
-                          room.pending
-                              ? Icons.lock_outline_rounded
-                              : Icons.arrow_forward_rounded,
-                          color: FiloColors.primary,
-                        ),
+                              const SizedBox(width: 16),
+                              ExcludeSemantics(
+                                child: Container(
+                                  width: 44,
+                                  height: 44,
+                                  decoration: BoxDecoration(
+                                    color: const Color(0x1FFFFFFF),
+                                    borderRadius: BorderRadius.circular(15),
+                                    border: Border.all(
+                                      color: const Color(0x33FFFFFF),
+                                    ),
+                                  ),
+                                  child: const FiloIcon(
+                                    FiloIcons.book,
+                                    size: 25,
+                                    color: FiloColors.onBanner,
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                          const SizedBox(height: 20),
+                          Row(
+                            crossAxisAlignment: CrossAxisAlignment.center,
+                            children: [
+                              Container(
+                                padding: const EdgeInsets.all(2),
+                                decoration: const BoxDecoration(
+                                  color: Color(0x66FFFFFF),
+                                  shape: BoxShape.circle,
+                                ),
+                                child: FiloAvatar(
+                                  name: room.instructor,
+                                  url: room.instructorPhotoUrl,
+                                  path: room.instructorAvatarPath,
+                                  size: 32,
+                                ),
+                              ),
+                              const SizedBox(width: 12),
+                              Expanded(
+                                child: Text(
+                                  room.instructor,
+                                  style: const TextStyle(
+                                    color: FiloColors.onBanner,
+                                    fontSize: 14,
+                                    height: 1.4,
+                                    fontWeight: FontWeight.w700,
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ],
                       ),
                     ),
                   ],
                 ),
-              ),
-              if (room.pending)
-                const Padding(
-                  padding: EdgeInsets.fromLTRB(20, 0, 20, 16),
-                  child: ApprovalChip(),
-                ),
-              if (room.archived)
-                const Padding(
-                  padding: EdgeInsets.fromLTRB(20, 0, 20, 16),
+                Padding(
+                  padding: const EdgeInsets.all(20),
                   child: Row(
                     children: [
-                      Icon(
-                        Icons.archive_outlined,
-                        size: 18,
-                        color: FiloColors.secondary,
+                      ExcludeSemantics(
+                        child: Container(
+                          width: 40,
+                          height: 40,
+                          decoration: BoxDecoration(
+                            color: FiloColors.tint,
+                            borderRadius: BorderRadius.circular(14),
+                          ),
+                          child: const FiloIcon(
+                            FiloIcons.book,
+                            size: 22,
+                            color: FiloColors.primary,
+                          ),
+                        ),
                       ),
-                      SizedBox(width: 8),
-                      Text(
-                        'Archived ? Read only',
-                        style: TextStyle(color: FiloColors.secondary),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: Text(
+                          room.course,
+                          style: const TextStyle(
+                            fontSize: 18,
+                            height: 1.35,
+                            fontWeight: FontWeight.w800,
+                            color: FiloColors.ink,
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 12),
+                      Semantics(
+                        label: pendingRequests > 0
+                            ? 'Pending join requests'
+                            : null,
+                        child: RedDotBadge(
+                          visible: pendingRequests > 0,
+                          child: Container(
+                            width: 36,
+                            height: 36,
+                            decoration: const BoxDecoration(
+                              color: FiloColors.selected,
+                              shape: BoxShape.circle,
+                            ),
+                            child: FiloIcon(
+                              room.pending ? FiloIcons.lock : FiloIcons.forward,
+                              size: 20,
+                              color: FiloColors.primary,
+                            ),
+                          ),
+                        ),
                       ),
                     ],
                   ),
                 ),
-            ],
+                if (room.pending)
+                  const Padding(
+                    padding: EdgeInsets.fromLTRB(20, 0, 20, 20),
+                    child: ApprovalChip(),
+                  ),
+                if (room.archived)
+                  Padding(
+                    padding: const EdgeInsets.fromLTRB(20, 0, 20, 20),
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 12,
+                        vertical: 10,
+                      ),
+                      decoration: BoxDecoration(
+                        color: FiloColors.tint,
+                        borderRadius: BorderRadius.circular(14),
+                      ),
+                      child: const Row(
+                        children: [
+                          ExcludeSemantics(
+                            child: FiloIcon(
+                              FiloIcons.archive,
+                              size: 18,
+                              color: FiloColors.secondary,
+                            ),
+                          ),
+                          SizedBox(width: 8),
+                          Expanded(
+                            child: Text(
+                              'Archived \u00b7 Read only',
+                              style: TextStyle(
+                                color: FiloColors.secondary,
+                                fontSize: 13,
+                                fontWeight: FontWeight.w700,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+              ],
+            ),
           ),
         ),
       ),
-    ),
-  );
+    );
+  }
 }

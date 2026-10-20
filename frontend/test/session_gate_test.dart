@@ -8,6 +8,35 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {
+  test(
+    'offline cache authorization stays bound to verified session and device',
+    () {
+      final saved = jsonEncode({
+        'session_id': 'verified-session',
+        'device_hash': 'this-device',
+      });
+      expect(
+        offlineSessionMatches(saved, 'verified-session', 'this-device'),
+        isTrue,
+      );
+      expect(
+        offlineSessionMatches(saved, 'new-unverified-session', 'this-device'),
+        isFalse,
+      );
+      expect(
+        offlineSessionMatches(saved, 'verified-session', 'another-device'),
+        isFalse,
+      );
+      expect(
+        offlineSessionMatches(
+          'invalid-json',
+          'verified-session',
+          'this-device',
+        ),
+        isFalse,
+      );
+    },
+  );
   String token(Map<String, dynamic> claims) =>
       'header.${base64UrlEncode(utf8.encode(jsonEncode(claims)))}.signature';
 

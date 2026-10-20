@@ -12,6 +12,18 @@ class MainActivity : FlutterActivity() {
 
     override fun configureFlutterEngine(flutterEngine: FlutterEngine) {
         super.configureFlutterEngine(flutterEngine)
+        MethodChannel(flutterEngine.dartExecutor.binaryMessenger, "com.filo.filo/storage")
+            .setMethodCallHandler { call, result ->
+                if (call.method == "freeBytes") {
+                    try {
+                        result.success(android.os.StatFs(filesDir.absolutePath).availableBytes)
+                    } catch (error: Exception) {
+                        result.error("SPACE_UNKNOWN", "Cannot read available storage", null)
+                    }
+                } else {
+                    result.notImplemented()
+                }
+            }
         MethodChannel(flutterEngine.dartExecutor.binaryMessenger, "com.filo.filo/notifications")
             .setMethodCallHandler { call, result ->
                 if (call.method != "request") {

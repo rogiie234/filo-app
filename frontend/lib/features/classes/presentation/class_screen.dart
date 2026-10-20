@@ -112,7 +112,7 @@ class _ClassScreenState extends ConsumerState<ClassScreen> {
       appBar: AppBar(
         leading: IconButton(
           tooltip: 'Back to classes',
-          icon: const Icon(Icons.arrow_back_rounded),
+          icon: const FiloIcon(FiloIcons.back),
           onPressed: () => live ? Navigator.pop(context) : context.pop(),
         ),
         title: Column(
@@ -141,7 +141,7 @@ class _ClassScreenState extends ConsumerState<ClassScreen> {
             icon: Badge(
               isLabelVisible: pendingCount > 0,
               backgroundColor: Colors.red,
-              child: const Icon(Icons.more_horiz_rounded),
+              child: const FiloIcon(FiloIcons.more),
             ),
             onPressed: () => _menu(room, live, instructor, pendingCount),
           ),
@@ -171,7 +171,12 @@ class _ClassScreenState extends ConsumerState<ClassScreen> {
                   previewPosts: state.posts,
                   onOpen: _openStreamPost,
                 ),
-                _refresh(ClassFiles(hasSamples: !live && room.id == 'it119')),
+                _refresh(
+                  ClassFiles(
+                    hasSamples: !live && room.id == 'it119',
+                    classId: live ? room.id : null,
+                  ),
+                ),
               ],
             ),
           ),
@@ -187,7 +192,7 @@ class _ClassScreenState extends ConsumerState<ClassScreen> {
                 padding: const EdgeInsets.fromLTRB(24, 12, 24, 8),
                 child: FiloButton(
                   label: _tab == 0 ? 'Create post' : 'New assessment',
-                  icon: Icons.add_rounded,
+                  icon: FiloIcons.add,
                   onPressed:
                       room.archived ||
                           (live &&
@@ -233,18 +238,18 @@ class _ClassScreenState extends ConsumerState<ClassScreen> {
             onDestinationSelected: (value) => setState(() => _tab = value),
             destinations: const [
               NavigationDestination(
-                icon: Icon(Icons.dynamic_feed_outlined),
-                selectedIcon: Icon(Icons.dynamic_feed_rounded),
+                icon: FiloIcon(FiloIcons.stream),
+                selectedIcon: FiloIcon(FiloIcons.streamSelected),
                 label: 'Stream',
               ),
               NavigationDestination(
-                icon: Icon(Icons.assignment_outlined),
-                selectedIcon: Icon(Icons.assignment_rounded),
+                icon: FiloIcon(FiloIcons.assessment),
+                selectedIcon: FiloIcon(FiloIcons.assessmentSelected),
                 label: 'Classwork',
               ),
               NavigationDestination(
-                icon: Icon(Icons.folder_outlined),
-                selectedIcon: Icon(Icons.folder_rounded),
+                icon: FiloIcon(FiloIcons.folder),
+                selectedIcon: FiloIcon(FiloIcons.folderSelected),
                 label: 'Files',
               ),
             ],
@@ -257,7 +262,8 @@ class _ClassScreenState extends ConsumerState<ClassScreen> {
   bool _busy = false;
 
   void _menu(ClassRoom room, bool live, bool instructor, int pendingCount) {
-    showModalBottomSheet<void>(
+    showFiloBottomSheet<void>(
+      title: 'Class options',
       context: context,
       showDragHandle: true,
       builder: (sheet) => SafeArea(
@@ -265,7 +271,7 @@ class _ClassScreenState extends ConsumerState<ClassScreen> {
           mainAxisSize: MainAxisSize.min,
           children: [
             ListTile(
-              leading: const Icon(Icons.info_outline),
+              leading: const FiloIcon(FiloIcons.info),
               title: const Text('Class details'),
               onTap: () {
                 Navigator.pop(sheet);
@@ -277,7 +283,7 @@ class _ClassScreenState extends ConsumerState<ClassScreen> {
                 leading: Badge(
                   isLabelVisible: instructor && pendingCount > 0,
                   backgroundColor: Colors.red,
-                  child: const Icon(Icons.people_outline),
+                  child: const FiloIcon(FiloIcons.people),
                 ),
                 title: Text(instructor ? 'Students' : 'Classmates'),
                 onTap: () {
@@ -293,8 +299,8 @@ class _ClassScreenState extends ConsumerState<ClassScreen> {
               ),
             if (live)
               ListTile(
-                leading: Icon(
-                  instructor ? Icons.settings_outlined : Icons.exit_to_app,
+                leading: FiloIcon(
+                  instructor ? FiloIcons.settings : FiloIcons.enter,
                 ),
                 title: Text(instructor ? 'Class settings' : 'Leave class'),
                 onTap: _busy
@@ -315,27 +321,23 @@ class _ClassScreenState extends ConsumerState<ClassScreen> {
   }
 
   void _details(ClassRoom room, bool live, bool instructor) {
-    showModalBottomSheet<void>(
+    showFiloBottomSheet<void>(
+      title: 'Class details',
       context: context,
       showDragHandle: true,
       builder: (sheet) => SafeArea(
-        child: SingleChildScrollView(
-          padding: const EdgeInsets.all(24),
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 24),
           child: Column(
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text(
-                'Class details',
-                style: Theme.of(sheet).textTheme.titleLarge,
-              ),
-              const SizedBox(height: 16),
               Text('${room.section}\n${room.course}\n${room.instructor}'),
               if (live) Text('School Year: ${room.schoolYear ?? ''}'),
               if (live && instructor) ...[
                 Text('Class code: ${room.joinCode ?? ''}'),
                 TextButton.icon(
-                  icon: const Icon(Icons.copy),
+                  icon: const FiloIcon(FiloIcons.copy),
                   label: const Text('Copy code'),
                   onPressed: room.joinCode == null
                       ? null
@@ -358,14 +360,14 @@ class _ClassScreenState extends ConsumerState<ClassScreen> {
   }
 
   void _settings(ClassRoom room) {
-    showModalBottomSheet<void>(
+    showFiloBottomSheet<void>(
+      title: 'Class settings',
       context: context,
       showDragHandle: true,
       builder: (sheet) => SafeArea(
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            const ListTile(title: Text('Class settings')),
             ListTile(
               title: const Text('Change banner'),
               subtitle: room.archived
@@ -785,13 +787,14 @@ class _ClassScreenState extends ConsumerState<ClassScreen> {
       );
       return;
     }
-    showModalBottomSheet<void>(
+    showFiloBottomSheet<void>(
+      title: 'Post details',
       context: context,
       showDragHandle: true,
       isScrollControlled: true,
       builder: (sheet) => SafeArea(
-        child: SingleChildScrollView(
-          padding: const EdgeInsets.all(24),
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 24),
           child: Column(
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.start,
@@ -806,7 +809,7 @@ class _ClassScreenState extends ConsumerState<ClassScreen> {
               ],
               for (final name in post.attachments)
                 ListTile(
-                  leading: const Icon(Icons.attach_file),
+                  leading: const FiloIcon(FiloIcons.attachment),
                   title: Text(name),
                 ),
             ],

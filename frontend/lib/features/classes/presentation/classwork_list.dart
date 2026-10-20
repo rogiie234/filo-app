@@ -200,7 +200,9 @@ class _ClassworkListState extends ConsumerState<ClassworkList> {
           Padding(
             padding: const EdgeInsets.only(bottom: 16),
             child: OutlinedButton.icon(
-              icon: Icon(student ? Icons.grading : Icons.table_chart_outlined),
+              icon: FiloIcon(
+                student ? FiloIcons.grades : FiloIcons.spreadsheet,
+              ),
               label: Text(student ? 'My grades' : 'Gradebook'),
               onPressed: () => Navigator.of(context).push(
                 MaterialPageRoute<void>(
@@ -353,16 +355,16 @@ class AssignmentStatusChip extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final icon = switch (status) {
-      AssignmentStatus.assigned => Icons.assignment_outlined,
-      AssignmentStatus.draft => Icons.edit_outlined,
-      AssignmentStatus.turnedIn => Icons.check_circle_outline,
-      AssignmentStatus.late => Icons.schedule,
-      AssignmentStatus.graded => Icons.grading_outlined,
-      AssignmentStatus.missing => Icons.error_outline,
-      null => Icons.sync_outlined,
+      AssignmentStatus.assigned => FiloIcons.assessment,
+      AssignmentStatus.draft => FiloIcons.edit,
+      AssignmentStatus.turnedIn => FiloIcons.checkCircle,
+      AssignmentStatus.late => FiloIcons.clock,
+      AssignmentStatus.graded => FiloIcons.grades,
+      AssignmentStatus.missing => FiloIcons.error,
+      null => FiloIcons.sync,
     };
     return Chip(
-      avatar: Icon(
+      avatar: FiloIcon(
         icon,
         size: 18,
         color:
@@ -413,8 +415,8 @@ class AssignmentRow extends StatelessWidget {
         padding: const EdgeInsets.all(20),
         child: Row(
           children: [
-            const Icon(
-              Icons.assignment_outlined,
+            const FiloIcon(
+              FiloIcons.assessment,
               color: FiloColors.primary,
               size: 28,
             ),
@@ -440,7 +442,7 @@ class AssignmentRow extends StatelessWidget {
                 ],
               ),
             ),
-            const Icon(Icons.chevron_right_rounded),
+            const FiloIcon(FiloIcons.chevronRight),
           ],
         ),
       ),

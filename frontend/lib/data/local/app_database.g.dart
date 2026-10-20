@@ -8447,6 +8447,1200 @@ class OutboxCompanion extends UpdateCompanion<OutboxData> {
   }
 }
 
+class $LocalFoldersTable extends LocalFolders
+    with TableInfo<$LocalFoldersTable, LocalFolderRecord> {
+  @override
+  final GeneratedDatabase attachedDatabase;
+  final String? _alias;
+  $LocalFoldersTable(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _idMeta = const VerificationMeta('id');
+  @override
+  late final GeneratedColumn<String> id = GeneratedColumn<String>(
+    'id',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _parentIdMeta = const VerificationMeta(
+    'parentId',
+  );
+  @override
+  late final GeneratedColumn<String> parentId = GeneratedColumn<String>(
+    'parent_id',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'REFERENCES local_folders (id)',
+    ),
+  );
+  static const VerificationMeta _nameMeta = const VerificationMeta('name');
+  @override
+  late final GeneratedColumn<String> name = GeneratedColumn<String>(
+    'name',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _classIdMeta = const VerificationMeta(
+    'classId',
+  );
+  @override
+  late final GeneratedColumn<String> classId = GeneratedColumn<String>(
+    'class_id',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _createdAtMeta = const VerificationMeta(
+    'createdAt',
+  );
+  @override
+  late final GeneratedColumn<DateTime> createdAt = GeneratedColumn<DateTime>(
+    'created_at',
+    aliasedName,
+    false,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _updatedAtMeta = const VerificationMeta(
+    'updatedAt',
+  );
+  @override
+  late final GeneratedColumn<DateTime> updatedAt = GeneratedColumn<DateTime>(
+    'updated_at',
+    aliasedName,
+    false,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: true,
+  );
+  @override
+  List<GeneratedColumn> get $columns => [
+    id,
+    parentId,
+    name,
+    classId,
+    createdAt,
+    updatedAt,
+  ];
+  @override
+  String get aliasedName => _alias ?? actualTableName;
+  @override
+  String get actualTableName => $name;
+  static const String $name = 'local_folders';
+  @override
+  VerificationContext validateIntegrity(
+    Insertable<LocalFolderRecord> instance, {
+    bool isInserting = false,
+  }) {
+    final context = VerificationContext();
+    final data = instance.toColumns(true);
+    if (data.containsKey('id')) {
+      context.handle(_idMeta, id.isAcceptableOrUnknown(data['id']!, _idMeta));
+    } else if (isInserting) {
+      context.missing(_idMeta);
+    }
+    if (data.containsKey('parent_id')) {
+      context.handle(
+        _parentIdMeta,
+        parentId.isAcceptableOrUnknown(data['parent_id']!, _parentIdMeta),
+      );
+    }
+    if (data.containsKey('name')) {
+      context.handle(
+        _nameMeta,
+        name.isAcceptableOrUnknown(data['name']!, _nameMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_nameMeta);
+    }
+    if (data.containsKey('class_id')) {
+      context.handle(
+        _classIdMeta,
+        classId.isAcceptableOrUnknown(data['class_id']!, _classIdMeta),
+      );
+    }
+    if (data.containsKey('created_at')) {
+      context.handle(
+        _createdAtMeta,
+        createdAt.isAcceptableOrUnknown(data['created_at']!, _createdAtMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_createdAtMeta);
+    }
+    if (data.containsKey('updated_at')) {
+      context.handle(
+        _updatedAtMeta,
+        updatedAt.isAcceptableOrUnknown(data['updated_at']!, _updatedAtMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_updatedAtMeta);
+    }
+    return context;
+  }
+
+  @override
+  Set<GeneratedColumn> get $primaryKey => {id};
+  @override
+  LocalFolderRecord map(Map<String, dynamic> data, {String? tablePrefix}) {
+    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
+    return LocalFolderRecord(
+      id: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}id'],
+      )!,
+      parentId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}parent_id'],
+      ),
+      name: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}name'],
+      )!,
+      classId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}class_id'],
+      ),
+      createdAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}created_at'],
+      )!,
+      updatedAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}updated_at'],
+      )!,
+    );
+  }
+
+  @override
+  $LocalFoldersTable createAlias(String alias) {
+    return $LocalFoldersTable(attachedDatabase, alias);
+  }
+}
+
+class LocalFolderRecord extends DataClass
+    implements Insertable<LocalFolderRecord> {
+  final String id;
+  final String? parentId;
+  final String name;
+  final String? classId;
+  final DateTime createdAt;
+  final DateTime updatedAt;
+  const LocalFolderRecord({
+    required this.id,
+    this.parentId,
+    required this.name,
+    this.classId,
+    required this.createdAt,
+    required this.updatedAt,
+  });
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    map['id'] = Variable<String>(id);
+    if (!nullToAbsent || parentId != null) {
+      map['parent_id'] = Variable<String>(parentId);
+    }
+    map['name'] = Variable<String>(name);
+    if (!nullToAbsent || classId != null) {
+      map['class_id'] = Variable<String>(classId);
+    }
+    map['created_at'] = Variable<DateTime>(createdAt);
+    map['updated_at'] = Variable<DateTime>(updatedAt);
+    return map;
+  }
+
+  LocalFoldersCompanion toCompanion(bool nullToAbsent) {
+    return LocalFoldersCompanion(
+      id: Value(id),
+      parentId: parentId == null && nullToAbsent
+          ? const Value.absent()
+          : Value(parentId),
+      name: Value(name),
+      classId: classId == null && nullToAbsent
+          ? const Value.absent()
+          : Value(classId),
+      createdAt: Value(createdAt),
+      updatedAt: Value(updatedAt),
+    );
+  }
+
+  factory LocalFolderRecord.fromJson(
+    Map<String, dynamic> json, {
+    ValueSerializer? serializer,
+  }) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return LocalFolderRecord(
+      id: serializer.fromJson<String>(json['id']),
+      parentId: serializer.fromJson<String?>(json['parentId']),
+      name: serializer.fromJson<String>(json['name']),
+      classId: serializer.fromJson<String?>(json['classId']),
+      createdAt: serializer.fromJson<DateTime>(json['createdAt']),
+      updatedAt: serializer.fromJson<DateTime>(json['updatedAt']),
+    );
+  }
+  @override
+  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return <String, dynamic>{
+      'id': serializer.toJson<String>(id),
+      'parentId': serializer.toJson<String?>(parentId),
+      'name': serializer.toJson<String>(name),
+      'classId': serializer.toJson<String?>(classId),
+      'createdAt': serializer.toJson<DateTime>(createdAt),
+      'updatedAt': serializer.toJson<DateTime>(updatedAt),
+    };
+  }
+
+  LocalFolderRecord copyWith({
+    String? id,
+    Value<String?> parentId = const Value.absent(),
+    String? name,
+    Value<String?> classId = const Value.absent(),
+    DateTime? createdAt,
+    DateTime? updatedAt,
+  }) => LocalFolderRecord(
+    id: id ?? this.id,
+    parentId: parentId.present ? parentId.value : this.parentId,
+    name: name ?? this.name,
+    classId: classId.present ? classId.value : this.classId,
+    createdAt: createdAt ?? this.createdAt,
+    updatedAt: updatedAt ?? this.updatedAt,
+  );
+  LocalFolderRecord copyWithCompanion(LocalFoldersCompanion data) {
+    return LocalFolderRecord(
+      id: data.id.present ? data.id.value : this.id,
+      parentId: data.parentId.present ? data.parentId.value : this.parentId,
+      name: data.name.present ? data.name.value : this.name,
+      classId: data.classId.present ? data.classId.value : this.classId,
+      createdAt: data.createdAt.present ? data.createdAt.value : this.createdAt,
+      updatedAt: data.updatedAt.present ? data.updatedAt.value : this.updatedAt,
+    );
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('LocalFolderRecord(')
+          ..write('id: $id, ')
+          ..write('parentId: $parentId, ')
+          ..write('name: $name, ')
+          ..write('classId: $classId, ')
+          ..write('createdAt: $createdAt, ')
+          ..write('updatedAt: $updatedAt')
+          ..write(')'))
+        .toString();
+  }
+
+  @override
+  int get hashCode =>
+      Object.hash(id, parentId, name, classId, createdAt, updatedAt);
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is LocalFolderRecord &&
+          other.id == this.id &&
+          other.parentId == this.parentId &&
+          other.name == this.name &&
+          other.classId == this.classId &&
+          other.createdAt == this.createdAt &&
+          other.updatedAt == this.updatedAt);
+}
+
+class LocalFoldersCompanion extends UpdateCompanion<LocalFolderRecord> {
+  final Value<String> id;
+  final Value<String?> parentId;
+  final Value<String> name;
+  final Value<String?> classId;
+  final Value<DateTime> createdAt;
+  final Value<DateTime> updatedAt;
+  final Value<int> rowid;
+  const LocalFoldersCompanion({
+    this.id = const Value.absent(),
+    this.parentId = const Value.absent(),
+    this.name = const Value.absent(),
+    this.classId = const Value.absent(),
+    this.createdAt = const Value.absent(),
+    this.updatedAt = const Value.absent(),
+    this.rowid = const Value.absent(),
+  });
+  LocalFoldersCompanion.insert({
+    required String id,
+    this.parentId = const Value.absent(),
+    required String name,
+    this.classId = const Value.absent(),
+    required DateTime createdAt,
+    required DateTime updatedAt,
+    this.rowid = const Value.absent(),
+  }) : id = Value(id),
+       name = Value(name),
+       createdAt = Value(createdAt),
+       updatedAt = Value(updatedAt);
+  static Insertable<LocalFolderRecord> custom({
+    Expression<String>? id,
+    Expression<String>? parentId,
+    Expression<String>? name,
+    Expression<String>? classId,
+    Expression<DateTime>? createdAt,
+    Expression<DateTime>? updatedAt,
+    Expression<int>? rowid,
+  }) {
+    return RawValuesInsertable({
+      if (id != null) 'id': id,
+      if (parentId != null) 'parent_id': parentId,
+      if (name != null) 'name': name,
+      if (classId != null) 'class_id': classId,
+      if (createdAt != null) 'created_at': createdAt,
+      if (updatedAt != null) 'updated_at': updatedAt,
+      if (rowid != null) 'rowid': rowid,
+    });
+  }
+
+  LocalFoldersCompanion copyWith({
+    Value<String>? id,
+    Value<String?>? parentId,
+    Value<String>? name,
+    Value<String?>? classId,
+    Value<DateTime>? createdAt,
+    Value<DateTime>? updatedAt,
+    Value<int>? rowid,
+  }) {
+    return LocalFoldersCompanion(
+      id: id ?? this.id,
+      parentId: parentId ?? this.parentId,
+      name: name ?? this.name,
+      classId: classId ?? this.classId,
+      createdAt: createdAt ?? this.createdAt,
+      updatedAt: updatedAt ?? this.updatedAt,
+      rowid: rowid ?? this.rowid,
+    );
+  }
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (id.present) {
+      map['id'] = Variable<String>(id.value);
+    }
+    if (parentId.present) {
+      map['parent_id'] = Variable<String>(parentId.value);
+    }
+    if (name.present) {
+      map['name'] = Variable<String>(name.value);
+    }
+    if (classId.present) {
+      map['class_id'] = Variable<String>(classId.value);
+    }
+    if (createdAt.present) {
+      map['created_at'] = Variable<DateTime>(createdAt.value);
+    }
+    if (updatedAt.present) {
+      map['updated_at'] = Variable<DateTime>(updatedAt.value);
+    }
+    if (rowid.present) {
+      map['rowid'] = Variable<int>(rowid.value);
+    }
+    return map;
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('LocalFoldersCompanion(')
+          ..write('id: $id, ')
+          ..write('parentId: $parentId, ')
+          ..write('name: $name, ')
+          ..write('classId: $classId, ')
+          ..write('createdAt: $createdAt, ')
+          ..write('updatedAt: $updatedAt, ')
+          ..write('rowid: $rowid')
+          ..write(')'))
+        .toString();
+  }
+}
+
+class $LocalFilesTable extends LocalFiles
+    with TableInfo<$LocalFilesTable, LocalFileRecord> {
+  @override
+  final GeneratedDatabase attachedDatabase;
+  final String? _alias;
+  $LocalFilesTable(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _idMeta = const VerificationMeta('id');
+  @override
+  late final GeneratedColumn<String> id = GeneratedColumn<String>(
+    'id',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _folderIdMeta = const VerificationMeta(
+    'folderId',
+  );
+  @override
+  late final GeneratedColumn<String> folderId = GeneratedColumn<String>(
+    'folder_id',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'REFERENCES local_folders (id)',
+    ),
+  );
+  static const VerificationMeta _nameMeta = const VerificationMeta('name');
+  @override
+  late final GeneratedColumn<String> name = GeneratedColumn<String>(
+    'name',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _relativePathMeta = const VerificationMeta(
+    'relativePath',
+  );
+  @override
+  late final GeneratedColumn<String> relativePath = GeneratedColumn<String>(
+    'relative_path',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _mimeTypeMeta = const VerificationMeta(
+    'mimeType',
+  );
+  @override
+  late final GeneratedColumn<String> mimeType = GeneratedColumn<String>(
+    'mime_type',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _sizeMeta = const VerificationMeta('size');
+  @override
+  late final GeneratedColumn<int> size = GeneratedColumn<int>(
+    'size',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _sourceMeta = const VerificationMeta('source');
+  @override
+  late final GeneratedColumn<String> source = GeneratedColumn<String>(
+    'source',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _sourceAttachmentIdMeta =
+      const VerificationMeta('sourceAttachmentId');
+  @override
+  late final GeneratedColumn<String> sourceAttachmentId =
+      GeneratedColumn<String>(
+        'source_attachment_id',
+        aliasedName,
+        true,
+        type: DriftSqlType.string,
+        requiredDuringInsert: false,
+      );
+  static const VerificationMeta _classIdMeta = const VerificationMeta(
+    'classId',
+  );
+  @override
+  late final GeneratedColumn<String> classId = GeneratedColumn<String>(
+    'class_id',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _sourcePostIdMeta = const VerificationMeta(
+    'sourcePostId',
+  );
+  @override
+  late final GeneratedColumn<String> sourcePostId = GeneratedColumn<String>(
+    'source_post_id',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _backedUpAtMeta = const VerificationMeta(
+    'backedUpAt',
+  );
+  @override
+  late final GeneratedColumn<DateTime> backedUpAt = GeneratedColumn<DateTime>(
+    'backed_up_at',
+    aliasedName,
+    true,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _createdAtMeta = const VerificationMeta(
+    'createdAt',
+  );
+  @override
+  late final GeneratedColumn<DateTime> createdAt = GeneratedColumn<DateTime>(
+    'created_at',
+    aliasedName,
+    false,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _updatedAtMeta = const VerificationMeta(
+    'updatedAt',
+  );
+  @override
+  late final GeneratedColumn<DateTime> updatedAt = GeneratedColumn<DateTime>(
+    'updated_at',
+    aliasedName,
+    false,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: true,
+  );
+  @override
+  List<GeneratedColumn> get $columns => [
+    id,
+    folderId,
+    name,
+    relativePath,
+    mimeType,
+    size,
+    source,
+    sourceAttachmentId,
+    classId,
+    sourcePostId,
+    backedUpAt,
+    createdAt,
+    updatedAt,
+  ];
+  @override
+  String get aliasedName => _alias ?? actualTableName;
+  @override
+  String get actualTableName => $name;
+  static const String $name = 'local_files';
+  @override
+  VerificationContext validateIntegrity(
+    Insertable<LocalFileRecord> instance, {
+    bool isInserting = false,
+  }) {
+    final context = VerificationContext();
+    final data = instance.toColumns(true);
+    if (data.containsKey('id')) {
+      context.handle(_idMeta, id.isAcceptableOrUnknown(data['id']!, _idMeta));
+    } else if (isInserting) {
+      context.missing(_idMeta);
+    }
+    if (data.containsKey('folder_id')) {
+      context.handle(
+        _folderIdMeta,
+        folderId.isAcceptableOrUnknown(data['folder_id']!, _folderIdMeta),
+      );
+    }
+    if (data.containsKey('name')) {
+      context.handle(
+        _nameMeta,
+        name.isAcceptableOrUnknown(data['name']!, _nameMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_nameMeta);
+    }
+    if (data.containsKey('relative_path')) {
+      context.handle(
+        _relativePathMeta,
+        relativePath.isAcceptableOrUnknown(
+          data['relative_path']!,
+          _relativePathMeta,
+        ),
+      );
+    } else if (isInserting) {
+      context.missing(_relativePathMeta);
+    }
+    if (data.containsKey('mime_type')) {
+      context.handle(
+        _mimeTypeMeta,
+        mimeType.isAcceptableOrUnknown(data['mime_type']!, _mimeTypeMeta),
+      );
+    }
+    if (data.containsKey('size')) {
+      context.handle(
+        _sizeMeta,
+        size.isAcceptableOrUnknown(data['size']!, _sizeMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_sizeMeta);
+    }
+    if (data.containsKey('source')) {
+      context.handle(
+        _sourceMeta,
+        source.isAcceptableOrUnknown(data['source']!, _sourceMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_sourceMeta);
+    }
+    if (data.containsKey('source_attachment_id')) {
+      context.handle(
+        _sourceAttachmentIdMeta,
+        sourceAttachmentId.isAcceptableOrUnknown(
+          data['source_attachment_id']!,
+          _sourceAttachmentIdMeta,
+        ),
+      );
+    }
+    if (data.containsKey('class_id')) {
+      context.handle(
+        _classIdMeta,
+        classId.isAcceptableOrUnknown(data['class_id']!, _classIdMeta),
+      );
+    }
+    if (data.containsKey('source_post_id')) {
+      context.handle(
+        _sourcePostIdMeta,
+        sourcePostId.isAcceptableOrUnknown(
+          data['source_post_id']!,
+          _sourcePostIdMeta,
+        ),
+      );
+    }
+    if (data.containsKey('backed_up_at')) {
+      context.handle(
+        _backedUpAtMeta,
+        backedUpAt.isAcceptableOrUnknown(
+          data['backed_up_at']!,
+          _backedUpAtMeta,
+        ),
+      );
+    }
+    if (data.containsKey('created_at')) {
+      context.handle(
+        _createdAtMeta,
+        createdAt.isAcceptableOrUnknown(data['created_at']!, _createdAtMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_createdAtMeta);
+    }
+    if (data.containsKey('updated_at')) {
+      context.handle(
+        _updatedAtMeta,
+        updatedAt.isAcceptableOrUnknown(data['updated_at']!, _updatedAtMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_updatedAtMeta);
+    }
+    return context;
+  }
+
+  @override
+  Set<GeneratedColumn> get $primaryKey => {id};
+  @override
+  LocalFileRecord map(Map<String, dynamic> data, {String? tablePrefix}) {
+    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
+    return LocalFileRecord(
+      id: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}id'],
+      )!,
+      folderId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}folder_id'],
+      ),
+      name: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}name'],
+      )!,
+      relativePath: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}relative_path'],
+      )!,
+      mimeType: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}mime_type'],
+      ),
+      size: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}size'],
+      )!,
+      source: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}source'],
+      )!,
+      sourceAttachmentId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}source_attachment_id'],
+      ),
+      classId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}class_id'],
+      ),
+      sourcePostId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}source_post_id'],
+      ),
+      backedUpAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}backed_up_at'],
+      ),
+      createdAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}created_at'],
+      )!,
+      updatedAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}updated_at'],
+      )!,
+    );
+  }
+
+  @override
+  $LocalFilesTable createAlias(String alias) {
+    return $LocalFilesTable(attachedDatabase, alias);
+  }
+}
+
+class LocalFileRecord extends DataClass implements Insertable<LocalFileRecord> {
+  final String id;
+  final String? folderId;
+  final String name;
+  final String relativePath;
+  final String? mimeType;
+  final int size;
+  final String source;
+  final String? sourceAttachmentId;
+  final String? classId;
+  final String? sourcePostId;
+  final DateTime? backedUpAt;
+  final DateTime createdAt;
+  final DateTime updatedAt;
+  const LocalFileRecord({
+    required this.id,
+    this.folderId,
+    required this.name,
+    required this.relativePath,
+    this.mimeType,
+    required this.size,
+    required this.source,
+    this.sourceAttachmentId,
+    this.classId,
+    this.sourcePostId,
+    this.backedUpAt,
+    required this.createdAt,
+    required this.updatedAt,
+  });
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    map['id'] = Variable<String>(id);
+    if (!nullToAbsent || folderId != null) {
+      map['folder_id'] = Variable<String>(folderId);
+    }
+    map['name'] = Variable<String>(name);
+    map['relative_path'] = Variable<String>(relativePath);
+    if (!nullToAbsent || mimeType != null) {
+      map['mime_type'] = Variable<String>(mimeType);
+    }
+    map['size'] = Variable<int>(size);
+    map['source'] = Variable<String>(source);
+    if (!nullToAbsent || sourceAttachmentId != null) {
+      map['source_attachment_id'] = Variable<String>(sourceAttachmentId);
+    }
+    if (!nullToAbsent || classId != null) {
+      map['class_id'] = Variable<String>(classId);
+    }
+    if (!nullToAbsent || sourcePostId != null) {
+      map['source_post_id'] = Variable<String>(sourcePostId);
+    }
+    if (!nullToAbsent || backedUpAt != null) {
+      map['backed_up_at'] = Variable<DateTime>(backedUpAt);
+    }
+    map['created_at'] = Variable<DateTime>(createdAt);
+    map['updated_at'] = Variable<DateTime>(updatedAt);
+    return map;
+  }
+
+  LocalFilesCompanion toCompanion(bool nullToAbsent) {
+    return LocalFilesCompanion(
+      id: Value(id),
+      folderId: folderId == null && nullToAbsent
+          ? const Value.absent()
+          : Value(folderId),
+      name: Value(name),
+      relativePath: Value(relativePath),
+      mimeType: mimeType == null && nullToAbsent
+          ? const Value.absent()
+          : Value(mimeType),
+      size: Value(size),
+      source: Value(source),
+      sourceAttachmentId: sourceAttachmentId == null && nullToAbsent
+          ? const Value.absent()
+          : Value(sourceAttachmentId),
+      classId: classId == null && nullToAbsent
+          ? const Value.absent()
+          : Value(classId),
+      sourcePostId: sourcePostId == null && nullToAbsent
+          ? const Value.absent()
+          : Value(sourcePostId),
+      backedUpAt: backedUpAt == null && nullToAbsent
+          ? const Value.absent()
+          : Value(backedUpAt),
+      createdAt: Value(createdAt),
+      updatedAt: Value(updatedAt),
+    );
+  }
+
+  factory LocalFileRecord.fromJson(
+    Map<String, dynamic> json, {
+    ValueSerializer? serializer,
+  }) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return LocalFileRecord(
+      id: serializer.fromJson<String>(json['id']),
+      folderId: serializer.fromJson<String?>(json['folderId']),
+      name: serializer.fromJson<String>(json['name']),
+      relativePath: serializer.fromJson<String>(json['relativePath']),
+      mimeType: serializer.fromJson<String?>(json['mimeType']),
+      size: serializer.fromJson<int>(json['size']),
+      source: serializer.fromJson<String>(json['source']),
+      sourceAttachmentId: serializer.fromJson<String?>(
+        json['sourceAttachmentId'],
+      ),
+      classId: serializer.fromJson<String?>(json['classId']),
+      sourcePostId: serializer.fromJson<String?>(json['sourcePostId']),
+      backedUpAt: serializer.fromJson<DateTime?>(json['backedUpAt']),
+      createdAt: serializer.fromJson<DateTime>(json['createdAt']),
+      updatedAt: serializer.fromJson<DateTime>(json['updatedAt']),
+    );
+  }
+  @override
+  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return <String, dynamic>{
+      'id': serializer.toJson<String>(id),
+      'folderId': serializer.toJson<String?>(folderId),
+      'name': serializer.toJson<String>(name),
+      'relativePath': serializer.toJson<String>(relativePath),
+      'mimeType': serializer.toJson<String?>(mimeType),
+      'size': serializer.toJson<int>(size),
+      'source': serializer.toJson<String>(source),
+      'sourceAttachmentId': serializer.toJson<String?>(sourceAttachmentId),
+      'classId': serializer.toJson<String?>(classId),
+      'sourcePostId': serializer.toJson<String?>(sourcePostId),
+      'backedUpAt': serializer.toJson<DateTime?>(backedUpAt),
+      'createdAt': serializer.toJson<DateTime>(createdAt),
+      'updatedAt': serializer.toJson<DateTime>(updatedAt),
+    };
+  }
+
+  LocalFileRecord copyWith({
+    String? id,
+    Value<String?> folderId = const Value.absent(),
+    String? name,
+    String? relativePath,
+    Value<String?> mimeType = const Value.absent(),
+    int? size,
+    String? source,
+    Value<String?> sourceAttachmentId = const Value.absent(),
+    Value<String?> classId = const Value.absent(),
+    Value<String?> sourcePostId = const Value.absent(),
+    Value<DateTime?> backedUpAt = const Value.absent(),
+    DateTime? createdAt,
+    DateTime? updatedAt,
+  }) => LocalFileRecord(
+    id: id ?? this.id,
+    folderId: folderId.present ? folderId.value : this.folderId,
+    name: name ?? this.name,
+    relativePath: relativePath ?? this.relativePath,
+    mimeType: mimeType.present ? mimeType.value : this.mimeType,
+    size: size ?? this.size,
+    source: source ?? this.source,
+    sourceAttachmentId: sourceAttachmentId.present
+        ? sourceAttachmentId.value
+        : this.sourceAttachmentId,
+    classId: classId.present ? classId.value : this.classId,
+    sourcePostId: sourcePostId.present ? sourcePostId.value : this.sourcePostId,
+    backedUpAt: backedUpAt.present ? backedUpAt.value : this.backedUpAt,
+    createdAt: createdAt ?? this.createdAt,
+    updatedAt: updatedAt ?? this.updatedAt,
+  );
+  LocalFileRecord copyWithCompanion(LocalFilesCompanion data) {
+    return LocalFileRecord(
+      id: data.id.present ? data.id.value : this.id,
+      folderId: data.folderId.present ? data.folderId.value : this.folderId,
+      name: data.name.present ? data.name.value : this.name,
+      relativePath: data.relativePath.present
+          ? data.relativePath.value
+          : this.relativePath,
+      mimeType: data.mimeType.present ? data.mimeType.value : this.mimeType,
+      size: data.size.present ? data.size.value : this.size,
+      source: data.source.present ? data.source.value : this.source,
+      sourceAttachmentId: data.sourceAttachmentId.present
+          ? data.sourceAttachmentId.value
+          : this.sourceAttachmentId,
+      classId: data.classId.present ? data.classId.value : this.classId,
+      sourcePostId: data.sourcePostId.present
+          ? data.sourcePostId.value
+          : this.sourcePostId,
+      backedUpAt: data.backedUpAt.present
+          ? data.backedUpAt.value
+          : this.backedUpAt,
+      createdAt: data.createdAt.present ? data.createdAt.value : this.createdAt,
+      updatedAt: data.updatedAt.present ? data.updatedAt.value : this.updatedAt,
+    );
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('LocalFileRecord(')
+          ..write('id: $id, ')
+          ..write('folderId: $folderId, ')
+          ..write('name: $name, ')
+          ..write('relativePath: $relativePath, ')
+          ..write('mimeType: $mimeType, ')
+          ..write('size: $size, ')
+          ..write('source: $source, ')
+          ..write('sourceAttachmentId: $sourceAttachmentId, ')
+          ..write('classId: $classId, ')
+          ..write('sourcePostId: $sourcePostId, ')
+          ..write('backedUpAt: $backedUpAt, ')
+          ..write('createdAt: $createdAt, ')
+          ..write('updatedAt: $updatedAt')
+          ..write(')'))
+        .toString();
+  }
+
+  @override
+  int get hashCode => Object.hash(
+    id,
+    folderId,
+    name,
+    relativePath,
+    mimeType,
+    size,
+    source,
+    sourceAttachmentId,
+    classId,
+    sourcePostId,
+    backedUpAt,
+    createdAt,
+    updatedAt,
+  );
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is LocalFileRecord &&
+          other.id == this.id &&
+          other.folderId == this.folderId &&
+          other.name == this.name &&
+          other.relativePath == this.relativePath &&
+          other.mimeType == this.mimeType &&
+          other.size == this.size &&
+          other.source == this.source &&
+          other.sourceAttachmentId == this.sourceAttachmentId &&
+          other.classId == this.classId &&
+          other.sourcePostId == this.sourcePostId &&
+          other.backedUpAt == this.backedUpAt &&
+          other.createdAt == this.createdAt &&
+          other.updatedAt == this.updatedAt);
+}
+
+class LocalFilesCompanion extends UpdateCompanion<LocalFileRecord> {
+  final Value<String> id;
+  final Value<String?> folderId;
+  final Value<String> name;
+  final Value<String> relativePath;
+  final Value<String?> mimeType;
+  final Value<int> size;
+  final Value<String> source;
+  final Value<String?> sourceAttachmentId;
+  final Value<String?> classId;
+  final Value<String?> sourcePostId;
+  final Value<DateTime?> backedUpAt;
+  final Value<DateTime> createdAt;
+  final Value<DateTime> updatedAt;
+  final Value<int> rowid;
+  const LocalFilesCompanion({
+    this.id = const Value.absent(),
+    this.folderId = const Value.absent(),
+    this.name = const Value.absent(),
+    this.relativePath = const Value.absent(),
+    this.mimeType = const Value.absent(),
+    this.size = const Value.absent(),
+    this.source = const Value.absent(),
+    this.sourceAttachmentId = const Value.absent(),
+    this.classId = const Value.absent(),
+    this.sourcePostId = const Value.absent(),
+    this.backedUpAt = const Value.absent(),
+    this.createdAt = const Value.absent(),
+    this.updatedAt = const Value.absent(),
+    this.rowid = const Value.absent(),
+  });
+  LocalFilesCompanion.insert({
+    required String id,
+    this.folderId = const Value.absent(),
+    required String name,
+    required String relativePath,
+    this.mimeType = const Value.absent(),
+    required int size,
+    required String source,
+    this.sourceAttachmentId = const Value.absent(),
+    this.classId = const Value.absent(),
+    this.sourcePostId = const Value.absent(),
+    this.backedUpAt = const Value.absent(),
+    required DateTime createdAt,
+    required DateTime updatedAt,
+    this.rowid = const Value.absent(),
+  }) : id = Value(id),
+       name = Value(name),
+       relativePath = Value(relativePath),
+       size = Value(size),
+       source = Value(source),
+       createdAt = Value(createdAt),
+       updatedAt = Value(updatedAt);
+  static Insertable<LocalFileRecord> custom({
+    Expression<String>? id,
+    Expression<String>? folderId,
+    Expression<String>? name,
+    Expression<String>? relativePath,
+    Expression<String>? mimeType,
+    Expression<int>? size,
+    Expression<String>? source,
+    Expression<String>? sourceAttachmentId,
+    Expression<String>? classId,
+    Expression<String>? sourcePostId,
+    Expression<DateTime>? backedUpAt,
+    Expression<DateTime>? createdAt,
+    Expression<DateTime>? updatedAt,
+    Expression<int>? rowid,
+  }) {
+    return RawValuesInsertable({
+      if (id != null) 'id': id,
+      if (folderId != null) 'folder_id': folderId,
+      if (name != null) 'name': name,
+      if (relativePath != null) 'relative_path': relativePath,
+      if (mimeType != null) 'mime_type': mimeType,
+      if (size != null) 'size': size,
+      if (source != null) 'source': source,
+      if (sourceAttachmentId != null)
+        'source_attachment_id': sourceAttachmentId,
+      if (classId != null) 'class_id': classId,
+      if (sourcePostId != null) 'source_post_id': sourcePostId,
+      if (backedUpAt != null) 'backed_up_at': backedUpAt,
+      if (createdAt != null) 'created_at': createdAt,
+      if (updatedAt != null) 'updated_at': updatedAt,
+      if (rowid != null) 'rowid': rowid,
+    });
+  }
+
+  LocalFilesCompanion copyWith({
+    Value<String>? id,
+    Value<String?>? folderId,
+    Value<String>? name,
+    Value<String>? relativePath,
+    Value<String?>? mimeType,
+    Value<int>? size,
+    Value<String>? source,
+    Value<String?>? sourceAttachmentId,
+    Value<String?>? classId,
+    Value<String?>? sourcePostId,
+    Value<DateTime?>? backedUpAt,
+    Value<DateTime>? createdAt,
+    Value<DateTime>? updatedAt,
+    Value<int>? rowid,
+  }) {
+    return LocalFilesCompanion(
+      id: id ?? this.id,
+      folderId: folderId ?? this.folderId,
+      name: name ?? this.name,
+      relativePath: relativePath ?? this.relativePath,
+      mimeType: mimeType ?? this.mimeType,
+      size: size ?? this.size,
+      source: source ?? this.source,
+      sourceAttachmentId: sourceAttachmentId ?? this.sourceAttachmentId,
+      classId: classId ?? this.classId,
+      sourcePostId: sourcePostId ?? this.sourcePostId,
+      backedUpAt: backedUpAt ?? this.backedUpAt,
+      createdAt: createdAt ?? this.createdAt,
+      updatedAt: updatedAt ?? this.updatedAt,
+      rowid: rowid ?? this.rowid,
+    );
+  }
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (id.present) {
+      map['id'] = Variable<String>(id.value);
+    }
+    if (folderId.present) {
+      map['folder_id'] = Variable<String>(folderId.value);
+    }
+    if (name.present) {
+      map['name'] = Variable<String>(name.value);
+    }
+    if (relativePath.present) {
+      map['relative_path'] = Variable<String>(relativePath.value);
+    }
+    if (mimeType.present) {
+      map['mime_type'] = Variable<String>(mimeType.value);
+    }
+    if (size.present) {
+      map['size'] = Variable<int>(size.value);
+    }
+    if (source.present) {
+      map['source'] = Variable<String>(source.value);
+    }
+    if (sourceAttachmentId.present) {
+      map['source_attachment_id'] = Variable<String>(sourceAttachmentId.value);
+    }
+    if (classId.present) {
+      map['class_id'] = Variable<String>(classId.value);
+    }
+    if (sourcePostId.present) {
+      map['source_post_id'] = Variable<String>(sourcePostId.value);
+    }
+    if (backedUpAt.present) {
+      map['backed_up_at'] = Variable<DateTime>(backedUpAt.value);
+    }
+    if (createdAt.present) {
+      map['created_at'] = Variable<DateTime>(createdAt.value);
+    }
+    if (updatedAt.present) {
+      map['updated_at'] = Variable<DateTime>(updatedAt.value);
+    }
+    if (rowid.present) {
+      map['rowid'] = Variable<int>(rowid.value);
+    }
+    return map;
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('LocalFilesCompanion(')
+          ..write('id: $id, ')
+          ..write('folderId: $folderId, ')
+          ..write('name: $name, ')
+          ..write('relativePath: $relativePath, ')
+          ..write('mimeType: $mimeType, ')
+          ..write('size: $size, ')
+          ..write('source: $source, ')
+          ..write('sourceAttachmentId: $sourceAttachmentId, ')
+          ..write('classId: $classId, ')
+          ..write('sourcePostId: $sourcePostId, ')
+          ..write('backedUpAt: $backedUpAt, ')
+          ..write('createdAt: $createdAt, ')
+          ..write('updatedAt: $updatedAt, ')
+          ..write('rowid: $rowid')
+          ..write(')'))
+        .toString();
+  }
+}
+
 abstract class _$AppDatabase extends GeneratedDatabase {
   _$AppDatabase(QueryExecutor e) : super(e);
   $AppDatabaseManager get managers => $AppDatabaseManager(this);
@@ -8469,6 +9663,8 @@ abstract class _$AppDatabase extends GeneratedDatabase {
       $CacheNotificationsTable(this);
   late final $SyncStateTable syncState = $SyncStateTable(this);
   late final $OutboxTable outbox = $OutboxTable(this);
+  late final $LocalFoldersTable localFolders = $LocalFoldersTable(this);
+  late final $LocalFilesTable localFiles = $LocalFilesTable(this);
   late final Index cacheIdxClassesOwner = Index(
     'cache_idx_classes_owner',
     'CREATE INDEX cache_idx_classes_owner ON cache_classes (owner_id) WHERE deleted_at IS NULL',
@@ -8517,6 +9713,30 @@ abstract class _$AppDatabase extends GeneratedDatabase {
     'cache_idx_notifications_unread',
     'CREATE INDEX cache_idx_notifications_unread ON cache_notifications (recipient_id) WHERE read_at IS NULL',
   );
+  late final Index localFoldersParentName = Index(
+    'local_folders_parent_name',
+    'CREATE INDEX local_folders_parent_name ON local_folders (parent_id, name COLLATE NOCASE)',
+  );
+  late final Index localFoldersName = Index(
+    'local_folders_name',
+    'CREATE INDEX local_folders_name ON local_folders (name COLLATE NOCASE)',
+  );
+  late final Index localFoldersClass = Index(
+    'local_folders_class',
+    'CREATE UNIQUE INDEX local_folders_class ON local_folders (class_id) WHERE class_id IS NOT NULL',
+  );
+  late final Index localFilesFolderName = Index(
+    'local_files_folder_name',
+    'CREATE INDEX local_files_folder_name ON local_files (folder_id, name COLLATE NOCASE)',
+  );
+  late final Index localFilesName = Index(
+    'local_files_name',
+    'CREATE INDEX local_files_name ON local_files (name COLLATE NOCASE)',
+  );
+  late final Index localFilesAttachment = Index(
+    'local_files_attachment',
+    'CREATE UNIQUE INDEX local_files_attachment ON local_files (source_attachment_id) WHERE source_attachment_id IS NOT NULL',
+  );
   @override
   Iterable<TableInfo<Table, Object?>> get allTables =>
       allSchemaEntities.whereType<TableInfo<Table, Object?>>();
@@ -8535,6 +9755,8 @@ abstract class _$AppDatabase extends GeneratedDatabase {
     cacheNotifications,
     syncState,
     outbox,
+    localFolders,
+    localFiles,
     cacheIdxClassesOwner,
     cacheIdxMembersStudent,
     cacheIdxMembersClass,
@@ -8547,6 +9769,12 @@ abstract class _$AppDatabase extends GeneratedDatabase {
     cacheIdxQuizzesClass,
     cacheIdxNotificationsInbox,
     cacheIdxNotificationsUnread,
+    localFoldersParentName,
+    localFoldersName,
+    localFoldersClass,
+    localFilesFolderName,
+    localFilesName,
+    localFilesAttachment,
   ];
   @override
   StreamQueryUpdateRules get streamUpdateRules => const StreamQueryUpdateRules([
@@ -15973,6 +17201,902 @@ typedef $$OutboxTableProcessedTableManager =
       OutboxData,
       PrefetchHooks Function()
     >;
+typedef $$LocalFoldersTableCreateCompanionBuilder =
+    LocalFoldersCompanion Function({
+      required String id,
+      Value<String?> parentId,
+      required String name,
+      Value<String?> classId,
+      required DateTime createdAt,
+      required DateTime updatedAt,
+      Value<int> rowid,
+    });
+typedef $$LocalFoldersTableUpdateCompanionBuilder =
+    LocalFoldersCompanion Function({
+      Value<String> id,
+      Value<String?> parentId,
+      Value<String> name,
+      Value<String?> classId,
+      Value<DateTime> createdAt,
+      Value<DateTime> updatedAt,
+      Value<int> rowid,
+    });
+
+final class $$LocalFoldersTableReferences
+    extends
+        BaseReferences<_$AppDatabase, $LocalFoldersTable, LocalFolderRecord> {
+  $$LocalFoldersTableReferences(super.$_db, super.$_table, super.$_typedResult);
+
+  static $LocalFoldersTable _parentIdTable(_$AppDatabase db) => db.localFolders
+      .createAlias('local_folders__parent_id__local_folders__id');
+
+  $$LocalFoldersTableProcessedTableManager? get parentId {
+    final $_column = $_itemColumn<String>('parent_id');
+    if ($_column == null) return null;
+    final manager = $$LocalFoldersTableTableManager(
+      $_db,
+      $_db.localFolders,
+    ).filter((f) => f.id.sqlEquals($_column));
+    final item = $_typedResult.readTableOrNull(_parentIdTable($_db));
+    if (item == null) return manager;
+    return ProcessedTableManager(
+      manager.$state.copyWith(prefetchedData: [item]),
+    );
+  }
+
+  static MultiTypedResultKey<$LocalFilesTable, List<LocalFileRecord>>
+  _localFilesRefsTable(_$AppDatabase db) => MultiTypedResultKey.fromTable(
+    db.localFiles,
+    aliasName: 'local_folders__id__local_files__folder_id',
+  );
+
+  $$LocalFilesTableProcessedTableManager get localFilesRefs {
+    final manager = $$LocalFilesTableTableManager(
+      $_db,
+      $_db.localFiles,
+    ).filter((f) => f.folderId.id.sqlEquals($_itemColumn<String>('id')!));
+
+    final cache = $_typedResult.readTableOrNull(_localFilesRefsTable($_db));
+    return ProcessedTableManager(
+      manager.$state.copyWith(prefetchedData: cache),
+    );
+  }
+}
+
+class $$LocalFoldersTableFilterComposer
+    extends Composer<_$AppDatabase, $LocalFoldersTable> {
+  $$LocalFoldersTableFilterComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnFilters<String> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get name => $composableBuilder(
+    column: $table.name,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get classId => $composableBuilder(
+    column: $table.classId,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get createdAt => $composableBuilder(
+    column: $table.createdAt,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get updatedAt => $composableBuilder(
+    column: $table.updatedAt,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  $$LocalFoldersTableFilterComposer get parentId {
+    final $$LocalFoldersTableFilterComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.parentId,
+      referencedTable: $db.localFolders,
+      getReferencedColumn: (t) => t.id,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$LocalFoldersTableFilterComposer(
+            $db: $db,
+            $table: $db.localFolders,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return composer;
+  }
+
+  Expression<bool> localFilesRefs(
+    Expression<bool> Function($$LocalFilesTableFilterComposer f) f,
+  ) {
+    final $$LocalFilesTableFilterComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.id,
+      referencedTable: $db.localFiles,
+      getReferencedColumn: (t) => t.folderId,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$LocalFilesTableFilterComposer(
+            $db: $db,
+            $table: $db.localFiles,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return f(composer);
+  }
+}
+
+class $$LocalFoldersTableOrderingComposer
+    extends Composer<_$AppDatabase, $LocalFoldersTable> {
+  $$LocalFoldersTableOrderingComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnOrderings<String> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get name => $composableBuilder(
+    column: $table.name,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get classId => $composableBuilder(
+    column: $table.classId,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get createdAt => $composableBuilder(
+    column: $table.createdAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get updatedAt => $composableBuilder(
+    column: $table.updatedAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  $$LocalFoldersTableOrderingComposer get parentId {
+    final $$LocalFoldersTableOrderingComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.parentId,
+      referencedTable: $db.localFolders,
+      getReferencedColumn: (t) => t.id,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$LocalFoldersTableOrderingComposer(
+            $db: $db,
+            $table: $db.localFolders,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return composer;
+  }
+}
+
+class $$LocalFoldersTableAnnotationComposer
+    extends Composer<_$AppDatabase, $LocalFoldersTable> {
+  $$LocalFoldersTableAnnotationComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  GeneratedColumn<String> get id =>
+      $composableBuilder(column: $table.id, builder: (column) => column);
+
+  GeneratedColumn<String> get name =>
+      $composableBuilder(column: $table.name, builder: (column) => column);
+
+  GeneratedColumn<String> get classId =>
+      $composableBuilder(column: $table.classId, builder: (column) => column);
+
+  GeneratedColumn<DateTime> get createdAt =>
+      $composableBuilder(column: $table.createdAt, builder: (column) => column);
+
+  GeneratedColumn<DateTime> get updatedAt =>
+      $composableBuilder(column: $table.updatedAt, builder: (column) => column);
+
+  $$LocalFoldersTableAnnotationComposer get parentId {
+    final $$LocalFoldersTableAnnotationComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.parentId,
+      referencedTable: $db.localFolders,
+      getReferencedColumn: (t) => t.id,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$LocalFoldersTableAnnotationComposer(
+            $db: $db,
+            $table: $db.localFolders,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return composer;
+  }
+
+  Expression<T> localFilesRefs<T extends Object>(
+    Expression<T> Function($$LocalFilesTableAnnotationComposer a) f,
+  ) {
+    final $$LocalFilesTableAnnotationComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.id,
+      referencedTable: $db.localFiles,
+      getReferencedColumn: (t) => t.folderId,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$LocalFilesTableAnnotationComposer(
+            $db: $db,
+            $table: $db.localFiles,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return f(composer);
+  }
+}
+
+class $$LocalFoldersTableTableManager
+    extends
+        RootTableManager<
+          _$AppDatabase,
+          $LocalFoldersTable,
+          LocalFolderRecord,
+          $$LocalFoldersTableFilterComposer,
+          $$LocalFoldersTableOrderingComposer,
+          $$LocalFoldersTableAnnotationComposer,
+          $$LocalFoldersTableCreateCompanionBuilder,
+          $$LocalFoldersTableUpdateCompanionBuilder,
+          (LocalFolderRecord, $$LocalFoldersTableReferences),
+          LocalFolderRecord,
+          PrefetchHooks Function({bool parentId, bool localFilesRefs})
+        > {
+  $$LocalFoldersTableTableManager(_$AppDatabase db, $LocalFoldersTable table)
+    : super(
+        TableManagerState(
+          db: db,
+          table: table,
+          createFilteringComposer: () =>
+              $$LocalFoldersTableFilterComposer($db: db, $table: table),
+          createOrderingComposer: () =>
+              $$LocalFoldersTableOrderingComposer($db: db, $table: table),
+          createComputedFieldComposer: () =>
+              $$LocalFoldersTableAnnotationComposer($db: db, $table: table),
+          updateCompanionCallback:
+              ({
+                Value<String> id = const Value.absent(),
+                Value<String?> parentId = const Value.absent(),
+                Value<String> name = const Value.absent(),
+                Value<String?> classId = const Value.absent(),
+                Value<DateTime> createdAt = const Value.absent(),
+                Value<DateTime> updatedAt = const Value.absent(),
+                Value<int> rowid = const Value.absent(),
+              }) => LocalFoldersCompanion(
+                id: id,
+                parentId: parentId,
+                name: name,
+                classId: classId,
+                createdAt: createdAt,
+                updatedAt: updatedAt,
+                rowid: rowid,
+              ),
+          createCompanionCallback:
+              ({
+                required String id,
+                Value<String?> parentId = const Value.absent(),
+                required String name,
+                Value<String?> classId = const Value.absent(),
+                required DateTime createdAt,
+                required DateTime updatedAt,
+                Value<int> rowid = const Value.absent(),
+              }) => LocalFoldersCompanion.insert(
+                id: id,
+                parentId: parentId,
+                name: name,
+                classId: classId,
+                createdAt: createdAt,
+                updatedAt: updatedAt,
+                rowid: rowid,
+              ),
+          withReferenceMapper: (p0) => p0
+              .map(
+                (e) => (
+                  e.readTable<$LocalFoldersTable, LocalFolderRecord>(table),
+                  $$LocalFoldersTableReferences(db, table, e),
+                ),
+              )
+              .toList(),
+          prefetchHooksCallback: ({parentId = false, localFilesRefs = false}) {
+            return PrefetchHooks(
+              db: db,
+              explicitlyWatchedTables: [if (localFilesRefs) db.localFiles],
+              addJoins:
+                  <
+                    T extends TableManagerState<
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic
+                    >
+                  >(state) {
+                    if (parentId) {
+                      state = state.withJoin(
+                        currentTable: table,
+                        currentColumn: table.parentId,
+                        referencedTable: $$LocalFoldersTableReferences
+                            ._parentIdTable(db),
+                        referencedColumn: $$LocalFoldersTableReferences
+                            ._parentIdTable(db)
+                            .id,
+                      ) as T;
+                    }
+
+                    return state;
+                  },
+              getPrefetchedDataCallback: (items) async {
+                return [
+                  if (localFilesRefs)
+                    await $_getPrefetchedData<
+                      LocalFolderRecord,
+                      $LocalFoldersTable,
+                      LocalFileRecord
+                    >(
+                      currentTable: table,
+                      referencedTable: $$LocalFoldersTableReferences
+                          ._localFilesRefsTable(db),
+                      managerFromTypedResult: (p0) =>
+                          $$LocalFoldersTableReferences(
+                            db,
+                            table,
+                            p0,
+                          ).localFilesRefs,
+                      referencedItemsForCurrentItem: (item, referencedItems) =>
+                          referencedItems.where((e) => e.folderId == item.id),
+                      typedResults: items,
+                    ),
+                ];
+              },
+            );
+          },
+        ),
+      );
+}
+
+typedef $$LocalFoldersTableProcessedTableManager =
+    ProcessedTableManager<
+      _$AppDatabase,
+      $LocalFoldersTable,
+      LocalFolderRecord,
+      $$LocalFoldersTableFilterComposer,
+      $$LocalFoldersTableOrderingComposer,
+      $$LocalFoldersTableAnnotationComposer,
+      $$LocalFoldersTableCreateCompanionBuilder,
+      $$LocalFoldersTableUpdateCompanionBuilder,
+      (LocalFolderRecord, $$LocalFoldersTableReferences),
+      LocalFolderRecord,
+      PrefetchHooks Function({bool parentId, bool localFilesRefs})
+    >;
+typedef $$LocalFilesTableCreateCompanionBuilder = LocalFilesCompanion Function({
+  required String id,
+  Value<String?> folderId,
+  required String name,
+  required String relativePath,
+  Value<String?> mimeType,
+  required int size,
+  required String source,
+  Value<String?> sourceAttachmentId,
+  Value<String?> classId,
+  Value<String?> sourcePostId,
+  Value<DateTime?> backedUpAt,
+  required DateTime createdAt,
+  required DateTime updatedAt,
+  Value<int> rowid,
+});
+typedef $$LocalFilesTableUpdateCompanionBuilder = LocalFilesCompanion Function({
+  Value<String> id,
+  Value<String?> folderId,
+  Value<String> name,
+  Value<String> relativePath,
+  Value<String?> mimeType,
+  Value<int> size,
+  Value<String> source,
+  Value<String?> sourceAttachmentId,
+  Value<String?> classId,
+  Value<String?> sourcePostId,
+  Value<DateTime?> backedUpAt,
+  Value<DateTime> createdAt,
+  Value<DateTime> updatedAt,
+  Value<int> rowid,
+});
+
+final class $$LocalFilesTableReferences
+    extends BaseReferences<_$AppDatabase, $LocalFilesTable, LocalFileRecord> {
+  $$LocalFilesTableReferences(super.$_db, super.$_table, super.$_typedResult);
+
+  static $LocalFoldersTable _folderIdTable(_$AppDatabase db) =>
+      db.localFolders.createAlias('local_files__folder_id__local_folders__id');
+
+  $$LocalFoldersTableProcessedTableManager? get folderId {
+    final $_column = $_itemColumn<String>('folder_id');
+    if ($_column == null) return null;
+    final manager = $$LocalFoldersTableTableManager(
+      $_db,
+      $_db.localFolders,
+    ).filter((f) => f.id.sqlEquals($_column));
+    final item = $_typedResult.readTableOrNull(_folderIdTable($_db));
+    if (item == null) return manager;
+    return ProcessedTableManager(
+      manager.$state.copyWith(prefetchedData: [item]),
+    );
+  }
+}
+
+class $$LocalFilesTableFilterComposer
+    extends Composer<_$AppDatabase, $LocalFilesTable> {
+  $$LocalFilesTableFilterComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnFilters<String> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get name => $composableBuilder(
+    column: $table.name,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get relativePath => $composableBuilder(
+    column: $table.relativePath,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get mimeType => $composableBuilder(
+    column: $table.mimeType,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get size => $composableBuilder(
+    column: $table.size,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get source => $composableBuilder(
+    column: $table.source,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get sourceAttachmentId => $composableBuilder(
+    column: $table.sourceAttachmentId,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get classId => $composableBuilder(
+    column: $table.classId,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get sourcePostId => $composableBuilder(
+    column: $table.sourcePostId,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get backedUpAt => $composableBuilder(
+    column: $table.backedUpAt,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get createdAt => $composableBuilder(
+    column: $table.createdAt,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get updatedAt => $composableBuilder(
+    column: $table.updatedAt,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  $$LocalFoldersTableFilterComposer get folderId {
+    final $$LocalFoldersTableFilterComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.folderId,
+      referencedTable: $db.localFolders,
+      getReferencedColumn: (t) => t.id,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$LocalFoldersTableFilterComposer(
+            $db: $db,
+            $table: $db.localFolders,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return composer;
+  }
+}
+
+class $$LocalFilesTableOrderingComposer
+    extends Composer<_$AppDatabase, $LocalFilesTable> {
+  $$LocalFilesTableOrderingComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnOrderings<String> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get name => $composableBuilder(
+    column: $table.name,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get relativePath => $composableBuilder(
+    column: $table.relativePath,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get mimeType => $composableBuilder(
+    column: $table.mimeType,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get size => $composableBuilder(
+    column: $table.size,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get source => $composableBuilder(
+    column: $table.source,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get sourceAttachmentId => $composableBuilder(
+    column: $table.sourceAttachmentId,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get classId => $composableBuilder(
+    column: $table.classId,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get sourcePostId => $composableBuilder(
+    column: $table.sourcePostId,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get backedUpAt => $composableBuilder(
+    column: $table.backedUpAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get createdAt => $composableBuilder(
+    column: $table.createdAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get updatedAt => $composableBuilder(
+    column: $table.updatedAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  $$LocalFoldersTableOrderingComposer get folderId {
+    final $$LocalFoldersTableOrderingComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.folderId,
+      referencedTable: $db.localFolders,
+      getReferencedColumn: (t) => t.id,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$LocalFoldersTableOrderingComposer(
+            $db: $db,
+            $table: $db.localFolders,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return composer;
+  }
+}
+
+class $$LocalFilesTableAnnotationComposer
+    extends Composer<_$AppDatabase, $LocalFilesTable> {
+  $$LocalFilesTableAnnotationComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  GeneratedColumn<String> get id =>
+      $composableBuilder(column: $table.id, builder: (column) => column);
+
+  GeneratedColumn<String> get name =>
+      $composableBuilder(column: $table.name, builder: (column) => column);
+
+  GeneratedColumn<String> get relativePath => $composableBuilder(
+    column: $table.relativePath,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get mimeType =>
+      $composableBuilder(column: $table.mimeType, builder: (column) => column);
+
+  GeneratedColumn<int> get size =>
+      $composableBuilder(column: $table.size, builder: (column) => column);
+
+  GeneratedColumn<String> get source =>
+      $composableBuilder(column: $table.source, builder: (column) => column);
+
+  GeneratedColumn<String> get sourceAttachmentId => $composableBuilder(
+    column: $table.sourceAttachmentId,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get classId =>
+      $composableBuilder(column: $table.classId, builder: (column) => column);
+
+  GeneratedColumn<String> get sourcePostId => $composableBuilder(
+    column: $table.sourcePostId,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<DateTime> get backedUpAt => $composableBuilder(
+    column: $table.backedUpAt,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<DateTime> get createdAt =>
+      $composableBuilder(column: $table.createdAt, builder: (column) => column);
+
+  GeneratedColumn<DateTime> get updatedAt =>
+      $composableBuilder(column: $table.updatedAt, builder: (column) => column);
+
+  $$LocalFoldersTableAnnotationComposer get folderId {
+    final $$LocalFoldersTableAnnotationComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.folderId,
+      referencedTable: $db.localFolders,
+      getReferencedColumn: (t) => t.id,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$LocalFoldersTableAnnotationComposer(
+            $db: $db,
+            $table: $db.localFolders,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return composer;
+  }
+}
+
+class $$LocalFilesTableTableManager
+    extends
+        RootTableManager<
+          _$AppDatabase,
+          $LocalFilesTable,
+          LocalFileRecord,
+          $$LocalFilesTableFilterComposer,
+          $$LocalFilesTableOrderingComposer,
+          $$LocalFilesTableAnnotationComposer,
+          $$LocalFilesTableCreateCompanionBuilder,
+          $$LocalFilesTableUpdateCompanionBuilder,
+          (LocalFileRecord, $$LocalFilesTableReferences),
+          LocalFileRecord,
+          PrefetchHooks Function({bool folderId})
+        > {
+  $$LocalFilesTableTableManager(_$AppDatabase db, $LocalFilesTable table)
+    : super(
+        TableManagerState(
+          db: db,
+          table: table,
+          createFilteringComposer: () =>
+              $$LocalFilesTableFilterComposer($db: db, $table: table),
+          createOrderingComposer: () =>
+              $$LocalFilesTableOrderingComposer($db: db, $table: table),
+          createComputedFieldComposer: () =>
+              $$LocalFilesTableAnnotationComposer($db: db, $table: table),
+          updateCompanionCallback:
+              ({
+                Value<String> id = const Value.absent(),
+                Value<String?> folderId = const Value.absent(),
+                Value<String> name = const Value.absent(),
+                Value<String> relativePath = const Value.absent(),
+                Value<String?> mimeType = const Value.absent(),
+                Value<int> size = const Value.absent(),
+                Value<String> source = const Value.absent(),
+                Value<String?> sourceAttachmentId = const Value.absent(),
+                Value<String?> classId = const Value.absent(),
+                Value<String?> sourcePostId = const Value.absent(),
+                Value<DateTime?> backedUpAt = const Value.absent(),
+                Value<DateTime> createdAt = const Value.absent(),
+                Value<DateTime> updatedAt = const Value.absent(),
+                Value<int> rowid = const Value.absent(),
+              }) => LocalFilesCompanion(
+                id: id,
+                folderId: folderId,
+                name: name,
+                relativePath: relativePath,
+                mimeType: mimeType,
+                size: size,
+                source: source,
+                sourceAttachmentId: sourceAttachmentId,
+                classId: classId,
+                sourcePostId: sourcePostId,
+                backedUpAt: backedUpAt,
+                createdAt: createdAt,
+                updatedAt: updatedAt,
+                rowid: rowid,
+              ),
+          createCompanionCallback:
+              ({
+                required String id,
+                Value<String?> folderId = const Value.absent(),
+                required String name,
+                required String relativePath,
+                Value<String?> mimeType = const Value.absent(),
+                required int size,
+                required String source,
+                Value<String?> sourceAttachmentId = const Value.absent(),
+                Value<String?> classId = const Value.absent(),
+                Value<String?> sourcePostId = const Value.absent(),
+                Value<DateTime?> backedUpAt = const Value.absent(),
+                required DateTime createdAt,
+                required DateTime updatedAt,
+                Value<int> rowid = const Value.absent(),
+              }) => LocalFilesCompanion.insert(
+                id: id,
+                folderId: folderId,
+                name: name,
+                relativePath: relativePath,
+                mimeType: mimeType,
+                size: size,
+                source: source,
+                sourceAttachmentId: sourceAttachmentId,
+                classId: classId,
+                sourcePostId: sourcePostId,
+                backedUpAt: backedUpAt,
+                createdAt: createdAt,
+                updatedAt: updatedAt,
+                rowid: rowid,
+              ),
+          withReferenceMapper: (p0) => p0
+              .map(
+                (e) => (
+                  e.readTable<$LocalFilesTable, LocalFileRecord>(table),
+                  $$LocalFilesTableReferences(db, table, e),
+                ),
+              )
+              .toList(),
+          prefetchHooksCallback: ({folderId = false}) {
+            return PrefetchHooks(
+              db: db,
+              explicitlyWatchedTables: [],
+              addJoins:
+                  <
+                    T extends TableManagerState<
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic
+                    >
+                  >(state) {
+                    if (folderId) {
+                      state = state.withJoin(
+                        currentTable: table,
+                        currentColumn: table.folderId,
+                        referencedTable: $$LocalFilesTableReferences
+                            ._folderIdTable(db),
+                        referencedColumn: $$LocalFilesTableReferences
+                            ._folderIdTable(db)
+                            .id,
+                      ) as T;
+                    }
+
+                    return state;
+                  },
+              getPrefetchedDataCallback: (items) async {
+                return [];
+              },
+            );
+          },
+        ),
+      );
+}
+
+typedef $$LocalFilesTableProcessedTableManager =
+    ProcessedTableManager<
+      _$AppDatabase,
+      $LocalFilesTable,
+      LocalFileRecord,
+      $$LocalFilesTableFilterComposer,
+      $$LocalFilesTableOrderingComposer,
+      $$LocalFilesTableAnnotationComposer,
+      $$LocalFilesTableCreateCompanionBuilder,
+      $$LocalFilesTableUpdateCompanionBuilder,
+      (LocalFileRecord, $$LocalFilesTableReferences),
+      LocalFileRecord,
+      PrefetchHooks Function({bool folderId})
+    >;
 
 class $AppDatabaseManager {
   final _$AppDatabase _db;
@@ -16003,4 +18127,8 @@ class $AppDatabaseManager {
       $$SyncStateTableTableManager(_db, _db.syncState);
   $$OutboxTableTableManager get outbox =>
       $$OutboxTableTableManager(_db, _db.outbox);
+  $$LocalFoldersTableTableManager get localFolders =>
+      $$LocalFoldersTableTableManager(_db, _db.localFolders);
+  $$LocalFilesTableTableManager get localFiles =>
+      $$LocalFilesTableTableManager(_db, _db.localFiles);
 }
