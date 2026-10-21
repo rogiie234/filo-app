@@ -27,7 +27,7 @@ class AppDatabase extends _$AppDatabase {
   AppDatabase(super.executor);
 
   @override
-  int get schemaVersion => 4;
+  int get schemaVersion => 5;
 
   Future<void> _createFileSyncState() async {
     final columns = await customSelect('PRAGMA table_info(drive_backup_jobs)')
@@ -96,15 +96,26 @@ class AppDatabase extends _$AppDatabase {
     )
   ''');
 
+  Future<void> _createInstructorQuizCache() async {
+    await customStatement(
+      "CREATE TABLE IF NOT EXISTS instructor_quiz_lists (class_id TEXT PRIMARY KEY REFERENCES cache_classes(id) ON DELETE CASCADE, payload TEXT NOT NULL)",
+    );
+    await customStatement(
+      "CREATE TABLE IF NOT EXISTS instructor_quiz_details (id TEXT PRIMARY KEY, class_id TEXT NOT NULL REFERENCES cache_classes(id) ON DELETE CASCADE, payload TEXT NOT NULL)",
+    );
+  }
+
   @override
   MigrationStrategy get migration => MigrationStrategy(
     onCreate: (m) async {
       await m.createAll();
+      await _createInstructorQuizCache();
       await _createGradingCache();
       await _createDriveBackup();
       await _createFileSyncState();
     },
     onUpgrade: (m, from, to) async {
+      if (from < 5) await _createInstructorQuizCache();
       if (from < 2) await _createGradingCache();
       if (from < 3) await _createDriveBackup();
       if (from < 4) {
