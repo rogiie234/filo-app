@@ -13,6 +13,8 @@ import '../../onboarding/data/profile_repository.dart';
 import '../domain/prototype_models.dart';
 import 'class_students_screen.dart';
 import 'classwork_list.dart';
+import '../../assessments/presentation/instructor_classwork_list.dart';
+import '../../assessments/presentation/assessment_form_screen.dart';
 import '../../submissions/presentation/assignment_detail_screen.dart';
 import 'classes_widgets.dart' show OfflineBanner;
 import '../../posts/presentation/stream_post_card.dart';
@@ -164,13 +166,20 @@ class _ClassScreenState extends ConsumerState<ClassScreen> {
               index: _tab,
               children: [
                 _refresh(_stream(state, room)),
-                ClassworkList(
-                  classId: room.id,
-                  instructor: instructor,
-                  live: live,
-                  previewPosts: state.posts,
-                  onOpen: _openStreamPost,
-                ),
+                if (live && instructor)
+                  InstructorClassworkList(
+                    classId: room.id,
+                    archived: room.archived,
+                    active: _tab == 1,
+                  )
+                else
+                  ClassworkList(
+                    classId: room.id,
+                    instructor: instructor,
+                    live: live,
+                    previewPosts: state.posts,
+                    onOpen: _openStreamPost,
+                  ),
                 _refresh(
                   ClassFiles(
                     hasSamples: !live && room.id == 'it119',
@@ -196,12 +205,8 @@ class _ClassScreenState extends ConsumerState<ClassScreen> {
                   onPressed:
                       room.archived ||
                           (live &&
-                              (_tab != 0 ||
-                                  ref
-                                          .watch(connectivityProvider)
-                                          .asData
-                                          ?.value !=
-                                      true))
+                              (ref.watch(connectivityProvider).asData?.value !=
+                                  true))
                       ? null
                       : () {
                           if (live && _tab == 0) {
@@ -209,6 +214,13 @@ class _ClassScreenState extends ConsumerState<ClassScreen> {
                               MaterialPageRoute<void>(
                                 builder: (_) =>
                                     CreatePostScreen(classId: room.id),
+                              ),
+                            );
+                          } else if (live) {
+                            Navigator.of(context).push(
+                              MaterialPageRoute<void>(
+                                builder: (_) =>
+                                    AssessmentFormScreen(classId: room.id),
                               ),
                             );
                           } else {
@@ -230,7 +242,9 @@ class _ClassScreenState extends ConsumerState<ClassScreen> {
                     ? (ref.watch(connectivityProvider).asData?.value == true
                           ? ''
                           : 'Connect to the internet to post or upload files.')
-                    : 'Assessments are not available yet.',
+                    : (ref.watch(connectivityProvider).asData?.value == true
+                          ? ''
+                          : 'Connect to the internet to create an assessment.'),
               ),
             ),
           NavigationBar(
@@ -592,6 +606,10 @@ class _ClassScreenState extends ConsumerState<ClassScreen> {
       : RefreshIndicator(
           onRefresh: () async {
             try {
+              final online = await ref
+                  .read(connectivityMonitorProvider)
+                  .recheck();
+              if (!mounted || !online) return;
               ref.invalidate(postSyncProvider(widget.classId));
               await ref.read(postSyncProvider(widget.classId).future);
             } catch (_) {
@@ -613,88 +631,109 @@ class _ClassScreenState extends ConsumerState<ClassScreen> {
     final cached = live ? ref.watch(streamPostsProvider(room.id)) : null;
     final sync = live ? ref.watch(postSyncProvider(room.id)) : null;
     final online = ref.watch(connectivityProvider).asData?.value == true;
-    return ListView(
+    final headers = <Widget>[
+      Text('Stream', style: Theme.of(context).textTheme.headlineMedium),
+      const SizedBox(height: 8),
+      const Text(
+        'What’s happening in your class.',
+        style: TextStyle(color: FiloColors.secondary),
+      ),
+      const SizedBox(height: 24),
+      if (live && ref.watch(connectivityProvider).asData?.value == false)
+        const OfflineBanner(),
+      if (live && (cached!.hasError || sync!.hasError))
+        TextButton(
+          onPressed: online
+              ? () {
+                  ref.invalidate(streamPostsProvider(room.id));
+                  ref.invalidate(postSyncProvider(room.id));
+                }
+              : null,
+          child: const Text('Could not refresh posts. Retry'),
+        ),
+      if (live &&
+          posts.isEmpty &&
+          !cached!.hasError &&
+          !sync!.hasError &&
+          (cached.isLoading || sync.isLoading))
+        const StreamPostSkeleton(),
+      if (live && posts.isEmpty && !online)
+        const Text('Connect to the internet to load posts for this class.'),
+      if (live &&
+          posts.isEmpty &&
+          online &&
+          cached!.hasValue &&
+          !cached.hasError &&
+          sync!.hasValue &&
+          !sync.isLoading &&
+          !sync.hasError)
+        FiloPanel(
+          color: FiloColors.tint,
+          child: EmptyState(
+            title: 'No posts yet',
+            message: state.role == PreviewRole.instructor
+                ? 'Share an announcement, material, or assignment with your class.'
+                : 'Announcements, materials, and assignments from your instructor will appear here.',
+          ),
+        ),
+      if (!live && posts.isEmpty)
+        const EmptyState(
+          title: 'Nothing posted yet.',
+          message: 'New ideas and class updates will appear here.',
+        ),
+    ];
+    final postIndices = {for (var i = 0; i < posts.length; i++) posts[i].id: i};
+    return CustomScrollView(
       physics: const AlwaysScrollableScrollPhysics(),
       key: PageStorageKey('stream-${room.id}'),
-      padding: const EdgeInsets.all(24),
-      children: [
-        Text('Stream', style: Theme.of(context).textTheme.headlineMedium),
-        const SizedBox(height: 8),
-        const Text(
-          'What’s happening in your class.',
-          style: TextStyle(color: FiloColors.secondary),
+      slivers: [
+        SliverPadding(
+          padding: const EdgeInsets.fromLTRB(24, 24, 24, 0),
+          sliver: SliverList(delegate: SliverChildListDelegate(headers)),
         ),
-        const SizedBox(height: 24),
-        if (live && ref.watch(connectivityProvider).asData?.value == false)
-          const OfflineBanner(),
-        if (live && (cached!.hasError || sync!.hasError))
-          TextButton(
-            onPressed: online
-                ? () {
-                    ref.invalidate(streamPostsProvider(room.id));
-                    ref.invalidate(postSyncProvider(room.id));
-                  }
-                : null,
-            child: const Text('Could not refresh posts. Retry'),
-          ),
-        if (live &&
-            posts.isEmpty &&
-            !cached!.hasError &&
-            !sync!.hasError &&
-            (cached.isLoading || sync.isLoading))
-          const StreamPostSkeleton(),
-        if (live && posts.isEmpty && !online)
-          const Text('Connect to the internet to load posts for this class.'),
-        if (live &&
-            posts.isEmpty &&
-            online &&
-            cached!.hasValue &&
-            !cached.hasError &&
-            sync!.hasValue &&
-            !sync.isLoading &&
-            !sync.hasError)
-          FiloPanel(
-            color: FiloColors.tint,
-            child: EmptyState(
-              title: 'No posts yet',
-              message: state.role == PreviewRole.instructor
-                  ? 'Share an announcement, material, or assignment with your class.'
-                  : 'Announcements, materials, and assignments from your instructor will appear here.',
+        SliverPadding(
+          padding: const EdgeInsets.fromLTRB(24, 0, 24, 24),
+          sliver: SliverList(
+            delegate: SliverChildBuilderDelegate(
+              (context, index) {
+                final post = posts[index];
+                return Padding(
+                  key: ValueKey(post.id),
+                  padding: const EdgeInsets.only(bottom: 16),
+                  child: StreamPostCard(
+                    post: post,
+                    instructor: state.role == PreviewRole.instructor,
+                    onOpen: () => _openStreamPost(post),
+                    onEdit:
+                        live &&
+                            online &&
+                            !room.archived &&
+                            !_deletingPosts.contains(post.id)
+                        ? () => Navigator.of(context).push(
+                            MaterialPageRoute<void>(
+                              builder: (_) => CreatePostScreen(
+                                classId: room.id,
+                                postId: post.id,
+                              ),
+                            ),
+                          )
+                        : null,
+                    onDelete:
+                        live &&
+                            online &&
+                            !room.archived &&
+                            !_deletingPosts.contains(post.id)
+                        ? () => _deleteStreamPost(post)
+                        : null,
+                  ),
+                );
+              },
+              childCount: posts.length,
+              findChildIndexCallback: (key) =>
+                  key is ValueKey<String> ? postIndices[key.value] : null,
             ),
           ),
-        if (!live && posts.isEmpty)
-          const EmptyState(
-            title: 'Nothing posted yet.',
-            message: 'New ideas and class updates will appear here.',
-          ),
-        for (final post in posts)
-          Padding(
-            padding: const EdgeInsets.only(bottom: 16),
-            child: StreamPostCard(
-              post: post,
-              instructor: state.role == PreviewRole.instructor,
-              onOpen: () => _openStreamPost(post),
-              onEdit:
-                  live &&
-                      online &&
-                      !room.archived &&
-                      !_deletingPosts.contains(post.id)
-                  ? () => Navigator.of(context).push(
-                      MaterialPageRoute<void>(
-                        builder: (_) =>
-                            CreatePostScreen(classId: room.id, postId: post.id),
-                      ),
-                    )
-                  : null,
-              onDelete:
-                  live &&
-                      online &&
-                      !room.archived &&
-                      !_deletingPosts.contains(post.id)
-                  ? () => _deleteStreamPost(post)
-                  : null,
-            ),
-          ),
+        ),
       ],
     );
   }

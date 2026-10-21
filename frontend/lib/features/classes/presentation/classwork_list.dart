@@ -17,19 +17,20 @@ import '../../posts/presentation/stream_post_card.dart';
 import '../../submissions/application/submission_providers.dart';
 import '../../submissions/domain/assignment_status.dart';
 
-final _classworkLoadedProvider = StreamProvider.autoDispose
-    .family<bool, String>((ref, key) async* {
-      final repository = await ref.watch(postRepositoryProvider.future);
-      if (repository == null) {
-        yield false;
-        return;
-      }
-      final db = repository.database;
-      yield* (db.select(db.syncState)
-            ..where((s) => s.syncedTableName.equals(key)))
-          .watch()
-          .map((rows) => rows.isNotEmpty);
-    });
+final classworkLoadedProvider = StreamProvider.autoDispose.family<bool, String>(
+  (ref, key) async* {
+    final repository = await ref.watch(postRepositoryProvider.future);
+    if (repository == null) {
+      yield false;
+      return;
+    }
+    final db = repository.database;
+    yield* (db.select(db.syncState)
+          ..where((s) => s.syncedTableName.equals(key)))
+        .watch()
+        .map((rows) => rows.isNotEmpty);
+  },
+);
 
 /// Assignments are always read from the account's SQLite cache.
 class ClassworkList extends ConsumerStatefulWidget {
@@ -88,6 +89,8 @@ class _ClassworkListState extends ConsumerState<ClassworkList> {
   Future<void> _refresh() async {
     if (!widget.live) return;
     try {
+      final online = await ref.read(connectivityMonitorProvider).recheck();
+      if (!mounted || !online) return;
       if (widget.instructor) {
         ref.invalidate(postSyncProvider(widget.classId));
         await ref.read(postSyncProvider(widget.classId).future);
@@ -121,9 +124,7 @@ class _ClassworkListState extends ConsumerState<ClassworkList> {
         : ref.watch(postSyncProvider(id));
     final checkpoint = live
         ? ref.watch(
-            _classworkLoadedProvider(
-              '${student ? 'submissions' : 'posts'}:$id',
-            ),
+            classworkLoadedProvider('${student ? 'submissions' : 'posts'}:$id'),
           )
         : null;
     final confirmedLoad = !live || checkpoint?.asData?.value == true;
@@ -257,7 +258,7 @@ class _ClassworkListState extends ConsumerState<ClassworkList> {
           TextButton(
             onPressed: () {
               ref.invalidate(
-                _classworkLoadedProvider(
+                classworkLoadedProvider(
                   '${student ? 'submissions' : 'posts'}:$id',
                 ),
               );

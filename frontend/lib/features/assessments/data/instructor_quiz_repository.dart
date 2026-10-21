@@ -27,6 +27,9 @@ class InstructorQuizRepository {
   final String userId;
   final bool Function() isOnline;
   final Set<String> _saving = {};
+  final Map<String, int> _listRevisions = {};
+  void _changedList(String classId) =>
+      _listRevisions.update(classId, (value) => value + 1, ifAbsent: () => 1);
 
   Future<void> _authorize(String classId, {bool writing = false}) async {
     final profile = await database.readProfile(userId);
@@ -58,7 +61,8 @@ class InstructorQuizRepository {
         .from('classes')
         .select('owner_id,archived_at,deleted_at')
         .eq('id', classId)
-        .single();
+        .single()
+        .timeout(const Duration(seconds: 20));
     if (row['owner_id'] != userId || row['deleted_at'] != null)
       throw StateError('This class is no longer available.');
     if (writing && row['archived_at'] != null)
@@ -106,22 +110,37 @@ class InstructorQuizRepository {
       });
 
   Future<List<Map<String, dynamic>>> refreshList(String classId) async {
+    final revision = _listRevisions[classId] ?? 0;
     await _remoteAccess(classId);
     final all = <Map<String, dynamic>>[];
     for (var offset = 0; ; offset += 200) {
       final page = await client
           .from('quizzes')
-          .select()
+          .select('*,questions(count)')
           .eq('class_id', classId)
           .eq('author_id', userId)
           .isFilter('deleted_at', null)
           .order('id')
-          .range(offset, offset + 199);
-      all.addAll(page);
+          .range(offset, offset + 199)
+          .timeout(const Duration(seconds: 20));
+      all.addAll(
+        page.map((item) {
+          final row = Map<String, dynamic>.from(item);
+          final counts = row.remove('questions') as List;
+          row['question_count'] = counts.isEmpty
+              ? 0
+              : (counts.single as Map)['count'];
+          return row;
+        }),
+      );
       if (page.length < 200) break;
     }
     await _authorize(classId);
+    var committed = false;
     await database.transaction(() async {
+      // A detail refresh or confirmed delete may have superseded this network
+      // response while it was in flight. Never resurrect an older list row.
+      if (revision != (_listRevisions[classId] ?? 0)) return;
       await database.customStatement(
         'INSERT OR REPLACE INTO instructor_quiz_lists(class_id,payload) VALUES (?,?)',
         [classId, jsonEncode(all)],
@@ -140,7 +159,9 @@ class InstructorQuizRepository {
             [row.read<String>('id')],
           );
       }
+      committed = true;
     });
+    if (!committed) return refreshList(classId);
     _notify();
     return all;
   }
@@ -172,7 +193,8 @@ class InstructorQuizRepository {
             .eq('quiz_id', quizId)
             .order('position')
             .order('id')
-            .range(offset, offset + 199);
+            .range(offset, offset + 199)
+            .timeout(const Duration(seconds: 20));
         for (final q in page) {
           final options =
               (q['question_options'] as List)
@@ -235,8 +257,10 @@ class InstructorQuizRepository {
         );
       }
       await _authorize(classId);
+      row['question_count'] = questions.length;
       final quiz = InstructorQuiz(row, questions);
       await database.transaction(() async {
+        _changedList(classId);
         await database.customStatement(
           'INSERT OR REPLACE INTO instructor_quiz_details(id,class_id,payload) VALUES (?,?,?)',
           [quizId, classId, jsonEncode(quiz.toJson())],
@@ -409,6 +433,76 @@ class InstructorQuizRepository {
     } finally {
       _saving.remove(token);
     }
+  }
+
+  Future<void> deleteQuiz(String classId, String quizId) async {
+    await _remoteAccess(classId, writing: true);
+    final current = await client
+        .from('quizzes')
+        .select('locked_at')
+        .eq('id', quizId)
+        .eq('class_id', classId)
+        .eq('author_id', userId)
+        .isFilter('deleted_at', null)
+        .single();
+    if (current['locked_at'] != null) {
+      try {
+        await refreshList(classId);
+      } catch (_) {
+        /* The lock refusal remains authoritative. */
+      }
+      throw StateError(
+        'A student has already started this assessment. It cannot be deleted.',
+      );
+    }
+    try {
+      await client
+          .from('quizzes')
+          .update({'deleted_at': DateTime.now().toUtc().toIso8601String()})
+          .eq('id', quizId)
+          .eq('class_id', classId)
+          .eq('author_id', userId)
+          .isFilter('locked_at', null)
+          .select('id')
+          .single();
+    } catch (error) {
+      InstructorQuiz? latest;
+      try {
+        await refreshList(classId);
+        latest = await refreshQuiz(classId, quizId);
+      } catch (_) {
+        /* Keep confirmed cache. */
+      }
+      if (latest?.locked == true) {
+        throw StateError(
+          'A student has already started this assessment. It cannot be deleted.',
+        );
+      }
+      throw QuizReconciliationRequired(error);
+    }
+    await database.transaction(() async {
+      _changedList(classId);
+      await database.customStatement(
+        'DELETE FROM instructor_quiz_details WHERE id=?',
+        [quizId],
+      );
+      final cached = await database
+          .customSelect(
+            'SELECT payload FROM instructor_quiz_lists WHERE class_id=?',
+            variables: [Variable.withString(classId)],
+          )
+          .getSingleOrNull();
+      if (cached != null) {
+        final list = (jsonDecode(cached.read<String>('payload')) as List)
+            .where((q) => q['id'] != quizId)
+            .toList();
+        await database.customStatement(
+          'UPDATE instructor_quiz_lists SET payload=? WHERE class_id=?',
+          [jsonEncode(list), classId],
+        );
+      }
+    });
+    _notify();
   }
 
   Future<InstructorQuiz> publish(String classId, String quizId) async {

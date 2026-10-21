@@ -117,6 +117,8 @@ class InstructorQuizSummary {
   String get type => row['type'] as String;
   String get status => row['status'] as String;
   int get totalPoints => row['total_points'] as int;
+  int? get questionCount => row['question_count'] as int?;
+  DateTime? get createdAt => _instant(row['created_at']);
   bool get locked => row['locked_at'] != null;
   DateTime? get opensAt => _instant(row['opens_at']);
   DateTime? get closesAt => _instant(row['closes_at']);
