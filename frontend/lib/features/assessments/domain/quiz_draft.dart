@@ -79,8 +79,77 @@ class QuizQuestion {
         );
   factory QuizQuestion.newQuestion(String type) => QuizQuestion(
     localId: const Uuid().v4(),
-    payload: {'type': type, 'prompt': '', 'points': 1},
+    payload: {
+      'type': type,
+      'prompt': '',
+      'points': 1,
+      if (type == 'multiple_choice') 'options': ['', ''],
+      if (type == 'identification') 'accepted_answers': <String>[],
+    },
   );
+  QuizQuestion duplicate() => QuizQuestion(
+    localId: const Uuid().v4(),
+    payload: payload,
+    aiGenerated: aiGenerated,
+  );
+  void removeOption(int index) {
+    final texts = optionTexts.toList();
+    if (texts.length <= 2) return;
+    texts.removeAt(index);
+    payload['options'] = texts;
+    final correct = payload['correct_option_index'] as int?;
+    if (correct == index) {
+      payload.remove('correct_option_index');
+    } else if (correct != null && correct > index) {
+      payload['correct_option_index'] = correct - 1;
+    }
+  }
+
+  Map<String, String> validationErrors({
+    String? pointsText,
+    String pendingAnswer = '',
+  }) {
+    final errors = <String, String>{};
+    if (prompt.trim().isEmpty || prompt.runes.length > 1000) {
+      errors['prompt'] = 'Enter a question of up to 1000 characters.';
+    }
+    final n = pointsText == null ? payload['points'] : int.tryParse(pointsText);
+    if (n is! int || n < 1 || n > 1000) {
+      errors['points'] = 'Enter a whole number from 1 to 1000.';
+    }
+    if ((explanation?.runes.length ?? 0) > 500) {
+      errors['explanation'] = 'Use up to 500 characters.';
+    }
+    if (type == 'multiple_choice') {
+      final texts = optionTexts;
+      if (texts.length < 2 || texts.length > 10) {
+        errors['answer'] = 'Add 2 to 10 options.';
+      }
+      for (var i = 0; i < texts.length; i++) {
+        if (texts[i].trim().isEmpty || texts[i].runes.length > 500) {
+          errors['option$i'] = 'Enter an option of up to 500 characters.';
+        }
+      }
+      final correct = answerKey?.correctOptionIndex;
+      if (correct == null || correct < 0 || correct >= texts.length) {
+        errors['answer'] = 'Pick one correct option.';
+      }
+    } else if (type == 'true_false' && answerKey?.correctBoolean == null) {
+      errors['answer'] = 'Choose True or False.';
+    } else if (type == 'identification') {
+      final answers = answerKey!.acceptedAnswers;
+      if (answers.isEmpty ||
+          answers.length > 10 ||
+          answers.any((a) => a.trim().isEmpty)) {
+        errors['answer'] = 'Add 1 to 10 accepted answers.';
+      }
+      if (pendingAnswer.isNotEmpty) {
+        errors['answer'] = 'Add the typed answer or clear it before saving.';
+      }
+    }
+    return errors;
+  }
+
   QuizQuestion copy() => QuizQuestion(
     localId: localId,
     id: id,
@@ -274,9 +343,24 @@ class QuizDraft {
       ..addAll({
         for (final k in quizSettingFields) k: copyQuizJson(saved.row)[k],
       });
+    final localIds = {
+      for (final q in questions)
+        if (q.id != null) q.id!: q.localId,
+    };
     questions
       ..clear()
-      ..addAll(saved.questions.map((q) => q.copy()));
+      ..addAll(
+        saved.questions.map(
+          (q) => QuizQuestion(
+            localId: localIds[q.id] ?? q.localId,
+            id: q.id,
+            payload: q.payload,
+            aiGenerated: q.aiGenerated,
+            options: q.options,
+          ),
+        ),
+      );
+    _baseline = InstructorQuiz(saved.row, questions);
     reconciliationRequired = false;
   }
 }

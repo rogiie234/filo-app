@@ -314,7 +314,10 @@ class InstructorQuizRepository {
     return saved;
   }
 
-  Future<InstructorQuiz> save(QuizDraft draft) async {
+  Future<InstructorQuiz> save(
+    QuizDraft draft, {
+    void Function(String localId, String status)? onQuestionProgress,
+  }) async {
     if (draft.reconciliationRequired) {
       throw const QuizReconciliationRequired('Reload required');
     }
@@ -328,6 +331,7 @@ class InstructorQuizRepository {
     final removed = draft.deletedQuestionIds;
     final changes = draft.changes;
     var wrote = false;
+    String? activeQuestion;
     try {
       await _remoteAccess(draft.classId, writing: true);
 
@@ -389,6 +393,9 @@ class InstructorQuizRepository {
         for (var i = 0; i < requestQuestions.length; i++) {
           final q = requestQuestions[i];
           if (q.id == null || changes.edited.contains(q.localId)) {
+            final creating = q.id == null;
+            activeQuestion = q.localId;
+            onQuestionProgress?.call(q.localId, 'Saving...');
             wrote = true;
             final result = await client.rpc(
               'save_question',
@@ -400,6 +407,13 @@ class InstructorQuizRepository {
             q.id = (result as Map)['question_id'] as String;
             for (final current in draft.questions) {
               if (current.localId == q.localId) current.id = q.id;
+            }
+            if (creating && q.aiGenerated) {
+              await client
+                  .from('questions')
+                  .update({'ai_generated': true})
+                  .eq('id', q.id!)
+                  .eq('quiz_id', draft.id!);
             }
           }
         }
@@ -425,8 +439,14 @@ class InstructorQuizRepository {
         );
       }
       draft.acceptSaved(saved);
+      for (final q in draft.questions) {
+        onQuestionProgress?.call(q.localId, 'Saved');
+      }
       return saved;
     } catch (error) {
+      if (activeQuestion != null) {
+        onQuestionProgress?.call(activeQuestion, 'Save not confirmed');
+      }
       if (wrote) {
         draft.reconciliationRequired = true;
         if (draft.id != null) {
