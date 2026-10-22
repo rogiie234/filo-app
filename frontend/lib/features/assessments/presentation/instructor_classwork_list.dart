@@ -86,13 +86,14 @@ class _InstructorClassworkListState
     if (next == _nextBoundary) return;
     _boundaryTimer?.cancel();
     _nextBoundary = next;
-    if (next != null)
+    if (next != null) {
       _boundaryTimer = Timer(
         next.difference(now) + const Duration(milliseconds: 1),
         () {
           if (mounted) setState(() => _nextBoundary = null);
         },
       );
+    }
   }
 
   Future<void> _refresh() =>
@@ -118,10 +119,12 @@ class _InstructorClassworkListState
         return;
       }
       final id = widget.classId;
-      if (ref.read(streamPostsProvider(id)).hasError)
+      if (ref.read(streamPostsProvider(id)).hasError) {
         ref.invalidate(streamPostsProvider(id));
-      if (ref.read(instructorQuizzesProvider(id)).hasError)
+      }
+      if (ref.read(instructorQuizzesProvider(id)).hasError) {
         ref.invalidate(instructorQuizzesProvider(id));
+      }
       final checkpoint = classworkLoadedProvider(
         'instructor_classwork_posts:$id',
       );
@@ -131,10 +134,11 @@ class _InstructorClassworkListState
         ref.refresh(instructorQuizListRefreshProvider(id).future),
       ]).timeout(const Duration(seconds: 30));
     } catch (_) {
-      if (mounted)
+      if (mounted) {
         setState(
           () => _refreshMessage = 'Could not refresh classwork. Saved work is shown when available.',
         );
+      }
     } finally {
       if (mounted) setState(() => _refreshing = false);
     }
@@ -190,17 +194,20 @@ class _InstructorClassworkListState
       final repository = await ref.read(
         instructorQuizRepositoryProvider.future,
       );
-      if (repository == null)
+      if (repository == null) {
         throw StateError('Sign in to manage assessments.');
+      }
       await repository.deleteQuiz(widget.classId, quiz.id);
-      if (mounted)
+      if (mounted) {
         showMessage(context, draft ? 'Draft deleted.' : 'Assessment deleted.');
+      }
     } catch (error) {
-      if (mounted)
+      if (mounted) {
         showMessage(
           context,
           'Could not delete this assessment. ${error.toString().replaceFirst('Bad state: ', '')}',
         );
+      }
     } finally {
       if (mounted) setState(() => _deleting.remove(quiz.id));
     }

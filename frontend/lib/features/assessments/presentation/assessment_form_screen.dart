@@ -38,6 +38,7 @@ class _AssessmentFormScreenState extends ConsumerState<AssessmentFormScreen> {
       _archived = false;
   String? _error;
   int _revision = 0;
+  bool _answersChosenByHand = false;
 
   @override
   void initState() {
@@ -61,8 +62,9 @@ class _AssessmentFormScreenState extends ConsumerState<AssessmentFormScreen> {
           profile?.deletedAt != null ||
           room == null ||
           room.ownerId != repository.userId ||
-          room.deletedAt != null)
+          room.deletedAt != null) {
         throw StateError('This assessment is no longer available.');
+      }
       _archived = room.archivedAt != null;
       final id = _draft?.id ?? widget.quizId;
       if (id == null) {
@@ -80,13 +82,14 @@ class _AssessmentFormScreenState extends ConsumerState<AssessmentFormScreen> {
       if (ref.read(connectivityProvider).asData?.value == true) {
         final saved = await repository.refreshQuiz(widget.classId, id);
         if (!mounted) return;
-        if (_draft == null || !_draft!.isDirty)
+        if (_draft == null || !_draft!.isDirty) {
           _accept(saved);
-        else
+        } else {
           setState(() {
             _draft!.locked = saved.locked;
             _published = saved.row['status'] == 'published';
           });
+        }
       } else if (_draft == null) {
         throw StateError(
           'This assessment is not saved on this device. Connect to the internet and retry.',
@@ -94,10 +97,11 @@ class _AssessmentFormScreenState extends ConsumerState<AssessmentFormScreen> {
       }
       if (mounted) setState(() => _error = null);
     } catch (error) {
-      if (mounted)
+      if (mounted) {
         setState(
           () => _error = error.toString().replaceFirst('Bad state: ', ''),
         );
+      }
     } finally {
       if (mounted) setState(() => _loading = false);
     }
@@ -106,6 +110,8 @@ class _AssessmentFormScreenState extends ConsumerState<AssessmentFormScreen> {
   void _accept(InstructorQuiz saved) {
     setState(() {
       _draft = QuizDraft(saved);
+      // A stored value is an instructor choice, even when it matches a default.
+      _answersChosenByHand = true;
       _published = saved.row['status'] == 'published';
       _revision++;
     });
@@ -132,18 +138,20 @@ class _AssessmentFormScreenState extends ConsumerState<AssessmentFormScreen> {
         final repository = await ref.read(
           instructorQuizRepositoryProvider.future,
         );
-        if (repository == null)
+        if (repository == null) {
           throw StateError('Sign in to reload this assessment.');
+        }
         final saved = await repository.refreshQuiz(widget.classId, id);
         if (mounted) {
           _accept(saved);
           setState(() => _error = null);
         }
       } catch (error) {
-        if (mounted)
+        if (mounted) {
           setState(
             () => _error = error.toString().replaceFirst('Bad state: ', ''),
           );
+        }
       } finally {
         if (mounted) setState(() => _busy = false);
       }
@@ -182,6 +190,7 @@ class _AssessmentFormScreenState extends ConsumerState<AssessmentFormScreen> {
     final date = await showDatePicker(
       context: context,
       initialDate: DateTime(civil.year, civil.month, civil.day),
+      helpText: 'Select date (Philippine time)',
       firstDate: first,
       lastDate: last,
     );
@@ -189,6 +198,7 @@ class _AssessmentFormScreenState extends ConsumerState<AssessmentFormScreen> {
     final time = await showTimePicker(
       context: context,
       initialTime: TimeOfDay(hour: civil.hour, minute: civil.minute),
+      helpText: 'Select time (PHT, UTC+08:00)',
     );
     if (time == null || !mounted) return;
     setState(
@@ -221,14 +231,15 @@ class _AssessmentFormScreenState extends ConsumerState<AssessmentFormScreen> {
       final repository = await ref.read(
         instructorQuizRepositoryProvider.future,
       );
-      if (repository == null)
+      if (repository == null) {
         throw StateError('Sign in to save this assessment.');
+      }
       final saved = await repository.save(draft);
       if (!mounted) return;
       _accept(saved);
       showMessage(context, _published ? 'Changes saved.' : 'Draft saved.');
     } catch (error) {
-      if (mounted)
+      if (mounted) {
         setState(
           () => _error = draft.reconciliationRequired
               ? (draft.id == null
@@ -236,10 +247,16 @@ class _AssessmentFormScreenState extends ConsumerState<AssessmentFormScreen> {
                     : 'The save could not be confirmed. Your edits are still here. Reload the saved version before trying again.')
               : error.toString().replaceFirst('Bad state: ', ''),
         );
+      }
     } finally {
       if (mounted) setState(() => _busy = false);
     }
   }
+
+  Widget _hint(String text) => Padding(
+    padding: const EdgeInsets.only(top: 8),
+    child: Text(text, style: Theme.of(context).textTheme.bodySmall),
+  );
 
   @override
   Widget build(BuildContext context) {
@@ -339,6 +356,11 @@ class _AssessmentFormScreenState extends ConsumerState<AssessmentFormScreen> {
                               setState(() => draft.settings['title'] = value),
                         ),
                         const SizedBox(height: 12),
+                        Text(
+                          'Quiz or Exam',
+                          style: Theme.of(context).textTheme.titleSmall,
+                        ),
+                        const SizedBox(height: 8),
                         Wrap(
                           spacing: 8,
                           children: [
@@ -349,13 +371,17 @@ class _AssessmentFormScreenState extends ConsumerState<AssessmentFormScreen> {
                                 onSelected: contentEditing
                                     ? (_) => setState(() {
                                         draft.settings['type'] = type;
-                                        if (draft.id == null)
+                                        if (!_answersChosenByHand) {
                                           draft.settings['show_correct_answers'] =
                                               type == 'quiz';
+                                        }
                                       })
                                     : null,
                               ),
                           ],
+                        ),
+                        _hint(
+                          'Quiz shows correct answers by default; Exam hides them. Both use the same rules.',
                         ),
                         const SizedBox(height: 16),
                         TextFormField(
@@ -378,6 +404,9 @@ class _AssessmentFormScreenState extends ConsumerState<AssessmentFormScreen> {
                                 int.tryParse(value),
                           ),
                         ),
+                        _hint(
+                          'Choose 1 to 600 minutes; each attempt ends when time runs out or the assessment closes, whichever comes first.',
+                        ),
                         const SizedBox(height: 20),
                         TextFormField(
                           key: ValueKey('instructions-$_revision'),
@@ -397,7 +426,15 @@ class _AssessmentFormScreenState extends ConsumerState<AssessmentFormScreen> {
                                 : value,
                           ),
                         ),
-                        const SizedBox(height: 12),
+                        const SizedBox(height: 24),
+                        Text(
+                          'Settings',
+                          style: Theme.of(context).textTheme.titleLarge,
+                        ),
+                        _hint(
+                          'All dates and times use Philippine time (PHT, UTC+08:00).',
+                        ),
+                        const SizedBox(height: 16),
                         for (final field in ['opens_at', 'closes_at']) ...[
                           OutlinedButton.icon(
                             icon: const FiloIcon(FiloIcons.calendar),
@@ -410,6 +447,11 @@ class _AssessmentFormScreenState extends ConsumerState<AssessmentFormScreen> {
                             label: Text(
                               '${field == 'opens_at' ? 'Opens' : 'Closes'}: ${assessmentDateLabel(draft.settings[field] == null ? null : DateTime.parse(draft.settings[field] as String))}',
                             ),
+                          ),
+                          _hint(
+                            field == 'opens_at'
+                                ? 'Students can start at this date and time.'
+                                : 'Students must finish by this date and time, even if their time limit has not run out.',
                           ),
                           if (draft.settings[field] != null &&
                               (field == 'closes_at' ? editing : contentEditing))
@@ -428,6 +470,75 @@ class _AssessmentFormScreenState extends ConsumerState<AssessmentFormScreen> {
                             ),
                           const SizedBox(height: 8),
                         ],
+                        for (final setting in const [
+                          (
+                            'shuffle_questions',
+                            'Shuffle questions',
+                            'Give each student a shuffled question order that stays the same when they resume.',
+                          ),
+                          (
+                            'shuffle_options',
+                            'Shuffle options',
+                            'Shuffle multiple-choice options for each student and keep that order when they resume.',
+                          ),
+                          (
+                            'show_correct_answers',
+                            'Show correct answers',
+                            'Let students see correct answers when their results are released.',
+                          ),
+                        ]) ...[
+                          SwitchListTile(
+                            contentPadding: EdgeInsets.zero,
+                            title: Text(setting.$2),
+                            subtitle: Padding(
+                              padding: const EdgeInsets.only(top: 8),
+                              child: Text(setting.$3),
+                            ),
+                            value: draft.settings[setting.$1] as bool,
+                            onChanged: contentEditing
+                                ? (value) => setState(() {
+                                    draft.settings[setting.$1] = value;
+                                    if (setting.$1 == 'show_correct_answers') {
+                                      _answersChosenByHand = true;
+                                    }
+                                  })
+                                : null,
+                          ),
+                          const SizedBox(height: 12),
+                        ],
+                        TextFormField(
+                          key: ValueKey('passing-$_revision'),
+                          initialValue:
+                              draft.settings['passing_percent']?.toString() ??
+                              '',
+                          enabled: contentEditing,
+                          keyboardType: TextInputType.number,
+                          decoration: const InputDecoration(
+                            labelText: 'Passing score (optional)',
+                            suffixText: '%',
+                          ),
+                          validator: (value) {
+                            if (value == null || value.trim().isEmpty) {
+                              return null;
+                            }
+                            final percentage = int.tryParse(value.trim());
+                            return percentage == null ||
+                                    percentage < 0 ||
+                                    percentage > 100
+                                ? 'Enter a whole percentage from 0 to 100.'
+                                : null;
+                          },
+                          onChanged: (value) => setState(() {
+                            // Keep invalid input dirty; validation prevents sending it.
+                            draft.settings['passing_percent'] =
+                                value.trim().isEmpty
+                                ? null
+                                : int.tryParse(value.trim()) ?? value;
+                          }),
+                        ),
+                        _hint(
+                          'Enter a percentage from 0 to 100, or leave blank to set no passing score.',
+                        ),
                         const SizedBox(height: 16),
                         Text(
                           'Questions',

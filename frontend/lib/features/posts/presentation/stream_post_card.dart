@@ -198,10 +198,11 @@ class _StreamPostSkeletonState extends State<StreamPostSkeleton>
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
-    if (MediaQuery.disableAnimationsOf(context)) {
+    if (MediaQuery.disableAnimationsOf(context) ||
+        !TickerMode.valuesOf(context).enabled) {
       _fade.stop();
       _fade.value = 1;
-    } else {
+    } else if (!_fade.isAnimating) {
       _fade.repeat(reverse: true);
     }
   }

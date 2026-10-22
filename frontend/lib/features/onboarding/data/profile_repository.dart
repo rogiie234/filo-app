@@ -76,8 +76,9 @@ class ProfileRepository {
     }
     // An earlier insert may have committed even when its response was lost.
     final existing = await fetch();
-    if (existing != null)
+    if (existing != null) {
       return _completePhoto(existing, photo, useGooglePhoto);
+    }
     try {
       final json = await client
           .from('profiles')
@@ -95,7 +96,7 @@ class ProfileRepository {
           })
           .select()
           .single();
-      return _completePhoto(
+      return await _completePhoto(
         AccountProfile.fromJson(json),
         photo,
         useGooglePhoto,
@@ -113,8 +114,9 @@ class ProfileRepository {
     ProfilePhotoDraft? photo,
     bool useGooglePhoto,
   ) async {
-    if (photo == null && (!useGooglePhoto || profile.avatarPath == null))
+    if (photo == null && (!useGooglePhoto || profile.avatarPath == null)) {
       return profile;
+    }
     final path = photo == null
         ? null
         : '${profile.id}/${photo.id}.${photo.extension}';
@@ -122,9 +124,10 @@ class ProfileRepository {
     try {
       // avatar_path is UPDATE-only by the existing column grants.
       // Persist the profile first, then upload privately and confirm its path.
-      if (client.auth.currentUser?.id != profile.id)
+      if (client.auth.currentUser?.id != profile.id) {
         throw StateError('Account changed');
-      if (photo != null)
+      }
+      if (photo != null) {
         await client.storage
             .from('avatars')
             .uploadBinary(
@@ -135,8 +138,10 @@ class ProfileRepository {
                 contentType: photo.contentType,
               ),
             );
-      if (client.auth.currentUser?.id != profile.id)
+      }
+      if (client.auth.currentUser?.id != profile.id) {
         throw StateError('Account changed');
+      }
       final json = await client
           .from('profiles')
           .update({'avatar_path': path})

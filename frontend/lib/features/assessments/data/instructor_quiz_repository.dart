@@ -43,15 +43,18 @@ class InstructorQuizRepository {
         room.deletedAt != null) {
       throw StateError('This assessment is not available to this instructor.');
     }
-    if (writing && room.archivedAt != null)
+    if (writing && room.archivedAt != null) {
       throw StateError('This class is archived.');
+    }
   }
 
   void _connection() {
-    if (!isOnline())
+    if (!isOnline()) {
       throw StateError("You're offline. Connect to save changes.");
-    if (client.auth.currentUser?.id != userId)
+    }
+    if (client.auth.currentUser?.id != userId) {
       throw StateError('The signed-in account changed.');
+    }
   }
 
   Future<void> _remoteAccess(String classId, {bool writing = false}) async {
@@ -63,10 +66,12 @@ class InstructorQuizRepository {
         .eq('id', classId)
         .single()
         .timeout(const Duration(seconds: 20));
-    if (row['owner_id'] != userId || row['deleted_at'] != null)
+    if (row['owner_id'] != userId || row['deleted_at'] != null) {
       throw StateError('This class is no longer available.');
-    if (writing && row['archived_at'] != null)
+    }
+    if (writing && row['archived_at'] != null) {
       throw StateError('This class is archived.');
+    }
   }
 
   void _notify() =>
@@ -153,11 +158,12 @@ class InstructorQuizRepository {
           .get();
       final ids = all.map((r) => r['id']).toSet();
       for (final row in details) {
-        if (!ids.contains(row.read<String>('id')))
+        if (!ids.contains(row.read<String>('id'))) {
           await database.customStatement(
             'DELETE FROM instructor_quiz_details WHERE id=?',
             [row.read<String>('id')],
           );
+        }
       }
       committed = true;
     });
@@ -298,18 +304,20 @@ class InstructorQuizRepository {
   /// A failed aggregate save must be reconciled explicitly. This method never
   /// clears that guard; acceptSaved() replaces edits only after caller review.
   Future<InstructorQuiz> reconcile(QuizDraft draft) async {
-    if (draft.id == null)
+    if (draft.id == null) {
       throw StateError(
         'Refresh the quiz list and identify the created draft before retrying.',
       );
+    }
     final saved = await refreshQuiz(draft.classId, draft.id!);
     draft.locked = saved.locked;
     return saved;
   }
 
   Future<InstructorQuiz> save(QuizDraft draft) async {
-    if (draft.reconciliationRequired)
+    if (draft.reconciliationRequired) {
       throw const QuizReconciliationRequired('Reload required');
+    }
     final token = draft.classId;
     if (!_saving.add(token)) throw StateError('A save is already in progress.');
     final snapshot = draft.editSnapshot;
@@ -341,8 +349,9 @@ class InstructorQuizRepository {
       for (final key in ['opens_at', 'closes_at']) {
         if (settings[key] != null) {
           final value = settings[key] as String;
-          if (!RegExp(r'(Z|[+-]\d{2}:\d{2})$').hasMatch(value))
+          if (!RegExp(r'(Z|[+-]\d{2}:\d{2})$').hasMatch(value)) {
             throw ArgumentError('Dates must contain a UTC offset.');
+          }
           settings[key] = DateTime.parse(value).toUtc().toIso8601String();
         }
       }

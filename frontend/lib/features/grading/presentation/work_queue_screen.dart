@@ -43,6 +43,40 @@ class WorkQueueData {
   final bool loading, failed, loaded;
 }
 
+// Preserve the previous first-match behavior if a snapshot contains duplicates.
+Map<K, T> _firstBy<T, K>(Iterable<T>? rows, K Function(T) key) {
+  final result = <K, T>{};
+  for (final row in rows ?? <T>[]) {
+    result.putIfAbsent(key(row), () => row);
+  }
+  return result;
+}
+
+/// Badge reads do not construct, format, or sort full queue entries.
+final reviewQueueCountProvider = Provider.autoDispose<int>((ref) {
+  final cards = ref.watch(classCardsProvider);
+  var count = 0;
+  for (final room in cards.asData?.value ?? <ClassRoom>[]) {
+    if (room.archived || room.pending) continue;
+    final data = ref.watch(gradingDataProvider(room.id));
+    ref.watch(gradingSyncProvider(room.id));
+    final value = data.asData?.value;
+    if (value == null) continue;
+    final grades = _firstBy(value.grades, (g) => g['submission_id']);
+    final postIds = value.assignments.map((p) => p['id']).toSet();
+    for (final sub in value.submissions) {
+      final grade = grades[sub['id']];
+      if (grade?['returned_at'] != null ||
+          (grade == null &&
+              (sub['status'] != 'turned_in' || sub['submitted_at'] == null))) {
+        continue;
+      }
+      if (postIds.contains(sub['post_id'])) count++;
+    }
+  }
+  return count;
+});
+
 final workQueueProvider = Provider.autoDispose.family<WorkQueueData, bool>((
   ref,
   student,
@@ -75,16 +109,17 @@ final workQueueProvider = Provider.autoDispose.family<WorkQueueData, bool>((
           (sync.isLoading && (posts.asData?.value.isEmpty ?? true));
       failed |=
           posts.hasError || subs.hasError || grades.hasError || sync.hasError;
+      final subsByPost = _firstBy(subs.asData?.value, (s) => s.postId);
+      final gradesBySubmission = _firstBy(
+        grades.asData?.value,
+        (g) => g.submissionId,
+      );
       for (final post in posts.asData?.value ?? <ClassPost>[]) {
         if (post.postType != 'assignment') {
           continue;
         }
-        final sub = subs.asData?.value
-            .where((s) => s.postId == post.id)
-            .firstOrNull;
-        final grade = grades.asData?.value
-            .where((g) => g.submissionId == sub?.id)
-            .firstOrNull;
+        final sub = subsByPost[post.id];
+        final grade = gradesBySubmission[sub?.id];
         final status = assignmentStatus(
           dueAt: post.dueAt,
           submission: sub,
@@ -127,25 +162,25 @@ final workQueueProvider = Provider.autoDispose.family<WorkQueueData, bool>((
       if (value == null) {
         continue;
       }
+      final gradesBySubmission = _firstBy(
+        value.grades,
+        (g) => g['submission_id'],
+      );
+      final postsById = _firstBy(value.assignments, (p) => p['id']);
+      final membersByStudent = _firstBy(value.members, (m) => m['student_id']);
       for (final sub in value.submissions) {
-        final grade = value.grades
-            .where((g) => g['submission_id'] == sub['id'])
-            .firstOrNull;
+        final grade = gradesBySubmission[sub['id']];
         if (grade?['returned_at'] != null ||
             (grade == null &&
                 (sub['status'] != 'turned_in' ||
                     sub['submitted_at'] == null))) {
           continue;
         }
-        final post = value.assignments
-            .where((p) => p['id'] == sub['post_id'])
-            .firstOrNull;
+        final post = postsById[sub['post_id']];
         if (post == null) {
           continue;
         }
-        final member = value.members
-            .where((m) => m['student_id'] == sub['student_id'])
-            .firstOrNull;
+        final member = membersByStudent[sub['student_id']];
         final profile = member?['profiles'];
         final name = profile is Map
             ? profile['display_name']?.toString()

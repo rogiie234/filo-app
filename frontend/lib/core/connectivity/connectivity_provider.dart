@@ -21,8 +21,9 @@ class ConnectivityMonitor {
         _publishError(error, stack);
       },
     );
-    if (observeLifecycle)
+    if (observeLifecycle) {
       _lifecycle = AppLifecycleListener(onResume: _checkSilently);
+    }
     unawaited(_checkSilently());
   }
 
@@ -45,10 +46,11 @@ class ConnectivityMonitor {
     );
     sink.onCancel = subscription.cancel;
     final error = _error;
-    if (error != null)
+    if (error != null) {
       sink.addErrorSync(error, _errorStack);
-    else if (_online != null)
+    } else if (_online != null) {
       sink.addSync(_online!);
+    }
   });
 
   void _publish(List<ConnectivityResult> results) {
@@ -80,8 +82,9 @@ class ConnectivityMonitor {
       );
       if (_disposed) throw StateError('Connectivity monitor is closed.');
       if (revision != _revision) {
-        if (_error != null)
+        if (_error != null) {
           Error.throwWithStackTrace(_error!, _errorStack ?? StackTrace.current);
+        }
         return _online ??
             results.any((result) => result != ConnectivityResult.none);
       }
@@ -92,8 +95,9 @@ class ConnectivityMonitor {
       if (!_disposed &&
           revision != _revision &&
           _error == null &&
-          _online != null)
+          _online != null) {
         return _online!;
+      }
       if (!_disposed && revision == _revision) _publishError(error, stack);
       rethrow;
     }

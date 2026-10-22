@@ -299,29 +299,10 @@ class _ClassesScreenState extends ConsumerState<ClassesScreen> {
                 label: 'Classes',
               ),
               NavigationDestination(
-                icon: Badge(
-                  isLabelVisible:
-                      live &&
-                      !student &&
-                      ref.watch(workQueueProvider(false)).entries.isNotEmpty,
-                  label: Text(
-                    live && !student
-                        ? '${ref.watch(workQueueProvider(false)).entries.length}'
-                        : '',
-                  ),
-                  child: const FiloIcon(FiloIcons.checklist),
-                ),
-                selectedIcon: Badge(
-                  isLabelVisible:
-                      live &&
-                      !student &&
-                      ref.watch(workQueueProvider(false)).entries.isNotEmpty,
-                  label: Text(
-                    live && !student
-                        ? '${ref.watch(workQueueProvider(false)).entries.length}'
-                        : '',
-                  ),
-                  child: const FiloIcon(FiloIcons.checklistSelected),
+                icon: _ReviewBadge(live: live && !student, selected: false),
+                selectedIcon: _ReviewBadge(
+                  live: live && !student,
+                  selected: true,
                 ),
                 label: student ? 'To-do' : 'To review',
               ),
@@ -654,6 +635,23 @@ class _SyncErrorStatus extends ConsumerWidget {
           ),
         );
       },
+    );
+  }
+}
+
+class _ReviewBadge extends ConsumerWidget {
+  const _ReviewBadge({required this.live, required this.selected});
+  final bool live, selected;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final count = live ? ref.watch(reviewQueueCountProvider) : 0;
+    return Badge(
+      isLabelVisible: count > 0,
+      label: Text(live ? '$count' : ''),
+      child: FiloIcon(
+        selected ? FiloIcons.checklistSelected : FiloIcons.checklist,
+      ),
     );
   }
 }
