@@ -1043,3 +1043,139 @@ Status: COMPLETE for requested backend SQL/cron scope on owner evidence. Owner r
 Unattended proof: reserved session 8b020000-0000-4000-8000-000000000006 started 2026-10-22 13:59:29.978237 UTC, deadline 13:59:59.978237 UTC, grace eligibility after 14:00:14.978237 UTC. First inspection returned WAIT before inspect_after, not failure. Later read-only inspection returned PASS: auto_submitted, submitted_at=deadline_at, auto_score=total_score=points_awarded=7, essay_score=0, is_correct=true, grading_complete=true, successful_cron_after_expiry=true. updated_at and results_released_at were 14:01:00.014484 UTC. Owner then reports cleanup fixtures_removed=true. No committed proof fixture remains on owner evidence; maintained setup/inspect/cleanup scripts stay for regression coverage.
 
 This supersedes prior M8-BE-02 pending statements for SQL regression, cron operation and proof cleanup. pg_cron worked on the tested DEV project; deferred fallback was not needed for unattended acceptance. SQL tests cover the scoped recovery RPC, but frontend app startup/resume/reconnect/error-retry behavior and its maintained Dart test were not reported as executed and remain unverified. Independent migration-ledger review, concurrency/load, production scheduling and real device behavior are not inferred. Assistant ran no tests/SQL/live checks/analysis/builds/device checks and did not independently inspect DEV. No staging, commit or push; unrelated assessment.dart retained. No disposable local materials created.
+
+## M8-BE-03 exam HTTP load harness prepared - 2026-10-22
+
+Status: PREPARED, NOT EXECUTED. No load timings, dashboard readings, encountered plan limits, measured capacity recommendation or DEV fixture-cleanup result exists yet for this task. Prior SQL/cron acceptance is not load-test evidence. Owner runs the maintained harness and self-check, captures dashboard observations and supplies results; assistant has not run tests, static analysis, validation builds, live APIs or load generation.
+
+Added backend/tests/exam_load.mjs and exam_load.test.mjs with Node 22+ built-ins only. Target is hardcoded to DEV fiobwfzmqcffbpixzvbq; the privileged legacy service_role JWT must name that project. Keys come from process environment. Privileged requests are limited to tagged fixture bootstrap, post-load state verification and guarded cleanup. Measured exam RPCs use separate real student access tokens. Disposable confirmed email/password accounts and verified-session rows avoid sending email or changing product sign-in/OTP policies; this explicitly does not test Google sign-in, OTP, email delivery or authentication throughput. Setup/login requests are paced outside the timed workload; no Auth rate settings are changed.
+
+One run creates one instructor and 40 students per class, with 30 questions (10 multiple choice, 8 true/false, 8 identification, 4 essay), four options per multiple-choice question, active memberships and validated quiz publication. A single barrier releases 40 students, or all 120 students across three classes, together. Each student starts, retrieves saved-order content, saves 60 times at nominal 10-second intervals with independent +/-1-second jitter, cycles through all 30 questions twice, sends three distinct leave IDs with one deliberate duplicate, and submits after the ten-minute answering period. Delayed actors do not compress saves below a nine-second interval; scheduling lag and extended duration are reported instead of silently skipping work. Fixture time limit is 30 minutes and closing is 45 minutes after creation. Existing cron remains enabled.
+
+Expected measured calls: 2,680 for 40 students and 8,040 for 120 (per student: 1 start_exam, 1 get_exam, 60 save_answer, 4 log_leave, 1 submit_exam). No measured failure is retried or removed from statistics; an intentional duplicate leave ID is part of the workload. Setup/auth, verification and cleanup have separate sanitized lifecycle logs/failure counts. Per-call records contain UTC timestamp, scenario, anonymous actor number, RPC, monotonic duration, scheduling lag versus the paced target, intentional pacing delay, HTTP status, sanitized error code and numeric Retry-After when present. No payloads, answer content, password, token or privileged key is logged. Average, nearest-rank p95, slowest duration, requests at/over one second, failure count and achieved requests/second are reported overall and per RPC, using the complete measured window as the rate denominator. This is client-observed HTTP duration, including network/API/response parsing and client scheduling effects; it is not isolated SQL execution time. Authentication preparation warms the API path before timing starts.
+
+Post-load checks require one submitted attempt per student, 60 successful save responses, 30 final answers equal to last confirmed values, three leave rows and leave_count=3, auto_score=total_score=26, essay_score=0, grading_complete=false, auto-gradable answers correct and essays ungraded. The quiz must be locked, total points 30 and results unreleased because essays await grading. Functional completion, all-calls-under-1000ms target and scheduling validity are separate summary flags; a run with missing calls cannot pass. A nonzero process exit code can indicate latency or scheduling misses even when functional completion passes.
+
+Local raw timings, lifecycle output, summary and credential-free run manifests live only under backend/tests/.exam-load/, narrowly Git-ignored. Manifests retain UUIDs and run markers for interrupted-run cleanup; tokens/passwords remain in memory. Normal completion or Ctrl+C attempts cleanup after collecting available results. Cleanup checks admin-set Auth tags and class/profile markers, expected membership/quiz/question/option scope, deletes only exact fixture UUIDs and verifies class/attempt/profile/Auth/verified-session removal. A failed cleanup remains pending with a run-specific rerun command; never delete the manifest before recovery. Lost Auth-create responses are recovered by finding admin-tagged users. Hard process termination requires the owner to rerun cleanup. These are maintained regression files; no disposable run output was created by the assistant. Existing unrelated assessment.dart remains untouched.
+
+### Results to record from owner runs
+
+| Scenario | Functional completion | Average / p95 / slowest per RPC | Failed calls | CPU / memory / DB connections with timestamps | Cleanup |
+| --- | --- | --- | --- | --- | --- |
+| 1 class x 40 | PASS, 2680 calls, owner run 970a9d4c | See baseline table below; 47 calls >=1000ms | 0 | 23:09 sample: CPU6.97%, RAM427.76MB, connections15; peaks/baseline unavailable | true |
+| 3 classes x 40 | FAIL strict functional target; 8040 calls, one timeout, actor12 verification | See120 results below; 298 calls >=1000ms | 1 save TIMEOUT | Unavailable/unreported for this run | true |
+
+Owner records baseline and during-load dashboard readings, test region/compute tier, run ID/time and the printed summaries. Missing dashboard metrics must be labelled unavailable, not zero. Forty or 120 HTTP actors are not forty or 120 direct database connections. Do not infer a requests-per-second ceiling from one run. Actual failures/throttles must be attributed using measured codes/statuses and dashboard context; published ceilings below are reference material, not limits encountered by this project.
+
+### Published limits versus measured limits
+
+- Current published Nano/free reference lists shared compute, up to 0.5 GB memory, 500 MB database capacity, 60 database connections and 200 pooler clients, subject to project configuration and platform changes. Source: [Supabase Compute and Disk](https://supabase.com/docs/guides/platform/compute-and-disk). DEV tier/configuration and actual load remain unobserved for this task.
+- Auth has independent endpoint/IP/project rate limits and returns HTTP 429 on throttling. Published token-refresh guidance includes 1,800/hour and bursts of 30; this is not an exam RPC limit or a claimed measured password-login ceiling. Source: [Supabase Auth rate limits](https://supabase.com/docs/guides/auth/rate-limits). Setup errors remain separate from measured exam failures.
+- The harness itself sends no Edge Function requests and does not establish their capacity. Fixture publication creates notifications; configured database webhooks and existing cron can independently trigger background Edge work, which must be observed separately. Published Edge free-plan worker duration is 150 seconds, with 256 MB memory and 2 seconds CPU per request; these limits are not exercised by this harness. Source: [Supabase Edge Function limits](https://supabase.com/docs/guides/functions/limits). Realtime and device sync traffic are also outside this workload.
+
+Recommended maximum class size from owner runs: 40 students, with one exam class active at a time under the tested conditions. Two40-student runs completed without failed calls; the120-student comparison had a save timeout and verification failure, so three simultaneous classes are not recommended. The strict one-second target was not met even at40: synchronized Start took up to2.18 seconds in the repeated run. This is a tested operational recommendation, not proof of an absolute platform maximum or results for an untested80-student load. See dated measurements and limits below.
+
+Instructor note: "Have students finish signing in and verification first. When everyone is ready, tell them to tap Start together." The synchronized Start burst is deliberately measured; append any observed start-burst limitation to this guidance before acceptance. Execution commands and dashboard requests are supplied in chat, not a new preflight guide or README walkthrough.
+
+Implementation sources: [Supabase Auth Admin request contracts](https://github.com/supabase/auth-js/blob/master/src/GoTrueAdminApi.ts), [password session contract](https://github.com/supabase/auth-js/blob/master/src/GoTrueClient.ts), [Node native fetch](https://nodejs.org/api/globals.html#fetch). The calculation self-check covers averages/p95/failure counts/rates, empty data, strict one-second reporting and scheduler boundaries/no catch-up bursts; it is prepared but not executed.
+
+
+### M8-BE-03 first owner setup failure and fixture correction - 2026-10-22
+
+Owner run 069d1753-387f-4e86-99b6-d48da0054bb8 (Node v22.21.0, Windows x64) prepared 41 accounts but stopped before measured_at at create_keys with HTTP400/PGRST102. Sanitized local lifecycle log identifies that operation. Measured calls=0, one setup failure, no load timing or capacity evidence. Owner output confirms fixtures_removed=true and zero cleanup failures. Retain this failed run's locally ignored evidence until the rerun is reviewed; no secrets were read or printed.
+
+Source-confirmed harness bug: mixed answer-key types had different JSON object keys in one bulk request. PostgREST requires uniform keys for bulk JSON insertion: https://docs.postgrest.org/en/stable/references/api/tables_views.html#bulk-insert. Corrected every key row to contain question_id, correct_option_id, correct_boolean and accepted_answers, with unused values explicitly null. Extracted the actual mixed quiz fixture builder for offline regression coverage; assertions inspect serialized key shapes, 30 mixed questions/40 options/26 keys and boolean false preservation. No database migration, schema or performance change is needed for this fixture-body correction.
+
+Source inspection only: assistant did not run self-check, tests, static analysis, builds or live APIs. Owner reruns the updated offline self-check and 40-student scenario, expecting setup to advance to the measured workload, 2680 measured calls, no failures, valid final-state verification and cleanup true. Correction/runtime acceptance and 120-student comparison remain pending. Existing run evidence remains ignored; no disposable files created or deleted locally.
+
+
+### M8-BE-03 first 40-student measured run - 2026-10-22
+
+Owner run 970a9d4c-aa4a-460a-9038-2210fc207f9a: functional_complete=true, 2680/2680 calls, failures=0, actor_failures=0, verification_failures=[], workload_on_time=true, fixtures_removed=true and setup/verification/cleanup failures all zero. Node v22.21.0 on Windows x64. Measured 2026-10-22 15:08:27.982-15:18:29.488 UTC (23:08:27.982-23:18:29.488 Philippine time), duration 601.506 seconds. Overall average 211.275ms, p95 377.804ms, maximum 2110.453ms, rate 4.455 calls/second. This proves functional completion of the requested 40-student workload on owner evidence; it does not meet the all-calls-under-one-second assumption: latency_target_pass=false with 47 calls at/over 1000ms.
+
+| RPC | Calls | Average ms | p95 ms | Slowest ms | At/over 1000ms | Failures |
+| --- | --- | --- | --- | --- | --- | --- |
+| start_exam | 40 | 1416.509 | 2078.168 | 2110.453 | 35 | 0 |
+| get_exam | 40 | 398.816 | 1488.574 | 1646.340 | 4 | 0 |
+| save_answer | 2400 | 184.097 | 302.672 | 1065.390 | 3 | 0 |
+| log_leave | 160 | 177.665 | 291.582 | 484.781 | 0 | 0 |
+| submit_exam | 40 | 583.649 | 1032.946 | 1235.929 | 5 | 0 |
+
+Maximum scheduler lag was 16.965ms and maximum intentional pacing delay 950.985ms. No measured HTTP/SQL throttling or resource-limit errors were reported. This does not prove no CPU/memory/connection constraint was approached; dashboard baseline/peak values, region and compute tier are still pending. The owner asked how to collect them: use Reports > Database and the matching time range, distinguish CPU usage/memory usage/database connections, record an idle baseline from before script/account setup and the highest visible point during the measured phase, or mark unavailable. If no idle baseline was captured, record it as unavailable rather than using setup/cleanup traffic. Official chart descriptions: https://supabase.com/docs/guides/monitoring-and-debugging/reports. No synthetic dashboard values or inferred resource ceilings are recorded.
+
+Source inspection identifies a safe small optimization candidate: start_exam holds the existing exclusive quiz row lock and unconditionally rewrites locked_at for every new student's attempt even after it is set. The lock intentionally serializes starts against publishing/edit/deletion; source inspection does not measure how much latency is lock wait, trigger/write cost, network or other load. New migration 20261022120000_skip_repeated_exam_quiz_write.sql preserves that lock and all caller/window/idempotence checks, but performs the quiz UPDATE only when locked_at is null. This removes redundant quiz row versions/update triggers without changing public signatures, privileges or concurrency rules. It does not eliminate serialization, and no improved timing is claimed yet. No index is added without a demonstrated query-plan need.
+
+Extended exams.sql with a second active student starting an already locked quiz and an administrator ctid assertion proving the quiz row was not rewritten. Existing accepted checks remain. Owner must deploy this migration, run the full updated exam regression, then repeat the 40-student load before comparing performance. Updated regression/new migration deployment and optimized timing remain pending. The 120-student comparison remains NOT RUN. Capacity guidance remains provisional: 40 worked functionally, the one-second latency goal missed, and neither higher capacity nor a final maximum is established. Keep the instructor coordinated-start note with this measured burst limitation.
+
+Assistant ran no SQL/tests/load/self-check/analysis/build/live verification. Existing locally ignored timing evidence is retained for before/after comparison and owner dashboard completion; no disposable materials created or removed, no staging/commit/push. Prior aggregate outputs and actual results above are owner-reported, not independent assistant runtime verification.
+
+
+### M8-BE-03 owner dashboard samples for baseline40 - 2026-10-22
+
+Owner supplied Observability screenshots for 23:09:00 Asia/Manila (15:09:00 UTC), inside run 970a9d4c's measured interval. These are timestamped samples, NOT confirmed run peaks or idle baselines. The selected charts cover 22:27-23:27, including setup/cleanup and activity outside the measured interval.
+
+| Metric at 23:09 Philippine time | Owner screenshot reading |
+| --- | --- |
+| CPU total usage | 6.97% (User 5.59%, System 0.74%, IOWait 0.63%, Other <0.01%) |
+| RAM used | 269.67 MB (62.15%) |
+| Cache + buffers | 158.09 MB (36.44%) |
+| Total RAM usage | 427.76 MB (98.6%) of displayed 433.88 MB |
+| Swap | 278.07 MB (64.09% of physical RAM reference) |
+| Memory commitment | 1.17 GB, below displayed 1.38 GB warning threshold at this sample |
+| Database connections | 15, below chart reference line 60 |
+| Network out / in | 80.7 KB/s / 39.2 KB/s |
+| Disk usage card | 280.18 MB; not interpreted as a free-plan database quota reading |
+
+At the sampled instant CPU and connections were below their displayed capacity references; high total RAM use and nonzero swap warrant tracking on rerun. This does not attribute the slow Start burst or memory pressure to a specific cause. The hour-wide Severe memory commitment badge includes an owner-shown 23:25 sample (outside measured load) at 1.45 GB committed; that later spike is not a measured-workload peak. The 23:25 memory sample was 427.52 MB total usage and 451.48 MB swap. Do not substitute it for during-test metrics.
+
+Idle baselines and verified during-run peaks were not supplied and remain unavailable in the evidence so far; no further screenshots are needed to establish these single samples. Region/compute tier remain unreported. No resource-limit failures were observed in the HTTP run, and no hard CPU/memory/connection limit is proven hit by these screenshots. Optimized-migration regression/rerun and the 120-student comparison remain pending. Screenshot evidence was read in chat; no screenshot files or disposable guides were created. Assistant performed no live or runtime checks.
+
+
+### M8-BE-03 post-change regression and repeated40 owner results - 2026-10-22
+
+Owner reports updated exams.sql passed=296, failed=0, overall=PASS, failures=[]. This accepts the added already-locked-quiz no-rewrite regression on owner evidence; independent migration-history inspection is not claimed.
+
+Owner repeated load run 03ce451b-7496-4d71-a071-0d7abd75f302 on Node v22.21.0/Windows x64: 2680/2680 measured calls, failures=0, functional_complete=true, actor_failures=0, verification_failures=[], workload_on_time=true, fixtures_removed=true and zero setup/verification/cleanup failures. Measured 2026-10-22 15:44:07.094-15:54:08.424 UTC (23:44:07.094-23:54:08.424 Philippine time), duration 601.330 seconds. Overall average202.298ms, p95330.596ms, max2178.257ms, achieved4.457requests/second. All 33 requests at/over1000ms were start_exam, so latency_target_pass remains false.
+
+| RPC | Calls | Average ms | p95 ms | Slowest ms | At/over 1000ms | Failures |
+| --- | --- | --- | --- | --- | --- | --- |
+| start_exam | 40 | 1459.676 | 2129.437 | 2178.257 | 33 | 0 |
+| get_exam | 40 | 278.345 | 516.200 | 786.296 | 0 | 0 |
+| save_answer | 2400 | 177.876 | 296.772 | 561.318 | 0 | 0 |
+| log_leave | 160 | 170.763 | 295.933 | 471.786 | 0 | 0 |
+| submit_exam | 40 | 460.378 | 815.823 | 844.274 | 0 | 0 |
+
+Maximum scheduler lag23.168ms; maximum intentional pacing delay978.052ms. All non-Start calls met the one-second target in this run. Start average changed from1416.509 to1459.676ms and max from2110.453 to2178.257ms: no measured Start speedup is established by skipping the redundant quiz write. The lower overall/non-Start timings and reduction from47 to33 slow calls cannot be attributed causally to the migration from these two runs. Existing exclusive quiz serialization remains a plausible Start queue mechanism, not an independently profiled latency attribution. Do not remove the concurrency lock or add speculative indexes on this evidence alone.
+
+This supersedes pending statements for the small migration's owner regression and repeated40 run only. Forty-student functional completion and cleanup are demonstrated twice. Strict all-RPC latency goal still missed; no response errors or verified hard free-plan limit hit. Rerun-specific dashboard data/region/tier remain unavailable; earlier23:09 screenshots belong to the baseline run and must not be relabelled. Next authorized owner measurement is three simultaneous classes/120 students; retain 40 as the demonstrated per-class functional size with an explicit approximately2.18-second observed Start maximum, not an all-calls-under-one-second claim. Final concurrency recommendation/task acceptance waits for the120 comparison and truthful resource/limit notes.
+
+No assistant tests, SQL, load, static analysis, builds or live checks were run. Local ignored run evidence retained for comparison; no disposable files created or removed, no staging/commit/push. Public RPC behavior and the existing concurrency lock remain unchanged by this documentation update.
+
+
+### M8-BE-03 owner120 comparison and capacity recommendation - 2026-10-23
+
+Owner run b0ac0002-507c-47da-b835-94ff9d3a4649 tested three simultaneous40-student classes. Node v22.21.0/Windows x64. Measured2026-10-22 16:02:45.564-16:12:49.143 UTC, which is October23 00:02:45.564-00:12:49.143 Philippine time. Duration603.579 seconds. Setup and cleanup completed with no reported failures; fixtures_removed=true. There were8040/8040 measured calls and120 submission responses, actor_failures=0, but functional_complete=false: one save timed out and actor12 failed FINAL_STATE_OR_CALL_COUNT verification. workload_on_time=false, latency_target_pass=false.
+
+| RPC | Calls | Average ms | p95 ms | Slowest ms | At/over1000ms | Failures |
+| --- | --- | --- | --- | --- | --- | --- |
+| start_exam | 120 | 2557.286 | 4102.521 | 4260.314 | 107 | 0 |
+| get_exam | 120 | 346.444 | 564.140 | 3396.037 | 4 | 0 |
+| save_answer | 7200 | 205.519 | 312.456 | 15016.701 | 126 | 1 TIMEOUT |
+| log_leave | 480 | 170.875 | 288.108 | 394.093 | 0 | 0 |
+| submit_exam | 120 | 1291.667 | 2983.575 | 3353.865 | 61 | 0 |
+
+Overall average256.866ms, p95500.622ms, max15016.701ms, rate13.321calls/second;298calls at/over1000ms. Maximum scheduler lag4624.621ms and intentional pacing delay3883.809ms. This records the stress-test failure rather than hiding it behind retries or increasing the timeout.
+
+Sanitized local log inspection identifies actor12 save_answer starting2026-10-22 16:10:45.599 UTC (October23 00:10:45.599 Philippine time), duration15016.701ms, http_status=0, TIMEOUT. The harness has a15-second client deadline; no HTTP/Postgres error response was received for that call. Actor12 had59 successful save responses, sufficient by itself to fail the harness's60-save requirement. Because verification reports a combined final-state/call-count condition, neither the user output nor this timing log proves the answer was lost or its grading wrong. A timed-out write may have committed; fixtures have already been removed on owner evidence.
+
+In the nearby call-start window16:10:40-16:11:02 UTC,239 other calls succeeded, max404.700ms, with no other failures. This does not establish a general database outage, specific query bottleneck, hard connection/RPS quota, or causal free-plan limit. Root cause of the isolated response timeout remains unverified; it would require timestamp-correlated API/Postgres logs before a targeted backend fix. No speculative index, correctness-lock removal, timeout increase or retry policy is introduced from this evidence. The strict latency goal remains a documented miss, with synchronized Start/Submit bursts slower at120.
+
+Dashboard CPU/memory/connection readings, idle baseline, region and compute tier for this120 run were not supplied: unavailable/unreported. The earlier23:09PHT sample belongs only to the first40-student run and cannot be reused as120 evidence. No HTTP429 or Postgres resource-limit code was reported. One client deadline was hit; a particular Supabase free-plan ceiling was not proven hit. Published limits above remain references, not observed limits. The harness itself sends no Edge/Realtime requests; configured background work is not independently attributed.
+
+Operational recommendation: maximum40 students per class, one simultaneous exam class under the tested conditions. Both40 runs completed with zero failures and correct verified state/cleanup; do not recommend three simultaneous classes from the120 run. This is not an absolute platform ceiling, and80 concurrent students were not tested. Allow a visible Start wait of up to about2.18 seconds observed in the repeated40 run; the one-second assumption has not been achieved.
+
+Instructor note: "Have students finish signing in and verification first. When everyone is ready, tell them to tap Start together." Add: schedule only one40-student class at a time for the defense based on current evidence, and allow a short Start response delay without repeated taps. The simultaneous-start burst was tested; changing to staggered starts would be a different workload and is not claimed as verified here.
+
+Measurement/reporting deliverables are now recorded: maintained script, two successful40-student runs,120-student comparison with one timeout, available40 dashboard samples and explicit unavailable120/baseline data, scope-limited capacity/limit notes and instructor guidance. No claim that120 or all-calls-under-one-second passed. Owner task acceptance remains pending; zero-error40 functional criterion is satisfied, strict latency target and120 stress target are not. Any future requirement to support120 reliably or meet the strict latency goal requires further diagnosis and owner reruns.
+
+Evidence is owner-supplied run output plus read-only sanitized local log inspection. Assistant did not run tests, SQL, load, static analysis, builds, live API checks or inspect the remote project. Existing locally ignored raw logs/manifests remain needed for comparison and potential server-log correlation; no disposable materials created/deleted and no staging/commit/push. No performance code change was made in this result-recording task.

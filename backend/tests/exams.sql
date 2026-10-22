@@ -1,5 +1,5 @@
 -- M8-BE-01. DEV ONLY: fiobwfzmqcffbpixzvbq, SQL Editor, postgres role.
--- Run the WHOLE file after repository migrations through 20261022110000.
+-- Run the WHOLE file after repository migrations through 20261022120000.
 -- Any FAIL or uncaught error means failure. On abort, ROLLBACK before rerunning.
 -- No real users, secrets, sleeps, trigger disabling or persisted fixtures.
 begin;
@@ -151,7 +151,7 @@ end $$;
 do $$
 declare q uuid:=current_setting('m8.q1')::uuid; sid uuid; r jsonb; again jsonb;
   stored exam_sessions; i integer; j integer; qu uuid; oid uuid; value text;
-  before_answer jsonb; delta integer;
+  before_answer jsonb; delta integer; before_quiz_tid tid;
 begin
   perform pg_temp.m8_actor(2);
   perform pg_temp.m8_privacy('before start');
@@ -212,6 +212,13 @@ begin
   r:=pg_temp.m8_call(format('select to_jsonb(start_exam(%L))',current_setting('m8.q8')),'near closing start');
   perform pg_temp.m8_assert((r->>'deadline_at')::timestamptz=now()+interval '5 seconds',
     'near closing deadline capped at close');
+  select ctid into before_quiz_tid from quizzes where id=current_setting('m8.q8')::uuid;
+  perform pg_temp.m8_actor(3);
+  perform pg_temp.m8_call(format('select to_jsonb(start_exam(%L))',current_setting('m8.q8')),
+    'second student starts already locked quiz');
+  perform pg_temp.m8_assert((select ctid=before_quiz_tid from quizzes where id=current_setting('m8.q8')::uuid),
+    'later student start does not rewrite the locked quiz row');
+  perform pg_temp.m8_actor(2);
   perform pg_temp.m8_privacy('during exam');
 
   for j in 1..4 loop

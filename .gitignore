@@ -29,3 +29,6 @@ key.properties
 
 # Installed JavaScript and Deno dependencies
 node_modules/
+
+# Owner-run exam load output: timings and credential-free fixture manifests.
+/backend/tests/.exam-load/
