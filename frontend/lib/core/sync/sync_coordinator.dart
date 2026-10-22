@@ -193,8 +193,9 @@ class SyncCoordinator extends ChangeNotifier {
             .getSingle();
         if (failed.read<int>('n') > 0) {
           errors['outbox'] = 'Some pending actions need Retry.';
-        } else
+        } else {
           errors.remove('outbox');
+        }
         if (errors.isEmpty) {
           lastSynced = DateTime.now();
           await db.customStatement(
@@ -256,12 +257,14 @@ class SyncCoordinator extends ChangeNotifier {
               .get();
           if (previous.isNotEmpty &&
               DateTime.parse(previous.single.read<String>('updated_at'))
-                  .isAfter(DateTime.parse(stamp)))
+                  .isAfter(DateTime.parse(stamp))) {
             continue;
+          }
           if (table == 'class_members' &&
               (previous.isEmpty ||
-                  previous.single.read<String>('updated_at') != stamp))
+                  previous.single.read<String>('updated_at') != stamp)) {
             _accessChanged = true;
+          }
           if (!await _cachedIsNewer(table, id, stamp)) {
             await _apply(table, row);
           }
@@ -557,16 +560,18 @@ class SyncCoordinator extends ChangeNotifier {
             record.read<String>('payload'),
           ) as Map<String, dynamic>;
           if (record.read<String>('table_name') == 'posts' &&
-              value['class_id'] == row['class_id'])
+              value['class_id'] == row['class_id']) {
             postIds.add(record.read<String>('id'));
+          }
         }
         for (final record in payloads) {
           final value = jsonDecode(
             record.read<String>('payload'),
           ) as Map<String, dynamic>;
           if (record.read<String>('table_name') == 'submissions' &&
-              postIds.contains(value['post_id']))
+              postIds.contains(value['post_id'])) {
             subIds.add(record.read<String>('id'));
+          }
         }
         for (final record in payloads) {
           final value = jsonDecode(

@@ -70,8 +70,9 @@ final verifiedUserIdProvider = FutureProvider<String?>((ref) async {
     final saved = await storage.read(key: key);
     if (!ref.mounted ||
         client.auth.currentSession?.accessToken != session.accessToken ||
-        saved == null)
+        saved == null) {
       return null;
+    }
     return offlineSessionMatches(saved, sessionId, hash)
         ? session.user.id
         : null;
@@ -83,8 +84,9 @@ final verifiedUserIdProvider = FutureProvider<String?>((ref) async {
         .rpc('check_device_session', params: {'p_device_hash': hash})
         .timeout(const Duration(seconds: 20));
     if (!ref.mounted ||
-        client.auth.currentSession?.accessToken != session.accessToken)
+        client.auth.currentSession?.accessToken != session.accessToken) {
       return null;
+    }
     if (device is! Map ||
         device['needs_otp'] != false ||
         device['verified'] != true) {
@@ -95,8 +97,9 @@ final verifiedUserIdProvider = FutureProvider<String?>((ref) async {
         .rpc('is_session_verified')
         .timeout(const Duration(seconds: 20));
     if (!ref.mounted ||
-        client.auth.currentSession?.accessToken != session.accessToken)
+        client.auth.currentSession?.accessToken != session.accessToken) {
       return null;
+    }
     if (verified != true) {
       await storage.delete(key: key);
       return null;

@@ -12,7 +12,6 @@ import 'package:path/path.dart' as p;
 import 'package:path_provider/path_provider.dart';
 import 'package:supabase_flutter/supabase_flutter.dart' show SupabaseClient;
 import 'package:uuid/uuid.dart';
-import 'package:uuid/enums.dart';
 import 'package:drift/drift.dart' show Value;
 
 import '../../../core/sync/outbox_processor.dart';

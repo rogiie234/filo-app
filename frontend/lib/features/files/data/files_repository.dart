@@ -301,8 +301,9 @@ class FilesRepository {
       if (!p.equals(
         p.normalize(row.read<String>('local_path')),
         p.normalize(expected),
-      ))
+      )) {
         continue;
+      }
       final copy = File(expected);
       if (await copy.exists()) await copy.delete();
       await const FlutterSecureStorage().delete(key: 'filo.drive.$userId.$id');

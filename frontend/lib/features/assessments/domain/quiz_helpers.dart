@@ -28,10 +28,12 @@ QuizDisplayStatus quizDisplayStatus({
 }) {
   if (status == 'draft') return QuizDisplayStatus.draft;
   final instant = now.toUtc();
-  if (closesAt != null && !instant.isBefore(closesAt.toUtc()))
+  if (closesAt != null && !instant.isBefore(closesAt.toUtc())) {
     return QuizDisplayStatus.closed;
-  if (opensAt != null && instant.isBefore(opensAt.toUtc()))
+  }
+  if (opensAt != null && instant.isBefore(opensAt.toUtc())) {
     return QuizDisplayStatus.scheduled;
+  }
   return QuizDisplayStatus.open;
 }
 
