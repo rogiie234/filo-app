@@ -1,3 +1,5 @@
+import '../data/question_bank_repository.dart';
+
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/connectivity/connectivity_provider.dart';
@@ -105,3 +107,15 @@ final instructorAssignmentsRefreshProvider = FutureProvider.autoDispose
             ),
           );
     });
+
+final questionBankRepositoryProvider = FutureProvider<QuestionBankRepository>((
+  ref,
+) async {
+  final quizzes = await ref.watch(instructorQuizRepositoryProvider.future);
+  if (quizzes == null) throw StateError('Sign in to use the question bank.');
+  return QuestionBankRepository(
+    quizzes.client,
+    quizzes.userId,
+    () => ref.read(connectivityProvider).asData?.value == true,
+  );
+});

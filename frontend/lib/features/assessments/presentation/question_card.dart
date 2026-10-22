@@ -74,11 +74,14 @@ class QuestionCard extends StatefulWidget {
     required this.onToggle,
     required this.onChanged,
     required this.onAction,
+    this.showActions = true,
+    this.canSaveToBank = false,
   });
   final QuizQuestion question;
   final QuestionEditorState editor;
   final int index;
   final bool expanded, enabled;
+  final bool showActions, canSaveToBank;
   final VoidCallback onToggle, onChanged;
   final ValueChanged<String> onAction;
   @override
@@ -148,7 +151,7 @@ class _QuestionCardState extends State<QuestionCard> {
                     style: Theme.of(context).textTheme.titleMedium,
                   ),
                 ),
-                if (widget.enabled)
+                if (widget.enabled && widget.showActions)
                   ReorderableDragStartListener(
                     index: widget.index,
                     child: const Tooltip(
@@ -163,17 +166,39 @@ class _QuestionCardState extends State<QuestionCard> {
                       ),
                     ),
                   ),
-                PopupMenuButton<String>(
-                  tooltip: 'Question actions',
-                  enabled: widget.enabled,
-                  onSelected: widget.onAction,
-                  itemBuilder: (_) => const [
-                    PopupMenuItem(value: 'up', child: Text('Move up')),
-                    PopupMenuItem(value: 'down', child: Text('Move down')),
-                    PopupMenuItem(value: 'duplicate', child: Text('Duplicate')),
-                    PopupMenuItem(value: 'delete', child: Text('Delete')),
-                  ],
-                ),
+                if (widget.showActions)
+                  PopupMenuButton<String>(
+                    tooltip: 'Question actions',
+                    enabled: widget.enabled || widget.canSaveToBank,
+                    onSelected: widget.onAction,
+                    itemBuilder: (_) => [
+                      if (widget.canSaveToBank)
+                        const PopupMenuItem(
+                          value: 'bank',
+                          child: Text('Save to bank'),
+                        ),
+                      PopupMenuItem(
+                        enabled: widget.enabled,
+                        value: 'up',
+                        child: Text('Move up'),
+                      ),
+                      PopupMenuItem(
+                        enabled: widget.enabled,
+                        value: 'down',
+                        child: Text('Move down'),
+                      ),
+                      PopupMenuItem(
+                        enabled: widget.enabled,
+                        value: 'duplicate',
+                        child: Text('Duplicate'),
+                      ),
+                      PopupMenuItem(
+                        enabled: widget.enabled,
+                        value: 'delete',
+                        child: Text('Delete'),
+                      ),
+                    ],
+                  ),
               ],
             ),
             TextButton(

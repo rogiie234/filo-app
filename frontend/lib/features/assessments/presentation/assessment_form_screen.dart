@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:uuid/uuid.dart';
 
 import '../../../core/connectivity/connectivity_provider.dart';
 import '../../../core/theme/app_theme.dart';
@@ -13,6 +14,7 @@ import '../domain/quiz_publish.dart';
 import '../domain/quiz_helpers.dart';
 import 'assessment_row.dart';
 import 'question_card.dart';
+import 'question_bank_screen.dart';
 
 /// Connected settings and question builder for instructor assessments.
 class AssessmentFormScreen extends ConsumerStatefulWidget {
@@ -115,7 +117,85 @@ class _AssessmentFormScreenState extends ConsumerState<AssessmentFormScreen> {
     });
   }
 
+  final _bankIds = <String, String>{};
+  final _bankSnapshots = <String, QuizQuestion>{};
+
+  Future<void> _saveToBank(QuizQuestion q) async {
+    if (_busy || ref.read(connectivityProvider).asData?.value != true) return;
+    final editor = _editor(q);
+    setState(() {
+      editor.errors = q.validationErrors(
+        pointsText: editor.points,
+        pendingAnswer: editor.pendingAnswer,
+      );
+      if (editor.errors.isNotEmpty) _expanded = q.localId;
+    });
+    if (editor.errors.isNotEmpty) {
+      await _revealQuestion(q.localId);
+      return;
+    }
+    final id = _bankIds.putIfAbsent(q.localId, () => const Uuid().v4());
+    final snapshot = _bankSnapshots.putIfAbsent(q.localId, q.copy);
+    setState(() => _busy = true);
+    try {
+      final bank = await ref.read(questionBankRepositoryProvider.future);
+      await bank.save(id, snapshot, creating: true);
+      _bankIds.remove(q.localId);
+      _bankSnapshots.remove(q.localId);
+      if (mounted)
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Question saved to bank.')),
+        );
+    } catch (_) {
+      if (mounted)
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text(
+              'Bank save not confirmed. Connect and retry Save to bank to check the original copy.',
+            ),
+          ),
+        );
+    } finally {
+      if (mounted) setState(() => _busy = false);
+    }
+  }
+
+  Future<void> _addFromBank() async {
+    if (_busy || !_canWrite || _draft!.locked || _draft!.reconciliationRequired)
+      return;
+    final copies = await showFiloBottomSheet<List<QuizQuestion>>(
+      context: context,
+      title: 'Add from question bank',
+      scrollBody: false,
+      builder: (_) => const QuestionBankScreen(picking: true),
+    );
+    if (!mounted ||
+        copies == null ||
+        copies.isEmpty ||
+        !_canWrite ||
+        _draft!.locked ||
+        _draft!.reconciliationRequired)
+      return;
+    setState(() {
+      _draft!.questions.addAll(copies);
+      _expanded = copies.first.localId;
+      _questionDirty = true;
+    });
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(
+        content: Text(
+          'Questions added as copies. Save this assessment to keep them.',
+        ),
+      ),
+    );
+    await _revealQuestion(copies.first.localId);
+  }
+
   Future<void> _questionAction(QuizQuestion q, String action) async {
+    if (action == 'bank') {
+      await _saveToBank(q);
+      return;
+    }
     final questions = _draft!.questions;
     final index = questions.indexOf(q);
     if (action == 'up' || action == 'down') {
@@ -629,6 +709,20 @@ class _AssessmentFormScreenState extends ConsumerState<AssessmentFormScreen> {
         },
         child: Scaffold(
           appBar: AppBar(
+            actions: [
+              PopupMenuButton<String>(
+                tooltip: 'Assessment actions',
+                enabled: !_busy && !_loading,
+                onSelected: (_) => Navigator.of(context).push(
+                  MaterialPageRoute<void>(
+                    builder: (_) => const QuestionBankScreen(),
+                  ),
+                ),
+                itemBuilder: (_) => const [
+                  PopupMenuItem(value: 'bank', child: Text('Question bank')),
+                ],
+              ),
+            ],
             title: Text(
               readOnly
                   ? 'Assessment'
@@ -1174,6 +1268,40 @@ class _AssessmentFormScreenState extends ConsumerState<AssessmentFormScreen> {
                                       SliverPadding(
                                         padding: const EdgeInsets.fromLTRB(
                                           24,
+                                          0,
+                                          24,
+                                          12,
+                                        ),
+                                        sliver: SliverToBoxAdapter(
+                                          child: Column(
+                                            crossAxisAlignment:
+                                                CrossAxisAlignment.start,
+                                            children: [
+                                              FiloButton(
+                                                secondary: true,
+                                                onPressed:
+                                                    contentEditing &&
+                                                        online &&
+                                                        !draft
+                                                            .reconciliationRequired
+                                                    ? _addFromBank
+                                                    : null,
+                                                icon: Icons
+                                                    .library_books_outlined,
+                                                label: 'Add from question bank',
+                                              ),
+                                              if (!online)
+                                                const Text(
+                                                  'Connect to read or save questions in the bank.',
+                                                ),
+                                            ],
+                                          ),
+                                        ),
+                                      ),
+                                    if (page == 2 && draft != null)
+                                      SliverPadding(
+                                        padding: const EdgeInsets.fromLTRB(
+                                          24,
                                           12,
                                           24,
                                           0,
@@ -1201,6 +1329,10 @@ class _AssessmentFormScreenState extends ConsumerState<AssessmentFormScreen> {
                                             return KeyedSubtree(
                                               key: ValueKey(q.localId),
                                               child: QuestionCard(
+                                                canSaveToBank:
+                                                    online &&
+                                                    !_busy &&
+                                                    !_loading,
                                                 key: _cardKeys.putIfAbsent(
                                                   q.localId,
                                                   () => GlobalKey(),
