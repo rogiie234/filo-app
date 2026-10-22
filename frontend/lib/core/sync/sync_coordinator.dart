@@ -140,6 +140,17 @@ class SyncCoordinator extends ChangeNotifier {
       await OutboxProcessor(store, dispatch).flush();
       await backup?.markLibrarySuccess();
       errors.remove('queue');
+      if (!isCurrent() ||
+          currentAccountCheck != null && !await currentAccountCheck!()) {
+        return;
+      }
+      try {
+        await client.rpc('finalize_accessible_exams');
+        errors.remove('exam_expiry');
+      } catch (_) {
+        errors['exam_expiry'] =
+            'Could not refresh exam status. Retry when connected.';
+      }
       // Reconcile newly visible old rows, hard deletes and access revocations.
       // Failures do not prevent other tables from pulling.
       try {
