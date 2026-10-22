@@ -117,6 +117,18 @@ void main() {
       await tester.pumpAndSettle();
       expect(find.text('Step 3 of 3'), findsOneWidget);
       expect(find.text('No questions yet.'), findsOneWidget);
+      await tester.tap(find.text('Publish'));
+      await tester.pumpAndSettle();
+      expect(
+        find.text('Set the open and close time before publishing.'),
+        findsWidgets,
+      );
+      expect(
+        find.text('Add at least one question before publishing.'),
+        findsWidgets,
+      );
+      expect(repo.saves, 0);
+      expect(find.text('Publish this assessment?'), findsNothing);
       await tester.tap(find.byTooltip('Back to classwork'));
       await tester.pumpAndSettle();
       expect(find.text('Discard your changes?'), findsOneWidget);

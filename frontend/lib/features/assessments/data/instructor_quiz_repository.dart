@@ -538,6 +538,22 @@ class InstructorQuizRepository {
     await _remoteAccess(classId, writing: true);
     try {
       await client.rpc('publish_quiz', params: {'p_quiz': quizId});
+    } on PostgrestException {
+      // An explicit RPC rejection has a known outcome; retain its validation message.
+      rethrow;
+    } catch (error) {
+      try {
+        final saved = await refreshQuiz(classId, quizId);
+        if (saved.row['status'] == 'published') {
+          await refreshList(classId);
+          return saved;
+        }
+      } catch (_) {
+        /* Require explicit reconciliation below. */
+      }
+      throw QuizReconciliationRequired(error);
+    }
+    try {
       final saved = await refreshQuiz(classId, quizId);
       await refreshList(classId);
       return saved;

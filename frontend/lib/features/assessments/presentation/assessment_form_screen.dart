@@ -8,6 +8,8 @@ import '../../classes/application/class_providers.dart';
 import '../../classes/presentation/classes_widgets.dart' show OfflineBanner;
 import '../application/instructor_quiz_providers.dart';
 import '../domain/quiz_draft.dart';
+import '../data/instructor_quiz_repository.dart';
+import '../domain/quiz_publish.dart';
 import '../domain/quiz_helpers.dart';
 import 'assessment_row.dart';
 import 'question_card.dart';
@@ -56,7 +58,9 @@ class _AssessmentFormScreenState extends ConsumerState<AssessmentFormScreen> {
       return false;
     }
     if (page == 1) {
-      final opens = _draft!.settings['opens_at'] as String?;
+      final opens = _draft!.locked
+          ? _savedQuiz?.row['opens_at'] as String?
+          : _draft!.settings['opens_at'] as String?;
       final closes = _draft!.settings['closes_at'] as String?;
       if (opens != null &&
           closes != null &&
@@ -175,6 +179,7 @@ class _AssessmentFormScreenState extends ConsumerState<AssessmentFormScreen> {
   }
 
   QuizDraft? _draft;
+  InstructorQuiz? _savedQuiz;
   bool _loading = true,
       _busy = false,
       _published = false,
@@ -253,6 +258,7 @@ class _AssessmentFormScreenState extends ConsumerState<AssessmentFormScreen> {
 
   void _accept(InstructorQuiz saved) {
     setState(() {
+      _savedQuiz = saved;
       _draft = QuizDraft(saved);
       // A stored value is an instructor choice, even when it matches a default.
       _answersChosenByHand = true;
@@ -364,13 +370,98 @@ class _AssessmentFormScreenState extends ConsumerState<AssessmentFormScreen> {
     );
   }
 
-  Future<void> _save() async {
-    if (_busy) return;
+  bool get _canWrite =>
+      !_viewOnly &&
+      !_archived &&
+      !_loading &&
+      ref.read(connectivityProvider).asData?.value == true &&
+      _draft?.reconciliationRequired != true;
+
+  final _publishProblems = <QuizPublishProblem>[];
+  final _problemFields = <QuizPublishProblem, FormFieldState<dynamic>>{};
+
+  Future<void> _showProblem(QuizPublishProblem problem) async {
+    _switchStep(problem.page);
+    if (_problemFields.containsKey(problem)) {
+      await revealAssessmentField(_problemFields[problem]!.context);
+    } else if (problem.questionId != null) {
+      setState(() => _expanded = problem.questionId);
+      await _revealQuestion(problem.questionId!);
+    } else if (problem.page == 1) {
+      await WidgetsBinding.instance.endOfFrame;
+      final target = _closingTimeKey.currentContext;
+      if (mounted && target != null) await revealAssessmentField(target);
+    } else if (problem.page == 0) {
+      await _validateStep(0);
+    }
+  }
+
+  Future<void> _publish() async {
+    if (_busy || !_canWrite || _published) return;
+    final draft = _draft!;
+    final problems = quizPublishProblems(draft, DateTime.now().toUtc());
+    _problemFields.clear();
+    for (var page = 0; page < 2; page++) {
+      final invalid = _forms[page].currentState?.validateGranularly();
+      if (invalid != null) {
+        for (final field in invalid) {
+          final problem = QuizPublishProblem(
+            field.errorText ?? 'Check this field.',
+            page,
+          );
+          problems.add(problem);
+          _problemFields[problem] = field;
+        }
+      }
+    }
+    for (var i = 0; i < draft.questions.length; i++) {
+      final q = draft.questions[i];
+      final e = _editor(q);
+      e.errors = q.validationErrors(
+        pointsText: e.points,
+        pendingAnswer: e.pendingAnswer,
+      );
+      for (final message in e.errors.values) {
+        problems.add(
+          QuizPublishProblem(
+            'Question ${i + 1}: $message',
+            2,
+            questionId: q.localId,
+          ),
+        );
+      }
+    }
+    setState(() {
+      _publishProblems
+        ..clear()
+        ..addAll(problems);
+    });
+    if (problems.isNotEmpty) {
+      if (_pageScrolls[_step].hasClients) _pageScrolls[_step].jumpTo(0);
+      return;
+    }
+    setState(() => _busy = true);
+    final confirmed = await showFiloConfirmation(
+      context,
+      title: 'Publish this assessment?',
+      message: quizPublishSummary(draft),
+      confirmLabel: 'Publish',
+      cancelLabel: 'Keep editing',
+      icon: FiloIcons.assessment,
+    );
+    if (!mounted) return;
+    setState(() => _busy = false);
+    if (!confirmed || !_canWrite) return;
+    await _save(publish: true);
+  }
+
+  Future<void> _save({bool publish = false}) async {
+    if (_busy || !_canWrite) return;
     final draft = _draft!;
     if (!await _validateStep(0) || !mounted) return;
     if (!await _validateStep(1) || !mounted) return;
     String? invalid;
-    for (final q in draft.questions) {
+    for (final q in draft.locked ? <QuizQuestion>[] : draft.questions) {
       final e = _editor(q);
       e.errors = q.validationErrors(
         pointsText: e.points,
@@ -397,8 +488,14 @@ class _AssessmentFormScreenState extends ConsumerState<AssessmentFormScreen> {
       if (repository == null) {
         throw StateError('Sign in to save this assessment.');
       }
-      final saved = await repository.save(
-        draft,
+      // Keep rejected content visible, but never replay it after a server lock.
+      final requestDraft = draft.locked && _savedQuiz != null
+          ? (QuizDraft(_savedQuiz!)
+              ..settings['title'] = draft.settings['title']
+              ..settings['closes_at'] = draft.settings['closes_at'])
+          : draft;
+      var saved = await repository.save(
+        requestDraft,
         onQuestionProgress: (id, status) {
           if (mounted) {
             setState(() {
@@ -408,8 +505,19 @@ class _AssessmentFormScreenState extends ConsumerState<AssessmentFormScreen> {
           }
         },
       );
+      if (!identical(requestDraft, draft)) {
+        draft.acceptSaved(saved);
+        _editors.clear();
+      }
+      _savedQuiz = saved;
+      if (publish) {
+        saved = await repository.publish(widget.classId, draft.id!);
+        draft.acceptSaved(saved);
+      }
       if (!mounted) return;
       setState(() {
+        _savedQuiz = saved;
+        _publishProblems.clear();
         // Repository accepted the refreshed content while retaining local IDs.
         _published = saved.row['status'] == 'published';
         _questionDirty = false;
@@ -417,8 +525,41 @@ class _AssessmentFormScreenState extends ConsumerState<AssessmentFormScreen> {
           _editor(q).status = 'Saved';
         }
       });
-      showMessage(context, _published ? 'Changes saved.' : 'Draft saved.');
+      showMessage(
+        context,
+        publish
+            ? 'Assessment published.'
+            : _published
+            ? 'Changes saved.'
+            : 'Draft saved.',
+      );
     } catch (error) {
+      if (error is QuizReconciliationRequired) {
+        draft.reconciliationRequired = true;
+      }
+      if (quizFriendlyError(error).contains('already been started') &&
+          draft.id != null) {
+        try {
+          final repository = await ref.read(
+            instructorQuizRepositoryProvider.future,
+          );
+          final fresh = await repository?.refreshQuiz(
+            widget.classId,
+            draft.id!,
+          );
+          if (mounted && fresh != null) {
+            setState(() {
+              _savedQuiz = fresh;
+              draft.locked = fresh.locked;
+              draft.reconciliationRequired = false;
+              _published = fresh.row['status'] == 'published';
+            });
+          }
+        } catch (_) {
+          draft.locked = true;
+          draft.reconciliationRequired = true;
+        }
+      }
       if (mounted) {
         for (final q in draft.questions) {
           if (draft.reconciliationRequired) {
@@ -426,11 +567,14 @@ class _AssessmentFormScreenState extends ConsumerState<AssessmentFormScreen> {
           }
         }
         setState(
-          () => _error = draft.reconciliationRequired
+          () =>
+              _error = quizFriendlyError(error).contains('already been started')
+              ? '${quizFriendlyError(error)} Unsaved content is kept here read-only and will not be saved. Reload to view the saved version.'
+              : _draft!.reconciliationRequired
               ? (draft.id == null
                     ? 'The save could not be confirmed. Check the classwork list before creating another draft.'
-                    : 'The save could not be confirmed. Your edits are still here. Reload the saved version before trying again.')
-              : error.toString().replaceFirst('Bad state: ', ''),
+                    : 'The change could not be confirmed. Your edits are still here. Reload the saved version before trying again.')
+              : quizFriendlyError(error),
         );
       }
     } finally {
@@ -509,17 +653,43 @@ class _AssessmentFormScreenState extends ConsumerState<AssessmentFormScreen> {
                           child: Row(
                             children: [
                               Expanded(
-                                child: Text(
-                                  _stepLabels[_step],
-                                  style: Theme.of(context).textTheme.titleLarge,
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text(
+                                      _stepLabels[_step],
+                                      style: Theme.of(context)
+                                          .textTheme
+                                          .titleLarge,
+                                    ),
+                                    const SizedBox(height: 4),
+                                    Text(
+                                      'Step ${_step + 1} of 3',
+                                      style: Theme.of(context)
+                                          .textTheme
+                                          .bodySmall
+                                          ?.copyWith(
+                                            color: FiloColors.secondary,
+                                          ),
+                                    ),
+                                  ],
                                 ),
                               ),
-                              const SizedBox(width: 12),
-                              Text(
-                                'Step ${_step + 1} of 3',
-                                style: Theme.of(context).textTheme.bodySmall
-                                    ?.copyWith(color: FiloColors.secondary),
-                              ),
+                              if (draft.id != null) ...[
+                                const SizedBox(width: 12),
+                                Chip(
+                                  label: Text(
+                                    quizDisplayStatus(
+                                      status: _published
+                                          ? 'published'
+                                          : 'draft',
+                                      opensAt: _savedQuiz?.settings.opensAt,
+                                      closesAt: _savedQuiz?.settings.closesAt,
+                                      now: DateTime.now().toUtc(),
+                                    ).label,
+                                  ),
+                                ),
+                              ],
                             ],
                           ),
                         ),
@@ -577,6 +747,22 @@ class _AssessmentFormScreenState extends ConsumerState<AssessmentFormScreen> {
                                                   'Students can already see this assessment. Your saved changes will affect it.',
                                                 ),
                                               ),
+                                            if (_publishProblems
+                                                .isNotEmpty) ...[
+                                              const Text(
+                                                'Before publishing, fix these problems:',
+                                              ),
+                                              for (final problem
+                                                  in _publishProblems)
+                                                TextButton(
+                                                  onPressed: _busy
+                                                      ? null
+                                                      : () => _showProblem(
+                                                          problem,
+                                                        ),
+                                                  child: Text(problem.message),
+                                                ),
+                                            ],
                                             if (_error != null) ...[
                                               Text(
                                                 _error!,
@@ -688,6 +874,8 @@ class _AssessmentFormScreenState extends ConsumerState<AssessmentFormScreen> {
                                                         labelText: 'Time limit (minutes)',
                                                       ),
                                                   validator: (value) {
+                                                    if (draft.locked)
+                                                      return null;
                                                     final n = int.tryParse(
                                                       value ?? '',
                                                     );
@@ -928,6 +1116,8 @@ class _AssessmentFormScreenState extends ConsumerState<AssessmentFormScreen> {
                                                         suffixText: '%',
                                                       ),
                                                   validator: (value) {
+                                                    if (draft.locked)
+                                                      return null;
                                                     if (value == null ||
                                                         value.trim().isEmpty) {
                                                       return null;
@@ -1130,17 +1320,17 @@ class _AssessmentFormScreenState extends ConsumerState<AssessmentFormScreen> {
                           const Padding(
                             padding: EdgeInsets.only(bottom: 8),
                             child: Text(
-                              'Connect to the internet to save changes.',
+                              'Connect to the internet to save or publish.',
                             ),
                           ),
-                        if (_step > 0)
-                          TextButton(
-                            onPressed: _busy
-                                ? null
-                                : () => _navigate(_step - 1),
-                            child: const Text('Back'),
-                          ),
-                        if (_step < 2)
+                        if (_step < 2) ...[
+                          if (_step > 0)
+                            TextButton(
+                              onPressed: _busy
+                                  ? null
+                                  : () => _navigate(_step - 1),
+                              child: const Text('Back'),
+                            ),
                           FiloButton(
                             label: _step == 0
                                 ? 'Next: Settings'
@@ -1149,18 +1339,54 @@ class _AssessmentFormScreenState extends ConsumerState<AssessmentFormScreen> {
                                 ? () => _navigate(_step + 1)
                                 : null,
                           ),
-                        if (_step == 2 && !readOnly)
-                          FiloButton(
-                            label: _published ? 'Save changes' : 'Save draft',
-                            busy: _busy,
-                            onPressed:
-                                editing &&
-                                    online &&
-                                    !draft.reconciliationRequired &&
-                                    (_dirty || draft.id == null)
-                                ? _save
-                                : null,
+                        ] else ...[
+                          Row(
+                            children: [
+                              Expanded(
+                                child: TextButton(
+                                  style: TextButton.styleFrom(
+                                    minimumSize: const Size(48, 48),
+                                  ),
+                                  onPressed: _busy
+                                      ? null
+                                      : () => _navigate(_step - 1),
+                                  child: const Text('Back'),
+                                ),
+                              ),
+                              if (!readOnly && !_published) ...[
+                                const SizedBox(width: 12),
+                                Expanded(
+                                  child: FiloButton(
+                                    label: 'Save draft',
+                                    secondary: true,
+                                    onPressed:
+                                        editing &&
+                                            online &&
+                                            !draft.reconciliationRequired &&
+                                            (_dirty || draft.id == null)
+                                        ? () => _save()
+                                        : null,
+                                  ),
+                                ),
+                              ],
+                            ],
                           ),
+                          if (!readOnly) const SizedBox(height: 8),
+                          if (!readOnly)
+                            FiloButton(
+                              label: _published ? 'Save changes' : 'Publish',
+                              busy: _busy,
+                              onPressed:
+                                  editing &&
+                                      online &&
+                                      !draft.reconciliationRequired &&
+                                      (!_published ||
+                                          _dirty ||
+                                          draft.id == null)
+                                  ? (_published ? () => _save() : _publish)
+                                  : null,
+                            ),
+                        ],
                       ],
                     ),
                   ),

@@ -16,6 +16,7 @@ import '../../posts/application/post_providers.dart';
 import '../../posts/presentation/stream_post_card.dart' show StreamPostSkeleton;
 import '../application/instructor_quiz_providers.dart';
 import '../domain/quiz_draft.dart';
+import '../domain/quiz_publish.dart';
 import 'assessment_row.dart';
 import 'assessment_form_screen.dart';
 
@@ -203,10 +204,7 @@ class _InstructorClassworkListState
       }
     } catch (error) {
       if (mounted) {
-        showMessage(
-          context,
-          'Could not delete this assessment. ${error.toString().replaceFirst('Bad state: ', '')}',
-        );
+        showMessage(context, quizFriendlyError(error));
       }
     } finally {
       if (mounted) setState(() => _deleting.remove(quiz.id));
@@ -336,7 +334,12 @@ class _InstructorClassworkListState
                     ),
                   ),
                   const SizedBox(height: 16),
-                  if (!online) const OfflineBanner(),
+                  if (!online) ...[
+                    const OfflineBanner(),
+                    const Text(
+                      'Connect to the internet to save, publish, or delete assessments.',
+                    ),
+                  ],
                   SingleChildScrollView(
                     scrollDirection: Axis.horizontal,
                     child: Row(
