@@ -27,7 +27,28 @@ class AppDatabase extends _$AppDatabase {
   AppDatabase(super.executor);
 
   @override
-  int get schemaVersion => 5;
+  int get schemaVersion => 6;
+
+  Future<void> _createExamStorage() async {
+    await customStatement('''
+      CREATE TABLE IF NOT EXISTS exam_active_attempt (
+        session_id TEXT PRIMARY KEY, quiz_id TEXT NOT NULL,
+        started_at TEXT NOT NULL, deadline_at TEXT NOT NULL,
+        server_now TEXT NOT NULL, questions TEXT NOT NULL,
+        saved_at TEXT NOT NULL, device_fetch_at TEXT NOT NULL
+      )
+    ''');
+    await customStatement('''
+      CREATE TABLE IF NOT EXISTS exam_local_answers (
+        session_id TEXT NOT NULL REFERENCES exam_active_attempt(session_id) ON DELETE CASCADE,
+        question_id TEXT NOT NULL, option_id TEXT, bool_answer INTEGER,
+        text_answer TEXT, updated_at TEXT NOT NULL, sent INTEGER NOT NULL DEFAULT 0,
+        revision INTEGER NOT NULL DEFAULT 1,
+        PRIMARY KEY (session_id, question_id),
+        CHECK (bool_answer IS NULL OR bool_answer IN (0,1)), CHECK (sent IN (0,1))
+      )
+    ''');
+  }
 
   Future<void> _createFileSyncState() async {
     final columns = await customSelect('PRAGMA table_info(drive_backup_jobs)')
@@ -109,12 +130,14 @@ class AppDatabase extends _$AppDatabase {
   MigrationStrategy get migration => MigrationStrategy(
     onCreate: (m) async {
       await m.createAll();
+      await _createExamStorage();
       await _createInstructorQuizCache();
       await _createGradingCache();
       await _createDriveBackup();
       await _createFileSyncState();
     },
     onUpgrade: (m, from, to) async {
+      if (from < 6) await _createExamStorage();
       if (from < 5) await _createInstructorQuizCache();
       if (from < 2) await _createGradingCache();
       if (from < 3) await _createDriveBackup();

@@ -6,12 +6,27 @@ import io.flutter.plugin.common.MethodChannel
 import android.Manifest
 import android.content.pm.PackageManager
 import android.os.Build
+import android.content.Intent
+import android.provider.Settings
 
 class MainActivity : FlutterActivity() {
     private var pendingPermission: MethodChannel.Result? = null
 
     override fun configureFlutterEngine(flutterEngine: FlutterEngine) {
         super.configureFlutterEngine(flutterEngine)
+        MethodChannel(flutterEngine.dartExecutor.binaryMessenger, "com.filo.filo/device_time")
+            .setMethodCallHandler { call, result ->
+                if (call.method != "openSettings") {
+                    result.notImplemented()
+                } else {
+                    try {
+                        startActivity(Intent(Settings.ACTION_DATE_SETTINGS))
+                        result.success(null)
+                    } catch (error: Exception) {
+                        result.error("SETTINGS_UNAVAILABLE", "Open Date & time in your phone Settings", null)
+                    }
+                }
+            }
         MethodChannel(flutterEngine.dartExecutor.binaryMessenger, "com.filo.filo/storage")
             .setMethodCallHandler { call, result ->
                 if (call.method == "freeBytes") {

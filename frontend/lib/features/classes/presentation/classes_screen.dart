@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../exams/presentation/exam_dev_screen.dart';
+
 import '../../../core/theme/app_theme.dart';
 import '../../../core/widgets/filo_widgets.dart';
 import '../application/preview_controller.dart';
@@ -79,6 +81,14 @@ class _ClassesScreenState extends ConsumerState<ClassesScreen> {
         title: const Brand(),
         toolbarHeight: 76,
         actions: [
+          if (live && student && examDevEnabled)
+            IconButton(
+              tooltip: 'DEV exam data',
+              icon: const Icon(Icons.science_outlined),
+              onPressed: () => Navigator.of(context).push(
+                MaterialPageRoute<void>(builder: (_) => const ExamDevScreen()),
+              ),
+            ),
           IconButton(
             tooltip: 'Notifications',
             icon: const RedDotBadge(

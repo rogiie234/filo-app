@@ -16,6 +16,7 @@ import '../../../core/theme/app_theme.dart';
 import '../../../core/theme/animation_constants.dart';
 import '../../../core/widgets/filo_widgets.dart';
 import '../../../core/widgets/entry_artwork.dart';
+import '../application/sign_in_clock.dart';
 
 class SignInScreen extends ConsumerStatefulWidget {
   const SignInScreen({super.key});
@@ -26,6 +27,70 @@ class SignInScreen extends ConsumerStatefulWidget {
 
 class _SignInScreenState extends ConsumerState<SignInScreen> {
   bool _signingIn = false;
+  bool _checkingClock = false, _returningFromSettings = false;
+  bool _clockIncorrect = false;
+  String? _failure;
+  late final AppLifecycleListener _lifecycle;
+  static const _clockMessage =
+      'Your phone\'s date or time appears incorrect, which can prevent sign-in. Turn on automatic date and time in your phone\'s Settings, then try again.';
+  static const _clockHint =
+      'If this keeps happening, check that automatic date and time is enabled on your phone.';
+
+  @override
+  void initState() {
+    super.initState();
+    _lifecycle = AppLifecycleListener(
+      onResume: () {
+        if (_returningFromSettings) {
+          _returningFromSettings = false;
+          unawaited(_recheckClock());
+        }
+      },
+    );
+  }
+
+  @override
+  void dispose() {
+    _lifecycle.dispose();
+    super.dispose();
+  }
+
+  Future<void> _openSettings() async {
+    _returningFromSettings = true;
+    try {
+      await ref.read(openDateTimeSettingsProvider)();
+    } catch (_) {
+      _returningFromSettings = false;
+      if (mounted)
+        setState(
+          () => _failure = 'Open your phone\'s Settings, choose Date & time, and turn on automatic date and time.',
+        );
+    }
+  }
+
+  Future<void> _recheckClock() async {
+    if (!mounted || _signingIn || _checkingClock) return;
+    setState(() => _checkingClock = true);
+    final mismatch = await ref.read(signInClockCheckProvider)();
+    if (!mounted) return;
+    setState(() {
+      _checkingClock = false;
+      _clockIncorrect = mismatch == true;
+      _failure = mismatch == true
+          ? _clockMessage
+          : mismatch == false
+          ? 'Date and time look correct. Try signing in again.'
+          : 'Could not check your date and time. Check your connection and try again.';
+    });
+  }
+
+  void _showFailure(String message) {
+    if (mounted)
+      setState(() {
+        _clockIncorrect = false;
+        _failure = message;
+      });
+  }
 
   Widget _entrance(Widget child, {Duration delay = Duration.zero}) {
     if (MediaQuery.disableAnimationsOf(context)) return child;
@@ -93,6 +158,52 @@ class _SignInScreenState extends ConsumerState<SignInScreen> {
                       ),
                       delay: FiloAnimation.subtitleDelay,
                     ),
+                    if (_failure != null) ...[
+                      const SizedBox(height: 24),
+                      Semantics(
+                        liveRegion: true,
+                        child: Column(
+                          children: [
+                            if (_clockIncorrect)
+                              Text(
+                                'Check your phone\'s date and time',
+                                style: Theme.of(context).textTheme.titleMedium,
+                                textAlign: TextAlign.center,
+                              ),
+                            const SizedBox(height: 8),
+                            Text(_failure!, textAlign: TextAlign.center),
+                            if (!_clockIncorrect) ...[
+                              const SizedBox(height: 8),
+                              const Text(
+                                _clockHint,
+                                textAlign: TextAlign.center,
+                              ),
+                            ],
+                          ],
+                        ),
+                      ),
+                      const SizedBox(height: 12),
+                      FiloButton(
+                        label: 'Open settings',
+                        secondary: true,
+                        onPressed: _signingIn || _checkingClock
+                            ? null
+                            : _openSettings,
+                      ),
+                      const SizedBox(height: 12),
+                      FiloButton(
+                        label: _checkingClock
+                            ? 'Checking date and time...'
+                            : 'Try again',
+                        busy: _checkingClock,
+                        onPressed:
+                            _signingIn ||
+                                _checkingClock ||
+                                connectivity.asData?.value != true
+                            ? null
+                            : _signIn,
+                      ),
+                    ],
                   ],
                 ),
               ),
@@ -115,7 +226,9 @@ class _SignInScreenState extends ConsumerState<SignInScreen> {
                         excludeFromSemantics: true,
                       ),
                       onPressed:
-                          _signingIn || connectivity.asData?.value != true
+                          _signingIn ||
+                              _checkingClock ||
+                              connectivity.asData?.value != true
                           ? null
                           : _signIn,
                     ),
@@ -148,11 +261,26 @@ class _SignInScreenState extends ConsumerState<SignInScreen> {
   }
 
   Future<void> _signIn() async {
-    if (ref.read(connectivityProvider).asData?.value != true || _signingIn) {
+    if (ref.read(connectivityProvider).asData?.value != true ||
+        _signingIn ||
+        _checkingClock) {
       return;
     }
-    setState(() => _signingIn = true);
+    setState(() {
+      _signingIn = true;
+      _failure = null;
+      _clockIncorrect = false;
+    });
     try {
+      final mismatch = await ref.read(signInClockCheckProvider)();
+      if (!mounted) return;
+      if (mismatch == true) {
+        setState(() {
+          _clockIncorrect = true;
+          _failure = _clockMessage;
+        });
+        return;
+      }
       final client = ref.read(supabaseClientProvider);
       final google = await ref.read(nativeGoogleSignInProvider.future);
       await google.signOut();
@@ -168,10 +296,7 @@ class _SignInScreenState extends ConsumerState<SignInScreen> {
       // The existing session gate performs the trusted-device/OTP check.
     } on GoogleSignInException catch (error) {
       if (mounted && error.code != GoogleSignInExceptionCode.canceled) {
-        showMessage(
-          context,
-          'Google sign-in failed. Check the Android OAuth configuration and try again.',
-        );
+        _showFailure('Could not sign in with Google. Try again.');
       }
     } on SocketException {
       _connectionFailure();
@@ -180,13 +305,10 @@ class _SignInScreenState extends ConsumerState<SignInScreen> {
     } on AuthRetryableFetchException {
       _connectionFailure();
     } on StateError catch (error) {
-      if (mounted) showMessage(context, error.message.toString());
+      _showFailure(error.message.toString());
     } catch (_) {
       if (mounted) {
-        showMessage(
-          context,
-          'Could not sign in. Check your connection and try again.',
-        );
+        _showFailure('Could not sign in. Check your connection and try again.');
       }
     } finally {
       if (mounted) setState(() => _signingIn = false);
@@ -196,8 +318,7 @@ class _SignInScreenState extends ConsumerState<SignInScreen> {
   void _connectionFailure() {
     if (!mounted) return;
     ref.invalidate(connectivityProvider);
-    showMessage(
-      context,
+    _showFailure(
       'Could not reach sign-in. Check your internet connection and try again.',
     );
   }

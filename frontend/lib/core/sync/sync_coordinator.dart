@@ -11,6 +11,7 @@ import '../../features/classes/data/class_repository.dart';
 import '../../features/drive_backup/data/drive_backup_service.dart';
 import '../../features/drive_backup/data/drive_api.dart';
 import '../../features/files/data/files_repository.dart';
+import '../../features/exams/data/exam_remote.dart';
 import 'outbox_processor.dart';
 import 'sqlite_outbox.dart';
 
@@ -86,14 +87,18 @@ class SyncCoordinator extends ChangeNotifier {
             .eq('id', action.payload['notification_id'] as String)
             .eq('recipient_id', userId);
       case 'leave_event':
-        await client.rpc(
-          'log_leave',
-          params: {
-            'p_event': action.id,
-            'p_session': action.payload['session_id'],
-            'p_left_at': action.payload['left_at'],
-          },
-        );
+        try {
+          await client.rpc(
+            'log_leave',
+            params: {
+              'p_event': action.id,
+              'p_session': action.payload['session_id'],
+              'p_left_at': action.payload['left_at'],
+            },
+          );
+        } catch (error) {
+          throw OutboxActionFailure(examFailure(error).message);
+        }
       case 'drive_backup':
         if (backup == null || files == null || !backup!.enabled) {
           throw const DeferredAction();
