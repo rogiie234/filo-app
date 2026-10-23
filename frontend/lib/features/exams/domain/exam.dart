@@ -71,9 +71,15 @@ class ExamSession {
 }
 
 class StudentQuiz {
-  StudentQuiz(this.json, this.session);
+  StudentQuiz(this.json, this.session, {this.sessionKnown = true});
   final ExamJson json;
   final ExamSession? session;
+  final bool sessionKnown;
+  String get classId => json['class_id'] as String;
+  String get typeLabel => json['type'] == 'exam' ? 'Exam' : 'Quiz';
+  String get instructions => json['instructions'] as String? ?? '';
+  int get minutes => json['time_limit_minutes'] as int;
+  int get points => json['total_points'] as int? ?? 0;
   String get id => json['id'] as String;
   String get title => json['title'] as String;
   DateTime? get opensAt =>
@@ -83,4 +89,15 @@ class StudentQuiz {
   bool isOpen(DateTime now) =>
       (opensAt == null || !now.isBefore(opensAt!)) &&
       (closesAt == null || now.isBefore(closesAt!));
+}
+
+class StudentQuizCatalog {
+  const StudentQuizCatalog(
+    this.quizzes, {
+    this.loaded = false,
+    this.failed = false,
+    this.refreshing = false,
+  });
+  final List<StudentQuiz> quizzes;
+  final bool loaded, failed, refreshing;
 }

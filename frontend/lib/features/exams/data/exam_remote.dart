@@ -103,7 +103,6 @@ class SupabaseExamRemote implements ExamRemote {
         .select('class_id,classes!inner(id,archived_at,deleted_at)')
         .eq('student_id', userId)
         .eq('status', 'active')
-        .isFilter('classes.archived_at', null)
         .isFilter('classes.deleted_at', null);
     final ids = memberships.map((row) => row['class_id'] as String).toList();
     if (ids.isEmpty) return [];
@@ -114,7 +113,17 @@ class SupabaseExamRemote implements ExamRemote {
         .eq('status', 'published')
         .isFilter('deleted_at', null)
         .order('opens_at');
-    return rows.map(ExamJson.from).toList();
+    return rows
+        .map(
+          (row) => ExamJson.from(row)
+            ..['class_archived'] =
+                (memberships.firstWhere(
+                      (m) => m['class_id'] == row['class_id'],
+                    )['classes']
+                    as Map)['archived_at'] !=
+                null,
+        )
+        .toList();
   });
   Future<ExamJson> _rpc(String name, ExamJson params) => _call(
     () async => ExamJson.from(await client.rpc(name, params: params) as Map),

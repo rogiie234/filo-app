@@ -436,7 +436,7 @@ class _AssessmentFormScreenState extends ConsumerState<AssessmentFormScreen> {
     final time = await showTimePicker(
       context: context,
       initialTime: TimeOfDay(hour: civil.hour, minute: civil.minute),
-      helpText: 'Select time (PHT, UTC+08:00)',
+      helpText: 'Select time',
     );
     if (time == null || !mounted) return;
     setState(
@@ -1017,7 +1017,7 @@ class _AssessmentFormScreenState extends ConsumerState<AssessmentFormScreen> {
                                               ],
                                               if (page == 1) ...[
                                                 _hint(
-                                                  'All dates and times use Philippine time (PHT, UTC+08:00).',
+                                                  'All dates and times use Philippine time.',
                                                 ),
                                                 const SizedBox(height: 16),
                                                 for (final field in [

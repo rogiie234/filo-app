@@ -44,6 +44,10 @@ class _FiloButtonState extends State<FiloButton>
   @override
   void initState() {
     super.initState();
+    _states.update(
+      WidgetState.disabled,
+      widget.busy || widget.onPressed == null,
+    );
     _states.addListener(_syncPulse);
   }
 
@@ -56,6 +60,10 @@ class _FiloButtonState extends State<FiloButton>
   @override
   void didUpdateWidget(covariant FiloButton oldWidget) {
     super.didUpdateWidget(oldWidget);
+    // Seed child-owned states before FilledButton can notify our outer builders.
+    final unavailable = widget.busy || widget.onPressed == null;
+    _states.update(WidgetState.disabled, unavailable);
+    if (unavailable) _states.update(WidgetState.pressed, false);
     _syncPulse();
   }
 

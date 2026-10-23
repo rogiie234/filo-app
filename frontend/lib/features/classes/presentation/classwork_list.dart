@@ -1,5 +1,11 @@
 import 'dart:async';
 
+import '../../exams/application/exam_providers.dart';
+import '../../exams/domain/exam.dart';
+import '../../exams/domain/student_quiz_status.dart';
+import '../../exams/presentation/student_quiz_detail_screen.dart';
+import '../../exams/presentation/student_quiz_widgets.dart';
+
 import '../../grading/presentation/submissions_screen.dart';
 import '../../grading/presentation/gradebook_screen.dart';
 import '../../grading/presentation/my_grades_screen.dart';
@@ -89,8 +95,14 @@ class _ClassworkListState extends ConsumerState<ClassworkList> {
   Future<void> _refresh() async {
     if (!widget.live) return;
     try {
+      ref.invalidate(studentQuizCatalogProvider);
       final online = await ref.read(connectivityMonitorProvider).recheck();
       if (!mounted || !online) return;
+      if (!widget.instructor) {
+        final repository = await ref.read(studentExamRepositoryProvider.future);
+        await repository?.refreshCatalog();
+        if (!mounted) return;
+      }
       if (widget.instructor) {
         ref.invalidate(postSyncProvider(widget.classId));
         await ref.read(postSyncProvider(widget.classId).future);
@@ -110,6 +122,16 @@ class _ClassworkListState extends ConsumerState<ClassworkList> {
     final student = !widget.instructor;
     final online = ref.watch(connectivityProvider).asData?.value == true;
     if (live && student) ref.watch(submissionSyncLifecycleProvider(id));
+    final catalog = live && student
+        ? ref.watch(studentQuizCatalogProvider)
+        : null;
+    final now = live && student
+        ? ref.watch(studentQuizNowProvider).asData?.value ??
+              DateTime.now().toUtc()
+        : DateTime.now().toUtc();
+    final quizzes =
+        catalog?.value?.quizzes.where((q) => q.classId == id).toList() ??
+        <StudentQuiz>[];
     final posts = live ? ref.watch(streamPostsProvider(id)) : null;
     final submissions = live && student
         ? ref.watch(classSubmissionsProvider(id))
@@ -127,21 +149,44 @@ class _ClassworkListState extends ConsumerState<ClassworkList> {
             classworkLoadedProvider('${student ? 'submissions' : 'posts'}:$id'),
           )
         : null;
-    final confirmedLoad = !live || checkpoint?.asData?.value == true;
-    final loading =
-        live &&
-        ((posts!.isLoading && !posts.hasValue) ||
-            (student &&
-                ((submissions!.isLoading && !submissions.hasValue) ||
-                    (grades!.isLoading && !grades.hasValue))));
+    final confirmedLoad = !live || checkpoint?.value == true;
+    final needPosts = _filter != 'Quizzes';
+    final needQuizzes = live && student && _filter != 'Graded';
+    final needStatuses = student && _filter != 'All' && _filter != 'Quizzes';
+    final postsReady =
+        !live ||
+        posts!.hasValue &&
+            !((posts.value?.isEmpty ?? true) &&
+                !confirmedLoad &&
+                online &&
+                sync!.isLoading);
+    final quizzesReady =
+        !needQuizzes ||
+        catalog?.value != null &&
+            (catalog!.value!.loaded || !catalog.value!.refreshing);
     final failed =
+        (needQuizzes &&
+            (catalog?.hasError == true || catalog?.value?.failed == true)) ||
+        (live &&
+            needPosts &&
+            (posts!.hasError ||
+                sync!.hasError ||
+                checkpoint!.hasError ||
+                needStatuses && (submissions!.hasError || grades!.hasError)));
+    final loading =
+        !failed &&
+        ((needPosts && !postsReady) ||
+            (needQuizzes && !quizzesReady) ||
+            live &&
+                needStatuses &&
+                (submissions!.isLoading && !submissions.hasValue ||
+                    grades!.isLoading && !grades.hasValue));
+    final incomplete =
         live &&
-        (posts!.hasError ||
-            sync!.hasError ||
-            checkpoint!.hasError ||
-            (student && (submissions!.hasError || grades!.hasError)));
+        (needPosts && !confirmedLoad ||
+            needQuizzes && catalog?.value?.loaded != true);
     final assignments =
-        (live ? posts!.asData?.value ?? <ClassPost>[] : widget.previewPosts)
+        (live ? posts!.value ?? <ClassPost>[] : widget.previewPosts)
             .where(
               (post) => post.classId == id && post.postType == 'assignment',
             )
@@ -154,15 +199,16 @@ class _ClassworkListState extends ConsumerState<ClassworkList> {
           });
     _scheduleDeadline(assignments);
     final statusKnown =
+        !live ||
         confirmedLoad &&
-        !(submissions?.hasError ?? false) &&
-        !(grades?.hasError ?? false);
+            (submissions?.hasValue ?? false) &&
+            (grades?.hasValue ?? false);
     AssignmentStatus? statusFor(ClassPost post) {
-      final own = submissions?.asData?.value
-          .where((s) => s.postId == post.id)
+      final own = submissions?.value
+          ?.where((s) => s.postId == post.id)
           .firstOrNull;
-      final grade = grades?.asData?.value
-          .where((g) => g.submissionId == own?.id)
+      final grade = grades?.value
+          ?.where((g) => g.submissionId == own?.id)
           .firstOrNull;
       if (!statusKnown && own == null && grade == null) return null;
       return assignmentStatus(dueAt: post.dueAt, submission: own, grade: grade);
@@ -172,6 +218,7 @@ class _ClassworkListState extends ConsumerState<ClassworkList> {
       if (!student || _filter == 'All') return true;
       final status = statusFor(post);
       return switch (_filter) {
+        'Quizzes' => false,
         'To do' =>
           status == AssignmentStatus.assigned ||
               status == AssignmentStatus.draft ||
@@ -185,6 +232,27 @@ class _ClassworkListState extends ConsumerState<ClassworkList> {
     }
 
     final visible = assignments.where(matches).toList();
+    final visibleQuizzes = quizzes.where(
+      (q) => switch (_filter) {
+        'All' || 'Quizzes' => true,
+        'To do' => q.session?.submitted != true,
+        'Turned in' => q.session?.submitted == true,
+        _ => false,
+      },
+    );
+    final work =
+        <({ClassPost? post, StudentQuiz? quiz})>[
+          for (final post in visible) (post: post, quiz: null),
+          for (final quiz in visibleQuizzes) (post: null, quiz: quiz),
+        ]..sort(
+          (a, b) => compareStudentWork(
+            a.post?.dueAt ?? a.quiz?.closesAt,
+            a.post == null ? 'quiz:${a.quiz!.id}' : 'post:${a.post!.id}',
+            b.post?.dueAt ?? b.quiz?.closesAt,
+            b.post == null ? 'quiz:${b.quiz!.id}' : 'post:${b.post!.id}',
+          ),
+        );
+    final empty = assignments.isEmpty && quizzes.isEmpty;
     final content = ListView(
       key: PageStorageKey('classwork-$id'),
       physics: const AlwaysScrollableScrollPhysics(),
@@ -236,7 +304,13 @@ class _ClassworkListState extends ConsumerState<ClassworkList> {
               padding: const EdgeInsets.symmetric(horizontal: 8),
               child: Row(
                 children: [
-                  for (final filter in ['All', 'To do', 'Turned in', 'Graded'])
+                  for (final filter in [
+                    'All',
+                    'To do',
+                    'Turned in',
+                    'Graded',
+                    'Quizzes',
+                  ])
                     Padding(
                       padding: const EdgeInsets.only(right: 8),
                       child: ClassworkFilterChip(
@@ -272,15 +346,20 @@ class _ClassworkListState extends ConsumerState<ClassworkList> {
             child: const Text('Retry'),
           ),
         ],
-        if (loading ||
-            (live && assignments.isEmpty && online && sync!.isLoading))
+        if (incomplete && !loading && !failed && !empty) ...[
+          const Text(
+            'Some classwork is not saved on this device. Connect to the internet and refresh.',
+          ),
+          TextButton(onPressed: _refresh, child: const Text('Retry')),
+        ],
+        if (loading)
           for (var i = 0; i < 3; i++)
             const Padding(
               padding: EdgeInsets.only(bottom: 12),
               child: StreamPostSkeleton(),
             )
-        else if (assignments.isEmpty && !failed)
-          if (confirmedLoad)
+        else if (empty && !failed)
+          if (confirmedLoad && (!needQuizzes || catalog?.value?.loaded == true))
             const EmptyState(
               title: 'No classwork yet.',
               message: 'Your next learning adventure will appear here.',
@@ -294,34 +373,56 @@ class _ClassworkListState extends ConsumerState<ClassworkList> {
               onPressed: _refresh,
               child: const Text('Refresh classwork'),
             )
-        else if (visible.isEmpty && assignments.isNotEmpty)
+        else if (work.isEmpty && !empty)
           Text(
             statusKnown
-                ? 'No assignments match this filter.'
+                ? 'No classwork matches this filter.'
                 : 'Refresh to load your submission statuses.',
           )
         else
-          for (final post in visible)
-            Padding(
-              padding: const EdgeInsets.only(bottom: 12),
-              child: AssignmentRow(
-                post: post,
-                status: student ? statusFor(post) : null,
-                showStatus: student,
-                onTap: () {
-                  if (live && !student) {
-                    Navigator.of(context).push(
-                      MaterialPageRoute<void>(
-                        builder: (_) =>
-                            SubmissionsScreen(classId: id, postId: post.id),
+          for (final entry in work)
+            if (entry.quiz != null)
+              Padding(
+                key: ValueKey('quiz:${entry.quiz!.id}'),
+                padding: const EdgeInsets.only(bottom: 12),
+                child: StudentQuizRow(
+                  key: ValueKey('quiz:${entry.quiz!.id}'),
+                  quiz: entry.quiz!,
+                  now: now,
+                  onTap: () => Navigator.of(context).push(
+                    MaterialPageRoute<void>(
+                      builder: (_) => StudentQuizDetailScreen(
+                        classId: id,
+                        quizId: entry.quiz!.id,
                       ),
-                    );
-                  } else {
-                    widget.onOpen(post);
-                  }
-                },
+                    ),
+                  ),
+                ),
+              )
+            else
+              Padding(
+                key: ValueKey('post:${entry.post!.id}'),
+                padding: const EdgeInsets.only(bottom: 12),
+                child: AssignmentRow(
+                  post: entry.post!,
+                  status: student ? statusFor(entry.post!) : null,
+                  showStatus: student,
+                  onTap: () {
+                    if (live && !student) {
+                      Navigator.of(context).push(
+                        MaterialPageRoute<void>(
+                          builder: (_) => SubmissionsScreen(
+                            classId: id,
+                            postId: entry.post!.id,
+                          ),
+                        ),
+                      );
+                    } else {
+                      widget.onOpen(entry.post!);
+                    }
+                  },
+                ),
               ),
-            ),
       ],
     );
     return live

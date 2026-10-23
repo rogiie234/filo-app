@@ -58,9 +58,9 @@ class _ClassScreenState extends ConsumerState<ClassScreen> {
             role: widget.profile!.role == AccountRole.instructor
                 ? PreviewRole.instructor
                 : PreviewRole.student,
-            classes: cards!.asData?.value ?? [],
+            classes: cards!.value ?? [],
             posts:
-                ref.watch(streamPostsProvider(widget.classId)).asData?.value ??
+                ref.watch(streamPostsProvider(widget.classId)).value ??
                 const [],
             assessments: const [],
           );
@@ -70,6 +70,8 @@ class _ClassScreenState extends ConsumerState<ClassScreen> {
     if (matches.isEmpty) {
       if (live &&
           cards!.hasValue &&
+          !cards.isLoading &&
+          !cards.hasError &&
           _openedSection != null &&
           !_checkingAccess &&
           !_busy) {

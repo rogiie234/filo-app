@@ -115,7 +115,7 @@ void main() {
     },
   );
   test(
-    'discovery filters active membership/classes and published quizzes',
+    'discovery includes archived read-only classes and only published quizzes',
     () async {
       final requests = <http.Request>[];
       final client = SupabaseClient(
@@ -127,11 +127,14 @@ void main() {
               ? [
                   {
                     'class_id': 'class',
-                    'classes': {'id': 'class'},
+                    'classes': {
+                      'id': 'class',
+                      'archived_at': '2026-10-23T00:00:00Z',
+                    },
                   },
                 ]
               : [
-                  {'id': 'quiz', 'title': 'Quiz'},
+                  {'id': 'quiz', 'title': 'Quiz', 'class_id': 'class'},
                 ];
           return http.Response(
             jsonEncode(rows),
@@ -142,10 +145,9 @@ void main() {
         }),
       );
       addTearDown(client.dispose);
-      expect(
-        await SupabaseExamRemote(client, 'student').quizzes(),
-        hasLength(1),
-      );
+      final quizzes = await SupabaseExamRemote(client, 'student').quizzes();
+      expect(quizzes, hasLength(1));
+      expect(quizzes.single['class_archived'], isTrue);
       expect(
         requests.first.url.queryParameters,
         containsPair('student_id', 'eq.student'),
@@ -156,7 +158,7 @@ void main() {
       );
       expect(
         requests.first.url.queryParameters,
-        containsPair('classes.archived_at', 'is.null'),
+        isNot(contains('classes.archived_at')),
       );
       expect(
         requests.first.url.queryParameters,

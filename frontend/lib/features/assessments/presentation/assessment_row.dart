@@ -23,7 +23,7 @@ String assessmentDateLabel(DateTime? instant) {
     'Dec',
   ];
   final hour = date.hour % 12 == 0 ? 12 : date.hour % 12;
-  return '${months[date.month - 1]} ${date.day}, ${date.year}, $hour:${date.minute.toString().padLeft(2, '0')} ${date.hour < 12 ? 'AM' : 'PM'} PHT';
+  return '${months[date.month - 1]} ${date.day}, ${date.year}, $hour:${date.minute.toString().padLeft(2, '0')} ${date.hour < 12 ? 'AM' : 'PM'}';
 }
 
 class AssessmentTypeChip extends StatelessWidget {

@@ -7,6 +7,7 @@ import '../../../core/connectivity/connectivity_provider.dart';
 import '../../../core/supabase/session_gate.dart';
 import '../../../core/supabase/supabase_provider.dart';
 import '../../../data/local/database_providers.dart';
+import '../../classes/application/class_providers.dart';
 import '../data/exam_remote.dart';
 import '../data/exam_store.dart';
 import '../domain/exam.dart';
@@ -38,6 +39,104 @@ final studentQuizzesProvider = FutureProvider.autoDispose<List<StudentQuiz>>((
   final repository = await ref.watch(studentExamRepositoryProvider.future);
   return repository == null ? [] : repository.quizzes();
 });
+
+final _examCatalogIdentityProvider = Provider.autoDispose((ref) {
+  ref.watch(examUpdatesProvider);
+  final repository = ref.watch(studentExamRepositoryProvider).asData?.value;
+  return (
+    repository?.active?.sessionId,
+    repository?.active?.deadline,
+    repository?.completion,
+  );
+});
+
+// Class/profile cache writes often rebuild cards without changing access.
+final studentQuizAccessSignatureProvider = Provider.autoDispose<String?>((ref) {
+  return ref.watch(
+    classCardsProvider.select((cards) {
+      final rooms = cards.value;
+      if (rooms == null) return null;
+      final access =
+          rooms
+              .map((room) => '${room.id}:${room.pending}:${room.archived}')
+              .toList()
+            ..sort();
+      return access.join('|');
+    }),
+  );
+});
+
+final studentQuizCatalogProvider =
+    StreamProvider.autoDispose<StudentQuizCatalog>((ref) async* {
+      ref.watch(connectivityProvider);
+      final access = ref.watch(studentQuizAccessSignatureProvider);
+      ref.watch(_examCatalogIdentityProvider);
+      final repository = await ref.watch(studentExamRepositoryProvider.future);
+      if (repository == null) {
+        yield const StudentQuizCatalog([]);
+        return;
+      }
+      final cached = await repository.cachedCatalog();
+      yield StudentQuizCatalog(
+        cached.quizzes,
+        loaded: cached.loaded,
+        refreshing:
+            access != null &&
+            ref.read(connectivityProvider).asData?.value == true,
+      );
+      if (access != null) yield await repository.refreshCatalog();
+    });
+
+/// Foreground pages update at schedule boundaries; resume also reconciles data.
+final studentQuizNowProvider = StreamProvider.autoDispose<DateTime>((ref) {
+  final quizzes =
+      ref.watch(studentQuizCatalogProvider).value?.quizzes ?? <StudentQuiz>[];
+  Timer? timer;
+  final controller = StreamController<DateTime>();
+  void update() {
+    timer?.cancel();
+    final now = DateTime.now().toUtc();
+    controller.add(now);
+    var delay = const Duration(minutes: 1);
+    for (final quiz in quizzes) {
+      for (final boundary in [
+        quiz.opensAt,
+        quiz.closesAt,
+        quiz.session?.deadline,
+      ]) {
+        if (boundary == null || !boundary.isAfter(now)) continue;
+        final remaining =
+            boundary.difference(now) + const Duration(milliseconds: 1);
+        if (remaining < delay) delay = remaining;
+      }
+    }
+    timer = Timer(delay, update);
+  }
+
+  controller.onListen = update;
+  final listener = AppLifecycleListener(
+    onResume: () {
+      ref.invalidate(studentQuizCatalogProvider);
+      update();
+    },
+  );
+  ref.onDispose(() {
+    listener.dispose();
+    timer?.cancel();
+    unawaited(controller.close());
+  });
+  return controller.stream;
+});
+
+class StudentExamHandoff {
+  const StudentExamHandoff({required this.quizId, this.sessionId});
+  final String quizId;
+  final String? sessionId;
+}
+
+/// The later warning/exam screens supply this handler. It must recheck eligibility.
+final studentExamHandoffProvider =
+    Provider<Future<void> Function(StudentExamHandoff)?>((ref) => null);
 final studentExamSessionProvider = FutureProvider.autoDispose
     .family<ExamSession?, String>((ref, quizId) async {
       final repository = await ref.watch(studentExamRepositoryProvider.future);

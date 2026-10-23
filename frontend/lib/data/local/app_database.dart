@@ -27,7 +27,22 @@ class AppDatabase extends _$AppDatabase {
   AppDatabase(super.executor);
 
   @override
-  int get schemaVersion => 6;
+  int get schemaVersion => 7;
+
+  Future<void> _createStudentQuizCache() async {
+    await customStatement('''
+      CREATE TABLE IF NOT EXISTS student_quiz_catalog (
+        id TEXT PRIMARY KEY,
+        class_id TEXT NOT NULL REFERENCES cache_classes(id) ON DELETE CASCADE,
+        payload TEXT NOT NULL
+      )
+    ''');
+    await customStatement('''
+      CREATE TABLE IF NOT EXISTS student_quiz_catalog_state (
+        id INTEGER PRIMARY KEY CHECK (id = 1)
+      )
+    ''');
+  }
 
   Future<void> _createExamStorage() async {
     await customStatement('''
@@ -130,6 +145,7 @@ class AppDatabase extends _$AppDatabase {
   MigrationStrategy get migration => MigrationStrategy(
     onCreate: (m) async {
       await m.createAll();
+      await _createStudentQuizCache();
       await _createExamStorage();
       await _createInstructorQuizCache();
       await _createGradingCache();
@@ -137,6 +153,7 @@ class AppDatabase extends _$AppDatabase {
       await _createFileSyncState();
     },
     onUpgrade: (m, from, to) async {
+      if (from < 7) await _createStudentQuizCache();
       if (from < 6) await _createExamStorage();
       if (from < 5) await _createInstructorQuizCache();
       if (from < 2) await _createGradingCache();

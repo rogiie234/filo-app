@@ -21,6 +21,54 @@ class StoredAnswer {
 class ExamStore {
   ExamStore(this.db);
   final AppDatabase db;
+  Future<StudentQuizCatalog> catalog() async {
+    final rows = await db
+        .customSelect('SELECT payload FROM student_quiz_catalog')
+        .get();
+    final state = await db
+        .customSelect('SELECT id FROM student_quiz_catalog_state')
+        .get();
+    return StudentQuizCatalog(
+      rows.map((row) {
+        final value = ExamJson.from(
+          jsonDecode(row.read<String>('payload')) as Map,
+        );
+        return StudentQuiz(
+          ExamJson.from(value['quiz'] as Map),
+          value['session'] == null
+              ? null
+              : ExamSession(ExamJson.from(value['session'] as Map)),
+          sessionKnown: value['known'] == true,
+        );
+      }).toList(),
+      loaded: state.isNotEmpty,
+    );
+  }
+
+  Future<void> saveCatalog(List<StudentQuiz> quizzes) =>
+      db.transaction(() async {
+        await db.customStatement('DELETE FROM student_quiz_catalog');
+        for (final quiz in quizzes) {
+          await db.customStatement(
+            '''
+        INSERT INTO student_quiz_catalog(id,class_id,payload)
+        SELECT ?,id,? FROM cache_classes WHERE id=? AND deleted_at IS NULL
+      ''',
+            [
+              quiz.id,
+              jsonEncode({
+                'quiz': quiz.json,
+                'session': quiz.session?.json,
+                'known': quiz.sessionKnown,
+              }),
+              quiz.classId,
+            ],
+          );
+        }
+        await db.customStatement(
+          'INSERT OR IGNORE INTO student_quiz_catalog_state(id) VALUES (1)',
+        );
+      });
   Future<List<StoredAttempt>> attempts() async {
     final rows = await db
         .customSelect(

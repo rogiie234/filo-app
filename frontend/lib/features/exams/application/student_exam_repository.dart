@@ -32,6 +32,7 @@ class StudentExamRepository {
   bool _disposed = false, _submitting = false;
   Future<void>? _recovering;
   Future<void>? _loading;
+  Future<StudentQuizCatalog>? _catalogRefresh;
   bool get current => !_disposed && isCurrent();
   bool get submitting => _submitting;
   void notify() {
@@ -67,6 +68,50 @@ class StudentExamRepository {
       result.add(StudentQuiz(row, await status(row['id'] as String)));
     }
     return result;
+  }
+
+  Future<StudentQuizCatalog> cachedCatalog() async {
+    _check();
+    final value = await store.catalog();
+    _check();
+    return value;
+  }
+
+  Future<StudentQuizCatalog> refreshCatalog() => _catalogRefresh ??=
+      _refreshCatalog().whenComplete(() => _catalogRefresh = null);
+
+  Future<StudentQuizCatalog> _refreshCatalog() async {
+    final cached = await cachedCatalog();
+    if (!online()) return cached;
+    try {
+      final rows = await remote.quizzes();
+      _check();
+      var failed = false;
+      final quizzes = <StudentQuiz>[];
+      for (final row in rows) {
+        final id = row['id'] as String;
+        try {
+          quizzes.add(StudentQuiz(row, await status(id)));
+        } catch (_) {
+          _check();
+          failed = true;
+          final previous = cached.quizzes.where((q) => q.id == id).firstOrNull;
+          quizzes.add(StudentQuiz(row, previous?.session, sessionKnown: false));
+        }
+      }
+      _check();
+      await store.saveCatalog(quizzes);
+      _check();
+      final saved = await cachedCatalog();
+      return StudentQuizCatalog(saved.quizzes, loaded: true, failed: failed);
+    } catch (_) {
+      _check();
+      return StudentQuizCatalog(
+        cached.quizzes,
+        loaded: cached.loaded,
+        failed: true,
+      );
+    }
   }
 
   void _activate(ExamAttempt attempt) {
@@ -184,6 +229,7 @@ class StudentExamRepository {
       _check();
       final now = clock.wallNow().toUtc();
       for (final row in rows) {
+        if (row['class_archived'] == true) continue;
         final quiz = StudentQuiz(row, null);
         if (!quiz.isOpen(now)) continue;
         final session = await status(quiz.id);

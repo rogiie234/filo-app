@@ -235,16 +235,16 @@ class _InstructorClassworkListState
     final checkpoint = ref.watch(
       classworkLoadedProvider('instructor_classwork_posts:$id'),
     );
-    final assignments = (posts.asData?.value ?? <ClassPost>[])
+    final assignments = (posts.value ?? <ClassPost>[])
         .where((p) => p.postType == 'assignment' && p.classId == id)
         .toList();
-    final quizzes = quizState.asData?.value ?? <InstructorQuizSummary>[];
+    final quizzes = quizState.value ?? <InstructorQuizSummary>[];
     _scheduleBoundary(quizzes);
     final needPosts = _filter == 'All' || _filter == 'Assignments';
     final needQuizzes = _filter != 'Assignments';
     final postsKnown =
-        checkpoint.asData?.value == true || assignments.isNotEmpty;
-    final quizzesKnown = quizState.asData?.value != null;
+        posts.hasValue && (checkpoint.value == true || assignments.isNotEmpty);
+    final quizzesKnown = quizState.value != null;
     final failed =
         (needPosts &&
             (posts.hasError ||
@@ -254,13 +254,20 @@ class _InstructorClassworkListState
             (quizState.hasError || (online && (quizSync?.hasError ?? false))));
     final loading =
         (needPosts &&
-            (posts.isLoading ||
+            ((posts.isLoading && !posts.hasValue) ||
                 (!postsKnown && online && (postSync?.isLoading ?? false)))) ||
         (needQuizzes &&
-            (quizState.isLoading ||
+            ((quizState.isLoading && !quizState.hasValue) ||
                 (!quizzesKnown && (quizSync?.isLoading ?? false))));
     final complete =
         (!needPosts || postsKnown) && (!needQuizzes || quizzesKnown);
+    final initialWaiting =
+        !complete &&
+        !failed &&
+        online &&
+        (loading ||
+            needPosts && postSync?.hasValue == true ||
+            needQuizzes && quizSync?.hasValue == true);
     final entries =
         <
             ({
@@ -411,7 +418,7 @@ class _InstructorClassworkListState
               ),
             ),
           ),
-          if (loading && entries.isEmpty)
+          if (initialWaiting || loading && entries.isEmpty)
             SliverPadding(
               padding: const EdgeInsets.symmetric(horizontal: 24),
               sliver: SliverList.builder(
@@ -425,7 +432,7 @@ class _InstructorClassworkListState
           SliverPadding(
             padding: const EdgeInsets.fromLTRB(24, 0, 24, 24),
             sliver: SliverList.builder(
-              itemCount: entries.length,
+              itemCount: initialWaiting ? 0 : entries.length,
               findChildIndexCallback: (key) {
                 if (key is! ValueKey<String>) return null;
                 return indexForKey[key.value];

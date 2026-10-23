@@ -1,5 +1,11 @@
 import 'dart:async';
 
+import '../../exams/application/exam_providers.dart';
+import '../../exams/domain/exam.dart';
+import '../../exams/domain/student_quiz_status.dart';
+import '../../exams/presentation/student_quiz_detail_screen.dart';
+import '../../exams/presentation/student_quiz_widgets.dart';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
@@ -18,6 +24,8 @@ import '../application/grading_providers.dart';
 import 'grade_screen.dart';
 import 'todo_widgets.dart';
 
+enum WorkQueueItemType { assignment, quiz }
+
 class WorkQueueEntry {
   const WorkQueueEntry(
     this.room,
@@ -29,7 +37,11 @@ class WorkQueueEntry {
     this.studentName,
     this.time,
     this.points,
+    this.type = WorkQueueItemType.assignment,
+    this.quiz,
   });
+  final WorkQueueItemType type;
+  final StudentQuiz? quiz;
   final ClassRoom room;
   final String postId, title, group, status;
   final String? studentId, studentName;
@@ -56,7 +68,7 @@ Map<K, T> _firstBy<T, K>(Iterable<T>? rows, K Function(T) key) {
 final reviewQueueCountProvider = Provider.autoDispose<int>((ref) {
   final cards = ref.watch(classCardsProvider);
   var count = 0;
-  for (final room in cards.asData?.value ?? <ClassRoom>[]) {
+  for (final room in cards.value ?? <ClassRoom>[]) {
     if (room.archived || room.pending) continue;
     final data = ref.watch(gradingDataProvider(room.id));
     ref.watch(gradingSyncProvider(room.id));
@@ -86,17 +98,45 @@ final workQueueProvider = Provider.autoDispose.family<WorkQueueData, bool>((
   var failed = cards.hasError;
   var loaded = cards.hasValue;
   final entries = <WorkQueueEntry>[];
-  final now = DateTime.now();
+  final catalog = student ? ref.watch(studentQuizCatalogProvider) : null;
+  final now = student
+      ? (ref.watch(studentQuizNowProvider).asData?.value ??
+                DateTime.now().toUtc())
+            .toLocal()
+      : DateTime.now();
+  if (student) {
+    loading |= catalog!.isLoading && !catalog.hasValue;
+    loading |=
+        catalog.value?.refreshing == true && catalog.value!.quizzes.isEmpty;
+    failed |= catalog.hasError || catalog.value?.failed == true;
+    loaded &= catalog.value?.loaded == true;
+  }
   final today = DateTime(now.year, now.month, now.day);
   final tomorrow = today.add(const Duration(days: 1));
   final nextWeek = today.add(Duration(days: 8 - today.weekday));
-  for (final room in cards.asData?.value ?? <ClassRoom>[]) {
+  for (final room in cards.value ?? <ClassRoom>[]) {
     if (room.archived || room.pending) {
       continue;
     }
     if (student) {
+      for (final quiz in catalog?.value?.quizzes ?? <StudentQuiz>[]) {
+        if (quiz.classId != room.id) continue;
+        entries.add(
+          WorkQueueEntry(
+            room,
+            quiz.id,
+            quiz.title,
+            studentQuizGroup(quiz, now),
+            studentQuizState(quiz, now).status.label,
+            time: quiz.closesAt,
+            points: quiz.points,
+            type: WorkQueueItemType.quiz,
+            quiz: quiz,
+          ),
+        );
+      }
       final snapshot = ref.watch(gradingDataProvider(room.id));
-      loaded &= snapshot.asData?.value.loaded == true;
+      loaded &= snapshot.value?.loaded == true;
       ref.watch(submissionSyncLifecycleProvider(room.id));
       final posts = ref.watch(streamPostsProvider(room.id));
       final subs = ref.watch(classSubmissionsProvider(room.id));
@@ -106,15 +146,12 @@ final workQueueProvider = Provider.autoDispose.family<WorkQueueData, bool>((
           posts.isLoading ||
           subs.isLoading ||
           grades.isLoading ||
-          (sync.isLoading && (posts.asData?.value.isEmpty ?? true));
+          (sync.isLoading && (posts.value?.isEmpty ?? true));
       failed |=
           posts.hasError || subs.hasError || grades.hasError || sync.hasError;
-      final subsByPost = _firstBy(subs.asData?.value, (s) => s.postId);
-      final gradesBySubmission = _firstBy(
-        grades.asData?.value,
-        (g) => g.submissionId,
-      );
-      for (final post in posts.asData?.value ?? <ClassPost>[]) {
+      final subsByPost = _firstBy(subs.value, (s) => s.postId);
+      final gradesBySubmission = _firstBy(grades.value, (g) => g.submissionId);
+      for (final post in posts.value ?? <ClassPost>[]) {
         if (post.postType != 'assignment') {
           continue;
         }
@@ -201,7 +238,14 @@ final workQueueProvider = Provider.autoDispose.family<WorkQueueData, bool>((
     }
   }
   entries.sort(
-    (a, b) => (a.time ?? DateTime(9999)).compareTo(b.time ?? DateTime(9999)),
+    (a, b) => student
+        ? compareStudentWork(
+            a.time,
+            '${a.type.name}:${a.postId}',
+            b.time,
+            '${b.type.name}:${b.postId}',
+          )
+        : (a.time ?? DateTime(9999)).compareTo(b.time ?? DateTime(9999)),
   );
   return WorkQueueData(entries, loading, failed, loaded);
 });
@@ -237,7 +281,12 @@ class _WorkQueueScreenState extends ConsumerState<WorkQueueScreen> {
 
   Future<void> _refresh() async {
     try {
+      if (widget.student) ref.invalidate(studentQuizCatalogProvider);
       await ref.read(classSyncProvider.notifier).refresh();
+      if (widget.student) {
+        final repository = await ref.read(studentExamRepositoryProvider.future);
+        await repository?.refreshCatalog();
+      }
       final rooms = ref.read(classCardsProvider).asData?.value ?? <ClassRoom>[];
       await Future.wait(
         rooms.where((r) => !r.archived && !r.pending).map((r) async {
@@ -292,7 +341,7 @@ class _WorkQueueScreenState extends ConsumerState<WorkQueueScreen> {
           ),
           const SizedBox(height: 8),
           const Text(
-            'Assignments, organized by due date.',
+            'Assignments and quizzes, organized by due date.',
             style: TextStyle(
               fontSize: 15,
               fontWeight: FontWeight.w500,
@@ -374,10 +423,10 @@ class _WorkQueueScreenState extends ConsumerState<WorkQueueScreen> {
               message: !queue.loaded
                   ? 'Connect to the internet and refresh.'
                   : _taskFilter == 'Done'
-                  ? 'Completed assignments will appear here.'
+                  ? 'Submitted work will appear here.'
                   : !empty
                   ? 'Check Done to view submitted work.'
-                  : 'Assignments will appear here when your instructor posts them.',
+                  : 'Assignments and quizzes will appear here when your instructor posts them.',
             ),
           for (final group in groups)
             if (visible.any((entry) => entry.group == group)) ...[
@@ -414,24 +463,42 @@ class _WorkQueueScreenState extends ConsumerState<WorkQueueScreen> {
               ))
                 Padding(
                   padding: const EdgeInsets.only(bottom: 12),
-                  child: TodoTaskCard(
-                    title: entry.title,
-                    classLabel:
-                        '${entry.room.section} \u00b7 ${entry.room.course}',
-                    status: entry.status,
-                    points: entry.points,
-                    dueLabel: entry.time == null
-                        ? 'No due date'
-                        : 'Due ${MaterialLocalizations.of(context).formatMediumDate(entry.time!.toLocal())} ${MaterialLocalizations.of(context).formatTimeOfDay(TimeOfDay.fromDateTime(entry.time!.toLocal()))}',
-                    onTap: () => Navigator.of(context).push(
-                      MaterialPageRoute<void>(
-                        builder: (_) => AssignmentDetailScreen(
-                          classId: entry.room.id,
-                          postId: entry.postId,
+                  child: entry.type == WorkQueueItemType.quiz
+                      ? StudentQuizRow(
+                          key: ValueKey('quiz:${entry.postId}'),
+                          quiz: entry.quiz!,
+                          now:
+                              ref.watch(studentQuizNowProvider).asData?.value ??
+                              DateTime.now().toUtc(),
+                          classLabel:
+                              '${entry.room.section} \u00b7 ${entry.room.course}',
+                          onTap: () => Navigator.of(context).push(
+                            MaterialPageRoute<void>(
+                              builder: (_) => StudentQuizDetailScreen(
+                                classId: entry.room.id,
+                                quizId: entry.postId,
+                              ),
+                            ),
+                          ),
+                        )
+                      : TodoTaskCard(
+                          title: entry.title,
+                          classLabel:
+                              '${entry.room.section} \u00b7 ${entry.room.course}',
+                          status: entry.status,
+                          points: entry.points,
+                          dueLabel: entry.time == null
+                              ? 'No due date'
+                              : 'Due ${MaterialLocalizations.of(context).formatMediumDate(entry.time!.toLocal())} ${MaterialLocalizations.of(context).formatTimeOfDay(TimeOfDay.fromDateTime(entry.time!.toLocal()))}',
+                          onTap: () => Navigator.of(context).push(
+                            MaterialPageRoute<void>(
+                              builder: (_) => AssignmentDetailScreen(
+                                classId: entry.room.id,
+                                postId: entry.postId,
+                              ),
+                            ),
+                          ),
                         ),
-                      ),
-                    ),
-                  ),
                 ),
             ],
         ],
