@@ -15,11 +15,13 @@ class StudentExamRepository {
     required this.remote,
     required this.isCurrent,
     required this.online,
+    this.protectScreen,
     ExamClock? clock,
   }) : clock = clock ?? ExamClock();
   final ExamStore store;
   final ExamRemote remote;
   final bool Function() isCurrent, online;
+  final Future<void> Function(bool)? protectScreen;
   final ExamClock clock;
   final _changes = StreamController<int>.broadcast();
   int _revision = 0;
@@ -32,6 +34,12 @@ class StudentExamRepository {
   bool _disposed = false, _submitting = false;
   Future<void>? _recovering;
   Future<void>? _loading;
+  Future<void>? _starting;
+  String? pendingQuizId, pendingSessionId;
+  bool startUncertain = false;
+  bool get starting => _starting != null;
+  bool get engaged =>
+      active != null || pendingSessionId != null || startUncertain;
   Future<StudentQuizCatalog>? _catalogRefresh;
   bool get current => !_disposed && isCurrent();
   bool get submitting => _submitting;
@@ -135,6 +143,8 @@ class StudentExamRepository {
       _loading ??= _load(sessionId).whenComplete(() => _loading = null);
   Future<void> _load(String sessionId) async {
     _connected();
+    await protectScreen?.call(true);
+    _check();
     final epoch = _attemptEpoch;
     final previousSaver = saver;
     await previousSaver?.pause();
@@ -158,6 +168,9 @@ class StudentExamRepository {
       _check();
       if (epoch != _attemptEpoch) return;
       error = null;
+      pendingSessionId = null;
+      pendingQuizId = null;
+      startUncertain = false;
       _activate(attempt);
       saver!.reconnect();
     } catch (_) {
@@ -166,40 +179,141 @@ class StudentExamRepository {
     }
   }
 
-  Future<void> start(String quizId) async {
-    _connected();
+  Future<void> start(String quizId) =>
+      _starting ??= _start(quizId).whenComplete(() {
+        _starting = null;
+        notify();
+      });
+
+  Future<void> _start(String quizId) async {
+    await _recovering;
+    _check();
+    if (!online()) {
+      throw const ExamFailure(
+        'Connect to the internet to start.',
+        retryable: true,
+      );
+    }
     if (active != null)
       throw const ExamFailure(
         'Resume your current exam before starting another.',
       );
+    if (pendingQuizId != null && pendingQuizId != quizId) {
+      throw const ExamFailure(
+        'Resume your current exam before starting another.',
+      );
+    }
+    await protectScreen?.call(true);
+    _check();
     final existing = await status(quizId);
     if (existing != null) {
-      if (existing.inProgress) return load(existing.id);
+      startUncertain = false;
+      if (existing.inProgress) {
+        pendingQuizId = quizId;
+        pendingSessionId = existing.id;
+        notify();
+        return load(existing.id);
+      }
+      pendingQuizId = null;
+      pendingSessionId = null;
       throw const ExamFailure('You have already taken this quiz.');
     }
+    // A confirmed session is never replaced when a later status read is empty.
+    if (pendingSessionId != null) return load(pendingSessionId!);
+    startUncertain = false;
+    pendingQuizId = quizId;
     try {
+      startUncertain = true;
+      notify();
       final row = await remote.start(quizId);
       _check();
-      await load(row['id'] as String);
+      pendingSessionId = row['id'] as String;
+      startUncertain = false;
+      // Persist the confirmed attempt even if get_exam or the process fails next.
+      if (row['deadline_at'] != null && row['started_at'] != null) {
+        final now = clock.wallNow().toUtc();
+        await store.cache(
+          ExamAttempt({
+            'session_id': pendingSessionId,
+            'quiz_id': quizId,
+            'started_at': row['started_at'],
+            'deadline_at': row['deadline_at'],
+            'server_now': now.toIso8601String(),
+            'questions': <ExamJson>[],
+          }),
+          now,
+          now,
+        );
+        _check();
+      }
+      notify();
+      await load(pendingSessionId!);
     } catch (e) {
+      final failure = examFailure(e);
+      if (pendingSessionId == null &&
+          !failure.connection &&
+          !failure.retryable &&
+          failure.message != "We couldn't complete that request. Try again.") {
+        startUncertain = false;
+        pendingQuizId = null;
+      }
       // Start may have committed even when its response was lost.
       if (current && online()) {
-        final found = await status(quizId);
-        if (found?.inProgress == true) return load(found!.id);
+        try {
+          final found = await status(quizId);
+          if (found?.inProgress == true) {
+            pendingQuizId = quizId;
+            pendingSessionId = found!.id;
+            startUncertain = false;
+            notify();
+            return await load(found.id);
+          }
+          if (found?.submitted == true) {
+            await _finish(found!.id, 'Your answers were submitted.');
+            return;
+          }
+          if (found == null && pendingSessionId == null) {
+            startUncertain = false;
+            pendingQuizId = null;
+          }
+        } catch (_) {
+          // Keep the original error and attempt identity if reconciliation fails.
+        }
       }
-      throw examFailure(e);
+      throw failure;
     }
   }
 
   Future<void> recover() =>
       _recovering ??= _recover().whenComplete(() => _recovering = null);
   Future<void> _recover() async {
-    if (!current) return;
+    if (!current || starting) return;
     try {
       error = null;
+      if (active == null && pendingQuizId != null) {
+        final session = await status(pendingQuizId!);
+        if (session?.inProgress == true) {
+          pendingSessionId = session!.id;
+          startUncertain = false;
+          await load(session.id);
+        } else if (session?.submitted == true) {
+          await _finish(session!.id, 'Your answers were submitted.');
+        } else if (pendingSessionId != null) {
+          await _finish(pendingSessionId!, 'This attempt has ended.');
+        } else {
+          startUncertain = false;
+          pendingQuizId = null;
+        }
+        return;
+      }
       final local = await store.attempts();
       _check();
       if (active == null && local.isNotEmpty) {
+        pendingQuizId = local.first.attempt.quizId;
+        pendingSessionId = local.first.attempt.sessionId;
+        notify();
+        await protectScreen?.call(true);
+        _check();
         final saved = local.first;
         clock.restore(
           serverAtReceipt: saved.serverAtReceipt,
@@ -207,6 +321,8 @@ class StudentExamRepository {
           deadline: saved.attempt.deadline,
         );
         _activate(saved.attempt);
+        pendingQuizId = null;
+        pendingSessionId = null;
       }
       if (!online()) {
         error = const ExamFailure(
@@ -218,6 +334,7 @@ class StudentExamRepository {
       if (active != null) {
         if (!clock.verified ||
             !clock.canEdit ||
+            active!.questions.isEmpty ||
             saver?.error?.reconcile == true) {
           await reconcile();
         } else {
@@ -227,14 +344,15 @@ class StudentExamRepository {
       }
       final rows = await remote.quizzes();
       _check();
-      final now = clock.wallNow().toUtc();
       for (final row in rows) {
         if (row['class_archived'] == true) continue;
         final quiz = StudentQuiz(row, null);
-        if (!quiz.isOpen(now)) continue;
         final session = await status(quiz.id);
         if (session?.inProgress == true) {
-          await load(session!.id);
+          pendingQuizId = quiz.id;
+          pendingSessionId = session!.id;
+          notify();
+          await load(session.id);
           return;
         }
       }
@@ -355,7 +473,16 @@ class StudentExamRepository {
         }
       }
       if (active != null) {
-        error = examFailure(e);
+        final failure = examFailure(e);
+        error =
+            failure.connection ||
+                failure.message ==
+                    "We couldn't complete that request. Try again."
+            ? const ExamFailure(
+                "We couldn't confirm your submission. Stay on this screen and reconnect to check.",
+                retryable: true,
+              )
+            : failure;
         throw error!;
       }
     } finally {
@@ -371,17 +498,23 @@ class StudentExamRepository {
     await store.clear(sessionId);
     _check();
     active = null;
+    pendingQuizId = null;
+    pendingSessionId = null;
+    startUncertain = false;
     completion = message;
+    error = null;
     clock.invalidate();
     notify();
   }
 
   Future<void> logLeave() async {
-    final attempt = active;
-    if (!current || attempt == null) return;
+    final sessionId = active?.sessionId ?? pendingSessionId;
+    if (!current || sessionId == null) return;
     await SqliteOutbox(store.db).enqueue(const Uuid().v4(), 'leave_event', {
-      'session_id': attempt.sessionId,
-      'left_at': clock.serverNow.toUtc().toIso8601String(),
+      'session_id': sessionId,
+      'left_at': (active == null ? clock.wallNow() : clock.serverNow)
+          .toUtc()
+          .toIso8601String(),
     });
   }
 
@@ -389,6 +522,10 @@ class StudentExamRepository {
     _disposed = true;
     saver?.dispose();
     clock.invalidate();
+    unawaited(
+      protectScreen?.call(false).catchError((Object _) {}) ??
+          Future<void>.value(),
+    );
     unawaited(_changes.close());
   }
 }

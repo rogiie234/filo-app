@@ -12,6 +12,7 @@ import '../data/exam_remote.dart';
 import '../data/exam_store.dart';
 import '../domain/exam.dart';
 import 'student_exam_repository.dart';
+import 'exam_screen_security.dart';
 
 final studentExamRepositoryProvider = FutureProvider<StudentExamRepository?>((
   ref,
@@ -28,6 +29,7 @@ final studentExamRepositoryProvider = FutureProvider<StudentExamRepository?>((
         client.auth.currentUser?.id == userId &&
         ref.read(verifiedUserIdProvider).asData?.value == userId,
     online: () => ref.read(connectivityProvider).asData?.value == true,
+    protectScreen: ExamScreenSecurity.protect,
   );
   ref.onDispose(repository.dispose);
   return repository;
@@ -134,9 +136,6 @@ class StudentExamHandoff {
   final String? sessionId;
 }
 
-/// The later warning/exam screens supply this handler. It must recheck eligibility.
-final studentExamHandoffProvider =
-    Provider<Future<void> Function(StudentExamHandoff)?>((ref) => null);
 final studentExamSessionProvider = FutureProvider.autoDispose
     .family<ExamSession?, String>((ref, quizId) async {
       final repository = await ref.watch(studentExamRepositoryProvider.future);
@@ -185,7 +184,7 @@ final examSavingStateProvider = Provider.autoDispose<String>((ref) {
       : 'Reconnecting...';
 });
 
-/// Mounted by the signed-in home; discovery does not navigate to unfinished UI.
+/// Mounted once by the signed-in home; production navigation observes recovery.
 final examLifecycleProvider = Provider.autoDispose<void>((ref) {
   final future = ref.watch(studentExamRepositoryProvider.future);
   var disposed = false, left = false;
@@ -227,8 +226,11 @@ final examLifecycleProvider = Provider.autoDispose<void>((ref) {
         if (!disposed &&
             repository != null &&
             (repository.error != null ||
-                repository.active != null && !repository.clock.canEdit))
+                repository.startUncertain ||
+                repository.pendingSessionId != null ||
+                repository.active != null && !repository.clock.canEdit)) {
           await recover();
+        }
       } catch (_) {
         /* Provider errors remain visible to consumers. */
       }

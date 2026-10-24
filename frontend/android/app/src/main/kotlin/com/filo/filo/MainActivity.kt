@@ -8,12 +8,30 @@ import android.content.pm.PackageManager
 import android.os.Build
 import android.content.Intent
 import android.provider.Settings
+import android.view.WindowManager
 
 class MainActivity : FlutterActivity() {
     private var pendingPermission: MethodChannel.Result? = null
 
     override fun configureFlutterEngine(flutterEngine: FlutterEngine) {
         super.configureFlutterEngine(flutterEngine)
+        MethodChannel(flutterEngine.dartExecutor.binaryMessenger, "com.filo.filo/exam")
+            .setMethodCallHandler { call, result ->
+                if (call.method != "protect" || call.arguments !is Boolean) {
+                    result.notImplemented()
+                } else {
+                    try {
+                        if (call.arguments == true) {
+                            window.addFlags(WindowManager.LayoutParams.FLAG_SECURE)
+                        } else {
+                            window.clearFlags(WindowManager.LayoutParams.FLAG_SECURE)
+                        }
+                        result.success(null)
+                    } catch (error: Exception) {
+                        result.error("EXAM_PROTECTION_FAILED", "Could not protect exam screen", null)
+                    }
+                }
+            }
         MethodChannel(flutterEngine.dartExecutor.binaryMessenger, "com.filo.filo/device_time")
             .setMethodCallHandler { call, result ->
                 if (call.method != "openSettings") {

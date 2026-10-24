@@ -85,6 +85,7 @@ class FakeExamRemote implements ExamRemote {
   Future<void> Function(ExamAnswer)? onSave;
   Future<ExamJson> Function()? onExam;
   Future<ExamJson> Function()? onSubmit;
+  Future<ExamJson> Function()? onStart;
   @override
   Future<List<ExamJson>> quizzes() async {
     calls.add('quizzes');
@@ -108,8 +109,15 @@ class FakeExamRemote implements ExamRemote {
   @override
   Future<ExamJson> start(String quizId) async {
     calls.add('start:$quizId');
+    if (onStart != null) return onStart!();
     currentSession = sessionPayload();
-    return {'id': 'session'};
+    return {
+      'id': 'session',
+      'started_at': examEpoch.toIso8601String(),
+      'deadline_at': examEpoch
+          .add(const Duration(minutes: 10))
+          .toIso8601String(),
+    };
   }
 
   @override

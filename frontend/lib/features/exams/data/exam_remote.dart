@@ -5,15 +5,27 @@ import 'package:http/http.dart' show ClientException;
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../domain/exam.dart';
+import '../domain/student_quiz_status.dart';
+
+String examStartMessage(Object error, {DateTime? opensAt}) {
+  final failure = examFailure(error);
+  if (failure.connection) return 'Connect to the internet to start.';
+  if (failure.message == 'This quiz has not opened yet.' && opensAt != null) {
+    return 'This quiz opens on ${philippineQuizDate(opensAt)}.';
+  }
+  return failure.message;
+}
 
 class ExamFailure implements Exception {
   const ExamFailure(
     this.message, {
     this.retryable = false,
     this.reconcile = false,
+    this.connection = false,
   });
   final String message;
   final bool retryable, reconcile;
+  final bool connection;
   @override
   String toString() => message;
 }
@@ -27,6 +39,7 @@ ExamFailure examFailure(Object error) {
     return const ExamFailure(
       'Connection lost. Your saved answers will retry when connected.',
       retryable: true,
+      connection: true,
     );
   }
   if (error is PostgrestException) {
