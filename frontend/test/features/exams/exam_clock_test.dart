@@ -54,12 +54,39 @@ void main() {
       );
       expect(time.clock.remaining, const Duration(minutes: 7));
       expect(time.clock.verified, isFalse);
+      expect(time.clock.canEdit, isFalse);
+      expect(time.clock.expired, isFalse);
       expect(time.clock.canSend, isFalse);
       time.wall = examEpoch.add(const Duration(days: 4));
       expect(time.clock.remaining, const Duration(minutes: 7));
       time.synchronize();
       expect(time.clock.verified, isTrue);
+      expect(time.clock.canEdit, isTrue);
       expect(time.clock.remaining, const Duration(minutes: 10));
+    },
+  );
+  test(
+    'unverified zero is not expiry and loss copy follows verified cutoff',
+    () {
+      final time = FakeExamTime()
+        ..wall = examEpoch.add(const Duration(days: 1));
+      time.clock.restore(
+        serverAtReceipt: examEpoch,
+        deviceAtReceipt: examEpoch,
+        deadline: examEpoch.add(const Duration(minutes: 10)),
+      );
+      expect(time.clock.remaining, Duration.zero);
+      expect(time.clock.expired, isFalse);
+      expect(time.clock.canEdit, isFalse);
+      expect(time.clock.acceptanceClosed, isFalse);
+      time.synchronize();
+      time.elapsed += const Duration(minutes: 10, seconds: 15);
+      expect(time.clock.expired, isTrue);
+      expect(time.clock.acceptanceClosed, isFalse);
+      expect(time.clock.timeoutMessage, contains('will be lost'));
+      time.elapsed += const Duration(microseconds: 1);
+      expect(time.clock.acceptanceClosed, isTrue);
+      expect(time.clock.timeoutMessage, contains('are lost'));
     },
   );
 }

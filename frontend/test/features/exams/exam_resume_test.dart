@@ -36,6 +36,57 @@ void main() {
     repository.dispose();
     await db.close();
   });
+  for (final shift in [-1, 1]) {
+    test(
+      'offline restart with clock shift $shift stays read-only through retry',
+      () async {
+        await store.cache(ExamAttempt(examPayload()), examEpoch, examEpoch);
+        await store.write(
+          'session',
+          const ExamAnswer(questionId: 'q', text: 'Keep'),
+          examEpoch,
+        );
+        time.wall = examEpoch.add(Duration(days: shift));
+        await repository.recover();
+        expect(repository.active!.sessionId, 'session');
+        expect(repository.clock.canEdit, isFalse);
+        expect(repository.clock.expired, isFalse);
+        expect(repository.captureLeave(), isNull);
+        await expectLater(
+          repository.answer(const ExamAnswer(questionId: 'q', text: 'Blocked')),
+          throwsA(isA<ExamFailure>()),
+        );
+        await expectLater(repository.submit(), throwsA(isA<ExamFailure>()));
+        expect(await store.submissionRequested('session'), isFalse);
+        expect(remote.calls, isEmpty);
+        online = true;
+        remote.sessionError = const ExamFailure(
+          'Connection lost',
+          retryable: true,
+        );
+        await repository.recover();
+        expect(repository.clock.verified, isFalse);
+        expect(repository.completion, isNull);
+        expect((await store.answers('session')).single.answer.text, 'Keep');
+        expect(await store.submissionRequested('session'), isFalse);
+        remote.sessionError = null;
+        remote.onExam = () async =>
+            throw const ExamFailure('Connection lost', retryable: true);
+        await repository.recover();
+        expect(repository.clock.verified, isFalse);
+        expect(repository.clock.canEdit, isFalse);
+        expect(remote.saves, isEmpty);
+        expect(await store.attempts(), hasLength(1));
+        remote.onExam = null;
+        await repository.recover();
+        await repository.saver!.flush();
+        expect(repository.clock.canEdit, isTrue);
+        expect(repository.active!.sessionId, 'session');
+        expect(remote.saves.single.text, 'Keep');
+        expect(remote.calls, isNot(contains('start:quiz')));
+      },
+    );
+  }
   test('submission awaits a local write already in progress and drains text debounce', () async {
     online = true;
     await repository.recover();
@@ -147,7 +198,7 @@ void main() {
     await expectLater(repository.submit(), throwsA(isA<ExamFailure>()));
     expect(
       repository.error!.message,
-      "Time's up. Reconnect to check your submission.",
+      "Time's up. Reconnect to check your submission. Answers that did not reach the server within 15 seconds after the deadline are lost.",
     );
     remote.currentSession = sessionPayload('auto_submitted');
     online = true;

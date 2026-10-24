@@ -245,17 +245,53 @@ void main() {
     },
   );
 
-  testWidgets('archived details are read-only without consent or start', (
+  testWidgets('archived details keep disabled Start without consent', (
     tester,
   ) async {
     await mount(tester, archived: true);
     await _reveal(tester, find.text('This class is archived.'));
     expect(find.text('I understand'), findsNothing);
-    expect(_button('Start now'), findsNothing);
+    await _reveal(tester, _button('Start now'));
+    expect(tester.widget<FiloButton>(_button('Start now')).onPressed, isNull);
     expect(find.text('Try again'), findsNothing);
     expect(remote.calls, isEmpty);
     await unmount(tester);
   });
+
+  for (final state in ['upcoming', 'closed', 'submitted', 'offline']) {
+    testWidgets('$state overview keeps disabled Start and reason', (
+      tester,
+    ) async {
+      final now = DateTime.now().toUtc();
+      if (state == 'upcoming') {
+        quiz = quizFixture(
+          opens: now.add(const Duration(hours: 1)),
+          closes: now.add(const Duration(hours: 2)),
+        );
+      } else if (state == 'closed') {
+        quiz = quizFixture(
+          opens: now.subtract(const Duration(hours: 2)),
+          closes: now.subtract(const Duration(hours: 1)),
+        );
+      } else if (state == 'submitted') {
+        quiz = StudentQuiz(quiz.json, ExamSession(sessionPayload('submitted')));
+      }
+      await mount(tester, online: state != 'offline');
+      await _reveal(tester, _button('Start now'));
+      expect(tester.widget<FiloButton>(_button('Start now')).onPressed, isNull);
+      expect(
+        find.textContaining(switch (state) {
+          'upcoming' => 'This quiz opens on',
+          'closed' => 'This quiz has closed.',
+          'submitted' => 'You have already taken this quiz.',
+          _ => 'Connect to the internet to start.',
+        }),
+        findsOneWidget,
+      );
+      expect(remote.calls, isEmpty);
+      await unmount(tester);
+    });
+  }
 
   testWidgets('failed metadata refresh retains a relevant recovery action', (
     tester,

@@ -248,7 +248,8 @@ class _StudentExamScreenState extends ConsumerState<StudentExamScreen> {
     final attempt = r.active;
     if (_busy || (_writes == 0 && _unsaved.isNotEmpty) || attempt == null)
       return;
-    if (r.submissionRequested || !r.clock.canEdit) {
+    if (!r.clock.verified) return;
+    if (r.submissionRequested || r.clock.expired) {
       await _expire();
       return;
     }
@@ -520,7 +521,12 @@ class _StudentExamScreenState extends ConsumerState<StudentExamScreen> {
 
   Future<void> _expire() async {
     final r = _repository;
-    if (!mounted || r == null || r.active == null) return;
+    if (!mounted ||
+        r == null ||
+        r.active == null ||
+        !r.clock.verified ||
+        (!r.clock.expired && !r.submissionRequested))
+      return;
     final route = _confirmationRoute;
     _confirmationRoute = null;
     if (route?.isActive == true)
@@ -536,11 +542,12 @@ class _StudentExamScreenState extends ConsumerState<StudentExamScreen> {
 
   Widget _exam(StudentExamRepository r, ExamAttempt attempt, bool online) {
     final answersState = ref.watch(examAnswersProvider);
-    final expired = ref.watch(
+    ref.watch(
       examCountdownProvider.select(
-        (value) => (value.value ?? r.clock.remaining) == Duration.zero,
+        (_) => (r.clock.expired, r.clock.acceptanceClosed),
       ),
     );
+    final expired = r.clock.expired;
     if (_session != attempt.sessionId) {
       _session = attempt.sessionId;
       _edits.clear();
@@ -563,6 +570,7 @@ class _StudentExamScreenState extends ConsumerState<StudentExamScreen> {
         r.current &&
         !r.submitting &&
         !r.submissionRequested &&
+        r.clock.canEdit &&
         !expired &&
         answersState.value != null &&
         !answersState.hasError &&
@@ -610,25 +618,23 @@ class _StudentExamScreenState extends ConsumerState<StudentExamScreen> {
                       const Text('Your exam has resumed with the time left.'),
                     if (!r.clock.verified)
                       const Text(
-                        'Estimated time only. Reconnect to verify the deadline.',
+                        'Reconnect to verify your remaining time before continuing.',
                       ),
-                    if (!online && !expired)
+                    if (!online && !expired && r.clock.verified)
                       const Text(
                         'The timer keeps running while you reconnect.',
                       ),
-                    if (expired)
-                      const Text(
-                        "Time's up. Reconnect to check your submission.",
-                      ),
+                    if (expired) Text(r.clock.timeoutMessage),
                     if (_message ?? r.error?.message ?? r.saver?.error?.message
                         case final String message
                         when !expired ||
-                            message !=
-                                "Time's up. Reconnect to check your submission.")
+                            !message.startsWith(
+                              "Time's up. Reconnect to check your submission.",
+                            ))
                       Semantics(liveRegion: true, child: Text(message)),
                     if (_unsaved.isNotEmpty && _writes == 0)
                       TextButton(
-                        onPressed: _writes == 0 && !_busy && !expired
+                        onPressed: _writes == 0 && !_busy && r.clock.canEdit
                             ? _retryAnswers
                             : null,
                         child: const Text('Try again'),
@@ -729,7 +735,8 @@ class _ExamStatusBarState extends ConsumerState<_ExamStatusBar> {
     final remaining =
         ref.watch(examCountdownProvider).value ??
         widget.repository.clock.remaining;
-    final level = remaining == Duration.zero
+    final level =
+        !widget.repository.clock.verified || remaining == Duration.zero
         ? 0
         : remaining < const Duration(minutes: 1)
         ? 1
@@ -781,7 +788,9 @@ class _ExamStatusBarState extends ConsumerState<_ExamStatusBar> {
               Semantics(
                 liveRegion: false,
                 child: Text(
-                  'Time left: ${remaining.inMinutes}:${(remaining.inSeconds % 60).toString().padLeft(2, '0')}',
+                  widget.repository.clock.verified
+                      ? 'Time left: ${remaining.inMinutes}:${(remaining.inSeconds % 60).toString().padLeft(2, '0')}'
+                      : 'Time left: awaiting verification',
                   style: theme.textTheme.titleMedium?.copyWith(
                     color: foreground,
                   ),

@@ -393,17 +393,25 @@ void main() {
     expect(remote.saves.length, 1);
   });
   test('unverified restart clock never dispatches', () async {
+    await saver.change(
+      const ExamAnswer(questionId: 'q', text: 'Before restart'),
+    );
     time.clock.restore(
       serverAtReceipt: examEpoch,
       deviceAtReceipt: examEpoch,
       deadline: examEpoch.add(const Duration(minutes: 10)),
     );
-    await saver.change(
-      const ExamAnswer(questionId: 'q', text: 'Offline restart'),
+    await expectLater(
+      saver.change(const ExamAnswer(questionId: 'q', text: 'Offline restart')),
+      throwsA(isA<ExamFailure>()),
     );
     online = true;
     await saver.flush();
     expect(remote.saves, isEmpty);
+    expect(
+      (await store.answers('session')).single.answer.text,
+      'Before restart',
+    );
   });
 }
 

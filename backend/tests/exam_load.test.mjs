@@ -1,6 +1,15 @@
 // Owner-run calculation/scheduling self-check; never creates network fixtures.
 import assert from 'node:assert/strict';
-import { buildQuizFixture, nextSaveAt, statistics } from './exam_load.mjs';
+import { buildQuizFixture, nextSaveAt, statistics, validateSaveReceipt } from './exam_load.mjs';
+
+const receipt = { question_id: 'question', revision: 1, saved_at: '2026-10-24T00:00:00Z' };
+validateSaveReceipt([receipt], 'question', 1);
+for (const invalid of [null, [], [receipt, receipt],
+  [{ ...receipt, question_id: 'other' }], [{ ...receipt, revision: 2 }],
+  [{ ...receipt, saved_at: null }], [{ ...receipt, saved_at: 'invalid' }],
+  [{ ...receipt, error_code: '22023' }]]) {
+  assert.throws(() => validateSaveReceipt(invalid, 'question', 1), /INVALID_SAVE_RESPONSE/);
+}
 
 const fixture = buildQuizFixture('00000000-0000-4000-8000-000000000001');
 assert.equal(fixture.questions.length, 30);

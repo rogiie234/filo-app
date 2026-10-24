@@ -108,7 +108,7 @@ class StudentQuizOverview extends StatelessWidget {
                   ? 'No instructions provided.'
                   : q.instructions,
             ),
-            if (canAttempt) ...[
+            if (canAttempt && !resume) ...[
               const SizedBox(height: 24),
               FiloPanel(
                 color: FiloColors.warning,
@@ -174,7 +174,7 @@ class StudentQuizOverview extends StatelessWidget {
               child: const Text('Try again'),
             ),
           ],
-          if (canAttempt || resume) ...[
+          if (q != null) ...[
             const SizedBox(height: 24),
             FiloButton(
               label: busy

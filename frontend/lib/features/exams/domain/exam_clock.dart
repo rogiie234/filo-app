@@ -51,7 +51,15 @@ class ExamClock {
     return value.isNegative ? Duration.zero : value;
   }
 
-  bool get canEdit => _anchor != null && remaining > Duration.zero;
+  bool get expired => verified && _anchor != null && remaining == Duration.zero;
+  bool get canEdit => verified && _anchor != null && remaining > Duration.zero;
+  bool get acceptanceClosed =>
+      verified &&
+      _anchor != null &&
+      serverNow.isAfter(deadline!.add(const Duration(seconds: 15)));
+  String get timeoutMessage => acceptanceClosed
+      ? "Time's up. Reconnect to check your submission. Answers that did not reach the server within 15 seconds after the deadline are lost."
+      : "Time's up. Reconnect to check your submission. Answers that don't reach the server within 15 seconds after the deadline will be lost.";
   bool get canSend =>
       verified &&
       _anchor != null &&

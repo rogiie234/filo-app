@@ -160,6 +160,49 @@ void main() {
   }
 
   testWidgets(
+    'offline restart with estimated zero has disabled fields and no timeout',
+    (tester) async {
+      repository.dispose();
+      final store = ExamStore(db);
+      await store.cache(ExamAttempt(examPayload()), examEpoch, examEpoch);
+      await store.write(
+        'session',
+        const ExamAnswer(questionId: 'q', text: 'Keep'),
+        examEpoch,
+      );
+      time.wall = examEpoch.add(const Duration(days: 1));
+      var online = false;
+      repository = StudentExamRepository(
+        store: store,
+        remote: remote,
+        clock: time.clock,
+        isCurrent: () => true,
+        online: () => online,
+      );
+      await mount(tester, sessionId: 'session');
+      expect(find.text('Time left: awaiting verification'), findsOneWidget);
+      expect(find.textContaining("Time's up"), findsNothing);
+      final card = find.byKey(const ValueKey('session:q'));
+      await _reveal(tester, card);
+      final field = find.descendant(of: card, matching: find.byType(TextField));
+      expect(tester.widget<TextField>(field).enabled, isFalse);
+      expect(tester.widget<TextField>(field).controller!.text, 'Keep');
+      expect(await store.submissionRequested('session'), isFalse);
+      expect(repository.completion, isNull);
+      expect(remote.calls, isEmpty);
+      online = true;
+      remote.currentSession = sessionPayload();
+      await repository.recover();
+      await tester.pumpAndSettle();
+      expect(tester.widget<TextField>(field).enabled, isTrue);
+      expect(await store.submissionRequested('session'), isFalse);
+      expect(remote.calls, isNot(contains('submit:session')));
+      expect(find.textContaining("Time's up"), findsNothing);
+      await unmount(tester);
+    },
+  );
+
+  testWidgets(
     'combined overview gates Start now, keeps three rules and hides irrelevant retry',
     (tester) async {
       await mount(tester);
@@ -415,10 +458,7 @@ void main() {
       time.elapsed = const Duration(minutes: 11);
       await tester.pump(const Duration(seconds: 1));
       await tester.pumpAndSettle();
-      expect(
-        find.text("Time's up. Reconnect to check your submission."),
-        findsOneWidget,
-      );
+      expect(find.text(repository.clock.timeoutMessage), findsOneWidget);
       final answerField = find.descendant(
         of: find.byKey(const ValueKey('session:q')),
         matching: find.byType(TextField),

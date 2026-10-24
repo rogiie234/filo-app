@@ -20,6 +20,14 @@ const check = (ok, code) => { if (!ok) throw Object.assign(new Error(code), { co
 const safeCode = (value, fallback = 'REQUEST_FAILED') =>
   typeof value === 'string' && /^[A-Za-z0-9_]{1,80}$/.test(value) ? value : fallback;
 
+export function validateSaveReceipt(receipts, question, revision) {
+  check(Array.isArray(receipts) && receipts.length === 1
+    && receipts[0]?.question_id === question && receipts[0].revision === revision
+    && !receipts[0].error_code && !receipts[0].error_message
+    && typeof receipts[0].saved_at === 'string'
+    && Number.isFinite(Date.parse(receipts[0].saved_at)), 'INVALID_SAVE_RESPONSE');
+}
+
 export function nextSaveAt(barrier, tick, jitter, lastStart = -Infinity) {
   check(Number.isInteger(tick) && tick >= 1 && tick <= SAVE_COUNT, 'INVALID_TICK');
   check(Number.isFinite(jitter) && Math.abs(jitter) <= 1000, 'INVALID_JITTER');
@@ -265,8 +273,12 @@ async function studentWork(request, group, student, barrier, signal) {
       : q.type === 'true_false' ? { p_bool: q.correctBoolean }
       : { p_text: q.type === 'identification' ? '  gReEn   lEaF  ' : `Synthetic essay revision ${tick}` };
     try {
-      await call('save_answer', { p_session: attempt.id, p_question: q.id, ...answer },
-        (stamp) => check(typeof stamp === 'string' && Number.isFinite(Date.parse(stamp)), 'INVALID_SAVE_RESPONSE'),
+      await call('save_answers', { p_session: attempt.id, p_answers: [{
+        question_id: q.id, revision: tick,
+        option_id: answer.p_option ?? null, bool_answer: answer.p_bool ?? null,
+        text_answer: answer.p_text ?? null,
+      }] },
+        (receipts) => validateSaveReceipt(receipts, q.id, tick),
         lastStart - due, due - nominal);
       student.lastAnswers.set(q.id, answer);
       student.successfulSaves++;
@@ -430,6 +442,7 @@ async function main() {
     project: PROJECT, run_id: runId, students: manifest.students, classes: manifest.students / 40,
     environment: { node: process.version, platform: `${process.platform}/${process.arch}`, region_and_compute: 'OWNER_TO_RECORD' },
     measured_at: null, duration_ms: 0, expected_calls: manifest.students * 67,
+    save_rpc: 'save_answers', answers_per_batch: 1,
     functional_complete: false, latency_target_pass: false, workload_on_time: false,
     verification_failures: [], dashboard: { baseline: null, during_load: null, availability: 'OWNER_OBSERVATION_PENDING' },
     limits_observed: 'Use recorded error codes/statuses and owner dashboard readings; no inference from published ceilings.',

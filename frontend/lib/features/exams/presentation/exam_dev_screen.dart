@@ -161,15 +161,17 @@ class _ExamDevScreenState extends ConsumerState<ExamDevScreen> {
             ] else ...[
               const SizedBox(height: 16),
               Text(
-                'Time left: ${remaining.inMinutes}:${(remaining.inSeconds % 60).toString().padLeft(2, '0')}',
+                repository!.clock.verified
+                    ? 'Time left: ${remaining.inMinutes}:${(remaining.inSeconds % 60).toString().padLeft(2, '0')}'
+                    : 'Time left: awaiting verification',
               ),
               if (!repository!.clock.verified)
                 const Text(
-                  'Estimated time only. Reconnect to verify the deadline.',
+                  'Reconnect to verify your remaining time before continuing.',
                 ),
               Text(ref.watch(examSavingStateProvider)),
-              if (remaining == Duration.zero)
-                const Text("Time's up. Reconnect to check your submission."),
+              if (repository.clock.expired)
+                Text(repository.clock.timeoutMessage),
               if (answers.isLoading && !answers.hasValue)
                 const LinearProgressIndicator(),
               for (final question in attempt.questions) ...[
@@ -231,7 +233,7 @@ class _ExamDevScreenState extends ConsumerState<ExamDevScreen> {
               const SizedBox(height: 24),
               FiloButton(
                 label: 'Submit',
-                onPressed: _busy
+                onPressed: _busy || !repository.clock.verified
                     ? null
                     : () async {
                         final confirmed = await showFiloConfirmation(

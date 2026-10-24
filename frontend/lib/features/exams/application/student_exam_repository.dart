@@ -310,24 +310,15 @@ class StudentExamRepository {
     if (!current || starting || _submitting) return;
     try {
       error = null;
-      if (active == null && pendingQuizId != null) {
-        final session = await status(pendingQuizId!);
-        if (session?.inProgress == true) {
-          pendingSessionId = session!.id;
-          startUncertain = false;
-          await load(session.id);
-        } else if (session?.submitted == true) {
-          completionTimedOut = session!.status == 'auto_submitted';
-          await _finish(session.id, 'Your answers were submitted.');
-        } else if (pendingSessionId != null) {
-          await _finish(pendingSessionId!, 'This attempt has ended.');
-        } else {
-          startUncertain = false;
-          pendingQuizId = null;
-        }
-        return;
-      }
-      final local = await store.attempts();
+      final local = (await store.attempts())
+          .where(
+            (saved) =>
+                (pendingQuizId == null ||
+                    saved.attempt.quizId == pendingQuizId) &&
+                (pendingSessionId == null ||
+                    saved.attempt.sessionId == pendingSessionId),
+          )
+          .toList();
       _check();
       if (active == null && local.isNotEmpty) {
         pendingQuizId = local.first.attempt.quizId;
@@ -345,18 +336,37 @@ class StudentExamRepository {
         pendingQuizId = null;
         pendingSessionId = null;
       }
+      if (active == null && pendingQuizId != null) {
+        final session = await status(pendingQuizId!);
+        if (session?.inProgress == true) {
+          pendingSessionId = session!.id;
+          startUncertain = false;
+          await load(session.id);
+        } else if (session?.submitted == true) {
+          completionTimedOut = session!.status == 'auto_submitted';
+          await _finish(session.id, 'Your answers were submitted.');
+        } else if (pendingSessionId != null) {
+          await _finish(pendingSessionId!, 'This attempt has ended.');
+        } else {
+          startUncertain = false;
+          pendingQuizId = null;
+        }
+        return;
+      }
       if (active != null) {
         submissionRequested =
             submissionRequested ||
             await store.submissionRequested(active!.sessionId);
-        if (submissionRequested || !clock.canEdit) {
+        if (clock.verified && (submissionRequested || clock.expired)) {
           await submit();
           return;
         }
       }
       if (!online()) {
-        error = const ExamFailure(
-          'Connect to the internet to check your exam status.',
+        error = ExamFailure(
+          clock.verified
+              ? 'Connect to the internet to check your exam status.'
+              : 'Reconnect to verify your remaining time before continuing.',
           retryable: true,
         );
         return;
@@ -367,6 +377,11 @@ class StudentExamRepository {
             active!.questions.isEmpty ||
             saver?.error?.reconcile == true) {
           await reconcile();
+          if (active != null &&
+              clock.verified &&
+              (submissionRequested || clock.expired)) {
+            await submit();
+          }
         } else {
           saver?.reconnect();
         }
@@ -478,6 +493,12 @@ class StudentExamRepository {
     _check();
     final attempt = active;
     if (attempt == null) return;
+    if (!clock.verified) {
+      throw const ExamFailure(
+        'Reconnect to verify your remaining time before continuing.',
+        retryable: true,
+      );
+    }
     submissionRequested = true;
     _submitting = true;
     _submissionRetry?.cancel();
@@ -488,7 +509,7 @@ class StudentExamRepository {
         throw ExamFailure(
           clock.canEdit
               ? "You're offline. Stay on this screen and reconnect to submit. The timer keeps running."
-              : "Time's up. Reconnect to check your submission.",
+              : clock.timeoutMessage,
           retryable: true,
         );
       // A retry checks the existing attempt before sending anything again.
@@ -585,7 +606,7 @@ class StudentExamRepository {
             ? ExamFailure(
                 clock.canEdit
                     ? "We couldn't confirm your submission. Stay on this screen and reconnect to check."
-                    : "Time's up. Reconnect to check your submission.",
+                    : clock.timeoutMessage,
                 retryable: true,
               )
             : failure;
