@@ -9,6 +9,37 @@ import 'package:filo/features/exams/domain/exam.dart';
 import 'exam_test_support.dart';
 
 void main() {
+  test('version seven upgrade preserves pending answers and persists submission intent', () async {
+    final directory = await Directory.systemTemp.createTemp(
+      'filo-submit-upgrade',
+    );
+    addTearDown(() => directory.delete(recursive: true));
+    final file = File('${directory.path}/exam.sqlite');
+    var db = AppDatabase(NativeDatabase(file));
+    var store = ExamStore(db);
+    await store.cache(ExamAttempt(examPayload()), examEpoch, examEpoch);
+    await store.write(
+      'session',
+      const ExamAnswer(questionId: 'bool', boolean: false),
+      examEpoch,
+    );
+    await db.customStatement('DROP TABLE exam_submission_intent');
+    await db.customStatement('PRAGMA user_version=7');
+    await db.close();
+    db = AppDatabase(NativeDatabase(file));
+    store = ExamStore(db);
+    expect((await store.answers('session')).single.answer.boolean, isFalse);
+    await store.requestSubmission('session');
+    await db.close();
+    db = AppDatabase(NativeDatabase(file));
+    addTearDown(db.close);
+    store = ExamStore(db);
+    expect(await store.submissionRequested('session'), isTrue);
+    await store.clear('session');
+    expect(await store.submissionRequested('session'), isFalse);
+    expect(await store.answers('session'), isEmpty);
+  });
+
   test('batch acknowledgements are transactional and leave newer revisions pending', () async {
     final db = AppDatabase(NativeDatabase.memory());
     addTearDown(db.close);

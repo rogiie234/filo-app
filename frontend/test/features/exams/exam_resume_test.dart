@@ -36,6 +36,191 @@ void main() {
     repository.dispose();
     await db.close();
   });
+  test('submission awaits a local write already in progress and drains text debounce', () async {
+    online = true;
+    await repository.recover();
+    final writing = repository.answer(
+      const ExamAnswer(questionId: 'q', text: 'Last edit'),
+    );
+    final submitting = repository.submit();
+    await Future.wait([writing, submitting]);
+    expect(remote.saves.single.text, 'Last edit');
+    expect(
+      remote.calls.indexOf('save:q'),
+      lessThan(remote.calls.indexOf('submit:session')),
+    );
+    expect(await store.answers('session'), isEmpty);
+    expect(await store.submissionRequested('session'), isFalse);
+  });
+
+  test(
+    'offline submission intent survives repository recreation and reconnect',
+    () async {
+      online = true;
+      await repository.recover();
+      online = false;
+      await repository.answer(
+        const ExamAnswer(questionId: 'bool', boolean: false),
+      );
+      await expectLater(repository.submit(), throwsA(isA<ExamFailure>()));
+      expect(
+        repository.error!.message,
+        "You're offline. Stay on this screen and reconnect to submit. The timer keeps running.",
+      );
+      expect(await store.submissionRequested('session'), isTrue);
+      repository.dispose();
+      repository = StudentExamRepository(
+        store: store,
+        remote: remote,
+        clock: time.clock,
+        isCurrent: () => current,
+        online: () => online,
+      );
+      await repository.recover();
+      expect(repository.submissionRequested, isTrue);
+      online = true;
+      await repository.recover();
+      expect(remote.saves.single.boolean, isFalse);
+      expect(remote.calls.where((c) => c == 'submit:session'), hasLength(1));
+      expect(await store.attempts(), isEmpty);
+      expect(await store.submissionRequested('session'), isFalse);
+    },
+  );
+
+  test('timeout drains existing answers within grace and accepts server automatic status', () async {
+    online = true;
+    await repository.recover();
+    online = false;
+    await repository.answer(
+      const ExamAnswer(questionId: 'q', text: 'Before zero'),
+    );
+    time.elapsed = const Duration(minutes: 10, seconds: 1);
+    remote.currentSession = sessionPayload()
+      ..['server_now'] = examEpoch.add(time.elapsed).toIso8601String();
+    remote.onSubmit = () async {
+      remote.currentSession = sessionPayload('auto_submitted');
+      return {'status': 'auto_submitted'};
+    };
+    online = true;
+    await repository.submit();
+    expect(remote.saves.single.text, 'Before zero');
+    expect(
+      remote.calls.indexOf('save:q'),
+      lessThan(remote.calls.indexOf('submit:session')),
+    );
+    expect(repository.completionTimedOut, isTrue);
+    expect(await store.answers('session'), isEmpty);
+    await repository.submit();
+    expect(remote.calls.where((c) => c == 'submit:session'), hasLength(1));
+  });
+
+  test(
+    'after save cutoff an open server session finalizes without replay',
+    () async {
+      online = true;
+      await repository.recover();
+      online = false;
+      await repository.answer(
+        const ExamAnswer(questionId: 'q', text: 'Too late'),
+      );
+      time.elapsed = const Duration(minutes: 10, seconds: 14);
+      remote.currentSession = sessionPayload()
+        ..['server_now'] = examEpoch.add(time.elapsed).toIso8601String();
+      remote.onSubmit = () async => {'status': 'auto_submitted'};
+      online = true;
+      await repository.submit();
+      expect(remote.saves, isEmpty);
+      expect(remote.calls.where((c) => c == 'submit:session'), hasLength(1));
+      expect(repository.completionTimedOut, isTrue);
+      expect(await store.answers('session'), isEmpty);
+    },
+  );
+
+  test('reconnect beyond grace never replays pending answers', () async {
+    online = true;
+    await repository.recover();
+    online = false;
+    await repository.answer(
+      const ExamAnswer(questionId: 'q', text: 'Never received'),
+    );
+    time.elapsed = const Duration(minutes: 10, seconds: 16);
+    await expectLater(repository.submit(), throwsA(isA<ExamFailure>()));
+    expect(
+      repository.error!.message,
+      "Time's up. Reconnect to check your submission.",
+    );
+    remote.currentSession = sessionPayload('auto_submitted');
+    online = true;
+    await repository.recover();
+    expect(remote.saves, isEmpty);
+    expect(remote.calls.where((c) => c == 'submit:session'), isEmpty);
+    expect(repository.completionTimedOut, isTrue);
+    expect(await store.attempts(), isEmpty);
+  });
+
+  test('concurrent submit and timeout share one request and keep content until receipt', () async {
+    online = true;
+    await repository.recover();
+    final entered = Completer<void>(), receipt = Completer<ExamJson>();
+    remote.onSubmit = () {
+      entered.complete();
+      return receipt.future;
+    };
+    final first = repository.submit();
+    await entered.future;
+    final second = repository.submit();
+    expect(repository.submitting, isTrue);
+    expect(await store.attempts(), hasLength(1));
+    expect(repository.completion, isNull);
+    receipt.complete({'status': 'submitted'});
+    await Future.wait([first, second]);
+    expect(remote.calls.where((c) => c == 'submit:session'), hasLength(1));
+    expect(repository.active, isNull);
+  });
+
+  test('validation refusal remains editable and cannot silently discard the answer', () async {
+    online = true;
+    await repository.recover();
+    await expectLater(
+      repository.answer(ExamAnswer(questionId: 'q', text: 'x' * 10001)),
+      throwsA(isA<ExamFailure>()),
+    );
+    await expectLater(repository.submit(), throwsA(isA<ExamFailure>()));
+    expect(remote.calls, isNot(contains('submit:session')));
+    expect(repository.submissionRequested, isFalse);
+    expect(
+      repository.error!.message,
+      'Keep your answer within 10,000 characters.',
+    );
+    await repository.answer(
+      const ExamAnswer(questionId: 'q', text: 'Corrected'),
+    );
+    await repository.submit();
+    expect(remote.saves.last.text, 'Corrected');
+    expect(repository.active, isNull);
+  });
+
+  test(
+    'failed pending save prevents premature submission and retries safely',
+    () async {
+      online = true;
+      await repository.recover();
+      online = false;
+      await repository.answer(
+        const ExamAnswer(questionId: 'q', text: 'Retry me'),
+      );
+      online = true;
+      remote.saveError = TimeoutException('Save response lost');
+      await expectLater(repository.submit(), throwsA(isA<ExamFailure>()));
+      expect(remote.calls, isNot(contains('submit:session')));
+      expect(repository.active, isNotNull);
+      expect(await store.submissionRequested('session'), isTrue);
+      remote.saveError = null;
+      await repository.submit();
+      expect(repository.active, isNull);
+    },
+  );
+
   test(
     'submission drains one queued four-type batch before finalizing',
     () async {

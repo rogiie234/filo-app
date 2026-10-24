@@ -53,10 +53,10 @@ class StudentExamScreen extends ConsumerStatefulWidget {
 
 class _StudentExamScreenState extends ConsumerState<StudentExamScreen> {
   bool _understood = false, _busy = false, _resumed = false;
-  bool _essay = false, _timedOut = false;
+  bool _essay = false;
   bool _startBlocked = false;
   String? _expirySession;
-  Timer? _expiryRetry;
+  DialogRoute<bool>? _confirmationRoute;
   String? _message, _session;
   StudentExamRepository? _repository;
   final _edits = <String, ExamAnswer>{};
@@ -95,11 +95,7 @@ class _StudentExamScreenState extends ConsumerState<StudentExamScreen> {
       _repository = r;
       if (r.engaged) {
         if (r.starting) return;
-        if (r.active != null && r.online()) {
-          await r.reconcile();
-        } else {
-          await r.recover();
-        }
+        await r.recover();
         if (r.error != null) throw r.error!;
         _resumed = r.active != null && r.clock.canEdit;
       } else if (widget.request.sessionId != null) {
@@ -248,15 +244,21 @@ class _StudentExamScreenState extends ConsumerState<StudentExamScreen> {
 
   Future<void> _submit() async {
     final r = _repository;
-    final attempt = r?.active;
-    if (_busy || _writes > 0 || _unsaved.isNotEmpty || attempt == null) return;
+    if (r == null) return;
+    final attempt = r.active;
+    if (_busy || (_writes == 0 && _unsaved.isNotEmpty) || attempt == null)
+      return;
+    if (r.submissionRequested || !r.clock.canEdit) {
+      await _expire();
+      return;
+    }
     final answers = _answers();
     final blanks = attempt.questions
         .where((q) => !examAnswerPresent(answers[q.id]))
         .length;
     setState(() => _busy = true);
     try {
-      final confirmed = await showDialog<bool>(
+      final route = DialogRoute<bool>(
         context: context,
         builder: (context) => Dialog(
           child: SingleChildScrollView(
@@ -288,9 +290,13 @@ class _StudentExamScreenState extends ConsumerState<StudentExamScreen> {
           ),
         ),
       );
-      if (confirmed != true || !mounted) return;
+      _confirmationRoute = route;
+      final confirmed = await Navigator.of(context).push(route);
+      _confirmationRoute = null;
+      if (confirmed != true || !mounted || !r.clock.canEdit) return;
       _message = null;
-      await r!.submit();
+      FocusManager.instance.primaryFocus?.unfocus();
+      await r.submit();
     } catch (e) {
       if (mounted) _message = examFailure(e).message;
     } finally {
@@ -301,7 +307,6 @@ class _StudentExamScreenState extends ConsumerState<StudentExamScreen> {
   @override
   void dispose() {
     if (_ownsNavigation) _navigation.open = false;
-    _expiryRetry?.cancel();
     final r = _repository;
     if (r != null && !r.engaged) {
       unawaited(
@@ -314,6 +319,13 @@ class _StudentExamScreenState extends ConsumerState<StudentExamScreen> {
 
   @override
   Widget build(BuildContext context) {
+    ref.listen(connectivityProvider, (previous, next) {
+      if (previous?.value != true && next.value == true) {
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          if (mounted && _repository?.engaged == true) unawaited(_open());
+        });
+      }
+    });
     ref.watch(examUpdatesProvider);
     final repositoryState = ref.watch(studentExamRepositoryProvider);
     final r = repositoryState.value;
@@ -354,7 +366,19 @@ class _StudentExamScreenState extends ConsumerState<StudentExamScreen> {
           );
     final engaged = r?.engaged == true;
     final completion = r?.completion;
-    if (completion != null && attempt == null) _expiryRetry?.cancel();
+    if (completion != null && attempt == null) {
+      final route = _confirmationRoute;
+      _confirmationRoute = null;
+      if (route != null) {
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          if (mounted && route.isActive)
+            Navigator.of(context).removeRoute(route, false);
+        });
+      }
+      _edits.clear();
+      _unsaved.clear();
+      _revisions.clear();
+    }
     final overview =
         !engaged && completion == null && widget.request.sessionId == null;
     final locked = _busy || engaged;
@@ -414,8 +438,8 @@ class _StudentExamScreenState extends ConsumerState<StudentExamScreen> {
                   children: [
                     Text(
                       completion == 'Your answers were submitted.'
-                          ? (_timedOut
-                                ? "Time's up. Your answers were submitted. Results will be available once everyone has finished or the quiz closes."
+                          ? ((r?.completionTimedOut == true)
+                                ? "Time's up. Your answers were submitted.\n\nYour answers were submitted. Results will be available once everyone has finished or the quiz closes."
                                 : 'Your answers were submitted. Results will be available once everyone has finished or the quiz closes.')
                           : completion,
                     ),
@@ -493,22 +517,18 @@ class _StudentExamScreenState extends ConsumerState<StudentExamScreen> {
   }
 
   Future<void> _expire() async {
+    final r = _repository;
+    if (!mounted || r == null || r.active == null) return;
+    final route = _confirmationRoute;
+    _confirmationRoute = null;
+    if (route?.isActive == true)
+      Navigator.of(context).removeRoute(route!, false);
+    FocusManager.instance.primaryFocus?.unfocus();
     try {
-      if (!mounted || ref.read(connectivityProvider).value != true) return;
-      // Existing sync finalizes accessible expired attempts; no local success guess.
-      await ref.read(classSyncProvider.notifier).refresh();
-      if (mounted) await _open();
+      await r.submit();
+      if (mounted) setState(() => _message = null);
     } catch (e) {
       if (mounted) setState(() => _message = examFailure(e).message);
-    } finally {
-      if (mounted &&
-          _repository?.active != null &&
-          _repository?.clock.canEdit == false) {
-        _expiryRetry?.cancel();
-        _expiryRetry = Timer(const Duration(seconds: 16), () {
-          if (mounted) unawaited(_expire());
-        });
-      }
     }
   }
 
@@ -526,8 +546,7 @@ class _StudentExamScreenState extends ConsumerState<StudentExamScreen> {
       _revisions.clear();
     }
     _essay = attempt.questions.any((q) => q.type == 'essay');
-    _timedOut = expired;
-    if (expired && online && _expirySession != attempt.sessionId) {
+    if (expired && _expirySession != attempt.sessionId) {
       _expirySession = attempt.sessionId;
       WidgetsBinding.instance.addPostFrameCallback((_) {
         if (mounted) unawaited(_expire());
@@ -541,6 +560,7 @@ class _StudentExamScreenState extends ConsumerState<StudentExamScreen> {
         !_busy &&
         r.current &&
         !r.submitting &&
+        !r.submissionRequested &&
         !expired &&
         answersState.value != null &&
         !answersState.hasError &&
@@ -599,7 +619,10 @@ class _StudentExamScreenState extends ConsumerState<StudentExamScreen> {
                         "Time's up. Reconnect to check your submission.",
                       ),
                     if (_message ?? r.error?.message ?? r.saver?.error?.message
-                        case final String message)
+                        case final String message
+                        when !expired ||
+                            message !=
+                                "Time's up. Reconnect to check your submission.")
                       Semantics(liveRegion: true, child: Text(message)),
                     if (_unsaved.isNotEmpty && _writes == 0)
                       TextButton(
@@ -658,7 +681,11 @@ class _StudentExamScreenState extends ConsumerState<StudentExamScreen> {
                         )
                       : null,
                   busy: _busy || r.submitting,
-                  onPressed: editable && _writes == 0 && _unsaved.isEmpty
+                  onPressed:
+                      !_busy &&
+                          !r.submitting &&
+                          ((editable && (_writes > 0 || _unsaved.isEmpty)) ||
+                              (online && (expired || r.submissionRequested)))
                       ? _submit
                       : null,
                 ),

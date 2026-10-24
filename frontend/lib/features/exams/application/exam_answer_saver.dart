@@ -211,6 +211,16 @@ class ExamAnswerSaver {
     }
   }
 
+  Future<void> drain() async {
+    do {
+      await flush();
+    } while (_current &&
+        online() &&
+        clock.canSend &&
+        error == null &&
+        !await allSent());
+  }
+
   Future<bool> allSent() async =>
       (await store.answers(sessionId)).every((a) => a.sent);
   Future<void> pause() async {

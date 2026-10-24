@@ -337,10 +337,77 @@ void main() {
   );
 
   testWidgets(
+    'zero dismisses the confirmation and submits without a second tap',
+    (tester) async {
+      remote.currentSession = sessionPayload();
+      await mount(tester, sessionId: 'session');
+      await _reveal(tester, _button('Submit'));
+      await tester.tap(_button('Submit'));
+      await tester.pumpAndSettle();
+      expect(find.byType(Dialog), findsOneWidget);
+      time.elapsed = const Duration(minutes: 10, seconds: 1);
+      remote.currentSession = sessionPayload()
+        ..['server_now'] = examEpoch.add(time.elapsed).toIso8601String();
+      remote.onSubmit = () async => {'status': 'auto_submitted'};
+      await tester.pump(const Duration(seconds: 1));
+      await tester.pumpAndSettle();
+      expect(find.byType(Dialog), findsNothing);
+      expect(remote.calls.where((c) => c == 'submit:session'), hasLength(1));
+      expect(
+        find.textContaining("Time's up. Your answers were submitted."),
+        findsOneWidget,
+      );
+      expect(find.byType(ExamQuestionCard), findsNothing);
+      await unmount(tester);
+    },
+  );
+
+  testWidgets('false counts as answered while whitespace remains blank', (
+    tester,
+  ) async {
+    remote.currentSession = sessionPayload();
+    await repository.load('session');
+    await repository.answer(
+      const ExamAnswer(questionId: 'bool', boolean: false),
+    );
+    await repository.answer(const ExamAnswer(questionId: 'q', text: '   '));
+    await repository.answer(
+      const ExamAnswer(questionId: 'choice', optionId: 'option'),
+    );
+    await repository.answer(
+      const ExamAnswer(questionId: 'essay', text: 'Done'),
+    );
+    await mount(tester, sessionId: 'session');
+    await _reveal(tester, _button('Submit'));
+    await tester.tap(_button('Submit'));
+    await tester.pumpAndSettle();
+    expect(
+      find.text('You have 1 unanswered question. Submit anyway?'),
+      findsOneWidget,
+    );
+    expect(
+      tester.widget<FiloButton>(_button('Keep answering')).secondary,
+      isFalse,
+    );
+    expect(
+      tester.widget<FiloButton>(_button('Submit anyway')).secondary,
+      isTrue,
+    );
+    await tester.tap(_button('Keep answering'));
+    await tester.pumpAndSettle();
+    await unmount(tester);
+  });
+
+  testWidgets(
     'deadline stops editing and never claims submission without confirmation',
     (tester) async {
       remote.currentSession = sessionPayload();
       await mount(tester, sessionId: 'session');
+      remote.onSubmit = () async => throw const SocketException('offline');
+      remote.currentSession = sessionPayload()
+        ..['server_now'] = examEpoch
+            .add(const Duration(minutes: 11))
+            .toIso8601String();
       remote.payload = examPayload()
         ..['server_now'] = examEpoch
             .add(const Duration(minutes: 11))

@@ -27,6 +27,43 @@ Future<void> seedQuizClass(AppDatabase db) async {
 }
 
 void main() {
+  test('confirmed submission updates cached catalog and survives stale refresh offline', () async {
+    final db = AppDatabase(NativeDatabase.memory());
+    await seedQuizClass(db);
+    var online = true;
+    final remote = FakeExamRemote()..rows = [quizFixture().json];
+    final store = ExamStore(db);
+    final repository = StudentExamRepository(
+      store: store,
+      remote: remote,
+      clock: FakeExamTime().clock,
+      isCurrent: () => true,
+      online: () => online,
+    );
+    addTearDown(() async {
+      repository.dispose();
+      await db.close();
+    });
+    await repository.refreshCatalog();
+    await repository.recover();
+    await repository.submit();
+    expect(
+      (await repository.cachedCatalog()).quizzes.single.session!.submitted,
+      isTrue,
+    );
+    await store.confirmSession('quiz', ExamSession(sessionPayload()));
+    await store.saveCatalog([
+      quizFixture(session: ExamSession(sessionPayload())),
+    ]);
+    online = false;
+    expect(
+      (await repository.refreshCatalog()).quizzes.single.session!.submitted,
+      isTrue,
+    );
+    expect(await store.attempts(), isEmpty);
+    expect(await store.answers('session'), isEmpty);
+  });
+
   test(
     'cosmetic class changes do not refetch catalog; access changes do',
     () async {

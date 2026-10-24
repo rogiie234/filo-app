@@ -49,6 +49,29 @@ void main() {
     await db.close();
   });
   test(
+    'submission drain includes debounced text added during an existing flight',
+    () async {
+      online = true;
+      final entered = Completer<void>(), release = Completer<void>();
+      remote.onSave = (answer) async {
+        if (!entered.isCompleted) {
+          entered.complete();
+          await release.future;
+        }
+      };
+      await saver.change(const ExamAnswer(questionId: 'bool', boolean: false));
+      await entered.future;
+      await saver.change(const ExamAnswer(questionId: 'q', text: 'Final text'));
+      final draining = saver.drain();
+      release.complete();
+      await draining;
+      expect(await saver.allSent(), isTrue);
+      expect(remote.saves.last.text, 'Final text');
+      expect(saver.sending, isFalse);
+    },
+  );
+
+  test(
     '50 rapid online edits drain after a delayed in-flight request',
     () async {
       online = true;

@@ -27,7 +27,13 @@ class AppDatabase extends _$AppDatabase {
   AppDatabase(super.executor);
 
   @override
-  int get schemaVersion => 7;
+  int get schemaVersion => 8;
+
+  Future<void> _createExamSubmissionIntent() => customStatement('''
+    CREATE TABLE IF NOT EXISTS exam_submission_intent (
+      session_id TEXT PRIMARY KEY REFERENCES exam_active_attempt(session_id) ON DELETE CASCADE
+    )
+  ''');
 
   Future<void> _createStudentQuizCache() async {
     await customStatement('''
@@ -147,6 +153,7 @@ class AppDatabase extends _$AppDatabase {
       await m.createAll();
       await _createStudentQuizCache();
       await _createExamStorage();
+      await _createExamSubmissionIntent();
       await _createInstructorQuizCache();
       await _createGradingCache();
       await _createDriveBackup();
@@ -155,6 +162,7 @@ class AppDatabase extends _$AppDatabase {
     onUpgrade: (m, from, to) async {
       if (from < 7) await _createStudentQuizCache();
       if (from < 6) await _createExamStorage();
+      if (from < 8) await _createExamSubmissionIntent();
       if (from < 5) await _createInstructorQuizCache();
       if (from < 2) await _createGradingCache();
       if (from < 3) await _createDriveBackup();

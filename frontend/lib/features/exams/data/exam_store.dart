@@ -21,6 +21,50 @@ class StoredAnswer {
 class ExamStore {
   ExamStore(this.db);
   final AppDatabase db;
+  Future<void> requestSubmission(String sessionId) => db.customStatement(
+    'INSERT OR IGNORE INTO exam_submission_intent(session_id) VALUES (?)',
+    [sessionId],
+  );
+
+  Future<void> cancelSubmission(String sessionId) => db.customStatement(
+    'DELETE FROM exam_submission_intent WHERE session_id=?',
+    [sessionId],
+  );
+
+  Future<bool> submissionRequested(String sessionId) async =>
+      (await db
+              .customSelect(
+                'SELECT session_id FROM exam_submission_intent WHERE session_id=?',
+                variables: [Variable(sessionId)],
+              )
+              .get())
+          .isNotEmpty;
+
+  Future<void> confirmSession(String quizId, ExamSession session) =>
+      db.transaction(() async {
+        final rows = await db
+            .customSelect(
+              'SELECT payload FROM student_quiz_catalog WHERE id=?',
+              variables: [Variable(quizId)],
+            )
+            .get();
+        if (rows.isEmpty) return;
+        final payload = ExamJson.from(
+          jsonDecode(rows.single.read<String>('payload')) as Map,
+        );
+        final previous = payload['session'] as Map?;
+        if (previous != null &&
+            previous['session_id'] == session.id &&
+            ['submitted', 'auto_submitted'].contains(previous['status']) &&
+            session.inProgress)
+          return;
+        payload['session'] = session.json;
+        payload['known'] = true;
+        await db.customStatement(
+          'UPDATE student_quiz_catalog SET payload=? WHERE id=?',
+          [jsonEncode(payload), quizId],
+        );
+      });
   Future<StudentQuizCatalog> catalog() async {
     final rows = await db
         .customSelect('SELECT payload FROM student_quiz_catalog')
@@ -47,8 +91,20 @@ class ExamStore {
 
   Future<void> saveCatalog(List<StudentQuiz> quizzes) =>
       db.transaction(() async {
+        final previous = await catalog();
         await db.customStatement('DELETE FROM student_quiz_catalog');
-        for (final quiz in quizzes) {
+        for (final incoming in quizzes) {
+          final old = previous.quizzes
+              .where((q) => q.id == incoming.id)
+              .firstOrNull;
+          final preserve =
+              old?.session?.submitted == true &&
+              (incoming.session?.id == old!.session!.id ||
+                  !incoming.sessionKnown) &&
+              incoming.session?.submitted != true;
+          final quiz = preserve
+              ? StudentQuiz(incoming.json, old!.session)
+              : incoming;
           await db.customStatement(
             '''
         INSERT INTO student_quiz_catalog(id,class_id,payload)

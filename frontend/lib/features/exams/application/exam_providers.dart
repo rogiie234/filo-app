@@ -38,6 +38,7 @@ final studentExamRepositoryProvider = FutureProvider<StudentExamRepository?>((
 final studentQuizzesProvider = FutureProvider.autoDispose<List<StudentQuiz>>((
   ref,
 ) async {
+  ref.watch(_examCatalogIdentityProvider);
   final repository = await ref.watch(studentExamRepositoryProvider.future);
   return repository == null ? [] : repository.quizzes();
 });

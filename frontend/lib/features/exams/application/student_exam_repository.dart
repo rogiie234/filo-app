@@ -32,6 +32,12 @@ class StudentExamRepository {
   ExamFailure? error;
   String? completion;
   bool _disposed = false, _submitting = false;
+  Future<void>? _submission;
+  Timer? _submissionRetry;
+  final _answerWrites = <Future<void>>{};
+  final _failedAnswerWrites = <String>{};
+  bool submissionRequested = false;
+  bool completionTimedOut = false;
   Future<void>? _recovering;
   Future<void>? _loading;
   Future<void>? _starting;
@@ -62,9 +68,13 @@ class StudentExamRepository {
 
   Future<ExamSession?> status(String quizId) async {
     _connected();
+    final epoch = _attemptEpoch;
     final json = await remote.session(quizId);
     _check();
-    return json == null ? null : ExamSession(json);
+    final session = json == null ? null : ExamSession(json);
+    if (session != null && epoch == _attemptEpoch)
+      await store.confirmSession(quizId, session);
+    return session;
   }
 
   Future<List<StudentQuiz>> quizzes() async {
@@ -89,6 +99,7 @@ class StudentExamRepository {
       _refreshCatalog().whenComplete(() => _catalogRefresh = null);
 
   Future<StudentQuizCatalog> _refreshCatalog() async {
+    final epoch = _attemptEpoch;
     final cached = await cachedCatalog();
     if (!online()) return cached;
     try {
@@ -108,6 +119,7 @@ class StudentExamRepository {
         }
       }
       _check();
+      if (epoch != _attemptEpoch) return cachedCatalog();
       await store.saveCatalog(quizzes);
       _check();
       final saved = await cachedCatalog();
@@ -126,6 +138,7 @@ class StudentExamRepository {
     saver?.dispose();
     active = attempt;
     completion = null;
+    completionTimedOut = false;
     saver = ExamAnswerSaver(
       store: store,
       remote: remote,
@@ -134,7 +147,9 @@ class StudentExamRepository {
       isCurrent: () => current,
       online: online,
       onChanged: notify,
-      onReconcile: () => reconcile(),
+      onReconcile: () async {
+        if (!_submitting) await reconcile();
+      },
     );
     notify();
   }
@@ -269,7 +284,8 @@ class StudentExamRepository {
             return await load(found.id);
           }
           if (found?.submitted == true) {
-            await _finish(found!.id, 'Your answers were submitted.');
+            completionTimedOut = found!.status == 'auto_submitted';
+            await _finish(found.id, 'Your answers were submitted.');
             return;
           }
           if (found == null && pendingSessionId == null) {
@@ -287,7 +303,7 @@ class StudentExamRepository {
   Future<void> recover() =>
       _recovering ??= _recover().whenComplete(() => _recovering = null);
   Future<void> _recover() async {
-    if (!current || starting) return;
+    if (!current || starting || _submitting) return;
     try {
       error = null;
       if (active == null && pendingQuizId != null) {
@@ -297,7 +313,8 @@ class StudentExamRepository {
           startUncertain = false;
           await load(session.id);
         } else if (session?.submitted == true) {
-          await _finish(session!.id, 'Your answers were submitted.');
+          completionTimedOut = session!.status == 'auto_submitted';
+          await _finish(session.id, 'Your answers were submitted.');
         } else if (pendingSessionId != null) {
           await _finish(pendingSessionId!, 'This attempt has ended.');
         } else {
@@ -323,6 +340,15 @@ class StudentExamRepository {
         _activate(saved.attempt);
         pendingQuizId = null;
         pendingSessionId = null;
+      }
+      if (active != null) {
+        submissionRequested =
+            submissionRequested ||
+            await store.submissionRequested(active!.sessionId);
+        if (submissionRequested || !clock.canEdit) {
+          await submit();
+          return;
+        }
       }
       if (!online()) {
         error = const ExamFailure(
@@ -371,6 +397,7 @@ class StudentExamRepository {
     if (session == null ||
         session.id != attempt.sessionId ||
         !session.inProgress) {
+      completionTimedOut = session?.status == 'auto_submitted';
       await _finish(
         attempt.sessionId,
         session?.submitted == true
@@ -388,10 +415,16 @@ class StudentExamRepository {
     return id == null ? [] : store.answers(id);
   }
 
-  Future<void> answer(ExamAnswer answer) async {
+  Future<void> answer(ExamAnswer answer) {
+    final work = _answer(answer);
+    _answerWrites.add(work);
+    return work.whenComplete(() => _answerWrites.remove(work));
+  }
+
+  Future<void> _answer(ExamAnswer answer) async {
     _check();
     final attempt = active;
-    if (attempt == null || _submitting)
+    if (attempt == null || _submitting || submissionRequested)
       throw const ExamFailure('This attempt is no longer accepting answers.');
     final questions = attempt.questions.where((q) => q.id == answer.questionId);
     if (questions.isEmpty)
@@ -413,6 +446,7 @@ class StudentExamRepository {
     try {
       final worker = saver!;
       await worker.change(answer);
+      _failedAnswerWrites.remove(answer.questionId);
       if (current &&
           active?.sessionId == attempt.sessionId &&
           saver != worker) {
@@ -421,6 +455,7 @@ class StudentExamRepository {
       }
       error = null;
     } catch (e) {
+      _failedAnswerWrites.add(answer.questionId);
       error = e is ExamFailure
           ? e
           : const ExamFailure(
@@ -431,45 +466,109 @@ class StudentExamRepository {
     }
   }
 
-  Future<void> submit() async {
+  Future<void> submit() =>
+      _submission ??= _submit().whenComplete(() => _submission = null);
+
+  Future<void> _submit() async {
     _check();
-    if (!online())
-      throw const ExamFailure(
-        "You're offline. Stay on this screen and reconnect to submit. The timer keeps running.",
-        retryable: true,
-      );
-    if (_submitting || active == null) return;
+    final attempt = active;
+    if (attempt == null) return;
+    submissionRequested = true;
     _submitting = true;
-    final attempt = active!;
+    _submissionRetry?.cancel();
     notify();
     try {
-      if (!clock.verified) await reconcile();
-      if (active == null) return;
-      final worker = saver!;
-      await worker.flush();
-      _check();
-      if (active == null) return;
-      if (!await worker.allSent() && clock.canSend) {
-        throw const ExamFailure(
-          'Some answers are still waiting to save. Reconnect and try again.',
+      await store.requestSubmission(attempt.sessionId);
+      if (!online())
+        throw ExamFailure(
+          clock.canEdit
+              ? "You're offline. Stay on this screen and reconnect to submit. The timer keeps running."
+              : "Time's up. Reconnect to check your submission.",
           retryable: true,
         );
+      // A retry checks the existing attempt before sending anything again.
+      final requestWall = clock.wallNow().toUtc();
+      final requestElapsed = clock.elapsed();
+      final session = await status(attempt.quizId);
+      if (!current || active?.sessionId != attempt.sessionId) return;
+      if (session == null ||
+          session.id != attempt.sessionId ||
+          !session.inProgress) {
+        await reconcile();
+        return;
+      }
+      clock.synchronize(
+        serverNow: session.serverNow,
+        deadline: session.deadline,
+        requestWall: requestWall,
+        requestElapsed: requestElapsed,
+        responseElapsed: clock.elapsed(),
+      );
+      await Future.wait(_answerWrites.toList());
+      if (clock.canEdit && _failedAnswerWrites.isNotEmpty) {
+        throw saver?.error ??
+            error ??
+            const ExamFailure(
+              "Couldn't save this answer on your phone. Try again.",
+            );
+      }
+      final worker = saver!;
+      if (clock.canSend) {
+        final budget = attempt.deadline
+            .add(const Duration(seconds: 14))
+            .difference(clock.serverNow);
+        try {
+          await worker.drain().timeout(budget);
+        } on TimeoutException {
+          // The server decides whether an already dispatched batch arrived in time.
+        }
       }
       _check();
       if (active?.sessionId != attempt.sessionId) return;
-      await remote.submit(attempt.sessionId);
+      if (!await worker.allSent() && clock.canSend) {
+        throw worker.error ??
+            const ExamFailure(
+              'Some answers are still waiting to save. Reconnect and try again.',
+              retryable: true,
+            );
+      }
+      if (!clock.canSend) worker.dispose();
+      final result = await remote.submit(attempt.sessionId);
       _check();
-      await reconcile();
-      if (active != null)
-        throw const ExamFailure(
-          "We couldn't confirm your submission. Stay on this screen and reconnect to check.",
+      if (active?.sessionId != attempt.sessionId) return;
+      if (result['status'] == 'submitted' ||
+          result['status'] == 'auto_submitted') {
+        await store.confirmSession(
+          attempt.quizId,
+          ExamSession({
+            'session_id': attempt.sessionId,
+            'deadline_at': attempt.deadline.toIso8601String(),
+            'server_now': clock.serverNow.toIso8601String(),
+            'status': result['status'],
+            'submitted_at': result['submitted_at'],
+          }),
         );
+        completionTimedOut = result['status'] == 'auto_submitted';
+        await _finish(attempt.sessionId, 'Your answers were submitted.');
+      } else {
+        await reconcile();
+        if (active != null)
+          throw const ExamFailure(
+            "We couldn't confirm your submission. Stay on this screen and reconnect to check.",
+            retryable: true,
+          );
+      }
     } catch (e) {
-      if (current && active != null) {
+      if (!current) rethrow;
+      if (active != null && online()) {
         try {
-          await reconcile();
+          final session = await status(attempt.quizId);
+          if (session?.id == attempt.sessionId && session?.submitted == true) {
+            completionTimedOut = session!.status == 'auto_submitted';
+            await _finish(attempt.sessionId, 'Your answers were submitted.');
+          }
         } catch (_) {
-          /* Keep durable work until confirmation. */
+          // Keep durable work until confirmation.
         }
       }
       if (active != null) {
@@ -478,11 +577,24 @@ class StudentExamRepository {
             failure.connection ||
                 failure.message ==
                     "We couldn't complete that request. Try again."
-            ? const ExamFailure(
-                "We couldn't confirm your submission. Stay on this screen and reconnect to check.",
+            ? ExamFailure(
+                clock.canEdit
+                    ? "We couldn't confirm your submission. Stay on this screen and reconnect to check."
+                    : "Time's up. Reconnect to check your submission.",
                 retryable: true,
               )
             : failure;
+        // Validation errors must remain editable; transport failures keep intent.
+        if (!error!.retryable && !error!.reconcile && clock.canEdit) {
+          submissionRequested = false;
+          await store.cancelSubmission(attempt.sessionId);
+        }
+        if (submissionRequested) {
+          _submissionRetry = Timer(const Duration(seconds: 1), () {
+            if (current && online())
+              unawaited(submit().catchError((Object _) {}));
+          });
+        }
         throw error!;
       }
     } finally {
@@ -493,14 +605,20 @@ class StudentExamRepository {
 
   Future<void> _finish(String sessionId, String message) async {
     _attemptEpoch++;
+    _submissionRetry?.cancel();
     saver?.dispose();
     saver = null;
+    await Future.wait(
+      _answerWrites.toList().map((work) => work.catchError((Object _) {})),
+    );
     await store.clear(sessionId);
     _check();
     active = null;
+    _failedAnswerWrites.clear();
     pendingQuizId = null;
     pendingSessionId = null;
     startUncertain = false;
+    submissionRequested = false;
     completion = message;
     error = null;
     clock.invalidate();
@@ -520,6 +638,7 @@ class StudentExamRepository {
 
   void dispose() {
     _disposed = true;
+    _submissionRetry?.cancel();
     saver?.dispose();
     clock.invalidate();
     unawaited(
