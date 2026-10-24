@@ -37,6 +37,35 @@ void main() {
     await db.close();
   });
   test(
+    'submission drains one queued four-type batch before finalizing',
+    () async {
+      online = true;
+      await repository.recover();
+      await repository.saver!.flush();
+      online = false;
+      for (final answer in [
+        const ExamAnswer(questionId: 'q', text: 'Identification'),
+        const ExamAnswer(questionId: 'bool', boolean: false),
+        const ExamAnswer(questionId: 'choice', optionId: 'option'),
+        const ExamAnswer(questionId: 'essay', text: 'Essay draft'),
+      ]) {
+        await repository.answer(answer);
+      }
+      expect(remote.batches, isEmpty);
+      online = true;
+      await repository.submit();
+      expect(remote.batches.single, hasLength(4));
+      expect(remote.saves, hasLength(4));
+      expect(
+        remote.calls.indexOf('submit:session'),
+        greaterThan(remote.calls.indexOf('save:q')),
+      );
+      expect(repository.active, isNull);
+      expect(repository.completion, 'Your answers were submitted.');
+    },
+  );
+
+  test(
     'a late snapshot cannot resurrect a confirmed completed attempt',
     () async {
       online = true;

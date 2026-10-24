@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:filo/features/exams/data/exam_remote.dart';
+import 'package:filo/features/exams/data/exam_store.dart';
 import 'package:filo/features/exams/domain/exam.dart';
 import 'package:filo/features/exams/domain/exam_clock.dart';
 
@@ -69,6 +70,9 @@ class FakeExamTime {
 class FakeExamRemote implements ExamRemote {
   final calls = <String>[];
   final saves = <ExamAnswer>[];
+  final batches = <List<StoredAnswer>>[];
+  final itemErrors = <String, ExamFailure>{};
+  Future<List<ExamSaveReceipt>> Function(List<StoredAnswer>)? onBatch;
   List<ExamJson> rows = [
     {
       'id': 'quiz',
@@ -126,6 +130,29 @@ class FakeExamRemote implements ExamRemote {
     saves.add(answer);
     if (saveError != null) throw saveError!;
     await onSave?.call(answer);
+  }
+
+  @override
+  Future<List<ExamSaveReceipt>> saveBatch(
+    String sessionId,
+    List<StoredAnswer> answers,
+  ) async {
+    batches.add(List.of(answers));
+    if (onBatch != null) return onBatch!(answers);
+    final receipts = <ExamSaveReceipt>[];
+    for (final stored in answers) {
+      final failure = itemErrors[stored.answer.questionId];
+      if (failure == null) await save(sessionId, stored.answer);
+      receipts.add(
+        ExamSaveReceipt(
+          questionId: stored.answer.questionId,
+          revision: stored.revision,
+          savedAt: failure == null ? examEpoch : null,
+          failure: failure,
+        ),
+      );
+    }
+    return receipts;
   }
 
   @override

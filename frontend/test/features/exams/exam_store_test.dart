@@ -9,6 +9,39 @@ import 'package:filo/features/exams/domain/exam.dart';
 import 'exam_test_support.dart';
 
 void main() {
+  test('batch acknowledgements are transactional and leave newer revisions pending', () async {
+    final db = AppDatabase(NativeDatabase.memory());
+    addTearDown(db.close);
+    final store = ExamStore(db);
+    await store.cache(ExamAttempt(examPayload()), examEpoch, examEpoch);
+    await store.write(
+      'session',
+      const ExamAnswer(questionId: 'q', text: 'Old'),
+      examEpoch,
+    );
+    await store.write(
+      'session',
+      const ExamAnswer(questionId: 'bool', boolean: false),
+      examEpoch,
+    );
+    final batch = await store.answers('session', pendingOnly: true);
+    await store.write(
+      'session',
+      const ExamAnswer(questionId: 'q', text: 'New'),
+      examEpoch,
+    );
+    await store.acknowledgeBatch('session', batch);
+    final pending = await store.answers('session', pendingOnly: true);
+    expect(pending.single.answer.questionId, 'q');
+    expect(pending.single.answer.text, 'New');
+    expect(
+      (await store.answers('session'))
+          .firstWhere((a) => a.answer.questionId == 'bool')
+          .sent,
+      isTrue,
+    );
+  });
+
   test('fresh storage preserves false, empty text, option and revision acknowledgements', () async {
     final db = AppDatabase(NativeDatabase.memory());
     addTearDown(db.close);

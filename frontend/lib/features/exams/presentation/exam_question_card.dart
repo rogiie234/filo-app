@@ -46,51 +46,59 @@ class _ExamQuestionCardState extends State<ExamQuestionCard> {
   @override
   Widget build(BuildContext context) {
     final q = widget.question;
-    return FiloPanel(
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          Text(
-            'Question ${widget.number} · ${q.points} ${q.points == 1 ? 'point' : 'points'}',
-            style: Theme.of(context).textTheme.labelLarge,
-          ),
-          const SizedBox(height: 12),
-          Semantics(
-            header: true,
-            child: Text(
-              q.prompt,
-              style: Theme.of(context).textTheme.titleMedium,
+    return SelectionContainer.disabled(
+      child: FiloPanel(
+        color: Theme.of(context).brightness == Brightness.dark
+            ? Theme.of(context).colorScheme.surface
+            : Colors.white,
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Text(
+              'Question ${widget.number} · ${q.points} ${q.points == 1 ? 'point' : 'points'}',
+              style: Theme.of(context).textTheme.labelLarge,
             ),
-          ),
-          const SizedBox(height: 16),
-          if (q.type == 'multiple_choice')
-            for (final option in q.options)
-              _option(
-                option['text'] as String,
-                widget.answer?.optionId == option['id'],
-                ExamAnswer(questionId: q.id, optionId: option['id'] as String),
+            const SizedBox(height: 12),
+            Semantics(
+              header: true,
+              child: Text(
+                q.prompt,
+                style: Theme.of(context).textTheme.titleMedium,
               ),
-          if (q.type == 'true_false')
-            for (final value in [true, false])
-              _option(
-                value ? 'True' : 'False',
-                widget.answer?.boolean == value,
-                ExamAnswer(questionId: q.id, boolean: value),
-              ),
-          if (q.type == 'identification' || q.type == 'essay')
-            TextField(
-              controller: _text,
-              enabled: widget.enabled,
-              minLines: q.type == 'essay' ? 4 : 1,
-              maxLines: q.type == 'essay' ? null : 3,
-              enableInteractiveSelection: false,
-              autocorrect: false,
-              enableSuggestions: false,
-              decoration: const InputDecoration(labelText: 'Answer'),
-              onChanged: (value) =>
-                  widget.onChanged(ExamAnswer(questionId: q.id, text: value)),
             ),
-        ],
+            const SizedBox(height: 16),
+            if (q.type == 'multiple_choice')
+              for (final option in q.options)
+                _option(
+                  option['text'] as String,
+                  widget.answer?.optionId == option['id'],
+                  ExamAnswer(
+                    questionId: q.id,
+                    optionId: option['id'] as String,
+                  ),
+                ),
+            if (q.type == 'true_false')
+              for (final value in [true, false])
+                _option(
+                  value ? 'True' : 'False',
+                  widget.answer?.boolean == value,
+                  ExamAnswer(questionId: q.id, boolean: value),
+                ),
+            if (q.type == 'identification' || q.type == 'essay')
+              TextField(
+                controller: _text,
+                enabled: widget.enabled,
+                minLines: q.type == 'essay' ? 4 : 1,
+                maxLines: q.type == 'essay' ? null : 3,
+                enableInteractiveSelection: false,
+                autocorrect: false,
+                enableSuggestions: false,
+                decoration: const InputDecoration(labelText: 'Answer'),
+                onChanged: (value) =>
+                    widget.onChanged(ExamAnswer(questionId: q.id, text: value)),
+              ),
+          ],
+        ),
       ),
     );
   }

@@ -5,6 +5,7 @@ import 'package:http/http.dart' as http;
 import 'package:http/testing.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:filo/features/exams/data/exam_remote.dart';
+import 'package:filo/features/exams/data/exam_store.dart';
 import 'package:filo/features/exams/domain/exam.dart';
 import 'package:drift/native.dart';
 import 'package:filo/data/local/app_database.dart';
@@ -14,6 +15,168 @@ import 'package:filo/core/sync/outbox_processor.dart';
 import 'exam_test_support.dart';
 
 void main() {
+  test(
+    'batch adapter sends exact fields and parses success and item errors',
+    () async {
+      final requests = <http.Request>[];
+      final client = SupabaseClient(
+        'https://example.supabase.co',
+        'key',
+        httpClient: MockClient((request) async {
+          requests.add(request);
+          return http.Response(
+            jsonEncode([
+              {
+                'question_id': 'bool',
+                'revision': 2,
+                'saved_at': examEpoch.toIso8601String(),
+              },
+              {
+                'question_id': 'q',
+                'revision': 3,
+                'error_code': '22001',
+                'error_message': 'Answer must be at most 10000 characters',
+              },
+            ]),
+            200,
+            request: request,
+            headers: {'content-type': 'application/json'},
+          );
+        }),
+      );
+      addTearDown(client.dispose);
+      final receipts = await SupabaseExamRemote(client, 'student').saveBatch(
+        'session',
+        [
+          const StoredAnswer(
+            ExamAnswer(questionId: 'bool', boolean: false),
+            2,
+            false,
+          ),
+          const StoredAnswer(ExamAnswer(questionId: 'q', text: ''), 3, false),
+        ],
+      );
+      expect(requests.single.url.pathSegments.last, 'save_answers');
+      expect(jsonDecode(requests.single.body), {
+        'p_session': 'session',
+        'p_answers': [
+          {
+            'question_id': 'bool',
+            'revision': 2,
+            'option_id': null,
+            'bool_answer': false,
+            'text_answer': null,
+          },
+          {
+            'question_id': 'q',
+            'revision': 3,
+            'option_id': null,
+            'bool_answer': null,
+            'text_answer': '',
+          },
+        ],
+      });
+      expect(receipts.first.savedAt, examEpoch);
+      expect(
+        receipts.last.failure!.message,
+        'Keep your answer within 10,000 characters.',
+      );
+    },
+  );
+
+  test('duplicate receipts cannot acknowledge a different question', () async {
+    final client = SupabaseClient(
+      'https://example.supabase.co',
+      'key',
+      httpClient: MockClient(
+        (request) async => http.Response(
+          jsonEncode(
+            List.filled(2, {
+              'question_id': 'q',
+              'revision': 1,
+              'saved_at': examEpoch.toIso8601String(),
+            }),
+          ),
+          200,
+          request: request,
+          headers: {'content-type': 'application/json'},
+        ),
+      ),
+    );
+    addTearDown(client.dispose);
+    await expectLater(
+      SupabaseExamRemote(client, 'student').saveBatch('session', [
+        const StoredAnswer(
+          ExamAnswer(questionId: 'q', text: 'Answer'),
+          1,
+          false,
+        ),
+        const StoredAnswer(
+          ExamAnswer(questionId: 'bool', boolean: false),
+          1,
+          false,
+        ),
+      ]),
+      throwsA(
+        isA<ExamFailure>().having((e) => e.retryable, 'retryable', isTrue),
+      ),
+    );
+  });
+
+  for (final response in [
+    [],
+    [
+      {
+        'question_id': 'q',
+        'revision': 99,
+        'saved_at': examEpoch.toIso8601String(),
+      },
+    ],
+    [
+      {'question_id': 'q', 'revision': 1, 'saved_at': 'invalid'},
+    ],
+    [
+      {
+        'question_id': 'q',
+        'revision': 1,
+        'saved_at': examEpoch.toIso8601String(),
+        'error_code': '22023',
+        'error_message': 'Invalid',
+      },
+    ],
+  ]) {
+    test(
+      'malformed or mismatched batch receipt is never confirmation: $response',
+      () async {
+        final client = SupabaseClient(
+          'https://example.supabase.co',
+          'key',
+          httpClient: MockClient(
+            (request) async => http.Response(
+              jsonEncode(response),
+              200,
+              request: request,
+              headers: {'content-type': 'application/json'},
+            ),
+          ),
+        );
+        addTearDown(client.dispose);
+        await expectLater(
+          SupabaseExamRemote(client, 'student').saveBatch('session', [
+            const StoredAnswer(
+              ExamAnswer(questionId: 'q', text: 'Answer'),
+              1,
+              false,
+            ),
+          ]),
+          throwsA(
+            isA<ExamFailure>().having((e) => e.retryable, 'retryable', isTrue),
+          ),
+        );
+      },
+    );
+  }
+
   test('leave retries keep RPC event parameters and friendly errors', () async {
     final requests = <http.Request>[];
     final client = SupabaseClient(

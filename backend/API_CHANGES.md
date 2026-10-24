@@ -199,3 +199,24 @@ Owner supplied final result: PASS: one notification; test fixtures removed. The 
 M7-BE-01, M7-BE-02 and M7-BE-03 are Complete ? accepted for the requested DEV SQL/backend scope on cumulative owner evidence: quizzes.sql 215 PASS/0 FAIL; question_bank.sql 65 PASS/0 FAIL; guided start/save/delete functional outcomes and all five stored-state checks matched; concurrent publishing call took 29.3 seconds while A held its transaction for 30 seconds; exactly one notification confirmed and fresh fixtures removed. SQL security checklist 2 and the quiz-related portion of 5 accepted. This supersedes earlier pending task/bank/publication cleanup statements.
 
 Limits retained: start/save/delete lock-wait durations were not separately measured; no blanket concurrency stress, fresh full migration replay, HTTP/mobile/push/offline behavior or independent migration-ledger verification is claimed. Assistant did not execute tests, migrations, SQL/live checks, builds or static analysis. No additional owner tests requested for completed scope absent new changes/defects. Maintained regression scripts remain; no disposable materials created locally.
+
+## 2026-10-24: Additive save_answers RPC
+
+`20261024100000_exam_answer_batches.sql` adds `save_answers(uuid,jsonb) -> jsonb`,
+EXECUTE authenticated only, with verified caller/session ownership/class/deadline checks
+and a session lock. Accepts1-20 distinct question IDs and positive local revisions,
+returns per-answer save timestamp/error receipts with echoed revisions. Reuses
+`save_answer`, retaining its fields/limits/upsert/deadline behavior. Item validation
+failures are isolated; session/access and unexpected errors roll back the whole call.
+Legacy RPC remains unchanged, no table or policy additions. Full wire contract is in
+`docs/API_CHANGES.md`. Deploy before updated client. Rollback-only maintained regression:
+`backend/tests/exam_answer_batches.sql`. Prepared, not deployed or executed by assistant.
+
+## 2026-10-24: Owner accepted exam refinement and batch-save runtime
+
+Owner explicitly accepts all runtime checks for the exam refinement, batched saves,
+rapid-answer saving and final diagnostic cleanup. Owner supplied84PASS/0FAIL for the
+exam suite before the two later rapid regressions; no later automated count inferred.
+Supplied SQL Editor success and healthy50-answer save capture are owner evidence.
+No assistant test/SQL/build/static analysis/live/device rerun or independent migration
+ledger verification. Temporary diagnostics removed; maintained regressions retained.

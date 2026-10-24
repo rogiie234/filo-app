@@ -174,9 +174,11 @@ final examSavingStateProvider = Provider.autoDispose<String>((ref) {
   ref.watch(examUpdatesProvider);
   final answers = ref.watch(examAnswersProvider);
   final repository = ref.watch(studentExamRepositoryProvider).asData?.value;
-  if (repository?.error != null) return repository!.error!.message;
-  if (repository?.saver?.error != null)
-    return repository!.saver!.error!.message;
+  final failure = repository?.saver?.error ?? repository?.error;
+  if (failure?.retryable == true || failure?.connection == true) {
+    return 'Reconnecting...';
+  }
+  if (failure != null) return 'Saving...';
   if (answers.asData == null) return 'Saving...';
   if (answers.asData!.value.every((answer) => answer.sent)) return 'Saved';
   return ref.watch(connectivityProvider).asData?.value == true

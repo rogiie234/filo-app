@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
+import 'package:flutter/semantics.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/connectivity/connectivity_provider.dart';
@@ -513,9 +514,11 @@ class _StudentExamScreenState extends ConsumerState<StudentExamScreen> {
 
   Widget _exam(StudentExamRepository r, ExamAttempt attempt, bool online) {
     final answersState = ref.watch(examAnswersProvider);
-    final remaining =
-        ref.watch(examCountdownProvider).value ?? r.clock.remaining;
-    final expired = remaining == Duration.zero;
+    final expired = ref.watch(
+      examCountdownProvider.select(
+        (value) => (value.value ?? r.clock.remaining) == Duration.zero,
+      ),
+    );
     if (_session != attempt.sessionId) {
       _session = attempt.sessionId;
       _edits.clear();
@@ -554,113 +557,113 @@ class _StudentExamScreenState extends ConsumerState<StudentExamScreen> {
           saved.answer.boolean == edit.value.boolean &&
           saved.answer.text == edit.value.text;
     });
+    final savingState = ref.watch(examSavingStateProvider);
     final saved = _writes > 0 || _unsaved.isNotEmpty || !editsConfirmed
         ? 'Saving...'
-        : ref.watch(examSavingStateProvider);
-    final threshold = expired
-        ? null
-        : remaining < const Duration(minutes: 1)
-        ? 'Less than 1 minute left'
-        : remaining < const Duration(minutes: 5)
-        ? 'Less than 5 minutes left'
-        : null;
+        : savingState;
+    final status = !online || savingState == 'Reconnecting...'
+        ? 'Reconnecting...'
+        : saved;
     return Column(
       children: [
-        Padding(
-          padding: const EdgeInsets.fromLTRB(24, 12, 24, 12),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              Text(
-                'Time left: ${remaining.inMinutes}:${(remaining.inSeconds % 60).toString().padLeft(2, '0')}',
-                style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                  color: threshold == null
-                      ? FiloColors.ink
-                      : FiloColors.warningInk,
-                ),
-              ),
-              if (threshold != null)
-                Semantics(liveRegion: true, child: Text(threshold)),
-              Text('$answered of ${attempt.questions.length} answered'),
-              Text(!online ? 'Reconnecting...' : saved),
-            ],
-          ),
+        _ExamStatusBar(
+          key: ValueKey(attempt.sessionId),
+          repository: r,
+          answered: answered,
+          total: attempt.questions.length,
+          status: status,
         ),
         Expanded(
-          child: ListView(
+          child: ListView.builder(
             key: PageStorageKey('exam-questions-${attempt.sessionId}'),
             padding: const EdgeInsets.fromLTRB(24, 8, 24, 24),
-            keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
-            children: [
-              if (_resumed && !expired)
-                const Text('Your exam has resumed with the time left.'),
-              if (!r.clock.verified)
-                const Text(
-                  'Estimated time only. Reconnect to verify the deadline.',
-                ),
-              if (!online && !expired)
-                const Text('The timer keeps running while you reconnect.'),
-              if (expired)
-                const Text("Time's up. Reconnect to check your submission."),
-              if (_message ?? r.error?.message ?? r.saver?.error?.message
-                  case final String message)
-                Semantics(liveRegion: true, child: Text(message)),
-              if (_unsaved.isNotEmpty && _writes == 0)
-                TextButton(
-                  onPressed: _writes == 0 && !_busy && !expired
-                      ? _retryAnswers
-                      : null,
-                  child: const Text('Try again'),
-                ),
-              if (answersState.hasError) ...[
-                const Text(
-                  "We couldn't reopen your exam. Check your connection and try again.",
-                ),
-                TextButton(
-                  onPressed: () => ref.invalidate(examAnswersProvider),
-                  child: const Text('Try again'),
-                ),
-              ],
-              if (answersState.isLoading && !answersState.hasValue)
-                const LinearProgressIndicator(),
-              if (r.error != null ||
-                  r.saver?.error != null ||
-                  expired ||
-                  !r.clock.verified)
-                TextButton(
-                  onPressed: _busy ? null : _open,
-                  child: const Text('Try again'),
-                ),
-              for (final (index, question) in attempt.questions.indexed) ...[
-                const SizedBox(height: 16),
-                ExamQuestionCard(
+            keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.manual,
+            itemCount: attempt.questions.length + 2,
+            itemBuilder: (context, index) {
+              if (index == 0)
+                return Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    if (_resumed && !expired)
+                      const Text('Your exam has resumed with the time left.'),
+                    if (!r.clock.verified)
+                      const Text(
+                        'Estimated time only. Reconnect to verify the deadline.',
+                      ),
+                    if (!online && !expired)
+                      const Text(
+                        'The timer keeps running while you reconnect.',
+                      ),
+                    if (expired)
+                      const Text(
+                        "Time's up. Reconnect to check your submission.",
+                      ),
+                    if (_message ?? r.error?.message ?? r.saver?.error?.message
+                        case final String message)
+                      Semantics(liveRegion: true, child: Text(message)),
+                    if (_unsaved.isNotEmpty && _writes == 0)
+                      TextButton(
+                        onPressed: _writes == 0 && !_busy && !expired
+                            ? _retryAnswers
+                            : null,
+                        child: const Text('Try again'),
+                      ),
+                    if (answersState.hasError) ...[
+                      const Text(
+                        "We couldn't reopen your exam. Check your connection and try again.",
+                      ),
+                      TextButton(
+                        onPressed: () => ref.invalidate(examAnswersProvider),
+                        child: const Text('Try again'),
+                      ),
+                    ],
+                    if (answersState.isLoading && !answersState.hasValue)
+                      const LinearProgressIndicator(),
+                    if (r.error != null ||
+                        r.saver?.error != null ||
+                        expired ||
+                        !r.clock.verified)
+                      TextButton(
+                        onPressed: _busy ? null : _open,
+                        child: const Text('Try again'),
+                      ),
+                  ],
+                );
+              if (index <= attempt.questions.length) {
+                final question = attempt.questions[index - 1];
+                return Padding(
                   key: ValueKey('${attempt.sessionId}:${question.id}'),
-                  question: question,
-                  number: index + 1,
-                  answer: answers[question.id],
-                  enabled: editable,
-                  onChanged: (answer) => unawaited(_answer(answer)),
+                  padding: const EdgeInsets.only(top: 16),
+                  child: ExamQuestionCard(
+                    question: question,
+                    number: index,
+                    answer: answers[question.id],
+                    enabled: editable,
+                    onChanged: (answer) => unawaited(_answer(answer)),
+                  ),
+                );
+              }
+              return Padding(
+                padding: const EdgeInsets.only(top: 24),
+                child: FiloButton(
+                  label: r.submitting ? 'Submitting...' : 'Submit',
+                  leading: r.submitting
+                      ? const SizedBox(
+                          width: 20,
+                          height: 20,
+                          child: CircularProgressIndicator(
+                            strokeWidth: 2,
+                            color: Colors.white,
+                          ),
+                        )
+                      : null,
+                  busy: _busy || r.submitting,
+                  onPressed: editable && _writes == 0 && _unsaved.isEmpty
+                      ? _submit
+                      : null,
                 ),
-              ],
-              const SizedBox(height: 24),
-              FiloButton(
-                label: r.submitting ? 'Submitting...' : 'Submit',
-                leading: r.submitting
-                    ? const SizedBox(
-                        width: 20,
-                        height: 20,
-                        child: CircularProgressIndicator(
-                          strokeWidth: 2,
-                          color: Colors.white,
-                        ),
-                      )
-                    : null,
-                busy: _busy || r.submitting,
-                onPressed: editable && _writes == 0 && _unsaved.isEmpty
-                    ? _submit
-                    : null,
-              ),
-            ],
+              );
+            },
           ),
         ),
       ],
@@ -672,3 +675,96 @@ bool examAnswerPresent(ExamAnswer? answer) =>
     answer?.optionId != null ||
     answer?.boolean != null ||
     answer?.text?.trim().isNotEmpty == true;
+
+class _ExamStatusBar extends ConsumerStatefulWidget {
+  const _ExamStatusBar({
+    super.key,
+    required this.repository,
+    required this.answered,
+    required this.total,
+    required this.status,
+  });
+  final StudentExamRepository repository;
+  final int answered, total;
+  final String status;
+
+  @override
+  ConsumerState<_ExamStatusBar> createState() => _ExamStatusBarState();
+}
+
+class _ExamStatusBarState extends ConsumerState<_ExamStatusBar> {
+  final _announced = <int>{};
+
+  @override
+  Widget build(BuildContext context) {
+    final remaining =
+        ref.watch(examCountdownProvider).value ??
+        widget.repository.clock.remaining;
+    final level = remaining == Duration.zero
+        ? 0
+        : remaining < const Duration(minutes: 1)
+        ? 1
+        : remaining < const Duration(minutes: 5)
+        ? 5
+        : 0;
+    final warning = level == 1
+        ? 'Less than 1 minute left'
+        : level == 5
+        ? 'Less than 5 minutes left'
+        : null;
+    if (warning != null && _announced.add(level)) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) {
+          // Announce thresholds only; the ticking value is never a live region.
+          unawaited(
+            SemanticsService.sendAnnouncement(
+              View.of(context),
+              warning,
+              Directionality.of(context),
+            ),
+          );
+        }
+      });
+    }
+    final theme = Theme.of(context);
+    final colors = theme.colorScheme;
+    final dark = theme.brightness == Brightness.dark;
+    final background = level == 1
+        ? colors.errorContainer
+        : level == 5
+        ? (dark ? const Color(0xFF493400) : FiloColors.warning)
+        : colors.surface;
+    final foreground = level == 1
+        ? colors.onErrorContainer
+        : level == 5
+        ? (dark ? const Color(0xFFFFDDA0) : FiloColors.warningInk)
+        : colors.onSurface;
+    return ColoredBox(
+      key: const ValueKey('exam-status-bar'),
+      color: background,
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(24, 12, 24, 12),
+        child: DefaultTextStyle.merge(
+          style: TextStyle(color: foreground),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Semantics(
+                liveRegion: false,
+                child: Text(
+                  'Time left: ${remaining.inMinutes}:${(remaining.inSeconds % 60).toString().padLeft(2, '0')}',
+                  style: theme.textTheme.titleMedium?.copyWith(
+                    color: foreground,
+                  ),
+                ),
+              ),
+              if (warning != null) Text(warning),
+              Text('${widget.answered} of ${widget.total} answered'),
+              Text(widget.status),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}

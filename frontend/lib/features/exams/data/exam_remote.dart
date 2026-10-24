@@ -5,6 +5,7 @@ import 'package:http/http.dart' show ClientException;
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../domain/exam.dart';
+import 'exam_store.dart';
 import '../domain/student_quiz_status.dart';
 
 String examStartMessage(Object error, {DateTime? opensAt}) {
@@ -88,12 +89,29 @@ ExamFailure examFailure(Object error) {
   return const ExamFailure("We couldn't complete that request. Try again.");
 }
 
+class ExamSaveReceipt {
+  const ExamSaveReceipt({
+    required this.questionId,
+    required this.revision,
+    this.savedAt,
+    this.failure,
+  });
+  final String questionId;
+  final int revision;
+  final DateTime? savedAt;
+  final ExamFailure? failure;
+}
+
 abstract interface class ExamRemote {
   Future<List<ExamJson>> quizzes();
   Future<ExamJson?> session(String quizId);
   Future<ExamJson> start(String quizId);
   Future<ExamJson> exam(String sessionId);
   Future<void> save(String sessionId, ExamAnswer answer);
+  Future<List<ExamSaveReceipt>> saveBatch(
+    String sessionId,
+    List<StoredAnswer> answers,
+  );
   Future<ExamJson> submit(String sessionId);
 }
 
@@ -158,6 +176,72 @@ class SupabaseExamRemote implements ExamRemote {
   @override
   Future<void> save(String sessionId, ExamAnswer answer) => _call(() async {
     await client.rpc('save_answer', params: answer.params(sessionId));
+  });
+  @override
+  Future<List<ExamSaveReceipt>> saveBatch(
+    String sessionId,
+    List<StoredAnswer> answers,
+  ) => _call(() async {
+    final raw = await client.rpc(
+      'save_answers',
+      params: {
+        'p_session': sessionId,
+        'p_answers': [
+          for (final stored in answers)
+            {
+              'question_id': stored.answer.questionId,
+              'revision': stored.revision,
+              'option_id': stored.answer.optionId,
+              'bool_answer': stored.answer.boolean,
+              'text_answer': stored.answer.text,
+            },
+        ],
+      },
+    );
+    const uncertain = ExamFailure(
+      "We couldn't confirm your saved answers. Try again.",
+      retryable: true,
+    );
+    if (raw is! List || raw.length != answers.length) throw uncertain;
+    final remaining = {
+      for (final answer in answers) answer.answer.questionId: answer.revision,
+    };
+    final receipts = <ExamSaveReceipt>[];
+    for (final row in raw) {
+      if (row is! Map ||
+          row['question_id'] is! String ||
+          row['revision'] is! int ||
+          remaining.remove(row['question_id']) != row['revision'])
+        throw uncertain;
+      final date = row['saved_at'];
+      final code = row['error_code'];
+      final message = row['error_message'];
+      if (date is String && code == null && message == null) {
+        final parsed = DateTime.tryParse(date);
+        if (parsed == null) throw uncertain;
+        receipts.add(
+          ExamSaveReceipt(
+            questionId: row['question_id'] as String,
+            revision: row['revision'] as int,
+            savedAt: parsed,
+          ),
+        );
+      } else if (date == null && code is String && message is String) {
+        receipts.add(
+          ExamSaveReceipt(
+            questionId: row['question_id'] as String,
+            revision: row['revision'] as int,
+            failure: examFailure(
+              PostgrestException(message: message, code: code),
+            ),
+          ),
+        );
+      } else {
+        throw uncertain;
+      }
+    }
+    if (remaining.isNotEmpty) throw uncertain;
+    return receipts;
   });
   @override
   Future<ExamJson> submit(String sessionId) =>

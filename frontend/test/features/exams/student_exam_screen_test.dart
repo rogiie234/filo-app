@@ -18,6 +18,8 @@ import 'package:filo/features/exams/data/exam_store.dart';
 import 'package:filo/features/exams/domain/exam.dart';
 import 'package:filo/features/exams/presentation/student_exam_screen.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
+import 'package:filo/features/exams/presentation/exam_question_card.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
@@ -88,11 +90,19 @@ void main() {
     WidgetTester tester, {
     String? sessionId,
     bool home = false,
+    Stream<Duration>? countdown,
+    ThemeData? theme,
+    double textScale = 1,
   }) async {
     await tester.pumpWidget(
       ProviderScope(
         overrides: [
-          studentExamRepositoryProvider.overrideWith((ref) async => repository),
+          if (countdown != null)
+            examCountdownProvider.overrideWith((ref) => countdown),
+          studentExamRepositoryProvider.overrideWith((ref) async {
+            ref.onDispose(repository.dispose);
+            return repository;
+          }),
           studentQuizCatalogProvider.overrideWith(
             (ref) => Stream.value(StudentQuizCatalog([quiz], loaded: true)),
           ),
@@ -118,7 +128,12 @@ void main() {
           if (home) driveBackupProvider.overrideWith((ref) async => null),
         ],
         child: MaterialApp(
-          theme: AppTheme.light,
+          theme: theme ?? AppTheme.light,
+          builder: (context, child) => MediaQuery(
+            data: MediaQuery.of(context)
+                .copyWith(textScaler: TextScaler.linear(textScale)),
+            child: child!,
+          ),
           home: home
               ? HomeScreen(
                   profile: AccountProfile.fromJson({
@@ -361,6 +376,240 @@ void main() {
         findsOneWidget,
       );
       expect(tester.widget<PopScope>(_examPopScope).canPop, isTrue);
+      await unmount(tester);
+    },
+  );
+
+  testWidgets(
+    'rapid answer callbacks leave Saving only after latest revisions are confirmed',
+    (tester) async {
+      remote.currentSession = sessionPayload();
+      remote.payload = examPayload()
+        ..['questions'] = List.generate(
+          50,
+          (i) => {
+            'id': 'rapid-$i',
+            'type': 'true_false',
+            'prompt': 'Rapid $i',
+            'points': 1,
+            'options': null,
+          },
+        );
+      final entered = Completer<void>(), release = Completer<void>();
+      remote.onSave = (_) async {
+        if (!entered.isCompleted) {
+          entered.complete();
+          await release.future;
+        }
+      };
+      await mount(tester, sessionId: 'session');
+      final answer = tester
+          .widget<ExamQuestionCard>(find.byType(ExamQuestionCard).first)
+          .onChanged;
+      answer(const ExamAnswer(questionId: 'rapid-0', boolean: true));
+      await tester.pumpAndSettle();
+      expect(entered.isCompleted, isTrue);
+      for (var i = 1; i < 50; i++) {
+        answer(ExamAnswer(questionId: 'rapid-$i', boolean: true));
+      }
+      answer(const ExamAnswer(questionId: 'rapid-0', boolean: false));
+      await tester.pumpAndSettle();
+      expect(find.text('Saving...'), findsOneWidget);
+      release.complete();
+      await repository.saver!.flush();
+      await tester.pumpAndSettle();
+      expect(find.text('Saved'), findsOneWidget);
+      expect(find.text('50 of 50 answered'), findsOneWidget);
+      expect(await repository.saver!.allSent(), isTrue);
+      await unmount(tester);
+    },
+  );
+
+  testWidgets('all four question types retain answers in server order', (
+    tester,
+  ) async {
+    remote.currentSession = sessionPayload();
+    await mount(tester, sessionId: 'session');
+    Finder card(String id) => find.byKey(ValueKey('session:$id'));
+    Finder field(String id) =>
+        find.descendant(of: card(id), matching: find.byType(TextField));
+    await tester.enterText(field('q'), 'Identification');
+    await tester.pumpAndSettle();
+    await _reveal(tester, find.text('False'));
+    await tester.tap(find.text('False'));
+    await tester.pumpAndSettle();
+    await _reveal(tester, find.text('One'));
+    await tester.tap(find.text('One'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Two'));
+    await tester.pumpAndSettle();
+    await _reveal(tester, field('essay'));
+    await tester.enterText(field('essay'), 'First line\nSecond line');
+    await tester.pumpAndSettle();
+    expect(find.text('4 of 4 answered'), findsOneWidget);
+    final answers = {
+      for (final saved in await repository.answers())
+        saved.answer.questionId: saved.answer,
+    };
+    expect(answers['q']!.text, 'Identification');
+    expect(answers['bool']!.boolean, isFalse);
+    expect(answers['choice']!.optionId, 'other');
+    expect(answers['essay']!.text, 'First line\nSecond line');
+    expect(repository.active!.questions.map((q) => q.id), [
+      'q',
+      'bool',
+      'choice',
+      'essay',
+    ]);
+    expect(
+      tester.widget<TextField>(field('essay')).enableInteractiveSelection,
+      isFalse,
+    );
+    expect(find.byType(SelectableText), findsNothing);
+    expect(find.byType(Mascot), findsNothing);
+    await unmount(tester);
+  });
+
+  for (final dark in [false, true]) {
+    testWidgets(
+      'timer thresholds announce once without rebuilding questions, dark=$dark',
+      (tester) async {
+        remote.currentSession = sessionPayload();
+        final countdown = StreamController<Duration>();
+        final announcements = <String>[];
+        tester.binding.defaultBinaryMessenger
+            .setMockDecodedMessageHandler<dynamic>(
+              SystemChannels.accessibility,
+              (message) async {
+                if (message['type'] == 'announce') {
+                  announcements.add(message['data']['message'] as String);
+                }
+                return null;
+              },
+            );
+        addTearDown(() {
+          tester.binding.defaultBinaryMessenger
+              .setMockDecodedMessageHandler<dynamic>(
+                SystemChannels.accessibility,
+                null,
+              );
+        });
+        await mount(
+          tester,
+          sessionId: 'session',
+          countdown: countdown.stream,
+          theme: dark
+              ? ThemeData(brightness: Brightness.dark, fontFamily: 'Nunito')
+              : null,
+          textScale: 1.3,
+        );
+        final original = tester.widget<ExamQuestionCard>(
+          find.byType(ExamQuestionCard).first,
+        );
+        countdown.add(const Duration(minutes: 4, seconds: 59));
+        await tester.pumpAndSettle();
+        expect(find.text('Less than 5 minutes left'), findsOneWidget);
+        final amber = tester
+            .widget<ColoredBox>(find.byKey(const ValueKey('exam-status-bar')))
+            .color;
+        countdown.add(const Duration(minutes: 4, seconds: 58));
+        await tester.pumpAndSettle();
+        expect(
+          identical(
+            original,
+            tester.widget<ExamQuestionCard>(
+              find.byType(ExamQuestionCard).first,
+            ),
+          ),
+          isTrue,
+        );
+        countdown.add(const Duration(seconds: 59));
+        await tester.pumpAndSettle();
+        expect(find.text('Less than 1 minute left'), findsOneWidget);
+        expect(
+          tester
+              .widget<ColoredBox>(find.byKey(const ValueKey('exam-status-bar')))
+              .color,
+          isNot(amber),
+        );
+        countdown.add(const Duration(seconds: 58));
+        await tester.pumpAndSettle();
+        countdown.add(const Duration(minutes: 2));
+        await tester.pumpAndSettle();
+        expect(announcements, [
+          'Less than 5 minutes left',
+          'Less than 1 minute left',
+        ]);
+        expect(find.byType(Mascot), findsNothing);
+        expect(tester.takeException(), isNull);
+        // Deliver done while the provider subscription is still active.
+        final closed = countdown.close();
+        await tester.pumpAndSettle();
+        await closed;
+        await unmount(tester);
+      },
+    );
+  }
+
+  testWidgets(
+    '50 questions build lazily and preserve text and focus at 130 percent',
+    (tester) async {
+      remote.currentSession = sessionPayload();
+      remote.payload = examPayload()
+        ..['questions'] = List.generate(
+          50,
+          (index) => {
+            'id': 'long-$index',
+            'type': index.isEven ? 'identification' : 'essay',
+            'prompt': 'Prompt $index',
+            'points': 1,
+            'options': null,
+          },
+        );
+      await mount(tester, sessionId: 'session', textScale: 1.3);
+      expect(find.byType(ExamQuestionCard).evaluate().length, lessThan(50));
+      final first = find.descendant(
+        of: find.byKey(const ValueKey('session:long-0')),
+        matching: find.byType(TextField),
+      );
+      await tester.enterText(first, 'Keep this draft');
+      await tester.pumpAndSettle();
+      final editable = tester.widget<EditableText>(
+        find.descendant(of: first, matching: find.byType(EditableText)),
+      );
+      final focus = editable.focusNode;
+      final scrollable = find
+          .descendant(
+            of: find.byKey(const PageStorageKey('exam-questions-session')),
+            matching: find.byType(Scrollable),
+          )
+          .first;
+      final position = tester.state<ScrollableState>(scrollable).position;
+      final last = find.byKey(const ValueKey('session:long-49'));
+      // Drive the outer list; answer fields can consume synthetic drag gestures.
+      for (var step = 0; step < 100 && last.evaluate().isEmpty; step++) {
+        position.jumpTo(
+          (position.pixels + position.viewportDimension * 0.8)
+              .clamp(position.minScrollExtent, position.maxScrollExtent)
+              .toDouble(),
+        );
+        await tester.pump(const Duration(milliseconds: 16));
+      }
+      expect(last, findsOneWidget);
+      expect(position.pixels, greaterThan(0));
+      await tester.ensureVisible(last);
+      expect(focus.hasFocus, isTrue);
+      tester.state<ScrollableState>(scrollable).position.jumpTo(0);
+      await tester.pumpAndSettle();
+      expect(
+        tester.widget<TextField>(first).controller!.text,
+        'Keep this draft',
+      );
+      expect(
+        (await repository.answers()).single.answer.text,
+        'Keep this draft',
+      );
+      expect(tester.takeException(), isNull);
       await unmount(tester);
     },
   );

@@ -137,10 +137,13 @@ class ExamStore {
     }
   });
 
-  Future<List<StoredAnswer>> answers(String sessionId) async {
+  Future<List<StoredAnswer>> answers(
+    String sessionId, {
+    bool pendingOnly = false,
+  }) async {
     final rows = await db
         .customSelect(
-          'SELECT * FROM exam_local_answers WHERE session_id=?',
+          'SELECT * FROM exam_local_answers WHERE session_id=?${pendingOnly ? ' AND sent=0' : ''} ORDER BY question_id',
           variables: [Variable(sessionId)],
         )
         .get();
@@ -185,6 +188,13 @@ class ExamStore {
         'UPDATE exam_local_answers SET sent=1 WHERE session_id=? AND question_id=? AND revision=?',
         [sessionId, answer.answer.questionId, answer.revision],
       );
+
+  Future<void> acknowledgeBatch(String sessionId, List<StoredAnswer> answers) =>
+      db.transaction(() async {
+        for (final answer in answers) {
+          await acknowledge(sessionId, answer);
+        }
+      });
 
   Future<void> clear(String sessionId) => db.transaction(() async {
     await db.customStatement(
