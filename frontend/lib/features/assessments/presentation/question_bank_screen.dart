@@ -41,10 +41,11 @@ class _QuestionBankScreenState extends ConsumerState<QuestionBankScreen> {
         _selected.removeWhere((id) => !rows.any((r) => r.id == id));
       });
     } catch (_) {
-      if (mounted)
+      if (mounted) {
         setState(
           () => _error = 'Could not load the question bank. Connect and retry.',
         );
+      }
     } finally {
       if (mounted) setState(() => _loading = false);
     }
@@ -72,11 +73,12 @@ class _QuestionBankScreenState extends ConsumerState<QuestionBankScreen> {
       await repository.delete(row.id);
       if (mounted) await _load();
     } catch (_) {
-      if (mounted)
+      if (mounted) {
         setState(
           () => _error =
               'Deletion not confirmed. Refresh the bank before trying again.',
         );
+      }
     } finally {
       if (mounted) setState(() => _busy = false);
     }
@@ -118,7 +120,7 @@ class _QuestionBankScreenState extends ConsumerState<QuestionBankScreen> {
             itemCount:
                 1 + (available ? (filtered.isEmpty ? 1 : filtered.length) : 0),
             itemBuilder: (context, index) {
-              if (index == 0)
+              if (index == 0) {
                 return Column(
                   children: [
                     Padding(
@@ -179,7 +181,8 @@ class _QuestionBankScreenState extends ConsumerState<QuestionBankScreen> {
                     if (_loading || _busy) const LinearProgressIndicator(),
                   ],
                 );
-              if (filtered.isEmpty)
+              }
+              if (filtered.isEmpty) {
                 return Padding(
                   padding: const EdgeInsets.all(24),
                   child: Text(
@@ -188,6 +191,7 @@ class _QuestionBankScreenState extends ConsumerState<QuestionBankScreen> {
                         : 'No matching questions. Try another search or question type.',
                   ),
                 );
+              }
               final row = filtered[index - 1];
               final q = row.copyToQuiz();
               if (widget.picking) {
@@ -329,11 +333,12 @@ class _BankEditorState extends ConsumerState<_BankEditor> {
         Navigator.pop(context);
       }
     } catch (_) {
-      if (mounted)
+      if (mounted) {
         setState(
           () => _error =
               'Save not confirmed. Your edits are retained. Connect and retry.',
         );
+      }
     } finally {
       if (mounted) setState(() => _busy = false);
     }

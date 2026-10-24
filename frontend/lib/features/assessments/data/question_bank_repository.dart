@@ -9,10 +9,12 @@ class QuestionBankRepository {
   final String userId;
   final bool Function() isOnline;
   Future<void> _access() async {
-    if (!isOnline())
+    if (!isOnline()) {
       throw StateError("You're offline. Connect to use the question bank.");
-    if (client.auth.currentUser?.id != userId)
+    }
+    if (client.auth.currentUser?.id != userId) {
       throw StateError('The signed-in account changed.');
+    }
     final profile = await client
         .from('profiles')
         .select('role,deleted_at')
@@ -47,8 +49,9 @@ class QuestionBankRepository {
     QuizQuestion question, {
     bool creating = false,
   }) async {
-    if (question.validationErrors().isNotEmpty)
+    if (question.validationErrors().isNotEmpty) {
       throw StateError('Check this question before saving.');
+    }
     final content = BankQuestion.content(question);
     await _access();
     if (creating) {
@@ -61,8 +64,9 @@ class QuestionBankRepository {
           .maybeSingle()
           .timeout(const Duration(seconds: 20));
       if (existing != null) {
-        if (existing['deleted_at'] != null)
+        if (existing['deleted_at'] != null) {
           throw StateError('This saved copy was deleted.');
+        }
         return;
       }
       await client
@@ -80,8 +84,9 @@ class QuestionBankRepository {
           .eq('owner_id', userId)
           .single()
           .timeout(const Duration(seconds: 20));
-      if (confirmed['id'] != id)
+      if (confirmed['id'] != id) {
         throw StateError('Save not confirmed. Retry to check again.');
+      }
     } else {
       await client
           .from('bank_questions')

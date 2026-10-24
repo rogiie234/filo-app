@@ -54,7 +54,7 @@ class FiloIcon extends StatelessWidget {
         alignment: Alignment.center,
         children: [
           for (final child in previous) ExcludeSemantics(child: child),
-          if (current != null) current,
+          ?current,
         ],
       ),
       transitionBuilder: (child, animation) => FadeTransition(

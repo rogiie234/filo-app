@@ -9,7 +9,6 @@ import 'package:go_router/go_router.dart';
 import '../../../core/supabase/supabase_provider.dart';
 import '../../../core/connectivity/connectivity_provider.dart';
 import '../../../data/local/database_providers.dart';
-import '../../../core/theme/app_theme.dart';
 import '../../../core/widgets/filo_widgets.dart';
 import '../../auth/presentation/session_loading_view.dart';
 import 'role_selection_view.dart';

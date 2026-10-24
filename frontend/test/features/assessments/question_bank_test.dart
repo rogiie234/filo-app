@@ -77,12 +77,14 @@ void main() {
       expect(first.options, isEmpty);
       expect(first.localId, isNot(second.localId));
       first.payload['prompt'] = 'Edited copy';
-      if (type == 'identification')
+      if (type == 'identification') {
         (first.payload['accepted_answers'] as List).clear();
+      }
       expect(second.prompt, 'Prompt');
       expect(bank.copyToQuiz().prompt, 'Prompt');
-      if (type == 'identification')
+      if (type == 'identification') {
         expect(bank.copyToQuiz().answerKey!.acceptedAnswers, ['One', 'Two']);
+      }
     }
   });
   testWidgets(
