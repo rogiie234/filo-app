@@ -195,9 +195,13 @@ class StudentExamRepository {
   }
 
   Future<void> start(String quizId) =>
-      _starting ??= _start(quizId).whenComplete(() {
-        _starting = null;
-        notify();
+      _starting ??= _start(quizId).whenComplete(() async {
+        try {
+          if (current && !engaged) await protectScreen?.call(false);
+        } finally {
+          _starting = null;
+          notify();
+        }
       });
 
   Future<void> _start(String quizId) async {
@@ -385,6 +389,7 @@ class StudentExamRepository {
     } catch (e) {
       if (current) error = examFailure(e);
     } finally {
+      if (current && !engaged && !starting) await protectScreen?.call(false);
       notify();
     }
   }
@@ -622,19 +627,29 @@ class StudentExamRepository {
     completion = message;
     error = null;
     clock.invalidate();
+    await protectScreen?.call(false);
     notify();
   }
 
-  Future<void> logLeave() async {
+  Future<void> Function()? captureLeave() {
     final sessionId = active?.sessionId ?? pendingSessionId;
-    if (!current || sessionId == null) return;
-    await SqliteOutbox(store.db).enqueue(const Uuid().v4(), 'leave_event', {
-      'session_id': sessionId,
-      'left_at': (active == null ? clock.wallNow() : clock.serverNow)
-          .toUtc()
-          .toIso8601String(),
-    });
+    if (!current ||
+        sessionId == null ||
+        clock.deadline == null ||
+        !clock.canEdit)
+      return null;
+    final id = const Uuid().v4();
+    final leftAt = clock.serverNow.toUtc().toIso8601String();
+    return () async {
+      if (!current) return;
+      await SqliteOutbox(store.db).enqueue(id, 'leave_event', {
+        'session_id': sessionId,
+        'left_at': leftAt,
+      });
+    };
   }
+
+  Future<void> logLeave() async => await captureLeave()?.call();
 
   void dispose() {
     _disposed = true;

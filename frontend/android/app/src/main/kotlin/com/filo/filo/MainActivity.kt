@@ -5,12 +5,14 @@ import io.flutter.embedding.engine.FlutterEngine
 import io.flutter.plugin.common.MethodChannel
 import android.Manifest
 import android.content.pm.PackageManager
+import android.content.pm.ActivityInfo
 import android.os.Build
 import android.content.Intent
 import android.provider.Settings
 import android.view.WindowManager
 
 class MainActivity : FlutterActivity() {
+    private var examOrientation: Int? = null
     private var pendingPermission: MethodChannel.Result? = null
 
     override fun configureFlutterEngine(flutterEngine: FlutterEngine) {
@@ -22,9 +24,13 @@ class MainActivity : FlutterActivity() {
                 } else {
                     try {
                         if (call.arguments == true) {
-                            window.addFlags(WindowManager.LayoutParams.FLAG_SECURE)
+                            if (examOrientation == null) examOrientation = requestedOrientation
+                            window.addFlags(WindowManager.LayoutParams.FLAG_SECURE or WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
+                            requestedOrientation = ActivityInfo.SCREEN_ORIENTATION_PORTRAIT
                         } else {
-                            window.clearFlags(WindowManager.LayoutParams.FLAG_SECURE)
+                            window.clearFlags(WindowManager.LayoutParams.FLAG_SECURE or WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
+                            examOrientation?.let { requestedOrientation = it }
+                            examOrientation = null
                         }
                         result.success(null)
                     } catch (error: Exception) {

@@ -91,6 +91,7 @@ class _ExamQuestionCardState extends State<ExamQuestionCard> {
                 minLines: q.type == 'essay' ? 4 : 1,
                 maxLines: q.type == 'essay' ? null : 3,
                 enableInteractiveSelection: false,
+                contextMenuBuilder: (_, _) => const SizedBox.shrink(),
                 autocorrect: false,
                 enableSuggestions: false,
                 decoration: const InputDecoration(labelText: 'Answer'),

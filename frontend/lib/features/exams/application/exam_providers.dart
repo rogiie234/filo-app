@@ -4,6 +4,7 @@ import 'package:flutter/widgets.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/connectivity/connectivity_provider.dart';
+import '../../../core/sync/sync_providers.dart';
 import '../../../core/supabase/session_gate.dart';
 import '../../../core/supabase/supabase_provider.dart';
 import '../../../data/local/database_providers.dart';
@@ -13,6 +14,7 @@ import '../data/exam_store.dart';
 import '../domain/exam.dart';
 import 'student_exam_repository.dart';
 import 'exam_screen_security.dart';
+import 'exam_leave_tracker.dart';
 
 final studentExamRepositoryProvider = FutureProvider<StudentExamRepository?>((
   ref,
@@ -190,7 +192,29 @@ final examSavingStateProvider = Provider.autoDispose<String>((ref) {
 /// Mounted once by the signed-in home; production navigation observes recovery.
 final examLifecycleProvider = Provider.autoDispose<void>((ref) {
   final future = ref.watch(studentExamRepositoryProvider.future);
-  var disposed = false, left = false;
+  var disposed = false;
+  Future<void> flushLeaves() async {
+    if (disposed ||
+        WidgetsBinding.instance.lifecycleState != AppLifecycleState.resumed ||
+        ref.read(connectivityProvider).asData?.value != true)
+      return;
+    try {
+      final sync = await ref.read(syncCoordinatorProvider.future);
+      if (!disposed) {
+        await sync?.run();
+        // A concurrent resume flush may already have passed the queue read.
+        if (!disposed) await sync?.run();
+      }
+    } catch (_) {
+      // The durable queue retains network failures for the next foreground retry.
+    }
+  }
+
+  final leaves = ExamLeaveTracker(
+    capture: () =>
+        ref.read(studentExamRepositoryProvider).asData?.value?.captureLeave(),
+    onQueued: flushLeaves,
+  );
   Future<void> recover() async {
     try {
       final repository = await future;
@@ -200,29 +224,22 @@ final examLifecycleProvider = Provider.autoDispose<void>((ref) {
     }
   }
 
-  Future<void> leave() async {
-    if (left) return;
-    left = true;
-    try {
-      final repository = await future;
-      if (!disposed) await repository?.logLeave();
-    } catch (_) {
-      /* No departure popup; pending queue retries through sync. */
-    }
-  }
-
   ref.listen(connectivityProvider, (_, next) {
-    if (next.asData?.value == true) unawaited(recover());
+    if (next.asData?.value == true) {
+      unawaited(leaves.retry().then((_) => flushLeaves()));
+      unawaited(recover());
+    }
   });
   final listener = AppLifecycleListener(
     onResume: () {
-      left = false;
+      unawaited(leaves.resume().then((_) => flushLeaves()));
       unawaited(recover());
     },
-    onHide: () => unawaited(leave()),
-    onPause: () => unawaited(leave()),
+    onHide: leaves.background,
+    onPause: leaves.background,
   );
   final timer = Timer.periodic(const Duration(seconds: 15), (_) {
+    unawaited(leaves.retry());
     unawaited(() async {
       try {
         final repository = await future;
@@ -242,6 +259,7 @@ final examLifecycleProvider = Provider.autoDispose<void>((ref) {
   unawaited(recover());
   ref.onDispose(() {
     disposed = true;
+    leaves.dispose();
     timer.cancel();
     listener.dispose();
   });

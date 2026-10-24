@@ -67,6 +67,7 @@ void filoBackgroundDispatcher() {
         client,
         id,
         active,
+        canSendLeaveEvents: () => false,
         files: files,
         backup: backup,
         currentAccountCheck: () async =>

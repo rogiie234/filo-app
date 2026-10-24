@@ -36,6 +36,8 @@ final syncCoordinatorProvider = FutureProvider.autoDispose<SyncCoordinator?>((
     client,
     id,
     () => ref.mounted && client.auth.currentUser?.id == id,
+    canSendLeaveEvents: () =>
+        WidgetsBinding.instance.lifecycleState == AppLifecycleState.resumed,
     files: files,
     backup: backup,
   );

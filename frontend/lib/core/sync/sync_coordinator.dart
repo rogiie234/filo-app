@@ -24,6 +24,7 @@ class SyncCoordinator extends ChangeNotifier {
     this.backup,
     this.files,
     this.currentAccountCheck,
+    this.canSendLeaveEvents,
   });
   final AppDatabase db;
   final SupabaseClient client;
@@ -32,6 +33,7 @@ class SyncCoordinator extends ChangeNotifier {
   final DriveBackupService? backup;
   final FilesRepository? files;
   final Future<bool> Function()? currentAccountCheck;
+  final bool Function()? canSendLeaveEvents;
   bool _accessChanged = false;
   bool syncing = false, _disposed = false;
   DateTime? lastSynced;
@@ -87,6 +89,7 @@ class SyncCoordinator extends ChangeNotifier {
             .eq('id', action.payload['notification_id'] as String)
             .eq('recipient_id', userId);
       case 'leave_event':
+        if (canSendLeaveEvents?.call() == false) throw const DeferredAction();
         try {
           await client.rpc(
             'log_leave',
@@ -134,7 +137,10 @@ class SyncCoordinator extends ChangeNotifier {
         _lastSnapshot == null ||
         DateTime.now().difference(_lastSnapshot!) > const Duration(minutes: 15);
     try {
-      final store = SqliteOutbox(db);
+      final store = SqliteOutbox(
+        db,
+        includeLeaveEvents: canSendLeaveEvents?.call() ?? true,
+      );
       if (retryFailed) {
         await store.retryFailed();
       }

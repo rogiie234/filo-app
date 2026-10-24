@@ -389,99 +389,101 @@ class _StudentExamScreenState extends ConsumerState<StudentExamScreen> {
           showMessage(context, "You can't leave an exam in progress.");
         }
       },
-      child: Scaffold(
-        appBar: AppBar(
-          title: Text(
-            overview ? '${quiz?.typeLabel ?? 'Quiz'} details' : 'Exam',
+      child: SelectionContainer.disabled(
+        child: Scaffold(
+          appBar: AppBar(
+            title: Text(
+              overview ? '${quiz?.typeLabel ?? 'Quiz'} details' : 'Exam',
+            ),
+            automaticallyImplyLeading: !locked,
           ),
-          automaticallyImplyLeading: !locked,
-        ),
-        body: SafeArea(
-          child: overview
-              ? StudentQuizOverview(
-                  quiz: room != null ? quiz : null,
-                  now: now,
-                  archived: archived,
-                  online: online,
-                  loading: loading,
-                  understood: _understood,
-                  busy: _busy,
-                  onChanged: (value) =>
-                      setState(() => _understood = value == true),
-                  onStart:
-                      !_startBlocked &&
-                          reason == null &&
-                          room != null &&
-                          !failed &&
-                          !catalog.isLoading
-                      ? _start
-                      : null,
-                  message: _startBlocked
-                      ? _message ?? reason
-                      : reason ??
-                            _message ??
-                            (failed
-                                ? 'Refresh to check your exam status.'
-                                : null),
-                  onRefresh: _openAndRefresh,
-                  onRetry:
-                      failed ||
-                          (quiz != null &&
-                              studentQuizState(quiz, now).pending) ||
-                          (_message != null && !_startBlocked)
-                      ? _openAndRefresh
-                      : null,
-                )
-              : completion != null && attempt == null
-              ? ListView(
-                  padding: const EdgeInsets.all(24),
-                  children: [
-                    Text(
-                      completion == 'Your answers were submitted.'
-                          ? ((r?.completionTimedOut == true)
-                                ? "Time's up. Your answers were submitted.\n\nYour answers were submitted. Results will be available once everyone has finished or the quiz closes."
-                                : 'Your answers were submitted. Results will be available once everyone has finished or the quiz closes.')
-                          : completion,
-                    ),
-                    if (_essay &&
-                        completion == 'Your answers were submitted.') ...[
-                      const SizedBox(height: 12),
-                      const Text(
-                        "Essay results also need your instructor's grading.",
+          body: SafeArea(
+            child: overview
+                ? StudentQuizOverview(
+                    quiz: room != null ? quiz : null,
+                    now: now,
+                    archived: archived,
+                    online: online,
+                    loading: loading,
+                    understood: _understood,
+                    busy: _busy,
+                    onChanged: (value) =>
+                        setState(() => _understood = value == true),
+                    onStart:
+                        !_startBlocked &&
+                            reason == null &&
+                            room != null &&
+                            !failed &&
+                            !catalog.isLoading
+                        ? _start
+                        : null,
+                    message: _startBlocked
+                        ? _message ?? reason
+                        : reason ??
+                              _message ??
+                              (failed
+                                  ? 'Refresh to check your exam status.'
+                                  : null),
+                    onRefresh: _openAndRefresh,
+                    onRetry:
+                        failed ||
+                            (quiz != null &&
+                                studentQuizState(quiz, now).pending) ||
+                            (_message != null && !_startBlocked)
+                        ? _openAndRefresh
+                        : null,
+                  )
+                : completion != null && attempt == null
+                ? ListView(
+                    padding: const EdgeInsets.all(24),
+                    children: [
+                      Text(
+                        completion == 'Your answers were submitted.'
+                            ? ((r?.completionTimedOut == true)
+                                  ? "Time's up. Your answers were submitted.\n\nYour answers were submitted. Results will be available once everyone has finished or the quiz closes."
+                                  : 'Your answers were submitted. Results will be available once everyone has finished or the quiz closes.')
+                            : completion,
                       ),
+                      if (_essay &&
+                          completion == 'Your answers were submitted.') ...[
+                        const SizedBox(height: 12),
+                        const Text(
+                          "Essay results also need your instructor's grading.",
+                        ),
+                      ],
                     ],
-                  ],
-                )
-              : attempt == null || attempt.questions.isEmpty
-              ? ListView(
-                  padding: const EdgeInsets.all(24),
-                  children: [
-                    if (_busy || repositoryState.isLoading)
-                      const LinearProgressIndicator(),
-                    const SizedBox(height: 16),
-                    Semantics(
-                      liveRegion: true,
-                      child: Text(
-                        _message ??
-                            r?.error?.message ??
-                            (repositoryState.hasError
-                                ? "We couldn't reopen your exam. Check your connection and try again."
-                                : 'Loading your exam...'),
+                  )
+                : attempt == null || attempt.questions.isEmpty
+                ? ListView(
+                    padding: const EdgeInsets.all(24),
+                    children: [
+                      if (_busy || repositoryState.isLoading)
+                        const LinearProgressIndicator(),
+                      const SizedBox(height: 16),
+                      Semantics(
+                        liveRegion: true,
+                        child: Text(
+                          _message ??
+                              r?.error?.message ??
+                              (repositoryState.hasError
+                                  ? "We couldn't reopen your exam. Check your connection and try again."
+                                  : 'Loading your exam...'),
+                        ),
                       ),
-                    ),
-                    const SizedBox(height: 16),
-                    if (!_busy &&
-                        !repositoryState.isLoading &&
-                        (_message != null ||
-                            r?.error != null ||
-                            repositoryState.hasError))
-                      FiloButton(
-                        label: 'Try again',
-                        onPressed: _busy ? null : _open,
-                      ),
-                  ],
-                )
-              : _exam(r!, attempt, online),
+                      const SizedBox(height: 16),
+                      if (!_busy &&
+                          !repositoryState.isLoading &&
+                          (_message != null ||
+                              r?.error != null ||
+                              repositoryState.hasError))
+                        FiloButton(
+                          label: 'Try again',
+                          onPressed: _busy ? null : _open,
+                        ),
+                    ],
+                  )
+                : _exam(r!, attempt, online),
+          ),
         ),
       ),
     );
