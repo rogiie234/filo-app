@@ -18,6 +18,7 @@ import '../application/instructor_quiz_providers.dart';
 import '../domain/quiz_draft.dart';
 import '../domain/quiz_publish.dart';
 import 'assessment_row.dart';
+import '../../results/presentation/instructor_results_screen.dart';
 import 'assessment_form_screen.dart';
 
 class InstructorClassworkList extends ConsumerStatefulWidget {
@@ -447,7 +448,32 @@ class _InstructorClassworkListState
                       ? AssessmentRow(
                           quiz: quiz,
                           now: now,
-                          onOpen: () => _open(quiz),
+                          onEdit: () => _open(quiz),
+                          onResults: quiz.status == 'published'
+                              ? () => Navigator.of(context).push(
+                                  MaterialPageRoute<void>(
+                                    builder: (_) => InstructorResultsScreen(
+                                      quizId: quiz.id,
+                                    ),
+                                  ),
+                                )
+                              : null,
+                          onOpen: () {
+                            if (quiz.status == 'published' &&
+                                quiz.closesAt != null &&
+                                !quiz.closesAt!.isAfter(
+                                  DateTime.now().toUtc(),
+                                )) {
+                              Navigator.of(context).push(
+                                MaterialPageRoute<void>(
+                                  builder: (_) =>
+                                      InstructorResultsScreen(quizId: quiz.id),
+                                ),
+                              );
+                            } else {
+                              _open(quiz);
+                            }
+                          },
                           busy: _deleting.contains(quiz.id),
                           onDelete: widget.archived || quiz.locked || !online
                               ? null

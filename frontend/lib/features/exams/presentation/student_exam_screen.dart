@@ -9,6 +9,8 @@ import '../../../core/theme/app_theme.dart';
 import '../../../core/widgets/filo_widgets.dart';
 import '../../classes/application/class_providers.dart';
 import '../application/exam_providers.dart';
+import '../../results/application/results_providers.dart';
+import '../../results/presentation/student_results_screen.dart';
 import '../application/student_exam_repository.dart';
 import '../data/exam_remote.dart';
 import '../domain/exam.dart';
@@ -106,6 +108,8 @@ class _StudentExamScreenState extends ConsumerState<StudentExamScreen> {
         _resumed = r.active != null && r.clock.canEdit;
       } else {
         r.completion = null;
+        ref.invalidate(studentQuizCatalogProvider);
+        ref.invalidate(studentResultProvider(widget.request.quizId));
       }
     } catch (e) {
       if (mounted) _message = examFailure(e).message;
@@ -165,13 +169,15 @@ class _StudentExamScreenState extends ConsumerState<StudentExamScreen> {
         throw const ExamFailure(
           "We couldn't complete that request. Try again.",
         );
-      if (quiz == null) throw const ExamFailure('This quiz is unavailable.');
+      if (quiz == null)
+        throw const ExamFailure('This item is no longer available.');
       final room = ref
           .read(classCardsProvider)
           .value
           ?.where((room) => room.id == quiz.classId && !room.pending)
           .firstOrNull;
-      if (room == null) throw const ExamFailure('This quiz is unavailable.');
+      if (room == null)
+        throw const ExamFailure('This item is no longer available.');
       if (room.archived || quiz.json['class_archived'] == true) {
         throw const ExamFailure('This class is archived.');
       }
@@ -327,6 +333,15 @@ class _StudentExamScreenState extends ConsumerState<StudentExamScreen> {
         });
       }
     });
+    ref.listen(studentResultProvider(widget.request.quizId), (_, _) {});
+    ref.listen(activeExamProvider.select((a) => a?.sessionId), (
+      previous,
+      next,
+    ) {
+      if (previous != null && next == null) {
+        ref.invalidate(studentResultProvider(widget.request.quizId));
+      }
+    });
     ref.watch(examUpdatesProvider);
     final repositoryState = ref.watch(studentExamRepositoryProvider);
     final r = repositoryState.value;
@@ -358,7 +373,7 @@ class _StudentExamScreenState extends ConsumerState<StudentExamScreen> {
               ? null
               : !online && catalog.value?.loaded != true
               ? 'No saved quiz on this device. Connect to the internet and refresh.'
-              : 'This quiz is unavailable.')
+              : 'This item is no longer available.')
         : studentQuizDisabledReason(
             quiz,
             now,
@@ -418,7 +433,24 @@ class _StudentExamScreenState extends ConsumerState<StudentExamScreen> {
                             !catalog.isLoading
                         ? _start
                         : null,
-                    message: _startBlocked
+                    resultAction:
+                        quiz?.session?.submitted == true ||
+                            quiz != null &&
+                                quiz.sessionKnown &&
+                                quiz.session == null &&
+                                quiz.closesAt != null &&
+                                !quiz.closesAt!.isAfter(now)
+                        ? StudentResultsEntry(quizId: widget.request.quizId)
+                        : null,
+                    message:
+                        quiz?.session?.submitted == true ||
+                            quiz != null &&
+                                quiz.sessionKnown &&
+                                quiz.session == null &&
+                                quiz.closesAt != null &&
+                                !quiz.closesAt!.isAfter(now)
+                        ? null
+                        : _startBlocked
                         ? _message ?? reason
                         : reason ??
                               _message ??
@@ -442,14 +474,16 @@ class _StudentExamScreenState extends ConsumerState<StudentExamScreen> {
                         completion == 'Your answers were submitted.'
                             ? ((r?.completionTimedOut == true)
                                   ? "Time's up. Your answers were submitted.\n\nYour answers were submitted. Results will be available once everyone has finished or the quiz closes."
-                                  : 'Your answers were submitted. Results will be available once everyone has finished or the quiz closes.')
+                                  : 'Your answers were submitted.')
                             : completion,
                       ),
+                      if (completion == 'Your answers were submitted.')
+                        StudentResultsEntry(quizId: widget.request.quizId),
                       if (_essay &&
                           completion == 'Your answers were submitted.') ...[
                         const SizedBox(height: 12),
                         const Text(
-                          "Essay results also need your instructor's grading.",
+                          'Essay answers also need to be graded before results are available.',
                         ),
                       ],
                     ],
@@ -512,6 +546,7 @@ class _StudentExamScreenState extends ConsumerState<StudentExamScreen> {
         ref.invalidate(studentExamRepositoryProvider);
       }
       ref.invalidate(studentQuizCatalogProvider);
+      ref.invalidate(studentResultProvider(widget.request.quizId));
     } catch (e) {
       if (mounted) _message = examStartMessage(e, opensAt: _quiz()?.opensAt);
     } finally {

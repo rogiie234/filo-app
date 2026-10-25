@@ -22,6 +22,7 @@ class StudentQuizOverview extends StatelessWidget {
     required this.onRefresh,
     this.message,
     this.onRetry,
+    this.resultAction,
   });
   final StudentQuiz? quiz;
   final DateTime now;
@@ -30,6 +31,7 @@ class StudentQuizOverview extends StatelessWidget {
   final VoidCallback? onStart, onRetry;
   final Future<void> Function() onRefresh;
   final String? message;
+  final Widget? resultAction;
 
   @override
   Widget build(BuildContext context) {
@@ -174,7 +176,10 @@ class StudentQuizOverview extends StatelessWidget {
               child: const Text('Try again'),
             ),
           ],
-          if (q != null) ...[
+          if (resultAction != null) ...[
+            const SizedBox(height: 24),
+            resultAction!,
+          ] else if (q != null) ...[
             const SizedBox(height: 24),
             FiloButton(
               label: busy

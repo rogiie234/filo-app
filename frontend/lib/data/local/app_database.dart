@@ -27,7 +27,25 @@ class AppDatabase extends _$AppDatabase {
   AppDatabase(super.executor);
 
   @override
-  int get schemaVersion => 8;
+  int get schemaVersion => 9;
+
+  Future<void> _createResultsCache() async {
+    await customStatement('''
+    CREATE TABLE IF NOT EXISTS results_snapshots (
+      id TEXT PRIMARY KEY,
+      class_id TEXT NOT NULL REFERENCES cache_classes(id) ON DELETE CASCADE,
+      payload TEXT NOT NULL
+    )
+    ''');
+    await customStatement(r'''
+      CREATE TRIGGER IF NOT EXISTS results_student_snapshot_delete
+      AFTER DELETE ON results_snapshots WHEN OLD.id LIKE 'student:%'
+      BEGIN
+        DELETE FROM cache_results
+        WHERE session_id = json_extract(OLD.payload, '$.session.session_id');
+      END
+    ''');
+  }
 
   Future<void> _createExamSubmissionIntent() => customStatement('''
     CREATE TABLE IF NOT EXISTS exam_submission_intent (
@@ -151,6 +169,7 @@ class AppDatabase extends _$AppDatabase {
   MigrationStrategy get migration => MigrationStrategy(
     onCreate: (m) async {
       await m.createAll();
+      await _createResultsCache();
       await _createStudentQuizCache();
       await _createExamStorage();
       await _createExamSubmissionIntent();
@@ -160,6 +179,7 @@ class AppDatabase extends _$AppDatabase {
       await _createFileSyncState();
     },
     onUpgrade: (m, from, to) async {
+      if (from < 9) await _createResultsCache();
       if (from < 7) await _createStudentQuizCache();
       if (from < 6) await _createExamStorage();
       if (from < 8) await _createExamSubmissionIntent();

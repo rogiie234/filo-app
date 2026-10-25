@@ -13,6 +13,7 @@ import '../../classes/application/class_providers.dart';
 import '../application/grading_providers.dart';
 import '../domain/grading_models.dart';
 import 'grade_screen.dart';
+import '../../results/presentation/attempt_detail_screen.dart';
 
 String gradebookName(Json member) =>
     ((member['profiles'] as Map?)?['display_name'] ?? 'Student').toString();
@@ -30,6 +31,40 @@ String gradebookCell(GradingData data, String post, String student) {
   }
   final status = data.status(post, student);
   return status == 'Missing' || status == 'Late' ? status : '—';
+}
+
+String gradebookItemCell(GradingData data, Json item, String studentId) {
+  if (item['is_quiz'] != true)
+    return gradebookCell(data, item['id'] as String, studentId);
+  final attempt = data.quizAttempt(item['id'] as String, studentId);
+  final value = data.quizCell(item, studentId);
+  if (attempt == null ||
+      !['submitted', 'auto_submitted'].contains(attempt['status']))
+    return value;
+  return '$value${item['results_released_at'] == null ? '\nNot released' : ''}${attempt['grading_complete'] != true ? '\nProvisional' : ''}';
+}
+
+void openGradebookItem(
+  BuildContext context,
+  String classId,
+  GradingData data,
+  Json item,
+  String studentId,
+) {
+  if (item['is_quiz'] != true) {
+    openGradebookGrade(context, classId, item['id'] as String, studentId);
+    return;
+  }
+  final attempt = data.quizAttempt(item['id'] as String, studentId);
+  if (attempt != null)
+    Navigator.of(context).push(
+      MaterialPageRoute<void>(
+        builder: (_) => AttemptDetailScreen(
+          quizId: item['id'] as String,
+          sessionId: attempt['id'] as String,
+        ),
+      ),
+    );
 }
 
 void openGradebookGrade(
@@ -93,7 +128,7 @@ class _GradebookScreenState extends ConsumerState<GradebookScreen> {
       final rows = <List<Object?>>[
         [
           'Student name',
-          ...data.assignments.map((a) => a['title']),
+          ...data.items.map((a) => a['title']),
           'Total points',
           'Percentage',
         ],
@@ -102,10 +137,10 @@ class _GradebookScreenState extends ConsumerState<GradebookScreen> {
         ))
           [
             gradebookName(member),
-            ...data.assignments.map((a) {
-              final value = gradebookCell(
+            ...data.items.map((a) {
+              final value = gradebookItemCell(
                 data,
-                a['id'].toString(),
+                a,
                 member['student_id'].toString(),
               );
               return value == '—' || value == 'Late' ? '' : value;
@@ -243,7 +278,7 @@ class _GradebookScreenState extends ConsumerState<GradebookScreen> {
                 final former = data.members
                     .where((m) => ['left', 'removed'].contains(m['status']))
                     .toList();
-                if (data.members.isEmpty || data.assignments.isEmpty) {
+                if (data.members.isEmpty || data.items.isEmpty) {
                   return RefreshIndicator(
                     onRefresh: _refresh,
                     child: ListView(
@@ -312,7 +347,7 @@ class _GradebookScreenState extends ConsumerState<GradebookScreen> {
       leading: const CircleAvatar(child: FiloIcon(FiloIcons.person)),
       title: Text(gradebookName(member)),
       subtitle: Text(
-        '${gradebookTotal(total)}${total.hasUnreturned ? '\nIncludes grades not returned' : ''}',
+        '${gradebookTotal(total)}${total.hasUnreturned ? '\nIncludes grades not returned or quiz scores not released' : ''}${data.quizzesLoaded ? '' : '\nQuiz scores have not finished syncing.'}',
       ),
       trailing: const FiloIcon(FiloIcons.chevronRight),
       onTap: () => Navigator.of(context).push(
@@ -382,27 +417,40 @@ class _StudentGradesScreen extends ConsumerWidget {
                   if (sync.hasError) GradebookRetry(onRetry: refresh),
                   Padding(
                     padding: const EdgeInsets.all(16),
-                    child: Text(gradebookTotal(data.total(studentId))),
+                    child: Text(
+                      '${gradebookTotal(data.total(studentId))}${data.quizzesLoaded ? '' : '\nQuiz scores have not finished syncing.'}',
+                    ),
                   ),
                   Expanded(
                     child: RefreshIndicator(
                       onRefresh: refresh,
                       child: ListView.builder(
                         physics: const AlwaysScrollableScrollPhysics(),
-                        itemCount: data.assignments.length,
+                        itemCount: data.items.length,
                         itemBuilder: (context, index) {
-                          final assignment = data.assignments[index];
+                          final assignment = data.items[index];
                           final post = assignment['id'].toString();
                           return ListTile(
                             title: Text(assignment['title'].toString()),
-                            subtitle: Text(data.status(post, studentId)),
-                            trailing: Text(
-                              '${gradebookCell(data, post, studentId)}/${assignment['points']}',
+                            subtitle: Text(
+                              assignment['is_quiz'] == true
+                                  ? data.quizStatus(assignment, studentId)
+                                  : data.status(post, studentId),
                             ),
-                            onTap: () => openGradebookGrade(
+                            trailing: Text(
+                              assignment['is_quiz'] == true
+                                  ? gradebookItemCell(
+                                      data,
+                                      assignment,
+                                      studentId,
+                                    )
+                                  : '${gradebookCell(data, post, studentId)}/${assignment['points']}',
+                            ),
+                            onTap: () => openGradebookItem(
                               context,
                               classId,
-                              post,
+                              data,
+                              assignment,
                               studentId,
                             ),
                           );
@@ -468,7 +516,7 @@ class _GradebookTableState extends State<_GradebookTable> {
 
   Widget _cell(String text, {bool mint = false, VoidCallback? tap}) => SizedBox(
     width: 140,
-    height: 48,
+    height: 72 * MediaQuery.textScalerOf(context).scale(1),
     child: Material(
       color: mint ? FiloColors.mint : FiloColors.surface,
       child: InkWell(
@@ -482,7 +530,7 @@ class _GradebookTableState extends State<_GradebookTable> {
               right: BorderSide(color: FiloColors.border),
             ),
           ),
-          child: Text(text, maxLines: 2, overflow: TextOverflow.ellipsis),
+          child: Text(text, maxLines: 3, overflow: TextOverflow.ellipsis),
         ),
       ),
     ),
@@ -498,7 +546,7 @@ class _GradebookTableState extends State<_GradebookTable> {
             Expanded(
               child: ListView.builder(
                 controller: _left,
-                itemExtent: 48,
+                itemExtent: 72 * MediaQuery.textScalerOf(context).scale(1),
                 itemCount: widget.members.length,
                 itemBuilder: (_, i) =>
                     _cell(gradebookName(widget.members[i]), mint: true),
@@ -515,7 +563,7 @@ class _GradebookTableState extends State<_GradebookTable> {
               scrollDirection: Axis.horizontal,
               child: Row(
                 children: [
-                  for (final assignment in widget.data.assignments)
+                  for (final assignment in widget.data.items)
                     _cell(assignment['title'].toString()),
                 ],
               ),
@@ -525,27 +573,29 @@ class _GradebookTableState extends State<_GradebookTable> {
                 controller: _body,
                 scrollDirection: Axis.horizontal,
                 child: SizedBox(
-                  width: widget.data.assignments.length * 140.0,
+                  width: widget.data.items.length * 140.0,
                   child: RefreshIndicator(
                     onRefresh: widget.onRefresh,
                     child: ListView.builder(
                       controller: _right,
                       physics: const AlwaysScrollableScrollPhysics(),
-                      itemExtent: 48,
+                      itemExtent:
+                          72 * MediaQuery.textScalerOf(context).scale(1),
                       itemCount: widget.members.length,
                       itemBuilder: (_, i) => Row(
                         children: [
-                          for (final assignment in widget.data.assignments)
+                          for (final assignment in widget.data.items)
                             _cell(
-                              gradebookCell(
+                              gradebookItemCell(
                                 widget.data,
-                                assignment['id'].toString(),
+                                assignment,
                                 widget.members[i]['student_id'].toString(),
                               ),
-                              tap: () => openGradebookGrade(
+                              tap: () => openGradebookItem(
                                 context,
                                 widget.classId,
-                                assignment['id'].toString(),
+                                widget.data,
+                                assignment,
                                 widget.members[i]['student_id'].toString(),
                               ),
                             ),

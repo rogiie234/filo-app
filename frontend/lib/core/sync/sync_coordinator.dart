@@ -2,8 +2,7 @@ import 'dart:convert';
 
 import 'package:drift/drift.dart';
 import 'package:flutter/foundation.dart';
-import 'package:supabase_flutter/supabase_flutter.dart'
-    show SupabaseClient, PostgrestException;
+import 'package:supabase_flutter/supabase_flutter.dart' show SupabaseClient;
 
 import '../../data/local/app_database.dart';
 import '../../features/classes/data/class_remote.dart';
@@ -12,6 +11,11 @@ import '../../features/drive_backup/data/drive_backup_service.dart';
 import '../../features/drive_backup/data/drive_api.dart';
 import '../../features/files/data/files_repository.dart';
 import '../../features/exams/data/exam_remote.dart';
+import '../../features/results/data/results_cache.dart';
+import '../../features/results/data/quiz_grades_repository.dart';
+import '../../features/results/data/results_remote.dart';
+import '../../features/results/data/results_failure.dart';
+import '../../features/results/data/student_results_repository.dart';
 import 'outbox_processor.dart';
 import 'sqlite_outbox.dart';
 
@@ -203,6 +207,31 @@ class SyncCoordinator extends ChangeNotifier {
         }
       }
       await _results();
+      final quizGrades = QuizGradesRepository(
+        ResultsCache(db, userId, isCurrent),
+        SupabaseResultsRemote(client, userId),
+      );
+      for (final room in await db.select(db.cacheClasses).get()) {
+        if (!isCurrent()) return;
+        if (room.deletedAt != null) continue;
+        if (room.ownerId != userId) {
+          final member =
+              await (db.select(db.cacheClassMembers)..where(
+                    (m) =>
+                        m.classId.equals(room.id) &
+                        m.studentId.equals(userId) &
+                        m.status.equals('active'),
+                  ))
+                  .getSingleOrNull();
+          if (member == null) continue;
+        }
+        try {
+          await quizGrades.refresh(room.id);
+          errors.remove('quiz_grades:${room.id}');
+        } catch (_) {
+          errors['quiz_grades:${room.id}'] = 'Could not refresh quiz grades.';
+        }
+      }
       if (snapshot || _accessChanged) {
         _lastSnapshot = errors.isEmpty ? DateTime.now() : null;
       }
@@ -506,49 +535,46 @@ class SyncCoordinator extends ChangeNotifier {
   }
 
   Future<void> _results() async {
-    for (final cached in await db.select(db.cacheResults).get()) {
-      if (!isCurrent()) {
-        return;
+    final cache = ResultsCache(db, userId, isCurrent);
+    final repository = StudentResultsRepository(
+      cache,
+      SupabaseResultsRemote(client, userId),
+      () => true,
+    );
+    final rows = await db
+        .customSelect(
+          "SELECT id FROM results_snapshots WHERE id LIKE 'student:%'",
+        )
+        .get();
+    final quizIds = rows
+        .map((row) => row.read<String>('id').substring('student:'.length))
+        .toSet();
+    // Older installations may have released rows with only catalog metadata.
+    final cachedIds = (await db.select(db.cacheResults).get())
+        .map((row) => row.sessionId)
+        .toSet();
+    for (final row
+        in await db
+            .customSelect('SELECT id,payload FROM student_quiz_catalog')
+            .get()) {
+      final payload = jsonDecode(row.read<String>('payload')) as Map;
+      if (cachedIds.contains((payload['session'] as Map?)?['session_id'])) {
+        quizIds.add(row.read<String>('id'));
       }
+    }
+    for (final quizId in quizIds) {
+      if (!isCurrent()) return;
       try {
-        final raw = await client
-            .rpc('get_result', params: {'p_session': cached.sessionId})
-            .timeout(const Duration(seconds: 20));
-        final result = Map<String, dynamic>.from(raw as Map);
-        await db
-            .into(db.cacheResults)
-            .insertOnConflictUpdate(
-              CacheResult(
-                sessionId: cached.sessionId,
-                score: result['score'] as int,
-                totalPoints: result['total_points'] as int,
-                percent: result['percent'] as int,
-                passed: result['passed'] as bool?,
-                review: result['review'] == null
-                    ? null
-                    : jsonEncode(result['review']),
-              ),
-            );
-        errors.remove('result:${cached.sessionId}');
-      } on PostgrestException catch (error) {
-        if (error.code == '42501' ||
-            error.message.contains('Session not found') ||
-            error.message.contains('not available yet')) {
-          await (db.delete(
-            db.cacheResults,
-          )..where((r) => r.sessionId.equals(cached.sessionId))).go();
-        }
-        if (error.code == '42501' ||
-            error.message.contains('Session not found') ||
-            error.message.contains('not available yet')) {
-          errors.remove('result:${cached.sessionId}');
+        await repository.refresh(quizId);
+        errors.remove('result:$quizId');
+      } on ResultsFailure catch (error) {
+        if (error.unavailable) {
+          errors.remove('result:$quizId');
         } else {
-          errors['result:${cached.sessionId}'] =
-              'Could not refresh released result.';
+          errors['result:$quizId'] = error.message;
         }
       } catch (_) {
-        errors['result:${cached.sessionId}'] =
-            'Could not refresh released result.';
+        errors['result:$quizId'] = 'Could not refresh released result.';
       }
     }
   }

@@ -66,3 +66,74 @@ job IDs/remote IDs remain intact through the table migration. Pending private
 snapshots/session keys are cleaned on local deletion with safe account paths;
 remote files remain. A previously verified session/device marker in secure
 storage permits offline cache reopening; a new/unverified session cannot use it.
+
+
+M9 schema v9 adds `results_snapshots(id,class_id,payload)` using explicit migration
+SQL for upgrades and new accounts. Its class FK cascades on class removal; a delete
+trigger removes a student snapshot's cache_results row. Upserts update snapshots
+without replacing/deleting them. Generated Drift bindings remain unchanged.
+Snapshots hold student quiz/current-session metadata, instructor monitoring/active
+members, attempt details and persistent uncertain-write markers. Student released
+scores/review stay in cache_results. Missing snapshots differ from successful empty
+lists. Changes notify the cache_results watch dependency.
+
+ResultsCache checks the verified account, role and class access before reads.
+Instructor data is owner-only and offline reads are read-only. Confirmed access loss
+evicts related snapshots; transport errors retain cache. Student refresh resolves
+get_my_session before get_result and never reads protected exam tables directly.
+Known replacements/unreleased results remove old eligibility. Background refresh
+uses the same path, including legacy catalog-associated results. Grading/release/
+second chances are never queued; unknown outcomes block further writes across
+restart until monitoring reconciliation succeeds. Missing essay answer rows remain
+visible but require a real answer ID to grade through grade_essay.
+
+Owner checks from frontend: `flutter test test/features/results` and
+`flutter test test/data/local/app_database_test.dart test/data/local/auth_database_test.dart`.
+These commands have not been run by the assistant; runtime acceptance is pending.
+
+
+M9-FE-01 owner failure correction (2026-10-25): the reported repository timeouts
+came from refresh cleanup callbacks returning their own pending future, not evidence
+of a SQLite migration failure. Both repository callbacks now return void. Mocked
+HTTP responses include their request metadata required by the installed PostgREST
+parser. The upgrade regression closes its unused setup database before opening
+another AppDatabase. Owner reported 9 passed / 18 failed before these corrections;
+the focused suite rerun and runtime acceptance remain pending. No assistant rerun.
+
+
+The next owner results rerun reported 23 passed / 5 failed. Remaining corrections
+are test-only: compare RPC record fields/maps deeply and retain provider listeners
+while awaiting initial stream data. The previous transport/refresh/migration fixes
+remain in place. No cache schema change; focused rerun and runtime acceptance pending.
+
+
+Owner evidence (2026-10-25): `flutter test test/features/results --reporter expanded`
+completed with 28 passed / 0 failed, including the v8 upgrade/cache regressions.
+This supersedes the focused-suite rerun-pending notes above. No assistant rerun;
+live DEV quiz, device/offline/write acceptance and other suites remain unverified.
+
+
+M9-FE-01 additional owner evidence (2026-10-25):
+`flutter test test/data/local/app_database_test.dart test/data/local/auth_database_test.dart`
+completed with 5 passed / 0 failed (00:07 +5: All tests passed!). Together with the
+separate results suite (28 passed / 0 failed), both requested automated checks are
+accepted on owner evidence. No assistant rerun or implementation changes. Live DEV
+quiz data with submitted/in-progress/not-started students and real device/offline/
+write acceptance remain pending; no overall task or Q9-Q12 UI acceptance is inferred.
+
+
+## M9-FE-02 through M9-FE-06 implementation (2026-10-25)
+
+Student quiz details now link to cached released results with server-controlled review/pass state. Instructor Classwork exposes Results for published quizzes; closed quizzes open Results on tap and retain Edit in the menu. Monitoring includes active-roster summaries, provisional averages, search, filters, sorts, leaves and history. Attempt detail supports confirmed essay saves, existing score overrides, dirty-form navigation and read-only previous attempts. Release and second-chance confirmations require a connection; closing extension updates only closes_at in Philippine time. Unknown write outcomes require refresh before retry and are never queued. Blank/missing essays display No answer and zero without fabricating/saving answer rows.
+
+Class sync caches authorized published quiz grades in results_snapshots (`grades:<class>`). Student totals include returned assignments and released current graded quizzes; instructor totals include saved assignment marks and current grading-complete quizzes. Monitoring averages separately include provisional current submitted attempts. An instructor must first load the existing assignment Gradebook snapshot online before opening that screen offline. No new schema/dependencies for this UI increment.
+
+M9-FE-07 quiz-specific CSV and dark mode remain deferred. Existing Gradebook export follows its displayed mixed totals. Maintained tests cover calculations, roster filters/sorts, offline/enlarged-text rendering, override RPC parameters and closing validation. Tests, analysis, builds and live/device checks were not run; owner acceptance remains pending, including DEV availability of the existing override_points migration.
+
+
+M9 results owner compile correction (2026-10-25): owner suite reported 30 passed with screen-suite compilation blocked by releasedLine receiving QuizMonitoring. Corrected the sole caller to pass data.quiz, matching its ResultJson signature. Existing instructor screen test checks the unreleased line. No assistant tests, analysis, builds or runtime checks; owner rerun pending.
+
+
+## M9 results owner acceptance - 2026-10-25
+
+Owner reported `flutter test test/features/results`: 36 passed, All tests passed, then explicitly approved all runtime checks. M9-FE-02 through M9-FE-06 runtime acceptance is recorded on owner evidence, including the requested results, grading, release/second-chance, offline and mixed-grade flows. This supersedes earlier pending labels for these tasks; no independent assistant verification is claimed. M9-FE-07 quiz-specific CSV and dark mode remain deferred. No production changes or new testing materials in this acceptance task.

@@ -48,12 +48,14 @@ class AssessmentRow extends StatelessWidget {
     required this.now,
     required this.onOpen,
     this.onDelete,
+    this.onResults,
+    this.onEdit,
     this.busy = false,
   });
   final InstructorQuizSummary quiz;
   final DateTime now;
   final VoidCallback onOpen;
-  final VoidCallback? onDelete;
+  final VoidCallback? onDelete, onResults, onEdit;
   final bool busy;
   @override
   Widget build(BuildContext context) {
@@ -126,7 +128,7 @@ class AssessmentRow extends StatelessWidget {
               ),
             ),
           ),
-          if (onDelete != null || busy)
+          if (onDelete != null || onResults != null || onEdit != null || busy)
             Align(
               alignment: Alignment.centerRight,
               child: busy
@@ -137,13 +139,30 @@ class AssessmentRow extends StatelessWidget {
                   : PopupMenuButton<String>(
                       tooltip: 'Assessment options',
                       icon: const FiloIcon(FiloIcons.more),
-                      onSelected: (_) => onDelete!(),
+                      onSelected: (action) => action == 'results'
+                          ? onResults?.call()
+                          : action == 'edit'
+                          ? onEdit?.call()
+                          : onDelete?.call(),
                       itemBuilder: (_) => [
-                        const PopupMenuItem(
-                          value: 'delete',
-                          height: 48,
-                          child: Text('Delete'),
-                        ),
+                        if (onEdit != null)
+                          const PopupMenuItem(
+                            value: 'edit',
+                            height: 48,
+                            child: Text('Edit'),
+                          ),
+                        if (onResults != null)
+                          const PopupMenuItem(
+                            value: 'results',
+                            height: 48,
+                            child: Text('Results'),
+                          ),
+                        if (onDelete != null)
+                          const PopupMenuItem(
+                            value: 'delete',
+                            height: 48,
+                            child: Text('Delete'),
+                          ),
                       ],
                     ),
             ),

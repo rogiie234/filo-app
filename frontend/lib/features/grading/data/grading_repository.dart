@@ -7,6 +7,9 @@ import 'package:supabase_flutter/supabase_flutter.dart'
 import '../../../data/local/app_database.dart';
 import '../../submissions/data/submission_repository.dart';
 import '../domain/grading_models.dart';
+import '../../results/data/results_cache.dart';
+import '../../results/data/results_remote.dart';
+import '../../results/data/quiz_grades_repository.dart';
 
 class GradingRepository {
   GradingRepository(this.studentRepository, {required this.isOnline});
@@ -30,6 +33,8 @@ class GradingRepository {
           db.cacheSubmissions,
           db.cacheGrades,
           db.syncState,
+          db.cacheResults,
+          db.cacheQuizzes,
         },
       )
       .watch()
@@ -43,6 +48,14 @@ class GradingRepository {
     if (room == null) {
       return GradingData(userId: userId);
     }
+    final quizCache = QuizGradesRepository(
+      ResultsCache(db, userId, () => client.auth.currentUser?.id == userId),
+      SupabaseResultsRemote(client, userId),
+    );
+    final quizData = await quizCache.read(
+      classId,
+      instructor: room.ownerId == userId,
+    );
     if (room.ownerId == userId) {
       final row = await db
           .customSelect(
@@ -63,7 +76,12 @@ class GradingRepository {
       if (jsonEncode(data.toJson()) != payload) {
         await _store(classId, data);
       }
-      return data;
+      return GradingData.fromJson({
+        ...data.toJson(),
+        'quizzes': quizData?['quizzes'] ?? [],
+        'quiz_attempts': quizData?['quiz_attempts'] ?? [],
+        'quizzes_loaded': quizData != null,
+      }, userId);
     }
     final membership =
         await (db.select(db.cacheClassMembers)..where(
@@ -105,6 +123,13 @@ class GradingRepository {
     return GradingData(
       userId: userId,
       loaded: checkpoint != null,
+      quizzes: (quizData?['quizzes'] as List? ?? [])
+          .map((q) => Json.from(q as Map))
+          .toList(),
+      quizAttempts: (quizData?['quiz_attempts'] as List? ?? [])
+          .map((q) => Json.from(q as Map))
+          .toList(),
+      quizzesLoaded: quizData != null,
       assignments: posts
           .map(
             (p) => <String, dynamic>{
@@ -199,6 +224,10 @@ class GradingRepository {
     if (room.ownerId != userId) {
       await _clear(classId);
       await studentRepository.sync(classId);
+      await QuizGradesRepository(
+        ResultsCache(db, userId, () => client.auth.currentUser?.id == userId),
+        SupabaseResultsRemote(client, userId),
+      ).refresh(classId);
       return;
     }
     final members = await _pages('student_id', (after) {
@@ -305,6 +334,10 @@ class GradingRepository {
         grades: grades,
       ),
     );
+    await QuizGradesRepository(
+      ResultsCache(db, userId, () => client.auth.currentUser?.id == userId),
+      SupabaseResultsRemote(client, userId),
+    ).refresh(classId);
     _uncertain.remove(classId);
   }
 

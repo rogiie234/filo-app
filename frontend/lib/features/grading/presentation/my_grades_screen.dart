@@ -7,6 +7,8 @@ import '../../../core/connectivity/connectivity_provider.dart';
 import '../../../core/supabase/supabase_provider.dart';
 import '../application/grading_providers.dart';
 import 'gradebook_screen.dart';
+import '../../results/presentation/results_widgets.dart';
+import '../../results/presentation/student_results_screen.dart';
 
 class MyGradesScreen extends ConsumerStatefulWidget {
   const MyGradesScreen({super.key, required this.classId});
@@ -108,15 +110,96 @@ class _MyGradesScreenState extends ConsumerState<MyGradesScreen> {
                                         .textTheme
                                         .headlineMedium,
                                   ),
-                                  const Text('Returned grades only'),
+                                  const Text(
+                                    'Returned assignments and released quizzes only',
+                                  ),
                                 ],
                               ),
                             ),
                           ),
-                          if (!hasReturned)
+                          if (!data.quizzesLoaded)
+                            const Text(
+                              'Quiz scores have not finished syncing. Refresh when connected.',
+                            ),
+                          if (!hasReturned &&
+                              !data.quizzes.any(
+                                (q) =>
+                                    q['results_released_at'] != null &&
+                                    data.quizAttempt(
+                                          q['id'] as String,
+                                          userId,
+                                        )?['total_score'] !=
+                                        null,
+                              ))
                             const Padding(
                               padding: EdgeInsets.all(20),
                               child: Text('No grades yet.'),
+                            ),
+                          for (final quiz in data.quizzes)
+                            Builder(
+                              builder: (_) {
+                                final attempt = data.quizAttempt(
+                                  quiz['id'] as String,
+                                  userId,
+                                );
+                                final released =
+                                    quiz['results_released_at'] != null;
+                                final passed =
+                                    released && quiz['passing_percent'] != null
+                                    ? (attempt?['passed'] as bool?)
+                                    : null;
+                                return Card(
+                                  child: Padding(
+                                    padding: const EdgeInsets.all(16),
+                                    child: Column(
+                                      crossAxisAlignment:
+                                          CrossAxisAlignment.start,
+                                      children: [
+                                        Text(
+                                          quiz['title'] as String,
+                                          style: Theme.of(context)
+                                              .textTheme
+                                              .titleMedium,
+                                        ),
+                                        Text(
+                                          data.quizStatus(
+                                            quiz,
+                                            userId,
+                                            student: true,
+                                          ),
+                                        ),
+                                        Text(
+                                          data.quizCell(
+                                            quiz,
+                                            userId,
+                                            student: true,
+                                          ),
+                                        ),
+                                        if (passed != null)
+                                          ResultStatusChip(
+                                            passed ? 'Passed' : 'Not passed',
+                                          ),
+                                        if (released &&
+                                            attempt?['total_score'] != null)
+                                          TextButton(
+                                            onPressed: () =>
+                                                Navigator.of(context).push(
+                                                  MaterialPageRoute<void>(
+                                                    builder: (_) =>
+                                                        StudentResultsScreen(
+                                                          quizId:
+                                                              quiz['id']
+                                                                  as String,
+                                                        ),
+                                                  ),
+                                                ),
+                                            child: const Text('View results'),
+                                          ),
+                                      ],
+                                    ),
+                                  ),
+                                );
+                              },
                             ),
                           for (final assignment in data.assignments)
                             Builder(
