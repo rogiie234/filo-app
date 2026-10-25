@@ -1,7 +1,7 @@
--- M9-BE-01. DEV ONLY: fiobwfzmqcffbpixzvbq, SQL Editor, postgres role.
+-- M9-BE-01 / M9-BE-02. DEV ONLY: fiobwfzmqcffbpixzvbq, SQL Editor, postgres role.
 -- Run the WHOLE file after repository migrations through 20261024100000.
 -- Any FAIL or uncaught error means failure. On abort run ROLLBACK separately.
--- Synthetic fixtures only; no global worker, trigger disabling, or committed data.
+-- Synthetic rollback fixtures; guarded global worker; no trigger disabling or committed data.
 begin;
 set local search_path = public;
 select set_config('request.jwt.claims','{}',true);
@@ -313,7 +313,7 @@ begin
       and graded_by=pg_temp.m9_id('u2') from exam_answers where id=aid),'auto-submitted saved grade '||n);
     perform pg_temp.m9_assert((select auto_score=6 and essay_score=(n-3)*2 and total_score=6+(n-3)*2
       and grading_complete=(n=5) from exam_sessions where id=sid),'auto-submitted totals/completion '||n);
-    perform pg_temp.m9_assert((select (results_released_at is not null)=(n=5) from quizzes where id=q),
+    perform pg_temp.m9_assert((select case when n=5 then results_released_at=now() else results_released_at is null end from quizzes where id=q),
       'automatic release only after last grade '||n);
   end loop;
   perform pg_temp.m9_call(format('select to_jsonb(release_results(%L))',q),'manual release after automatic release');
@@ -343,6 +343,223 @@ begin
       end loop;
     end loop;
   end loop;
+end $$;
+
+
+-- M9-BE-02: independent release/retake fixtures, sharing verified identities only.
+create function pg_temp.m9_rule_quiz(label text) returns uuid language plpgsql as $$
+declare c uuid:=gen_random_uuid(); q uuid:=gen_random_uuid(); qu uuid:=gen_random_uuid();
+  previous_claims text:=current_setting('request.jwt.claims',true);
+begin
+  -- Content guards check JWT ownership even during privileged fixture setup.
+  perform pg_temp.m9_actor(1);
+  insert into classes(id,owner_id,course,section,school_year)
+    values(c,pg_temp.m9_id('u1'),'M9-BE-02 fixture',label,'2026-2027');
+  insert into class_members(class_id,student_id,status) values
+    (c,pg_temp.m9_id('u3'),'active'),(c,pg_temp.m9_id('u4'),'pending'),
+    (c,pg_temp.m9_id('u5'),'removed'),(c,pg_temp.m9_id('u6'),'active');
+  insert into quizzes(id,class_id,author_id,title,opens_at,closes_at,time_limit_minutes)
+    values(q,c,pg_temp.m9_id('u1'),label,now()-interval '1 hour',now()+interval '2 hours',30);
+  insert into questions(id,quiz_id,position,type,prompt,points) values(qu,q,1,'essay','Explain',2);
+  update quizzes set status='published',published_at=now() where id=q;
+  perform set_config('request.jwt.claims',coalesce(previous_claims,'{}'),true);
+  return q;
+end $$;
+
+create function pg_temp.m9_rule_attempt(q uuid, actor integer, state session_status,
+  complete boolean default true) returns uuid language plpgsql as $$
+declare sid uuid:=gen_random_uuid(); qu uuid;
+begin
+  select id into qu from questions where quiz_id=q;
+  insert into exam_sessions(id,quiz_id,student_id,status,deadline_at,submitted_at,question_order,grading_complete)
+    values(sid,q,pg_temp.m9_id('u'||actor),state,now()+interval '5 minutes',
+      case when state in ('submitted','auto_submitted') then now() end,array[qu],complete);
+  insert into exam_answers(session_id,question_id,text_answer,points_awarded,graded_by)
+    values(sid,qu,'Original essay',case when complete then 2 end,
+      case when complete then pg_temp.m9_id('u1') end);
+  return sid;
+end $$;
+
+create function pg_temp.m9_rule_snapshot(q uuid) returns jsonb language sql as $$
+  select jsonb_build_object('quiz',(select to_jsonb(z) from quizzes z where id=q),
+    'sessions',(select jsonb_agg(to_jsonb(s) order by id) from exam_sessions s where quiz_id=q),
+    'answers',(select jsonb_agg(to_jsonb(a) order by a.id) from exam_answers a
+      join exam_sessions s on s.id=a.session_id where s.quiz_id=q),
+    'audit',(select jsonb_agg(to_jsonb(c) order by id) from second_chances c where quiz_id=q),
+    'inbox',(select jsonb_agg(to_jsonb(n) order by id) from notifications n where target_id=q))
+$$;
+
+-- Automatic release: open-roster completion, closed nonparticipants, and voided history.
+do $$
+declare q uuid; sid uuid; before_state jsonb; released boolean;
+begin
+  perform pg_temp.m9_actor(2);
+  q:=pg_temp.m9_rule_quiz('M9B automatic active roster');
+  perform pg_temp.m9_assert(auth.uid()=pg_temp.m9_id('u2'),
+    'M9B fixture construction restores foreign instructor claims');
+  sid:=pg_temp.m9_rule_attempt(q,3,'submitted');
+  released:=maybe_release_results(q);
+  perform pg_temp.m9_assert(not released and (select results_released_at is null from quizzes where id=q),
+    'M9B open quiz active not-started blocks release');
+  perform pg_temp.m9_rule_attempt(q,6,'voided');
+  released:=maybe_release_results(q);
+  perform pg_temp.m9_assert(not released and (select results_released_at is null from quizzes where id=q),
+    'M9B voided attempt counts as not submitted');
+  perform pg_temp.m9_rule_attempt(q,6,'auto_submitted');
+  released:=maybe_release_results(q);
+  perform pg_temp.m9_assert(released and (select results_released_at=now() and closes_at>now() from quizzes where id=q),
+    'M9B all active submitted and graded releases while open ignoring pending and removed');
+  perform pg_temp.m9_assert((select count(*)=2 and count(distinct recipient_id)=2
+    and bool_and(recipient_id in(pg_temp.m9_id('u3'),pg_temp.m9_id('u6')))
+    from notifications where target_id=q and type='results_released'),
+    'M9B automatic inbox only active submitted attempts, no voided duplicate');
+  before_state:=pg_temp.m9_rule_snapshot(q);
+  released:=maybe_release_results(q);
+  perform pg_temp.m9_assert(not released and before_state=pg_temp.m9_rule_snapshot(q),
+    'M9B repeat automatic release preserves complete snapshot');
+
+  q:=pg_temp.m9_rule_quiz('M9B closed nonparticipants');
+  perform pg_temp.m9_rule_attempt(q,3,'submitted');
+  update quizzes set closes_at=now() where id=q;
+  released:=maybe_release_results(q);
+  perform pg_temp.m9_assert(released and (select results_released_at=now() from quizzes where id=q),
+    'M9B closed quiz releases despite active not-started student');
+  perform pg_temp.m9_assert((select count(*)=1 and bool_and(recipient_id=pg_temp.m9_id('u3'))
+    from notifications where target_id=q and type='results_released'),'M9B closed release inbox excludes nonparticipants');
+end $$;
+
+-- Manual release refuses without changing quiz, sessions, answers, audit or inbox.
+do $$
+declare row record; q uuid; sid uuid; before_state jsonb;
+begin
+  for row in select * from (values
+    ('foreign instructor',2,'Not allowed'),('student',3,'Not allowed'),
+    ('in progress',1,'Some students are still taking this quiz'),
+    ('ungraded essay',1,'Grade all essay answers first'),
+    ('before opening',1,'This quiz has not opened yet')
+  ) v(label,actor,message) loop
+    q:=pg_temp.m9_rule_quiz('M9B manual '||row.label);
+    sid:=pg_temp.m9_rule_attempt(q,3,
+      case when row.label='in progress' then 'in_progress'::session_status else 'submitted' end,
+      row.label<>'ungraded essay');
+    if row.label='before opening' then update quizzes set opens_at=now()+interval '1 hour' where id=q; end if;
+    before_state:=pg_temp.m9_rule_snapshot(q);
+    perform pg_temp.m9_actor(row.actor);
+    perform pg_temp.m9_call(format('select to_jsonb(release_results(%L))',q),
+      'M9B manual refusal '||row.label,'P0001',row.message);
+    perform pg_temp.m9_assert(before_state=pg_temp.m9_rule_snapshot(q),'M9B manual refusal unchanged '||row.label);
+  end loop;
+  q:=pg_temp.m9_rule_quiz('M9B manual success');
+  perform pg_temp.m9_rule_attempt(q,3,'submitted');
+  perform pg_temp.m9_actor(1);
+  perform pg_temp.m9_call(format('select to_jsonb(release_results(%L))',q),'M9B normal manual release');
+  perform pg_temp.m9_assert((select results_released_at=now() and closes_at=now() from quizzes where id=q),
+    'M9B early manual release closes exactly now');
+  before_state:=pg_temp.m9_rule_snapshot(q);
+  perform pg_temp.m9_call(format('select to_jsonb(release_results(%L))',q),'M9B manual release twice');
+  perform pg_temp.m9_assert(before_state=pg_temp.m9_rule_snapshot(q),'M9B manual twice changes nothing');
+  perform pg_temp.m9_actor(6);
+  perform pg_temp.m9_call(format('select to_jsonb(start_exam(%L))',q),'M9B never-started student after release',
+    'P0001','This quiz has closed');
+  perform pg_temp.m9_assert(before_state=pg_temp.m9_rule_snapshot(q),'M9B refused start after release unchanged');
+end $$;
+
+-- Second-chance refusals, including whitespace-trimmed validation and caller checks.
+do $$
+declare row record; q uuid; sid uuid; before_state jsonb;
+begin
+  for row in select * from (values
+    ('short reason',1,'  123456789  ','Please give a reason of at least 10 characters'),
+    ('foreign instructor',2,'Phone failure confirmed','Not allowed'),
+    ('student caller',3,'Phone failure confirmed','Not allowed'),
+    ('no attempt',1,'Phone failure confirmed','This student has no attempt to reset'),
+    ('released',1,'Phone failure confirmed','Results are already released. Create a new quiz instead.'),
+    ('closed',1,'Phone failure confirmed','Extend the closing time first so the student can retake it')
+  ) v(label,actor,reason,message) loop
+    q:=pg_temp.m9_rule_quiz('M9B chance '||row.label);
+    if row.label<>'no attempt' then sid:=pg_temp.m9_rule_attempt(q,3,'submitted'); end if;
+    if row.label='released' then update quizzes set results_released_at=now() where id=q; end if;
+    if row.label='closed' then update quizzes set closes_at=now() where id=q; end if;
+    before_state:=pg_temp.m9_rule_snapshot(q);
+    perform pg_temp.m9_actor(row.actor);
+    perform pg_temp.m9_call(format('select to_jsonb(grant_second_chance(%L,%L,%L,%L))',
+      q,pg_temp.m9_id('u3'),row.reason,'Showed phone in person'),
+      'M9B chance refusal '||row.label,'P0001',row.message);
+    perform pg_temp.m9_assert(before_state=pg_temp.m9_rule_snapshot(q),'M9B chance refusal unchanged '||row.label);
+  end loop;
+end $$;
+
+-- Retake from either state: preserve history, hide it, then create fresh attempt 2.
+do $$
+declare n integer; q uuid; old_id uuid; new_id uuid; r jsonb; old_answers jsonb; released boolean;
+begin
+  for n in 1..2 loop
+    q:=pg_temp.m9_rule_quiz('M9B valid chance '||n);
+    if n=2 then update quizzes set closes_at=now()+interval '10 minutes' where id=q; end if;
+    old_id:=pg_temp.m9_rule_attempt(q,3,case n when 1 then 'in_progress'::session_status else 'submitted' end);
+    perform pg_temp.m9_rule_attempt(q,6,'submitted');
+    select jsonb_agg(to_jsonb(a) order by id) into old_answers from exam_answers a where session_id=old_id;
+    perform pg_temp.m9_actor(1);
+    perform pg_temp.m9_call(format('select to_jsonb(grant_second_chance(%L,%L,%L,%L))',
+      q,pg_temp.m9_id('u3'),'  Phone failure confirmed  ','Showed phone in person'), 'M9B valid chance '||n);
+    perform pg_temp.m9_assert((select status='voided' from exam_sessions where id=old_id)
+      and old_answers=(select jsonb_agg(to_jsonb(a) order by id) from exam_answers a where session_id=old_id),
+      'M9B archived attempt and answers retained '||n);
+    perform pg_temp.m9_assert((select count(*)=1 and bool_and(previous_session_id=old_id
+      and student_id=pg_temp.m9_id('u3') and granted_by=pg_temp.m9_id('u1')
+      and reason='Phone failure confirmed' and proof_note='Showed phone in person' and created_at=now())
+      from second_chances where quiz_id=q),'M9B complete second-chance audit '||n);
+    perform pg_temp.m9_assert((select count(*)=1 and bool_and(recipient_id=pg_temp.m9_id('u3')
+      and title='Another attempt granted' and body='Your instructor allowed you another attempt at M9B valid chance '||n
+      and target_type='quiz' and class_id=(select class_id from quizzes where id=q))
+      from notifications where target_id=q and type='second_chance'),'M9B second-chance inbox '||n);
+    released:=maybe_release_results(q);
+    perform pg_temp.m9_assert(not released and (select results_released_at is null from quizzes where id=q),
+      'M9B voiding previously submitted attempt blocks open release '||n);
+    perform pg_temp.m9_actor(3);
+    r:=pg_temp.m9_call(format('select get_my_session(%L)',q),'M9B metadata after void '||n);
+    perform pg_temp.m9_assert(r is null,'M9B voided metadata hidden before restart '||n);
+    r:=pg_temp.m9_call(format('select to_jsonb(start_exam(%L))',q),'M9B start retake '||n);
+    new_id:=(r->>'id')::uuid;
+    perform pg_temp.m9_assert(new_id<>old_id and (select attempt_no=2 and status='in_progress'
+      and started_at=now() and deadline_at=least(now()+interval '30 minutes',
+        (select closes_at from quizzes where id=q)) and deadline_at>now()+interval '5 minutes'
+      and auto_score=0 and essay_score=0 and not grading_complete and submitted_at is null
+      from exam_sessions where id=new_id) and not exists(select 1 from exam_answers where session_id=new_id),
+      'M9B attempt 2 fresh empty state and correct deadline '||n);
+    r:=pg_temp.m9_call(format('select get_my_session(%L)',q),'M9B retake metadata '||n);
+    perform pg_temp.m9_assert(r->>'session_id'=new_id::text and r->'attempt_no'='2'::jsonb
+      and not (r ? 'score') and (select status='voided' from exam_sessions where id=old_id),
+      'M9B metadata exposes replacement only '||n);
+  end loop;
+end $$;
+
+-- Exercise the real worker deterministically, never touching unrelated expired attempts.
+do $$
+declare q uuid; sid uuid; released boolean; before_state jsonb;
+begin
+  q:=pg_temp.m9_rule_quiz('M9B worker release');
+  sid:=pg_temp.m9_rule_attempt(q,3,'in_progress',false);
+  update quizzes set closes_at=now() where id=q;
+  released:=maybe_release_results(q);
+  perform pg_temp.m9_assert(not released and (select results_released_at is null from quizzes where id=q),
+    'M9B in-progress attempt blocks even closed quiz');
+  if exists(select 1 from exam_sessions where status='in_progress'
+    and deadline_at+interval '15 seconds'<now() and id<>sid) then
+    raise exception 'Unrelated overdue DEV attempts exist. ROLLBACK and resolve separately; do not remove this worker guard';
+  end if;
+  update exam_sessions set deadline_at=now()-interval '16 seconds' where id=sid;
+  -- An unanswered essay permits worker completion; grading release is covered above.
+  delete from exam_answers where session_id=sid;
+  perform finalize_expired_sessions();
+  perform pg_temp.m9_assert((select status='auto_submitted' and submitted_at=deadline_at
+    and grading_complete from exam_sessions where id=sid),'M9B worker finalizes overdue attempt');
+  perform pg_temp.m9_assert((select results_released_at=now() from quizzes where id=q)
+    and (select count(*)=1 and bool_and(recipient_id=pg_temp.m9_id('u3')) from notifications
+      where target_id=q and type='results_released'),'M9B worker releases and notifies after finalization');
+  before_state:=pg_temp.m9_rule_snapshot(q);
+  perform finalize_expired_sessions();
+  perform pg_temp.m9_assert(before_state=pg_temp.m9_rule_snapshot(q),'M9B repeated worker preserves release and inbox');
 end $$;
 
 select step,test,result,detail from m9_results order by step;
