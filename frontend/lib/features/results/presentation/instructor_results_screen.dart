@@ -1,12 +1,16 @@
 import 'dart:async';
+import 'dart:io';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:path_provider/path_provider.dart';
+import 'package:share_plus/share_plus.dart';
 
 import '../../../core/connectivity/connectivity_provider.dart';
 import '../../../core/widgets/filo_widgets.dart';
 import '../application/results_providers.dart';
 import '../domain/results.dart';
+import '../domain/results_csv.dart';
 import 'attempt_detail_screen.dart';
 import 'results_actions.dart';
 import 'results_widgets.dart';
@@ -23,6 +27,7 @@ class _InstructorResultsScreenState
     extends ConsumerState<InstructorResultsScreen> {
   String _search = '', _filter = 'All', _sort = 'Name';
   bool _busy = false;
+  bool _exporting = false;
   Timer? _timer;
   AppLifecycleListener? _lifecycle;
   @override
@@ -59,6 +64,50 @@ class _InstructorResultsScreenState
     }
   }
 
+  Future<void> _export(QuizMonitoring data, List<ResultJson> rows) async {
+    if (_exporting || rows.isEmpty) return;
+    setState(() => _exporting = true);
+    Directory? directory;
+    try {
+      // Capture the displayed snapshot before awaiting platform operations.
+      final csv = resultsCsv(data, rows);
+      final title = data.quiz['title'] as String? ?? 'Quiz';
+      final filename = resultsCsvFilename(title, DateTime.now().toUtc());
+      final temporary = await getTemporaryDirectory();
+      directory = await temporary.createTemp('filo-results-');
+      final file = File('${directory.path}/$filename');
+      await file.writeAsString(csv, flush: true);
+      if (!mounted) return;
+      final current = ref
+          .read(quizMonitoringProvider(widget.quizId))
+          .asData
+          ?.value
+          .data;
+      if (current == null) return;
+      final box = context.findRenderObject() as RenderBox?;
+      await SharePlus.instance.share(
+        ShareParams(
+          files: [XFile(file.path, mimeType: 'text/csv')],
+          subject: 'Quiz results · $title',
+          sharePositionOrigin: box == null
+              ? null
+              : box.localToGlobal(Offset.zero) & box.size,
+        ),
+      );
+    } catch (_) {
+      if (mounted) showMessage(context, "Couldn't export results. Try again.");
+    } finally {
+      if (directory != null) {
+        try {
+          await directory.delete(recursive: true);
+        } catch (_) {
+          // The platform may retain the shared file handle temporarily.
+        }
+      }
+      if (mounted) setState(() => _exporting = false);
+    }
+  }
+
   void _open(ResultSession session) => Navigator.of(context).push(
     MaterialPageRoute<void>(
       builder: (_) =>
@@ -82,7 +131,25 @@ class _InstructorResultsScreenState
             sort: _sort,
           );
     return Scaffold(
-      appBar: AppBar(title: Text('${data?.quiz['title'] ?? 'Quiz results'}')),
+      appBar: AppBar(
+        title: Text('${data?.quiz['title'] ?? 'Quiz results'}'),
+        actions: [
+          PopupMenuButton<String>(
+            tooltip: 'Results options',
+            onSelected: (_) {
+              if (data != null) unawaited(_export(data, rows));
+            },
+            itemBuilder: (_) => [
+              PopupMenuItem(
+                value: 'csv',
+                height: 48,
+                enabled: data != null && rows.isNotEmpty && !_exporting,
+                child: Text(_exporting ? 'Exporting...' : 'Export CSV'),
+              ),
+            ],
+          ),
+        ],
+      ),
       body: SafeArea(
         child: ResultsListBody(
           onRefresh: _refresh,
