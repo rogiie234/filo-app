@@ -240,3 +240,52 @@ Owner supplied HOLD PASS then unattended PASS on 2026-10-25: reserved session 8b
 ### M9-BE-03 complete - owner cleanup accepted
 
 M9-BE-03 COMPLETE for requested backend DEV scope on owner evidence (2026-10-25): migration 20261024110000 applied successfully; results SQL 249 PASS / 0 FAIL, overall PASS, failures []; unattended HOLD PASS before eligibility followed by release PASS 44.292241 seconds after eligibility with successful cron and correct unique inbox; guarded cleanup fixtures_removed=true. Supersedes all earlier pending migration/SQL/cron/cleanup statements for this task. No repeat checks needed absent a change or defect; no assistant test/SQL/live execution or independent remote verification, broader frontend/device/offline/concurrency acceptance not inferred.
+
+
+## M9-BE-04 score override - prepared 2026-10-25
+
+Owner explicitly confirmed M9-SA-01 acceptance for score overrides. New migration
+`20261025100000_exam_score_override.sql`; DEV application and owner acceptance pending.
+
+- RPC: `override_points(p_session uuid, p_question uuid, p_points integer, p_feedback text default null) returns void`.
+  Supabase payload keys are `p_session`, `p_question`, `p_points`, `p_feedback`.
+- Requires a verified authenticated class owner; other instructors, students and anonymous callers cannot override.
+  Existing class write guards continue to reject archived/inaccessible classes.
+- Session must be submitted or auto_submitted; voided/in-progress attempts are refused.
+  The question must belong to the session's quiz. All four question types are supported.
+- Points are non-null integers from zero through question.points. Fractional input is invalid for the integer RPC
+  parameter; callers must not round/cast fractions before sending them. SQL numeric-to-integer casts can round
+  before this function is invoked and cannot preserve the original fractional input.
+- Feedback is nullable, at most 2000 characters; oversized feedback is rejected (unlike grade_essay's existing truncation).
+  Omitting feedback clears it. Validation failures roll back the whole call.
+- Upserts an unanswered question, or updates only points_awarded, is_correct, feedback, graded_by and updated_at
+  on an existing answer. Student response fields and answered_at are preserved on updates. For a newly created
+  answer, response fields remain null and answered_at uses the existing insertion default; it is not proof of student input.
+  graded_by records auth.uid(); is_correct is true exactly at full points, including essays.
+- Recalculates auto_score/essay_score/generated total_score and grading_complete, then checks existing release
+  eligibility. The accepted 10-minute wait is unchanged; already-released results show the corrected total without
+  another release notification. Retrying an identical request preserves one answer and the same score.
+- grade_session skips answers with graded_by set, retaining automatic grading for all other non-essay answers.
+  override_points, grade_session and grade_essay lock the session before answer writes/recalculation. Existing
+  grade_essay signature, permissions, feedback truncation and null is_correct behavior remain unchanged.
+- No new columns, UI, audit history, result notification type or scheduler. Latest manual grade wins; an explicit
+  later grade_essay call can replace an essay override. Maintained coverage: backend/tests/exam_results.sql (M9D).
+
+No assistant tests, SQL execution, live verification, analysis or builds. DEV migration/runtime/concurrency acceptance pending owner checks.
+
+
+### M9-BE-04 owner-reported SQL PASS - 2026-10-25
+
+Owner supplied results summary: passed=299, failed=0, overall=PASS, failures=[]. Records owner-reported SQL regression acceptance for the updated maintained exam_results.sql, including M9D override cases. Supersedes SQL-run-pending wording above; no passing SQL rerun requested absent a new change or defect. Migration application/ledger confirmation, separate two-connection concurrency and fractional JSON/transport-retry checks have not been supplied; overall task acceptance remains pending those owner checks. No assistant tests, SQL, live verification, static analysis or builds, and no frontend/offline acceptance inferred.
+
+
+### M9-BE-04 owner migration ledger confirmed - 2026-10-25
+
+Owner supplied successful `npx.cmd supabase migration list --linked` output showing local and remote versions matched through 20261025100000 (2026-10-25 10:00:00 UTC), including all prior listed migrations. Records owner-supplied linked migration ledger evidence for the score override migration; no assistant remote inspection. Together with SQL299PASS/0FAIL overallPASS failures[], migration and maintained SQL acceptance are recorded. Separate two-connection concurrency and fractional JSON/transport-retry evidence remain pending; do not rerun the passing SQL suite absent a change or defect. No assistant tests, SQL, live checks, analysis/builds or Git mutations.
+
+
+### M9-BE-04 COMPLETE - owner DEV evidence, 2026-10-25
+
+Requested backend DEV scope accepted on owner evidence: linked migration ledger matched through 20261025100000; maintained results SQL299PASS/0FAIL overallPASS failures[]; override-first grading call elapsed19.09s and reverse-order override elapsed19.03s, consistent with session serialization. Both orderings retained points1/is_correct=false, the owning instructor graded_by and correct feedback; auto_score1/essay_score0/total_score1 matched independent sums. Owner showed both identical valid HTTP calls succeeded; subsequent fractional JSON p_points1.5 returned HTTP400, followed by answer points1/is_correct=false/feedback HTTP retry check and unchanged total1. The HTTP response body was empty, so no exact SQLSTATE/error-message attribution is claimed. Repeated HTTP calls prove identical retry behavior, not an independently observed dropped response. Supersedes prior pending migration/SQL/concurrency/HTTP acceptance wording for requested scope; do not rerun passing checks absent a change or defect.
+
+No assistant tests/SQL/live verification/static analysis/builds. No frontend override UI/offline integration, broader load/concurrency or independent remote inspection claimed. No disposable materials created, staged, committed or pushed; owner-created app test attempt is retained without deletion. Background Schema and decisions remain ignored local docs; Graphify artifacts are outside app Git, and prior canonical semantic-source blockers remain.

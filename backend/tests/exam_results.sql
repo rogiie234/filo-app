@@ -1,5 +1,5 @@
--- M9-BE-01 / M9-BE-02 / M9-BE-03. DEV ONLY: fiobwfzmqcffbpixzvbq, SQL Editor, postgres role.
--- Run the WHOLE file after repository migrations through 20261024110000.
+-- M9-BE-01 / M9-BE-02 / M9-BE-03 / M9-BE-04. DEV ONLY: fiobwfzmqcffbpixzvbq, SQL Editor, postgres role.
+-- Run the WHOLE file after repository migrations through 20261025100000.
 -- Any FAIL or uncaught error means failure. On abort run ROLLBACK separately.
 -- Synthetic rollback fixtures; guarded global worker; no trigger disabling or committed data.
 begin;
@@ -594,6 +594,126 @@ begin
   update quizzes set closes_at=now() where id=q;
   released:=maybe_release_results(q);
   perform pg_temp.m9_assert(released,'M9C closing bypasses missing timestamp wait');
+end $$;
+
+-- M9-BE-04: overrides reuse existing identities; no committed fixtures.
+do $$
+declare r record; sid uuid:=pg_temp.m9_id('s2'); qu uuid; snapshot jsonb; after_snapshot jsonb;
+  response jsonb; q uuid; snew uuid; n integer; before_release timestamptz; inbox bigint;
+begin
+  perform pg_temp.m9_assert(not has_function_privilege('anon',
+    'public.override_points(uuid,uuid,integer,text)','EXECUTE'), 'M9D anonymous execution denied');
+  perform pg_temp.m9_actor(1);
+  -- The auto-submitted attempt has no answer rows: every type must support upsert.
+  for n in 1..4 loop
+    qu:=pg_temp.m9_id('qu1_'||n);
+    perform pg_temp.m9_call(format('select to_jsonb(override_points(%L,%L,1,%L))',sid,qu,'Correction'),
+      'M9D override unanswered type '||n);
+    perform pg_temp.m9_assert((select count(*)=1 and bool_and(points_awarded=1 and not is_correct
+      and feedback='Correction' and graded_by=pg_temp.m9_id('u1') and option_id is null
+      and bool_answer is null and text_answer is null) from exam_answers
+      where session_id=sid and question_id=qu),'M9D saved unanswered type '||n);
+  end loop;
+  perform pg_temp.m9_assert((select auto_score=3 and essay_score=1 and total_score=4
+    and grading_complete from exam_sessions where id=sid),'M9D all type totals');
+  perform grade_session(sid);
+  perform pg_temp.m9_assert((select auto_score=3 and essay_score=1 and total_score=4
+    from exam_sessions where id=sid),'M9D auto grader preserves overrides');
+
+  -- Correct an identification spelling absent from the automatic answer key.
+  qu:=pg_temp.m9_id('qu1_3');
+  update exam_answers set text_answer='M9 valid alternative' where session_id=pg_temp.m9_id('s1') and question_id=qu;
+  perform grade_session(pg_temp.m9_id('s1'));
+  perform pg_temp.m9_assert((select points_awarded=0 from exam_answers
+    where session_id=pg_temp.m9_id('s1') and question_id=qu),'M9D unlisted spelling auto marked wrong');
+  perform pg_temp.m9_call(format('select to_jsonb(override_points(%L,%L,2,%L))',
+    pg_temp.m9_id('s1'),qu,'Valid alternative spelling'),'M9D correct automatic spelling mark');
+  perform grade_session(pg_temp.m9_id('s1'));
+  perform pg_temp.m9_assert((select points_awarded=2 and is_correct and text_answer='M9 valid alternative'
+    and feedback='Valid alternative spelling' and graded_by=pg_temp.m9_id('u1') from exam_answers
+    where session_id=pg_temp.m9_id('s1') and question_id=qu),'M9D spelling override survives regrade');
+
+  qu:=pg_temp.m9_id('qu1_1');
+  select jsonb_build_array(option_id,bool_answer,text_answer,answered_at) into response from exam_answers
+    where session_id=pg_temp.m9_id('s1') and question_id=qu;
+  perform pg_temp.m9_call(format('select to_jsonb(override_points(%L,%L,0))',pg_temp.m9_id('s1'),qu),
+    'M9D zero existing answer');
+  perform pg_temp.m9_assert((select points_awarded=0 and not is_correct and feedback is null
+    and jsonb_build_array(option_id,bool_answer,text_answer,answered_at)=response from exam_answers
+    where session_id=pg_temp.m9_id('s1') and question_id=qu),'M9D response preserved at zero');
+  perform pg_temp.m9_call(format('select to_jsonb(override_points(%L,%L,2,%L))',sid,qu,repeat(chr(30028),2000)),
+    'M9D full points unicode feedback');
+  perform pg_temp.m9_call(format('select to_jsonb(override_points(%L,%L,2,%L))',sid,qu,repeat(chr(30028),2000)),
+    'M9D retry identical override');
+  perform pg_temp.m9_assert((select count(*)=1 and bool_and(points_awarded=2 and is_correct
+    and char_length(feedback)=2000) from exam_answers where session_id=sid and question_id=qu)
+    and (select auto_score=4 and essay_score=1 and total_score=5 from exam_sessions where id=sid),
+    'M9D full points retry totals and unique answer');
+
+  perform set_config('m9.s_override_progress',gen_random_uuid()::text,true);
+  insert into exam_sessions(id,quiz_id,student_id,status,deadline_at)
+    values(pg_temp.m9_id('s_override_progress'),pg_temp.m9_id('q1'),pg_temp.m9_id('u7'),
+      'in_progress',now()+interval '30 minutes');
+  for r in select * from (values
+    (1,'s2','qu1_1','-1',null::text,'P0001','Points must be between 0 and 2','negative'),
+    (1,'s2','qu1_1','3',null,'P0001','Points must be between 0 and 2','above maximum'),
+    (1,'s2','qu1_1','null',null,'P0001','Points must be between 0 and 2','null points'),
+    (1,'s2','qu1_1',quote_literal('1.5'),null,'22P02',null,'fractional integer input'),
+    (1,'s2','qu1_1','1',repeat(chr(30028),2001),'P0001','Feedback must be at most 2000 characters','long feedback'),
+    (1,'s_override_progress','qu1_1','1',null,'P0001','This attempt is not submitted yet','in progress'),
+    (1,'s4','qu1_1','1',null,'P0001','This attempt is not submitted yet','voided'),
+    (1,'s2','qu2_1','1',null,'P0001','Question not found','wrong quiz'),
+    (2,'s2','qu1_1','1',null,'P0001','Not allowed','other instructor'),
+    (3,'s2','qu1_1','1',null,'P0001','Not allowed','student')
+  ) v(actor,session_key,question_key,points,feedback,code,message,label) loop
+    snapshot:=pg_temp.m9_rule_snapshot(pg_temp.m9_id('q1'));
+    perform pg_temp.m9_actor(r.actor);
+    perform pg_temp.m9_call(format('select to_jsonb(override_points(%L,%L,%s,%L))',
+      pg_temp.m9_id(r.session_key),pg_temp.m9_id(r.question_key),r.points,r.feedback),
+      'M9D refused '||r.label,r.code,r.message);
+    after_snapshot:=pg_temp.m9_rule_snapshot(pg_temp.m9_id('q1'));
+    perform pg_temp.m9_assert(snapshot=after_snapshot,'M9D unchanged after '||r.label);
+  end loop;
+  perform pg_temp.m9_actor(1);
+  delete from verified_sessions where session_id=pg_temp.m9_id('auth1');
+  perform pg_temp.m9_call(format('select to_jsonb(override_points(%L,%L,1))',sid,qu),
+    'M9D unverified owner refused','42501','OTP verification required');
+  insert into verified_sessions(session_id,user_id) values(pg_temp.m9_id('auth1'),pg_temp.m9_id('u1'));
+
+  -- Non-overridden automatic answers must still be recomputed.
+  update exam_answers set points_awarded=0 where session_id=pg_temp.m9_id('s1')
+    and question_id=pg_temp.m9_id('qu1_2');
+  perform grade_session(pg_temp.m9_id('s1'));
+  perform pg_temp.m9_assert((select points_awarded=2 and graded_by is null from exam_answers
+    where session_id=pg_temp.m9_id('s1') and question_id=pg_temp.m9_id('qu1_2'))
+    and (select points_awarded=0 and graded_by=pg_temp.m9_id('u1') from exam_answers
+    where session_id=pg_temp.m9_id('s1') and question_id=qu),'M9D automatic regrade skips only manual marks');
+
+  q:=pg_temp.m9_rule_quiz('M9D override release');
+  snew:=pg_temp.m9_rule_attempt(q,3,'submitted',false);
+  perform pg_temp.m9_rule_attempt(q,6,'auto_submitted');
+  select id into qu from questions where quiz_id=q;
+  perform pg_temp.m9_call(format('select to_jsonb(override_points(%L,%L,1))',snew,qu),'M9D last essay override');
+  perform pg_temp.m9_assert((select grading_complete and total_score=1 from exam_sessions where id=snew)
+    and (select results_released_at is null from quizzes where id=q),'M9D override obeys release wait');
+  update exam_sessions set submitted_at=now()-interval '10 minutes' where quiz_id=q;
+  -- A pending essay still prevents release even when this attempt is overridden.
+  update exam_answers set points_awarded=null,graded_by=null,text_answer='Pending essay'
+    where session_id=snew;
+  perform recalc_session_scores(snew);
+  perform pg_temp.m9_assert(not maybe_release_results(q),'M9D pending essay blocks release');
+  perform pg_temp.m9_call(format('select to_jsonb(override_points(%L,%L,2))',snew,qu),
+    'M9D last essay override releases at boundary');
+  select results_released_at into before_release from quizzes where id=q;
+  select count(*) into inbox from notifications where target_id=q and type='results_released';
+  perform pg_temp.m9_assert(before_release=now() and inbox=2,'M9D release and inbox after override');
+  perform pg_temp.m9_call(format('select to_jsonb(override_points(%L,%L,0))',snew,qu),'M9D override after release');
+  perform pg_temp.m9_actor(3);
+  response:=pg_temp.m9_call(format('select get_result(%L)',snew),'M9D student updated result');
+  perform pg_temp.m9_assert((response->>'score')::integer=0,'M9D released student total updates');
+  perform pg_temp.m9_assert((select results_released_at=before_release from quizzes where id=q)
+    and (select count(*)=inbox from notifications where target_id=q and type='results_released'),
+    'M9D released override preserves release and inbox');
 end $$;
 
 -- Exercise the real worker deterministically, never touching unrelated expired attempts.

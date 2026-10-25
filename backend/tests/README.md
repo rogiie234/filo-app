@@ -246,3 +246,83 @@ Owner supplied HOLD PASS then unattended PASS on 2026-10-25: reserved session 8b
 ### M9-BE-03 COMPLETE - 2026-10-25
 
 M9-BE-03 COMPLETE for requested backend DEV scope on owner evidence (2026-10-25): migration 20261024110000 applied successfully; results SQL 249 PASS / 0 FAIL, overall PASS, failures []; unattended HOLD PASS before eligibility followed by release PASS 44.292241 seconds after eligibility with successful cron and correct unique inbox; guarded cleanup fixtures_removed=true. Supersedes all earlier pending migration/SQL/cron/cleanup statements for this task. No repeat checks needed absent a change or defect; no assistant test/SQL/live execution or independent remote verification, broader frontend/device/offline/concurrency acceptance not inferred. Earlier run instructions are retained for future regression, not a request to rerun passing checks. No disposable testing materials created or retained.
+
+
+## M9-BE-04 score override - prepared 2026-10-25
+
+M9-SA-01 acceptance for overrides confirmed by owner. Implementation prepared; migration, SQL and concurrency
+acceptance remain pending. No assistant tests/SQL/live verification/static analysis/builds were run.
+
+1. From `filo-app/backend`, inspect DEV migration history with `supabase migration list --linked`.
+   Confirm the linked project is DEV `fiobwfzmqcffbpixzvbq`, all earlier repository migrations are applied,
+   and the only pending migration is `20261025100000_exam_score_override.sql`. Then run
+   `supabase db push --linked`. Stop if unrelated migrations are pending; do not apply them with this task.
+   Expect this new version applied successfully; never edit an applied migration.
+2. As DEV SQL Editor postgres, run the WHOLE maintained `backend/tests/exam_results.sql`, BEGIN through
+   ROLLBACK. Expect every named row PASS, failed=0, overall=PASS, failures=[]. M9D adds all four types on
+   unanswered rows, existing response preservation, zero/partial/full points, Unicode 2000/2001 limits,
+   null/negative/excessive/fractional integer input, progress/voided/wrong-quiz refusals, other instructor/student/
+   anonymous/unverified denial, retry uniqueness, automatic regrade persistence and unchanged refusal snapshots.
+   Existing grade_essay tests still expect truncation; only override_points rejects oversized feedback.
+3. Inspect M9D release assertions: pending essays block release, last essay overrides complete grading without
+   bypassing the accepted hold, release occurs at eligibility, already-released corrections update get_result.score
+   and preserve the release timestamp/inbox count. The suite uses rollback fixtures and synthetic time; do not
+   rerun the committed unattended cron setup solely for this migration. Its global-worker guard still applies.
+4. Concurrency needs two independent DEV SQL connections and a dedicated disposable submitted fixture containing
+   a non-essay answer. Record its session/question UUIDs plus its verified owner's user/auth-session UUIDs.
+   Use only that owner's fixture. In connection A run the following, replacing all four UUID placeholders:
+
+   ```sql
+   begin;
+   select set_config('request.jwt.claims',jsonb_build_object(
+     'sub','OWNER_USER_UUID','session_id','OWNER_AUTH_SESSION_UUID','role','authenticated')::text,true);
+   set local role authenticated;
+   select public.override_points('SESSION_UUID','QUESTION_UUID',1,'Concurrent correction');
+   -- Leave the transaction open; use a question worth at least one point.
+   ```
+
+   In connection B (postgres), run `begin; select public.grade_session('SESSION_UUID');`.
+   Expect it to wait. In A run `commit;`; expect B to finish, then run `commit;` in B.
+   Inspect as postgres with:
+
+   ```sql
+   select points_awarded, is_correct, feedback, graded_by
+     from public.exam_answers where session_id='SESSION_UUID' and question_id='QUESTION_UUID';
+   select auto_score, essay_score, total_score, grading_complete
+     from public.exam_sessions where id='SESSION_UUID';
+   ```
+
+   Expect one manual answer with points=1, the recorded owner/feedback, and totals matching all answers.
+   Repeat in reverse order: A (postgres) begins and calls grade_session, B begins with the same owner claims/role
+   and calls override_points. B waits until A commits; after B commits the override and totals must be correct.
+   Repeat two simultaneous overrides to different questions of the same attempt; the second waits, then totals
+   include both corrections. No deadlock, lost mark or stale totals is acceptable. Remove only these dedicated
+   fixtures using their established fixture cleanup; never delete real attempts or broaden cleanup scope.
+5. Send an authenticated Supabase RPC request with JSON p_points=1.5 (not a SQL cast) and the same fixture IDs.
+   Expect rejection and unchanged stored points/feedback/totals. The integer SQL signature rejects fractional
+   integer text in the maintained suite; SQL casts like `1.5::integer` round before the function receives input.
+6. For transport recovery, use the dedicated fixture to send the same valid override twice, including once after
+   a simulated lost response. Expect one answer, the intended points, accurate totals and no repeated release
+   notification. On network failure do not display confirmed success; retry/re-read when connected. No frontend
+   override UI is implemented by this backend task, so app offline acceptance remains blocked on that feature.
+7. Share migration state, the full SQL summary and two-connection observations. Any FAIL, missing output or
+   disconnect leaves acceptance pending. After SQL abort run `ROLLBACK;` separately, correct the cause, then rerun
+   the complete suite. On uncertain commit outcome read the dedicated attempt before retrying. Maintained fixtures
+   roll back; external webhook effects are not guaranteed to roll back. No disposable guide/script files are needed.
+
+
+### M9-BE-04 owner-reported SQL PASS - 2026-10-25
+
+Owner supplied results summary: passed=299, failed=0, overall=PASS, failures=[]. Records owner-reported SQL regression acceptance for the updated maintained exam_results.sql, including M9D override cases. Supersedes SQL-run-pending wording above; no passing SQL rerun requested absent a new change or defect. Migration application/ledger confirmation, separate two-connection concurrency and fractional JSON/transport-retry checks have not been supplied; overall task acceptance remains pending those owner checks. No assistant tests, SQL, live verification, static analysis or builds, and no frontend/offline acceptance inferred.
+
+
+### M9-BE-04 owner migration ledger confirmed - 2026-10-25
+
+Owner supplied successful `npx.cmd supabase migration list --linked` output showing local and remote versions matched through 20261025100000 (2026-10-25 10:00:00 UTC), including all prior listed migrations. Records owner-supplied linked migration ledger evidence for the score override migration; no assistant remote inspection. Together with SQL299PASS/0FAIL overallPASS failures[], migration and maintained SQL acceptance are recorded. Separate two-connection concurrency and fractional JSON/transport-retry evidence remain pending; do not rerun the passing SQL suite absent a change or defect. No assistant tests, SQL, live checks, analysis/builds or Git mutations.
+
+
+### M9-BE-04 COMPLETE - owner DEV evidence, 2026-10-25
+
+Requested backend DEV scope accepted on owner evidence: linked migration ledger matched through 20261025100000; maintained results SQL299PASS/0FAIL overallPASS failures[]; override-first grading call elapsed19.09s and reverse-order override elapsed19.03s, consistent with session serialization. Both orderings retained points1/is_correct=false, the owning instructor graded_by and correct feedback; auto_score1/essay_score0/total_score1 matched independent sums. Owner showed both identical valid HTTP calls succeeded; subsequent fractional JSON p_points1.5 returned HTTP400, followed by answer points1/is_correct=false/feedback HTTP retry check and unchanged total1. The HTTP response body was empty, so no exact SQLSTATE/error-message attribution is claimed. Repeated HTTP calls prove identical retry behavior, not an independently observed dropped response. Supersedes prior pending migration/SQL/concurrency/HTTP acceptance wording for requested scope; do not rerun passing checks absent a change or defect.
+
+No assistant tests/SQL/live verification/static analysis/builds. No frontend override UI/offline integration, broader load/concurrency or independent remote inspection claimed. No disposable materials created, staged, committed or pushed; owner-created app test attempt is retained without deletion. Background Schema and decisions remain ignored local docs; Graphify artifacts are outside app Git, and prior canonical semantic-source blockers remain.
