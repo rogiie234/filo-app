@@ -1,6 +1,6 @@
 -- M8-BE-02 unattended proof, SETUP. DEV fiobwfzmqcffbpixzvbq only, postgres.
 -- This COMMITTED fixture is intentionally visible to cron. Do not call app/RPCs
--- for these users. After setup close the app; inspect after at least 2 minutes.
+-- for these users. Close the app; inspect once after 2 minutes and again after release_inspect_after.
 begin;
 set local search_path=public;
 select set_config('request.jwt.claims','{}',true);
@@ -45,6 +45,8 @@ begin
 end $$;
 select id as proof_session, status, started_at, deadline_at,
   deadline_at+interval '15 seconds' as eligible_after,
-  deadline_at+interval '2 minutes' as inspect_after
+  deadline_at+interval '2 minutes' as inspect_after,
+  deadline_at+interval '10 minutes' as release_eligible_at,
+  deadline_at+interval '12 minutes' as release_inspect_after
 from public.exam_sessions where id='8b020000-0000-4000-8000-000000000006';
 commit;

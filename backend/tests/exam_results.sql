@@ -1,5 +1,5 @@
--- M9-BE-01 / M9-BE-02. DEV ONLY: fiobwfzmqcffbpixzvbq, SQL Editor, postgres role.
--- Run the WHOLE file after repository migrations through 20261024100000.
+-- M9-BE-01 / M9-BE-02 / M9-BE-03. DEV ONLY: fiobwfzmqcffbpixzvbq, SQL Editor, postgres role.
+-- Run the WHOLE file after repository migrations through 20261024110000.
 -- Any FAIL or uncaught error means failure. On abort run ROLLBACK separately.
 -- Synthetic rollback fixtures; guarded global worker; no trigger disabling or committed data.
 begin;
@@ -406,6 +406,18 @@ begin
   perform pg_temp.m9_assert(not released and (select results_released_at is null from quizzes where id=q),
     'M9B voided attempt counts as not submitted');
   perform pg_temp.m9_rule_attempt(q,6,'auto_submitted');
+  before_state:=pg_temp.m9_rule_snapshot(q);
+  released:=maybe_release_results(q);
+  perform pg_temp.m9_assert(not released and before_state=pg_temp.m9_rule_snapshot(q),
+    'M9C all submitted remains unreleased during wait without inbox changes');
+  update exam_sessions set submitted_at=now()-interval '10 minutes'+interval '1 microsecond'
+    where quiz_id=q and status in ('submitted','auto_submitted');
+  released:=maybe_release_results(q);
+  perform pg_temp.m9_assert(not released,'M9C one microsecond before wait boundary does not release');
+  update exam_sessions set submitted_at=now()-interval '10 minutes'
+    where quiz_id=q and status in ('submitted','auto_submitted');
+  -- A recent voided historical attempt must not extend the wait.
+  update exam_sessions set submitted_at=now() where quiz_id=q and status='voided';
   released:=maybe_release_results(q);
   perform pg_temp.m9_assert(released and (select results_released_at=now() and closes_at>now() from quizzes where id=q),
     'M9B all active submitted and graded releases while open ignoring pending and removed');
@@ -534,6 +546,56 @@ begin
   end loop;
 end $$;
 
+-- M9-BE-03: replacement submissions reset the wait; grading never bypasses it.
+do $$
+declare q uuid; old_id uuid; new_id uuid; aid uuid; r jsonb; released boolean;
+begin
+  q:=pg_temp.m9_rule_quiz('M9C replacement wait');
+  old_id:=pg_temp.m9_rule_attempt(q,3,'submitted');
+  perform pg_temp.m9_rule_attempt(q,6,'auto_submitted');
+  update exam_sessions set submitted_at=now()-interval '9 minutes' where quiz_id=q;
+  perform pg_temp.m9_actor(1);
+  perform pg_temp.m9_call(format('select to_jsonb(grant_second_chance(%L,%L,%L))',
+    q,pg_temp.m9_id('u3'),'Phone failure confirmed'),'M9C grant during wait');
+  -- Age the original submissions past the wait while the replacement is not started.
+  update exam_sessions set submitted_at=now()-interval '11 minutes' where quiz_id=q;
+  released:=maybe_release_results(q);
+  perform pg_temp.m9_assert(not released,'M9C granted but not restarted blocks after original wait');
+  perform pg_temp.m9_actor(3);
+  r:=pg_temp.m9_call(format('select to_jsonb(start_exam(%L))',q),'M9C start replacement');
+  new_id:=(r->>'id')::uuid;
+  released:=maybe_release_results(q);
+  perform pg_temp.m9_assert(not released,'M9C replacement in progress blocks after original wait');
+  perform pg_temp.m9_call(format('select to_jsonb(save_answer(%L,%L,p_text => %L))',
+    new_id,(select id from questions where quiz_id=q),'Replacement essay'),'M9C save replacement essay');
+  perform pg_temp.m9_call(format('select submit_exam(%L)',new_id),'M9C submit replacement');
+  select id into aid from exam_answers where session_id=new_id;
+  perform pg_temp.m9_actor(1);
+  perform pg_temp.m9_call(format('select to_jsonb(grade_essay(%L,2))',aid),'M9C grade during wait');
+  perform pg_temp.m9_assert((select grading_complete and submitted_at=now() from exam_sessions where id=new_id)
+    and (select results_released_at is null from quizzes where id=q),
+    'M9C replacement submission resets wait and last essay cannot bypass it');
+  perform pg_temp.m9_actor(3);
+  r:=pg_temp.m9_call(format('select get_my_session(%L)',q),'M9C metadata during wait');
+  perform pg_temp.m9_assert(not (r ? 'score') and r->'results_released'='false'::jsonb,
+    'M9C score hidden during wait');
+  perform pg_temp.m9_call(format('select get_result(%L)',new_id),'M9C result hidden during wait',
+    'P0001','Results are not available yet');
+  update exam_sessions set submitted_at=now()-interval '10 minutes' where id=new_id;
+  released:=maybe_release_results(q);
+  perform pg_temp.m9_assert(released,'M9C replacement releases at new wait boundary');
+
+  q:=pg_temp.m9_rule_quiz('M9C missing submission time');
+  perform pg_temp.m9_rule_attempt(q,3,'submitted');
+  perform pg_temp.m9_rule_attempt(q,6,'auto_submitted');
+  update exam_sessions set submitted_at=null where quiz_id=q;
+  released:=maybe_release_results(q);
+  perform pg_temp.m9_assert(not released,'M9C no qualifying timestamp keeps open quiz unreleased');
+  update quizzes set closes_at=now() where id=q;
+  released:=maybe_release_results(q);
+  perform pg_temp.m9_assert(released,'M9C closing bypasses missing timestamp wait');
+end $$;
+
 -- Exercise the real worker deterministically, never touching unrelated expired attempts.
 do $$
 declare q uuid; sid uuid; released boolean; before_state jsonb;
@@ -560,6 +622,18 @@ begin
   before_state:=pg_temp.m9_rule_snapshot(q);
   perform finalize_expired_sessions();
   perform pg_temp.m9_assert(before_state=pg_temp.m9_rule_snapshot(q),'M9B repeated worker preserves release and inbox');
+
+  q:=pg_temp.m9_rule_quiz('M9C worker wait expiry');
+  perform pg_temp.m9_rule_attempt(q,3,'submitted');
+  perform pg_temp.m9_rule_attempt(q,6,'auto_submitted');
+  update exam_sessions set submitted_at=now()-interval '10 minutes' where quiz_id=q;
+  perform finalize_expired_sessions();
+  perform pg_temp.m9_assert((select results_released_at=now() and closes_at>now() from quizzes where id=q),
+    'M9C worker releases open quiz after wait without any newly expired session');
+  before_state:=pg_temp.m9_rule_snapshot(q);
+  perform finalize_expired_sessions();
+  perform pg_temp.m9_assert(before_state=pg_temp.m9_rule_snapshot(q),
+    'M9C worker after wait is idempotent');
 end $$;
 
 select step,test,result,detail from m9_results order by step;

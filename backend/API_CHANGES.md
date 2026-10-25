@@ -220,3 +220,23 @@ exam suite before the two later rapid regressions; no later automated count infe
 Supplied SQL Editor success and healthy50-answer save capture are owner evidence.
 No assistant test/SQL/build/static analysis/live/device rerun or independent migration
 ledger verification. Temporary diagnostics removed; maintained regressions retained.
+
+## M9-BE-03 - automatic results release wait (2026-10-25)
+
+Owner reports successful DEV application of `20261024110000_exam_release_wait.sql` and results SQL summary 249 passed, 0 failed, overall PASS, failures [] on 2026-10-25. Owner-reported unattended HOLD PASS, final PASS and fixtures_removed=true accepted; requested backend DEV task complete; no assistant execution or independent remote migration inspection. Owner confirms M9-SA-01 accepted this wait. No public RPC signature, return shape, permission, table or scheduler changes.
+
+`maybe_release_results(uuid)` now holds the open-quiz everyone-submitted path until 10 minutes after `max(submitted_at)` across non-voided submitted/auto-submitted attempts. The single function constant is `v_release_wait_minutes := 10`. A missing qualifying timestamp keeps the open quiz unreleased. Auto-submission retains its existing deadline-based submitted_at; the wait is measured from that timestamp, not worker execution or essay grading.
+
+All active students must still have a qualifying attempt; no attempt may be in progress and grading must be complete. Granting a second chance voids the old attempt and blocks open-quiz release until the replacement is submitted. Submitting the replacement starts a fresh 10-minute wait; grading does not restart the timer or bypass it. Voided history is excluded from the timestamp calculation.
+
+Closing time bypasses only the wait, preserving progress/grading checks. Manual `release_results` retains its checks and closes the quiz before using the shared function, so it also bypasses the wait. Existing notifications and unreleased-score privacy are retained. The existing one-minute `filo-finalize-exams` job calls `finalize_expired_sessions()` then `release_ready_results()` even without newly expired sessions: release is eligible on the first successful tick at/after the wait ends, normally within another minute. Scheduler failures can delay it; no app action is required.
+
+Maintained owner-run proof: `tests/exam_results.sql` covers the boundary, replacement submission, grading, privacy, missing timestamp, closing/manual bypass and idempotency. `tests/exam_cron_setup.sql` / `exam_cron_inspect.sql` now require saved HOLD PASS evidence before eligibility and final PASS after the wait with successful cron and the correct unique inbox row. Use the existing guarded cleanup. Prior M9-BE-02 acceptance does not establish acceptance of this change.
+
+### M9-BE-03 owner unattended hold/release PASS
+
+Owner supplied HOLD PASS then unattended PASS on 2026-10-25: reserved session 8b020000-0000-4000-8000-000000000006 auto_submitted, score7, grading complete, submitted_at=deadline_at=2026-10-25T05:04:15.765408Z. Early observation had null release and no inbox with successful expiry cron. Eligibility was 05:14:15.765408Z; release occurred 05:15:00.057649Z (13:15:00.057649 Philippine time), 44.292241 seconds after eligibility, with successful_cron_after_wait=true and correct_release_inbox=true. Confirms owner-reported unattended hold and release on the next minute tick; initial WAIT preceded finalization and was followed by HOLD PASS. Together with applied migration and SQL249PASS/0FAIL, only guarded fixture cleanup remains pending. No assistant execution or independent remote verification.
+
+### M9-BE-03 complete - owner cleanup accepted
+
+M9-BE-03 COMPLETE for requested backend DEV scope on owner evidence (2026-10-25): migration 20261024110000 applied successfully; results SQL 249 PASS / 0 FAIL, overall PASS, failures []; unattended HOLD PASS before eligibility followed by release PASS 44.292241 seconds after eligibility with successful cron and correct unique inbox; guarded cleanup fixtures_removed=true. Supersedes all earlier pending migration/SQL/cron/cleanup statements for this task. No repeat checks needed absent a change or defect; no assistant test/SQL/live execution or independent remote verification, broader frontend/device/offline/concurrency acceptance not inferred.
