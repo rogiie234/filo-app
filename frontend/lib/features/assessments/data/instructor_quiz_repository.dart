@@ -393,7 +393,6 @@ class InstructorQuizRepository {
         for (var i = 0; i < requestQuestions.length; i++) {
           final q = requestQuestions[i];
           if (q.id == null || changes.edited.contains(q.localId)) {
-            final creating = q.id == null;
             activeQuestion = q.localId;
             onQuestionProgress?.call(q.localId, 'Saving...');
             wrote = true;
@@ -401,19 +400,17 @@ class InstructorQuizRepository {
               'save_question',
               params: {
                 'p_quiz': draft.id,
-                'p_question': {...q.payload, 'id': q.id, 'position': i},
+                'p_question': {
+                  ...q.payload,
+                  'id': q.id,
+                  'position': i,
+                  'ai_generated': q.aiGenerated,
+                },
               },
             );
             q.id = (result as Map)['question_id'] as String;
             for (final current in draft.questions) {
               if (current.localId == q.localId) current.id = q.id;
-            }
-            if (creating && q.aiGenerated) {
-              await client
-                  .from('questions')
-                  .update({'ai_generated': true})
-                  .eq('id', q.id!)
-                  .eq('quiz_id', draft.id!);
             }
           }
         }

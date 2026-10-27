@@ -272,6 +272,7 @@ interface HarnessOptions {
   mode?: string;
   url?: string;
   beginNull?: boolean;
+  begin?: () => string | null;
   finishFailures?: number;
   provider?: typeof fetch;
   role?: string;
@@ -286,7 +287,7 @@ function harness(options: HarnessOptions = {}) {
     const payload = init?.body ? JSON.parse(String(init.body)) : null;
     calls.push({ name, url: parsed, payload });
     if (name === options.dbError) return Response.json({ message: "private database error", code: "XX000" }, { status: 500 });
-    if (name === "begin_ai_request") return Response.json(options.beginNull ? null : logId);
+    if (name === "begin_ai_request") return Response.json(options.begin ? options.begin() : options.beginNull ? null : logId);
     if (name === "finish_ai_request") {
       finishCalls++;
       return finishCalls <= (options.finishFailures ?? 0)
@@ -371,6 +372,7 @@ Deno.test("DEV switch cannot bypass checks; all simulations sanitize and finaliz
   const sample = harness({ mode: "sample" });
   equal((await (await sample.request()).json()).questions.length, types.length);
   equal(sample.providerCalls(), 0);
+  equal(sample.calls.at(-1)!.payload, { p_id: logId, p_status: "success", p_error: null });
   const denied = harness({ mode: "sample", denied: "profiles" });
   equal((await (await denied.request()).json()).error.code, "NOT_ALLOWED");
   for (const options of [{ mode: "sample", url: "https://production.invalid" }, { mode: "unknown" }]) {
@@ -400,4 +402,44 @@ Deno.test("database and provider errors are sanitized, finalization retries once
   equal((await h.handler(new Request("https://function.invalid", { method: "OPTIONS" }))).status, 204);
   equal((await h.handler(new Request("https://function.invalid"))).status, 405);
   equal(h.calls, []);
+});
+
+Deno.test("unexpected DEV exception is sanitized and finalized, including finish retry", async () => {
+  for (const finishFailures of [0, 1]) {
+    const h = harness({ mode: "unexpected", finishFailures });
+    const response = await h.request();
+    equal(response.status, 503);
+    equal(await response.json(), { error: { code: "AI_UNAVAILABLE", message: errors.AI_UNAVAILABLE[1] } });
+    equal(h.providerCalls(), 0);
+    const finishes = h.calls.filter((call) => call.name === "finish_ai_request");
+    equal(finishes.length, finishFailures + 1);
+    equal(finishes.at(-1)!.payload, { p_id: logId, p_status: "failed", p_error: "AI_UNAVAILABLE" });
+  }
+  const production = harness({ mode: "unexpected", url: "https://production.invalid" });
+  equal((await (await production.request()).json()).error.code, "AI_UNAVAILABLE");
+  equal(production.providerCalls(), 0);
+  equal(production.calls.at(-1)!.payload, { p_id: logId, p_status: "failed", p_error: "AI_UNAVAILABLE" });
+});
+
+Deno.test("overlapping requests run once; refusal never finalizes the active row", async () => {
+  let active = false;
+  let release!: () => void, entered!: () => void;
+  const gate = new Promise<void>((resolve) => { release = resolve; });
+  const providerEntered = new Promise<void>((resolve) => { entered = resolve; });
+  const h = harness({
+    begin: () => { if (active) return null; active = true; return logId; },
+    provider: async () => { entered(); await gate; return envelope(sampleOutput(input())); },
+  });
+  const first = h.request();
+  try {
+    await providerEntered;
+    const refused = await h.request();
+    equal(refused.status, 409);
+    equal((await refused.json()).error.code, "AI_IN_PROGRESS");
+    equal(h.providerCalls(), 1);
+    equal(h.calls.filter((call) => call.name === "finish_ai_request").length, 0);
+  } finally { release(); }
+  equal((await first).status, 200);
+  equal(h.calls.filter((call) => call.name === "finish_ai_request").length, 1);
+  equal(h.calls.at(-1)!.payload, { p_id: logId, p_status: "success", p_error: null });
 });

@@ -326,3 +326,400 @@ Owner supplied successful `npx.cmd supabase migration list --linked` output show
 Requested backend DEV scope accepted on owner evidence: linked migration ledger matched through 20261025100000; maintained results SQL299PASS/0FAIL overallPASS failures[]; override-first grading call elapsed19.09s and reverse-order override elapsed19.03s, consistent with session serialization. Both orderings retained points1/is_correct=false, the owning instructor graded_by and correct feedback; auto_score1/essay_score0/total_score1 matched independent sums. Owner showed both identical valid HTTP calls succeeded; subsequent fractional JSON p_points1.5 returned HTTP400, followed by answer points1/is_correct=false/feedback HTTP retry check and unchanged total1. The HTTP response body was empty, so no exact SQLSTATE/error-message attribution is claimed. Repeated HTTP calls prove identical retry behavior, not an independently observed dropped response. Supersedes prior pending migration/SQL/concurrency/HTTP acceptance wording for requested scope; do not rerun passing checks absent a change or defect.
 
 No assistant tests/SQL/live verification/static analysis/builds. No frontend override UI/offline integration, broader load/concurrency or independent remote inspection claimed. No disposable materials created, staged, committed or pushed; owner-created app test attempt is retained without deletion. Background Schema and decisions remain ignored local docs; Graphify artifacts are outside app Git, and prior canonical semantic-source blockers remain.
+
+
+## M10-BE-02: AI limits and atomic flag
+
+Status 2026-10-27: implementation and maintained checks prepared; **Not run**. Owner DEV
+execution/acceptance pending. Carry M10-BE-01 accepted evidence only within the QA register's
+scope. No credentials or question/source content should be pasted into evidence.
+
+1. In `filo-app/backend`, inspect the linked project and migration ledger before applying:
+
+   ```powershell
+   npx.cmd supabase migration list --linked
+   npx.cmd supabase db push --linked --dry-run
+   # Continue only when the target is DEV fiobwfzmqcffbpixzvbq and pending changes are intended.
+   npx.cmd supabase db push --linked
+   npx.cmd supabase migration list --linked
+   npx.cmd supabase functions deploy ai-generate-quiz --project-ref fiobwfzmqcffbpixzvbq
+   ```
+
+   Expect local/remote `20261027100000` to match. Apply migration before updated app caller.
+   Never reset DEV or edit an applied file to correct a failure; use a later migration.
+2. Run WHOLE `ai_requests.sql` as postgres in the DEV SQL editor. Expect overall PASS, zero
+   failed, failures `[]`, then ROLLBACK (fixtures removed). Any uncaught error is a failure;
+   run `ROLLBACK;` separately before correcting/rerunning. This exercises service-role RPCs,
+   anonymous/verified student/verified instructor denials, all flag shapes, full late-failure
+   rollback and the actual existing cron command with strict 30-day boundary. No scheduled
+   execution, actual HTTP authentication or concurrent transactions are claimed by this suite.
+3. Run maintained mocked checks (no live API/provider calls):
+
+   ```powershell
+   # From filo-app/backend
+   deno test --config supabase/functions/ai-generate-quiz/deno.json supabase/functions/ai-generate-quiz/quiz_test.ts
+   # From filo-app/frontend
+   flutter test test/features/assessments/quiz_save_ai_test.dart
+   ```
+
+   Expect zero failures, including one save RPC carrying the flag, no question PATCH, success
+   and unexpected-failure finalization/retry, and an overlapping mocked refusal that neither
+   starts a provider call nor finishes the active row. Existing mock coverage is regression
+   evidence only; it does not substitute for DEV row inspection or real database locks.
+4. In DEV, use a fresh verified instructor token, owned active class and unlocked quiz. The
+   values below are private local placeholders; use neutral synthetic source text only:
+
+   ```powershell
+   $aiHeaders = @{ Authorization = 'Bearer <fresh-verified-instructor-token>'; apikey = '<DEV-publishable-or-anon-key>' }
+   $aiBody = @{
+     class_id = '<owned-active-class-uuid>'; quiz_id = '<unlocked-quiz-uuid>'
+     texts = @(@{ file_name = 'fixture.txt'; text = 'Plants use sunlight for photosynthesis.' })
+     counts = @{ multiple_choice = 0; true_false = 0; identification = 0; essay = 1 }
+     difficulty = 'easy'
+   } | ConvertTo-Json -Depth 6
+   $aiUrl = 'https://fiobwfzmqcffbpixzvbq.supabase.co/functions/v1/ai-generate-quiz'
+   try {
+     foreach ($aiMode in @('sample','AI_BUSY','AI_TIMEOUT','AI_BAD_OUTPUT','unexpected')) {
+       npx.cmd supabase secrets set --project-ref fiobwfzmqcffbpixzvbq "AI_TEST_MODE=$aiMode"
+       if ($LASTEXITCODE -ne 0) { throw 'Setting DEV simulation failed' }
+       $aiSince = (Get-Date).ToUniversalTime().ToString('o')
+       Write-Output "mode=$aiMode since=$aiSince"
+       try {
+         $aiResponse = Invoke-WebRequest -UseBasicParsing -Method Post -Uri $aiUrl -Headers $aiHeaders -ContentType 'application/json' -Body $aiBody
+         Write-Output "HTTP=$($aiResponse.StatusCode)"
+       } catch {
+         $aiHttpResponse = $_.Exception.Response
+         if ($aiHttpResponse) {
+           Write-Output "HTTP=$([int]$aiHttpResponse.StatusCode)"
+           $aiErrorText = $_.ErrorDetails.Message
+           if ([string]::IsNullOrWhiteSpace($aiErrorText)) {
+             if ($aiHttpResponse.PSObject.Methods.Name -contains 'GetResponseStream') {
+               $aiReader = New-Object System.IO.StreamReader($aiHttpResponse.GetResponseStream())
+               try { $aiErrorText = $aiReader.ReadToEnd() } finally { $aiReader.Dispose() }
+             } elseif ($aiHttpResponse.Content) {
+               $aiErrorText = $aiHttpResponse.Content.ReadAsStringAsync().GetAwaiter().GetResult()
+             }
+           }
+           $aiErrorCode = 'BODY_UNAVAILABLE'
+           if (![string]::IsNullOrWhiteSpace($aiErrorText)) {
+             try { $aiErrorCode = ($aiErrorText | ConvertFrom-Json -ErrorAction Stop).error.code }
+             catch { $aiErrorCode = 'NON_JSON_RESPONSE' }
+           }
+           Write-Output "code=$aiErrorCode"
+           if ([int]$aiHttpResponse.StatusCode -in @(401,403)) {
+             throw 'Authorization blocked: resolve token/session/role/ownership before simulations'
+           }
+         } else { throw }
+       }
+       # Inspect the matching DEV row before continuing; do not print generated/source content.
+       Read-Host 'Record matching row status/code/finished_at, then press Enter'
+     }
+   } finally {
+     npx.cmd supabase secrets set --project-ref fiobwfzmqcffbpixzvbq AI_TEST_MODE=off
+     if ($LASTEXITCODE -ne 0) { Write-Error 'AI_TEST_MODE reset failed; restore off before leaving DEV' }
+   }
+   ```
+
+   Expect sample 200/success/null error; AI_BUSY 503/failed/AI_BUSY; AI_TIMEOUT
+   504/failed/AI_TIMEOUT; AI_BAD_OUTPUT 502/failed/AI_BAD_OUTPUT; unexpected
+   503/failed/AI_UNAVAILABLE. Every acquired row needs nonnull finished_at. Sample returns
+   deterministic DEV questions, not a provider success. All modes still require authorization.
+   Inspect using the recorded UTC start and the actual instructor UUID (postgres only):
+
+   ```sql
+   select id,user_id,kind,status,error_code,created_at,finished_at
+   from public.ai_usage_log
+   where user_id='<instructor-uuid>' and created_at >= '<recorded-UTC-start>'::timestamptz
+   order by created_at,id;
+   ```
+
+   Expect exactly one matching acquired row per sequential request. Capture metadata only.
+   If both finalization attempts fail, the response is AI_UNAVAILABLE and the row may remain
+   started; this is a failure to record, not a terminal-row Pass. Inspect before retrying.
+5. Open two independent DEV SQL sessions and run labeled A/B blocks from `ai_concurrency.sql`
+   while A sleeps. Expect A ID, B waiting then NULL, and only_one_acquired=true. Run C afterward;
+   expect a successful finished row and fixtures_removed=true. Do not run the whole file.
+   This is the deterministic database race check, separate from the mocked handler overlap.
+6. With the test switch off and provider configured, launch two HTTP requests for the same
+   instructor at once. Reuse the local variables from step 4 and run in PowerShell:
+
+   ```powershell
+   $aiJobs = @()
+   try {
+     $aiConcurrentSince = (Get-Date).ToUniversalTime().ToString('o')
+     foreach ($aiNumber in 1..2) {
+       $aiJobs += Start-Job -ArgumentList $aiUrl,$aiHeaders,$aiBody -ScriptBlock {
+         param($url,$headers,$body)
+         try {
+           $response = Invoke-WebRequest -UseBasicParsing -Method Post -Uri $url -Headers $headers -ContentType 'application/json' -Body $body
+           [pscustomobject]@{ status = [int]$response.StatusCode; code = $null }
+         } catch {
+           if (!$_.Exception.Response) { throw }
+           $errorBody = $_.ErrorDetails.Message | ConvertFrom-Json
+           [pscustomobject]@{ status = [int]$_.Exception.Response.StatusCode; code = $errorBody.error.code }
+         }
+       }
+     }
+     $aiJobs | Wait-Job | Receive-Job
+     Write-Output "Inspect rows since $aiConcurrentSince"
+   } finally {
+     $aiJobs | Remove-Job
+   }
+   ```
+
+   Expect one acquired generation and one 409/AI_IN_PROGRESS, with one new usage row. The
+   accepted request may return a real provider error; record its finished status separately.
+   If both complete sequentially there was no demonstrated overlap: record inconclusive,
+   rather than declaring a locking failure or Pass. Never persist test-switch changes in prod.
+   Repeat with a second verified instructor and their own class/quiz while the first user's
+   request is pending; expect independent acquisition, subject to the shared provider quota.
+7. Run only SETUP in `ai_cleanup_job.sql`. Capture active job/schedule/timezone and committed
+   tagged fixtures. Wait for the next daily 03:15 cron tick (default GMT means 11:15 Manila),
+   then run INSPECT. Expect old_removed/recent_retained/scheduled_success all true and successful
+   job details after setup. A manual DELETE or rollback suite cannot establish scheduler Pass.
+   If job-run history is unavailable, retain this evidence gap. Run CLEANUP and expect
+   fixtures_removed=true. Do not reschedule the shared daily job merely to shorten this check.
+8. For save integration, use the RPC with true/false/omitted flags and refetch questions as the
+   owning instructor. Expect the documented stored flag and sticky true on edits. The SQL suite
+   covers all four question shapes through the existing contract's shared save path; prior M7
+   type-specific evidence remains scoped there. The AI-generation UI is unfinished: use RPC
+   plus the caller mock for this task; do not mark a complete generation-to-badge UI flow Pass.
+   With network disconnected, generation/saving must not report confirmed success; reconnect,
+   refetch uncertain creates before retrying, and expect finished requests to release the AI
+   slot immediately. After SQL abort ROLLBACK; after uncertain HTTP inspect row metadata first.
+9. Send migration ledger, full SQL summary, mocked summaries, per-mode metadata, concurrency
+   observations, cron details and fixture-cleanup booleans. Keep tokens and source/output bodies
+   private. Record gaps and owner sign-off separately in decisions and QA acceptance register.
+
+
+## M10-BE-02 owner DEV results - 2026-10-28
+
+Owner supplied SQL summary: 76 passed, 1 failed, overall FAIL; sole reported failure
+`log has no app policies`. This assertion currently requires zero pg_policy rows, not merely
+absence of policies permitting app access. Existing local migrations declare no log policies;
+actual DEV policy names/roles/expressions are not supplied. Root cause remains unresolved:
+do not weaken the assertion, remove unknown policies, or infer an app data leak without those
+definitions. Other SQL checks passed on owner aggregate evidence, including role denials;
+full per-case output not supplied. Preserve the overall failure until resolved.
+
+Owner terminal attachment confirms ai-generate-quiz deployment to DEV fiobwfzmqcffbpixzvbq,
+Deno 17 PASS / 0 FAIL, and focused Flutter quiz_save_ai_test 8 PASS / 0 FAIL. These focused
+suites are accepted within the supplied run scope; no rerun requested without relevant changes.
+Migration ledger not supplied; live simulations, real concurrency, scheduled-cleanup evidence,
+fixture cleanup and overall owner acceptance remain pending. No assistant tests or live checks.
+Evidence: owner SQL summary in conversation and attachment d258d435-25a6-438f-b993-cd1364140814/
+Pasted text.txt. No credentials or question/source content retained. No implementation changes
+or disposable testing materials; read-only DEV policy inspection is the next owner action.
+
+
+## M10-BE-02 restrictive policy assertion correction - 2026-10-28
+
+Owner supplied DEV policy definition: require_verified_session, RESTRICTIVE, authenticated,
+ALL, USING current_user_ok(), WITH CHECK current_user_ok(). This matches migration
+20261014160000_verified_session_gate, whose dynamic loop adds this restrictive gate to public
+tables, including ai_usage_log. Earlier statements implying no policies exist are superseded:
+there are no granting/permissive log policies in the supplied definition. A restrictive gate
+cannot independently grant access; removing it would remove an intended session restriction.
+
+Corrected only ai_requests.sql's overly broad zero-policy assertion to require no permissive
+access policies. RLS-enabled, app privilege revocations, anonymous/student/instructor read/write
+and RPC-denial checks, and service-role success checks remain unchanged. No production defect
+or new migration is required for this test correction; applied files and DEV policies untouched.
+Historical owner SQL76PASS1FAIL remains recorded; corrected SQL owner rerun pending, not Pass.
+Prior Deno17PASS and Flutter8PASS remain accepted; no rerun requested because neither changed.
+No assistant tests, static analysis, builds, SQL/live verification, deployment or secrets changes.
+Live simulations, real concurrency, scheduled cleanup, migration ledger and overall acceptance
+remain pending. No disposable materials or Git mutations.
+
+
+## M10-BE-02 owner corrected SQL PASS - 2026-10-28
+
+Owner supplied corrected ai_requests.sql summary: 77 passed, 0 failed, overall PASS,
+failures []. Accept this maintained SQL suite within its owner-run DEV scope. Supersedes
+SQL76PASS1FAIL and corrected-SQL-rerun-pending status; preserve that historical false-positive
+failure and the restrictive-policy correction above. Source commit/build and full per-case
+output were not supplied. Covers the script's atomic AI flags/backward compatibility/late
+rollback, sequential in-flight/stale recovery, finalization, role denials, log metadata/RLS/
+no-permissive-policy assertion and actual cleanup command under rollback. Does not prove
+real concurrent sessions, deployed HTTP simulation branches or scheduled cron execution.
+
+Prior owner Deno17PASS0FAIL, Flutter8PASS0FAIL and DEV function deployment remain accepted
+within recorded scope; no repeat tests requested absent relevant changes. Migration ledger,
+live success/error/unexpected simulations, real concurrency, scheduled-cleanup/committed
+fixture removal evidence and overall explicit owner acceptance remain pending. No assistant
+tests, SQL/live checks, static analysis, builds, deployments, secrets or production changes.
+Evidence source: owner summary pasted in conversation on 2026-10-28; target DEV project
+fiobwfzmqcffbpixzvbq per ongoing run context. No separate overall owner sign-off supplied.
+No disposable materials or Git mutations; evidence-only documentation update.
+
+
+## M10-BE-02 owner single-row finalization and cleanup - 2026-10-28
+
+Owner screenshot shows only_one_acquired=true. Follow-up metadata shows one row with status
+success, error_code null, created_at 2026-10-27 16:11:38.569491 UTC and finished_at
+2026-10-27 16:12:48.206997 UTC. Owner reports fixtures_removed=true. Accept single-row
+observation, successful finalization and dedicated concurrency-fixture cleanup within this
+DEV run. No need to repeat those evidenced checks. Evidence: owner screenshot and pasted
+metadata/cleanup result in conversation; build/commit unknown. Times above are database UTC;
+record date follows Manila conversation date. No source/answer content or credentials retained.
+
+Actual overlap remains unconfirmed: owner has not yet confirmed B started while A was running
+and waited; screenshot and one-row count also permit sequential invocation. Do not mark real
+concurrent-lock contention Pass from these outputs alone. Ask for timing confirmation rather
+than immediately requesting a rerun. Prior SQL77PASS, Deno17PASS, Flutter8PASS and deployment
+remain scoped accepted. Live simulation rows, scheduled cleanup, migration ledger and overall
+explicit owner acceptance remain pending. No assistant tests/live checks, implementation or
+policy changes, disposable materials or Git mutations.
+
+
+## M10-BE-02 owner DB concurrency PASS - 2026-10-28
+
+Owner explicitly confirmed B started while A was still running and waited before returning.
+Combined with the supplied only_one_acquired=true screenshot, one successfully finalized row
+and fixtures_removed=true, accept the two-session database concurrency check as Pass - owner
+reported. Supersedes prior overlap/timing-unconfirmed status; no rerun required. Exact wait
+duration/backend PIDs were not supplied; no broader load or concurrent deployed HTTP proof
+is inferred. No overall task sign-off is inferred from this scoped yes confirmation.
+
+Prior SQL77PASS0FAIL, Deno17PASS0FAIL, Flutter8PASS0FAIL, deployment, successful finalization
+and dedicated concurrency-fixture cleanup remain accepted within recorded scope. Migration
+ledger, latest deployed live simulations (including unexpected failure), scheduled 30-day
+cleanup/its dedicated fixtures, HTTP overlap if required and overall acceptance remain pending.
+Evidence: owner yes to explicit overlap/wait question, linked to preceding screenshot and
+metadata outputs in conversation. DEV target fiobwfzmqcffbpixzvbq, build/commit unknown.
+No assistant execution, implementation changes, disposable materials or Git mutations.
+
+
+## M10-BE-02 live simulation attempt blocked by authorization - 2026-10-28
+
+Owner transcript shows batch start 2026-10-27T16:25:00.3782821Z, five HTTP403 responses
+(sample, AI_BUSY, AI_TIMEOUT, AI_BAD_OUTPUT, unexpected), and final successful secrets reset
+AI_TEST_MODE=off. Each catch also raised ConvertFrom-Json on null ErrorDetails.Message;
+exact backend error codes are therefore not evidenced. Treat simulation scenarios as blocked/
+not established, not Pass. Do not attribute the 403 to a particular prerequisite without
+checking token/session/profile/class/quiz. No usage-row output supplied for this batch.
+
+Owner supplied cron_timezone=GMT. Existing daily03:15 schedule corresponds to11:15AM Manila;
+timezone alone does not establish job active/schedule, fixture setup or actual scheduled deletion.
+Prior SQL77PASS/Deno17PASS/Flutter8PASS/DB-concurrency/finalization/fixture cleanup evidence
+remains accepted within recorded scope. Ledger, live simulation rows, scheduled-cleanup evidence
+and overall acceptance remain pending.
+
+Corrected README PowerShell catch to read response stream/content when ErrorDetails is absent,
+skip null/non-JSON parsing and stop on401/403 while retaining finally reset. No app/migration
+changes, assistant tests/static analysis/builds/live verification/deployment or secret changes.
+Evidence: owner attachment7bc0f414-c4a5-4e7e-9fad-c84ee838d785/Pasted text.txt and timezone output.
+Only sanitized results retained; no credentials/source/output bodies copied into project docs.
+No disposable materials/Git mutations. Next owner action: validate token via auth/user endpoint.
+
+
+## M10-BE-02 owner five live HTTP simulations PASS - 2026-10-28
+
+Owner exact curl diagnostic first confirmed Auth200, valid bearer format, email present,
+matching subject, valid session UUID,3003seconds until expiry and correct function URL.
+Subsequent batch started2026-10-27T16:42:12.7761422Z and returned:
+sample200; AI_BUSY503/AI_BUSY; AI_TIMEOUT504/AI_TIMEOUT; AI_BAD_OUTPUT502/AI_BAD_OUTPUT;
+unexpected503/AI_UNAVAILABLE. All five HTTP simulation outcomes accepted on owner evidence.
+Final AI_TEST_MODE=off secrets command succeeded. Supersedes earlier denied simulation status
+within this new run only; historical401/403 attempts and expiry evidence retained.
+
+Matching usage rows not yet supplied: terminal status/error_code/finished_at for this batch
+remain pending and must not be inferred from HTTP success. Earlier scoped SQL77/Deno17/
+Flutter8/DB concurrency/finalization/fixture-cleanup passes retained, no repeat requested.
+Evidence: owner pasted curl diagnostic and batch transcript in conversation; target DEV
+fiobwfzmqcffbpixzvbq, build/commit unknown. GMT scheduled-cleanup fixture/run evidence,
+migration ledger and overall owner acceptance remain pending. No credentials/source/output
+content retained. No assistant tests/live checks, code changes, disposable materials or Git
+mutations. Next owner action: read-only query for this batch's five log rows.
+
+
+## M10-BE-02 owner live simulation finalization PASS - 2026-10-28
+
+Owner supplied exactly five usage rows matching the accepted16:42:12.7761422UTC batch:
+success/null created16:42:19.596010 finished16:42:19.671916;
+failed/AI_BUSY created16:42:25.784059 finished16:42:25.848125;
+failed/AI_TIMEOUT created16:42:32.313968 finished16:42:32.362580;
+failed/AI_BAD_OUTPUT created16:42:38.935563 finished16:42:39.047663;
+failed/AI_UNAVAILABLE created16:42:46.451577 finished16:42:46.520999.
+All times2026-10-27 UTC; every finished_at populated and after created_at. Combined with
+preceding five expected HTTP outcomes, accept sample and all four simulated failure-path
+finalizations, including ordinary unexpected exception. Supersedes live-log-rows-pending
+within this run. Prior final switch-off reset remains evidenced; no simulation rerun needed.
+
+Evidence: owner pasted five metadata rows in conversation on2026-10-28; DEV target
+fiobwfzmqcffbpixzvbq, deployed build/commit unknown. No source/question/answer content retained.
+Prior SQL77/Deno17/Flutter8/DB concurrency and dedicated concurrency-fixture cleanup remain
+scoped accepted. Remaining: migration-ledger confirmation, actual scheduled30-day cleanup
+with its committed fixture retention/deletion/job details and subsequent fixture cleanup,
+and explicit overall owner acceptance. No concurrent deployed-HTTP claim inferred from DB
+concurrency. No assistant tests/live checks, implementation/disposable materials/Git mutations.
+
+
+## M10-BE-02 owner migration ledger matched - 2026-10-28
+
+Owner supplied successful npx.cmd supabase migration list --linked output: every displayed
+local/remote version matches through20261027100000, including the task migration. Migration
+ledger confirmation accepted on owner DEV evidence; supersedes pending-ledger statements.
+No independent remote inspection or source-checksum proof inferred. Prior scoped SQL77PASS,
+Deno17PASS, Flutter8PASS, database concurrency/finalization/fixture cleanup and five HTTP/log
+simulation passes retained; test switch last evidenced off. No rerun needed.
+
+Remaining runtime check: actual scheduled30-day purge of committed old fixture, retention of
+recent fixture, successful job details after setup and final cron-fixture cleanup. TimezoneGMT
+confirmed; daily03:15 is11:15Manila. Explicit overall owner acceptance remains separate and
+pending. No deployed-HTTP concurrency/load evidence inferred from the DB race. No assistant
+tests/live checks, implementation/disposable materials/Git mutations or credentials recorded.
+Evidence: owner migration-list output pasted in conversation, DEV project per current run
+fiobwfzmqcffbpixzvbq; source commit/build unknown.
+
+
+## M10-BE-02 owner cron fixture collision - 2026-10-28
+
+Owner screenshot reports P0001 Fixture collision: inspect existing rows before continuing,
+from cleanup script SETUP guard. Screenshot shows CLEANUP text in editor but does not prove
+which selection was run; likely SETUP included again, execution selection unknown. Existing
+reserved fixture user/IDs detected; scheduled deletion/retention still not evidenced. Do not
+infer data corruption, cron failure or successful cleanup. Preserve existing fixtures until
+read-only inspection. Roll back aborted transaction if present; run only inspection query,
+never repeat SETUP or delete fixtures before collecting scheduler evidence. Prior scoped
+passes and ledger match retained; no repeats requested. No assistant execution/implementation
+changes/disposable materials/Git mutations. Evidence: owner screenshot in conversation.
+
+
+## M10-BE-02 owner cron fixtures waiting for next tick - 2026-10-28
+
+Owner read-only inspection: checked_at2026-10-27 16:48:51.354638UTC,
+fixture_setup_at2026-10-27 16:21:56.119014UTC, old_removed=false,
+recent_retained=true, scheduled_success=false. This confirms committed recent fixture exists
+and old fixture remains before the next scheduled tick; it is not a scheduler failure or Pass.
+With recorded GMT timezone and daily03:15 schedule, first scheduled run after setup is
+2026-10-28 03:15UTC / October28 11:15AM Manila. Inspect shortly after that tick, without
+rerunning SETUP or deleting fixtures. Preserve historical SETUP collision and all prior scoped
+passes. Actual scheduled old-row deletion/recent retention/post-setup job success and final
+fixture cleanup remain pending; explicit overall acceptance also pending. No assistant execution,
+production changes, disposable materials or Git mutations. Evidence: owner inspection CSV.
+
+
+## M10-BE-02 COMPLETE / PASS - owner accepted, 2026-10-28
+
+Overall task status: PASS - owner accepted, with an explicit outstanding-check exception.
+Owner requested immediate completion/acceptance instead of waiting for the daily cron tick,
+then clarified that the task should also be marked Pass. Record this as explicit overall owner
+acceptance and waiver of the remaining scheduled-run evidence requirement, not fabricated
+scheduled-cleanup execution. Supersedes earlier overall pending statements within this task.
+
+Evidenced owner results retained: migration ledger matched through20261027100000; SQL77PASS/
+0FAIL; Deno17PASS/0FAIL; Flutter8PASS/0FAIL; two-session DB concurrency, finalization and its
+fixture cleanup; all five live HTTP simulations and matching terminal usage rows; test switch
+off reset. Historical failed assertions, authorization/expiry attempts and SETUP collision
+remain preserved. Shared-key protection is per-user in-flight control, not a global quota.
+
+Scheduled30-day cleanup execution: WAIVED BY OWNER / NOT OBSERVED, not runtime Pass.
+Actual cleanup command passed under rollback in SQL suite; GMT/daily03:15 schedule recorded.
+Last pre-tick inspection old_removed=false, recent_retained=true, scheduled_success=false is
+expected before first post-setup tick, not a failure. No post-tick success is claimed. Dedicated
+cron fixtures still exist per last evidence; their removal is optional housekeeping after the
+waived check, not a reopened task acceptance gate. Owner can report later issues for follow-up.
+Maintained SQL scripts/tests are lasting regression materials, not disposable files. No
+assistant SQL/live execution/deployment/tests/static analysis/builds, no staging/commit/push.
+No credentials/private question content retained. Unrelated changes preserved.

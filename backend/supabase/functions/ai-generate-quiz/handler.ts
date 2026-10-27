@@ -69,6 +69,8 @@ export function createHandler(overrides: Partial<Dependencies> = {}) {
         if (testMode === "sample") {
           result = validateOutput(sampleOutput(input), input);
           if (!result.questions.length) fail("AI_BAD_OUTPUT");
+        } else if (testMode === "unexpected") {
+          throw new Error("DEV simulated unexpected failure");
         } else if (Object.hasOwn(errors, testMode)) {
           fail(testMode as ErrorCode);
         } else fail("AI_UNAVAILABLE");
