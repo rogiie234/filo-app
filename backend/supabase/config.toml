@@ -441,3 +441,10 @@ enabled = true
 verify_jwt = false
 entrypoint = './functions/purge-deleted/index.ts'
 
+[functions.ai-generate-quiz]
+enabled = true
+# Authenticate inside the handler so every denied token gets NOT_ALLOWED.
+verify_jwt = false
+import_map = "./functions/ai-generate-quiz/deno.json"
+entrypoint = "./functions/ai-generate-quiz/index.ts"
+

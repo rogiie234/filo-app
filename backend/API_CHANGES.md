@@ -289,3 +289,289 @@ Owner supplied successful `npx.cmd supabase migration list --linked` output show
 Requested backend DEV scope accepted on owner evidence: linked migration ledger matched through 20261025100000; maintained results SQL299PASS/0FAIL overallPASS failures[]; override-first grading call elapsed19.09s and reverse-order override elapsed19.03s, consistent with session serialization. Both orderings retained points1/is_correct=false, the owning instructor graded_by and correct feedback; auto_score1/essay_score0/total_score1 matched independent sums. Owner showed both identical valid HTTP calls succeeded; subsequent fractional JSON p_points1.5 returned HTTP400, followed by answer points1/is_correct=false/feedback HTTP retry check and unchanged total1. The HTTP response body was empty, so no exact SQLSTATE/error-message attribution is claimed. Repeated HTTP calls prove identical retry behavior, not an independently observed dropped response. Supersedes prior pending migration/SQL/concurrency/HTTP acceptance wording for requested scope; do not rerun passing checks absent a change or defect.
 
 No assistant tests/SQL/live verification/static analysis/builds. No frontend override UI/offline integration, broader load/concurrency or independent remote inspection claimed. No disposable materials created, staged, committed or pushed; owner-created app test attempt is retained without deletion. Background Schema and decisions remain ignored local docs; Graphify artifacts are outside app Git, and prior canonical semantic-source blockers remain.
+# M10-BE-01: `ai-generate-quiz` — 2026-10-26
+
+## Provider diagnostics — 2026-10-27
+
+### Bind provider output positions to type counts — 2026-10-27
+
+Owner received one valid essay with three essay candidates dropped and the three other
+types missing. A per-item anyOf allowed the provider to choose essay for every slot;
+the validator correctly retained at most the requested essay count. Replaced the union
+with request-specific prefixItems: one typed schema for each requested position, in
+multiple_choice/true_false/identification/essay order, repeated by requested count.
+maxItems equals requested total, not20 for every request. A single-type regeneration
+therefore has only its own one-item schema. Prompt mirrors this order explicitly.
+No minimum count is forced, preserving empty/partial output for unsupported sources;
+server still validates each returned question/count and never changes its type to
+fill a slot. Existing response API/retry/authorization/privacy rules unchanged.
+Google documents prefixItems support: https://ai.google.dev/api/generate-content
+Maintained mixed/zero-count/regeneration/20-slot schema assertions added; no assistant
+tests, analysis, builds, live calls, deployment or secrets. Owner four-type acceptance
+still pending.
+
+### Require MC indexes in provider schema — 2026-10-27
+
+Owner fixed log invalid_correct_index identifies dropped MC candidates with absent,
+noninteger or out-of-range correct_index. Flat provider schema made the field optional
+for every type. Replaced that with a small per-type anyOf union: MC requires options
+and integer correct_index0-9, TF requires its boolean, identification its answer list,
+and essay has no answer properties. Distinct leading properties separate the variants;
+additionalProperties=false prevents cross-type keys. Avoided string limits and nested
+array-size constraints in provider schema to keep complexity down; server still enforces
+2-10 options and correct_index strictly less than actual options length. Prompt explicitly
+maps first/second/third/fourth to0/1/2/3 and prohibits strings, letters, null and arrays.
+No guessed key, one-based conversion or weakened validator. REST APPLICATION_JSON enum
+retained. Mocked wire and missing/string/null/negative index regressions updated; no
+assistant tests, analysis, builds or live calls. Owner tests/deploy/four-type request
+pending; no API response, dependency, database or secret changes.
+
+### Dropped-question diagnostics — 2026-10-27
+
+Owner supplied13 passing focused tests and successful real Gemini output (TF,
+identification, essay), first with one MC candidate dropped and then two MC candidates
+dropped using richer source; one requested MC still missing. Provider response now
+succeeds, but full four-type acceptance remains pending. Added fixed server-only
+`ai-generate-quiz: question_dropped <recognized type> <fixed reason>` diagnostics.
+Reasons distinguish unused null/other answer fields, wrong_index_field, unknown_fields,
+invalid_prompt/explanation/points, options_not_array, invalid_option_count/text,
+duplicate_options, invalid_correct_index, invalid_boolean/accepted_answers,
+duplicate_prompt and excess_type. No unexpected field names, question text, answer,
+explanation, source, caller identifiers or raw candidate is logged. Existing rejection
+rules, returned objects, counts and partial-result/retry policy are unchanged; no
+invalid question is accepted to fill a quota. Maintained exact-log privacy test added.
+No assistant tests, analysis, builds, live calls, deployment or secrets changed.
+Owner must rerun focused tests, deploy and repeat the four-type request once, then
+inspect the fixed multiple_choice drop reason if MC remains missing.
+
+### REST output MIME enum correction — 2026-10-27
+
+Owner provider400/schema_rejected persists with the simplified schema. The REST
+reference defines responseFormat.text.mimeType as the MimeType enum with value
+APPLICATION_JSON, while the implementation sent application/json copied from the
+tutorial example. Corrected only that provider enum value; the HTTP Content-Type
+header remains application/json. The schema, validators, public result and error
+contracts remain unchanged. Maintained mocked wire assertion checks both values
+separately. Reference: https://ai.google.dev/api/generate-content#MimeType
+This identifies a concrete reference mismatch, not yet a verified runtime root cause.
+No assistant tests, static analysis, builds, live calls, deployment or secrets.
+Owner focused test rerun, deployment and real request remain pending.
+
+### Simplified provider schema — 2026-10-27
+
+Owner reported fixed category schema_rejected for HTTP400. Replaced the provider-facing
+four-variant anyOf schema with a flat array-of-question-objects schema using basic
+types, type enum, common required fields and optional per-type answer fields. Removed
+provider string/numeric limits and additionalProperties, keeping all strict limits,
+cross-type/unknown-field rejection and answer validation in validateQuestion unchanged.
+Prompt explicitly states every length/point limit and requires unused fields to be
+omitted, never null. No API response or persistence change, JSON-only downgrade,
+automatic model fallback, dependency or database migration. Existing malformed-output
+regressions continue to cover boundary validation; mocked request assertions now check
+the flat provider schema and absence of unions/string constraints. Owner deploy and
+real generation pending; no assistant tests, analysis, builds, live calls or secrets.
+Classification identifies a schema-related rejection, not its exact unsupported keyword.
+
+### Sanitized HTTP400 rejection classification — 2026-10-27
+
+Owner still reports provider_http400 after the current request-format update, so its
+root cause is not established. On HTTP400 only, read at most16,384 response bytes for
+at most3 seconds within the existing provider deadline. Inspect the error in memory
+and log only `ai-generate-quiz: provider_rejection` plus one fixed category:
+`api_key_invalid`, `key_or_project_restricted`, `free_tier_unavailable`,
+`request_field_unsupported`, `schema_union_ordering`, `schema_complexity`,
+`schema_rejected`, `model_unsupported`, or `unclassified`. Never log the raw error,
+response body, reason/metadata values, key, model value, prompts, sources or answers.
+Classification is a diagnostic hint based on recognized reasons/wording, not proof
+of root cause. Malformed, oversized, unreadable or unrecognized errors classify as
+unclassified without changing the existing AI_UNAVAILABLE response or retry policy.
+Maintained classification/privacy regressions prepared; no assistant tests, analysis,
+builds, live calls, deployment or secrets changed. Owner must redeploy and repeat one
+real request, then inspect the new fixed category before changing configuration.
+
+### Current structured-output request format — 2026-10-27
+
+Owner reported provider_http400 after selecting Flash-Lite. Source inspection found
+the provider request still used the older responseMimeType/responseJsonSchema fields.
+Updated generationConfig to the current documented REST shape:
+`responseFormat: {text: {mimeType: "application/json", schema: <existing schema>}}`.
+The same JSON Schema, independent output validation, privacy boundaries, response
+shape, error mapping and retry policy remain in force. Maintained mocked-provider
+assertions now require the current shape and absence of both older fields. Reference:
+https://ai.google.dev/gemini-api/docs/generate-content/structured-output?hl=en
+No assistant tests, static analysis, builds, provider calls, deployment or secret
+updates. Owner redeployment and real-request acceptance pending; HTTP400 alone does
+not establish that the older fields were its sole cause.
+
+Owner supplied real-mode AI_UNAVAILABLE followed by sample-mode success using the same
+request. This confirms the sample authorization/validation/begin/finish path for that
+run, not a successful Gemini call. Provider/configuration cause remains unknown.
+Added fixed server-log events `ai-generate-quiz: missing_api_key`,
+`missing_or_invalid_model`, `provider_http` (numeric HTTP status only), and
+`provider_transport_failure`. No key/model value, URL, caller identifier, prompt,
+source, answer, response body, headers or raw exception is logged. Client error shape
+and usage error codes are unchanged. Maintained regression asserts exact diagnostic
+arguments using private sentinel inputs. No assistant tests, builds, static analysis,
+live calls, deployment or secret changes. Owner must deploy, set AI_TEST_MODE=off,
+repeat the failed request and inspect the function Logs for these events. HTTP400
+means provider request rejected (key or payload/schema may be involved);401/403 means
+authentication/access rejection;404 means model/endpoint unavailable;429 and overload
+statuses retain AI_BUSY. Do not infer a precise root cause from HTTP status alone.
+
+Implementation prepared; owner tests and real-provider acceptance pending. No deployment,
+secret changes, automated tests, static analysis, builds or live API checks were run.
+No schema changes. Existing `begin_ai_request` and `finish_ai_request` remain service-only.
+
+## Call and authorization
+
+`POST /functions/v1/ai-generate-quiz`, headers `Authorization: Bearer <access_token>`,
+`apikey: <project publishable key>`, `Content-Type: application/json`.
+The function authenticates tokens itself (`verify_jwt=false`); this does not make it
+anonymous. It checks token, verified session/user pair, active instructor profile,
+owned non-archived/non-deleted class, then an unlocked/non-deleted quiz in that class.
+Denied access returns `NOT_ALLOWED` before acquiring a slot or contacting Gemini.
+Malformed identifiers return `INVALID_REQUEST`; database availability failures return
+`AI_UNAVAILABLE`, rather than pretending the caller lacks permission. OPTIONS returns
+204; non-POST methods return 405/`INVALID_REQUEST`.
+
+```json
+{
+  "class_id": "<owned-class-uuid>",
+  "quiz_id": "<quiz-uuid-in-that-class>",
+  "texts": [{"file_name": "biology.txt", "text": "Plants use sunlight for photosynthesis."}],
+  "counts": {"multiple_choice": 1, "true_false": 1, "identification": 1, "essay": 1},
+  "difficulty": "easy",
+  "topic_focus": "photosynthesis"
+}
+```
+
+All four count keys are required; unknown count keys are invalid. Counts are integers
+0–20 with total 1–20. Difficulty is `easy|medium|hard`. Topic focus is optional,
+at most 200 Unicode code points. Source array has at most three entries; filenames
+are nonblank strings up to 255 code points, used only for input validation, never sent
+to Gemini. Text must be a string. Empty/whitespace-only combined sources give `NO_TEXT`.
+Shared source limit: 40,000 code points, counting original text before trimming;
+no silent truncation. Request body limit: 524,288 UTF-8 bytes. These are separate limits.
+
+Regeneration adds `"mode":"regenerate"`, `"type":"essay"`, and
+`"current_prompts":["Question being replaced", "Other existing question"]`, with counts
+`{"multiple_choice":0,"true_false":0,"identification":0,"essay":1}` for that example.
+Provide the original source texts or one replacement text entry in `texts`; source
+text is never retained server-side. There is no second text-list key or source lookup.
+Comparison list: 1–100 nonblank strings, each at most 1,000 code points and at most
+40,000 code points combined. Include the replaced question and all existing prompts.
+Type and difficulty are supplied by the caller; the function cannot infer the selected
+question from an ID. Generation mode is omitted or `generate`; comparison fields are
+rejected outside regeneration. Existing questions are never deleted or persisted here.
+
+## Success contract
+
+HTTP 200:
+
+```json
+{
+  "questions": [
+    {"type":"multiple_choice","prompt":"Which resource supplies energy for photosynthesis?","points":1,"explanation":"The source identifies sunlight.","options":["Sunlight","Sound","Wind","Soil"],"correct_index":0},
+    {"type":"true_false","prompt":"Plants use sunlight for photosynthesis.","points":1,"explanation":"This is stated in the source.","correct_boolean":true},
+    {"type":"identification","prompt":"Name the process described in the source.","points":1,"explanation":"Plants use sunlight in this process.","accepted_answers":["photosynthesis"]},
+    {"type":"essay","prompt":"Explain the connection between sunlight and the process described.","points":1,"explanation":"Focus on the relationship stated in the source."}
+  ],
+  "dropped_by_type":{"multiple_choice":0,"true_false":0,"identification":0,"essay":0},
+  "missing_by_type":{"multiple_choice":0,"true_false":0,"identification":0,"essay":0}
+}
+```
+
+Question rules: nonblank prompt ≤1,000, explanation string ≤500 (empty allowed), integer
+points 1–1,000 (omitted provider points become 1). MC: 2–10 distinct nonblank option
+strings ≤500 each, one integer zero-based `correct_index` within bounds. TF: boolean
+`correct_boolean` including false. Identification: 1–10 nonblank strings ≤200 each;
+equivalent normalized duplicate strings collapse. Essay: no answer fields. Fields for
+other types and unknown question fields cause that candidate to be dropped. Returned
+objects contain only the documented fields. String limits count Unicode code points.
+
+Only complete STOP provider candidates are considered; surrounding code fences are
+stripped before JSON parsing. Duplicate prompts use NFKC, whitespace normalization and
+case folding across all types and the regeneration avoid list. Accepted questions are
+trimmed per requested type; no question quota is borrowed from another type.
+`missing_by_type` is requested minus returned. `dropped_by_type` counts invalid, duplicate
+or excess candidates of each recognizable type, across attempts. Unparseable output and
+unknown-type entries cannot be assigned a type; their shortfall appears in missing counts.
+If any valid question remains, return it immediately, even if incomplete. Retry once
+only when none survive; two unusable results give `AI_BAD_OUTPUT`. Never invent fill-ins.
+Structural validity does not establish factual correctness, privacy anonymization or
+semantic uniqueness. Instructors must review before explicitly saving/publishing.
+Saving later uses the existing `save_question` contract: map `correct_index` to
+`correct_option_index` and supply position/other required persistence fields there.
+
+## Errors and request lifecycle
+
+Every failure is `{"error":{"code":"AI_BUSY","message":"The AI assistant is busy. Please try again in a few minutes."}}`
+with exactly one fixed code and short English message. No raw provider/database errors.
+
+| Code | HTTP | Meaning / recovery |
+| --- | --- | --- |
+| `NOT_ALLOWED` | 403 | Invalid/missing token, unverified session, wrong role/ownership or read-only assessment; resolve access before retrying. |
+| `INVALID_REQUEST` | 400 | Malformed JSON, identifiers, counts, text entries or settings; correct input. Non-POST uses 405. |
+| `NO_TEXT` | 400 | Supply readable source text. |
+| `TOO_LARGE` | 413 | Reduce source/comparison text or encoded body size. |
+| `AI_IN_PROGRESS` | 409 | Another request owns the user's slot; wait, then retry. |
+| `AI_BUSY` | 503 | Provider 429/500/502/503/504; wait before an explicit retry. |
+| `AI_TIMEOUT` | 504 | Provider call deadline; explicit retry is allowed. |
+| `AI_BAD_OUTPUT` | 502 | Two unusable, blocked, truncated, malformed or oversized provider responses; change text/focus or retry. |
+| `AI_UNAVAILABLE` | 503 | Configuration, database, transport, unsupported schema/model, unexpected provider or unconfirmed finalization failure. Resolve configuration/service availability first. |
+
+After authorization and input validation, acquire `begin_ai_request(user, 'generate_quiz')`;
+null means `AI_IN_PROGRESS` with no provider call and no finish for an unacquired slot.
+Acquired requests always attempt `finish_ai_request` in finally with success/failed and
+only the fixed error code. Retry the same finish update once on failure. If neither
+finish is confirmed, return `AI_UNAVAILABLE` and discard otherwise successful questions;
+the log's actual state may be uncertain. Begin timeouts can likewise leave an uncertain
+acquisition. Existing RPCs ignore started rows older than two minutes, allowing recovery;
+they do not automatically mark stale rows failed. Hard platform termination can prevent
+finally, and client cancellation does not guarantee provider cancellation or refund.
+
+Auth timeout 8s; request read 5s; each database operation 5s; each Gemini attempt ≤45s;
+overall pre-finalization deadline 110s; finish ≤5s each, at most twice. Provider body
+limit 262,144 UTF-8 bytes. No retries for provider busy/transport/timeouts. API key is
+sent in `x-goog-api-key`, never the URL. Only texts, focus, comparison prompts and trusted
+generation settings reach Gemini: no filenames, caller names/emails or class/quiz/user
+IDs are added. Source text itself is not automatically anonymized: supply nonprivate
+content. No request, response, secret or raw exception is written to application logs.
+Usage logging stores only the existing user/kind/status/timestamps and sanitized code.
+
+## DEV controls, deployment and owner checks
+
+Run from `filo-app/backend`. First obtain the exact System Analyst-approved model ID;
+there is deliberately no model fallback. Replace placeholders privately; do not commit
+secrets or paste credentials into shared logs/chat. Commands are owner-run, not executed:
+
+```powershell
+npx supabase secrets set --project-ref fiobwfzmqcffbpixzvbq GEMINI_API_KEY='<private-key>' GEMINI_MODEL='<analyst-approved-model-id>' AI_TEST_MODE=off
+npx supabase functions deploy ai-generate-quiz --project-ref fiobwfzmqcffbpixzvbq
+deno test --config supabase/functions/ai-generate-quiz/deno.json supabase/functions/ai-generate-quiz/quiz_test.ts
+```
+
+The test command uses mocked HTTP only; no real credentials, database or provider calls.
+Initial Deno dependency resolution may download the existing Supabase dependency and
+create a lockfile. No additional library is introduced by this function.
+
+`AI_TEST_MODE=sample` returns deterministic, explicitly labeled DEV questions matching
+requested counts. Any error code in the table can be the secret value to simulate its
+response, with no Gemini call. All real authorization, input validation and slot checks
+still run first. Synthetic errors after acquisition finalize failed with that code,
+including synthetic `AI_IN_PROGRESS`; a real concurrent refusal acquires no slot.
+The switch works only when `SUPABASE_URL` exactly matches
+`https://fiobwfzmqcffbpixzvbq.supabase.co`; any enabled switch elsewhere or unknown mode
+fails closed with `AI_UNAVAILABLE`. Missing, empty or `off` disables simulations.
+Never use this secret to bypass production authorization. Disable it after DEV QA:
+
+```powershell
+npx supabase secrets set --project-ref fiobwfzmqcffbpixzvbq AI_TEST_MODE=off
+```
+
+Owner acceptance: run maintained tests; generate all four types with real neutral text;
+check token/session/student/ownership/class/locked/archive denial, boundary inputs,
+concurrency, every simulation, provider retry/partial-output cases, recovery after
+disconnect, usage finalization and absence of sensitive log content. Frontend/offline
+integration is not implemented here; clients retain drafts and offer explicit retry.
+
