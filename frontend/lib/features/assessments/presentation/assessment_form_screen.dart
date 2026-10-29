@@ -15,6 +15,10 @@ import '../domain/quiz_helpers.dart';
 import 'assessment_row.dart';
 import 'question_card.dart';
 import 'question_bank_screen.dart';
+import 'ai_quiz_sheet.dart';
+import '../application/ai_providers.dart';
+import '../data/ai_quiz_client.dart';
+import '../data/file_text_cache.dart';
 
 /// Connected settings and question builder for instructor assessments.
 class AssessmentFormScreen extends ConsumerStatefulWidget {
@@ -96,7 +100,8 @@ class _AssessmentFormScreenState extends ConsumerState<AssessmentFormScreen> {
   bool _questionDirty = false;
   QuestionEditorState _editor(QuizQuestion q) =>
       _editors.putIfAbsent(q.localId, () => QuestionEditorState(q));
-  bool get _dirty => _questionDirty || _draft?.isDirty == true;
+  bool get _dirty =>
+      _unpersistedAi != null || _questionDirty || _draft?.isDirty == true;
   @override
   void dispose() {
     for (final controller in _pageScrolls) {
@@ -142,12 +147,13 @@ class _AssessmentFormScreenState extends ConsumerState<AssessmentFormScreen> {
       await bank.save(id, snapshot, creating: true);
       _bankIds.remove(q.localId);
       _bankSnapshots.remove(q.localId);
-      if (mounted)
+      if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text('Question saved to bank.')),
         );
+      }
     } catch (_) {
-      if (mounted)
+      if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
             content: Text(
@@ -155,14 +161,335 @@ class _AssessmentFormScreenState extends ConsumerState<AssessmentFormScreen> {
             ),
           ),
         );
+      }
+    } finally {
+      if (mounted) setState(() => _busy = false);
+    }
+  }
+
+  int _pendingAi = 0, _uncertainAi = 0;
+  bool _aiRefreshRequired = false;
+  AiGeneratedBatch? _unpersistedAi;
+
+  Future<bool> _prepareAi() async {
+    if (_busy ||
+        !_canWrite ||
+        _draft == null ||
+        _draft!.locked ||
+        _published ||
+        _pendingAi > 0 ||
+        _aiRefreshRequired)
+      return false;
+    if ((_draft!.settings['title'] as String).trim().isEmpty) {
+      final controller = TextEditingController();
+      final title = await showDialog<String>(
+        context: context,
+        builder: (c) => AlertDialog(
+          title: const Text('Name your assessment'),
+          content: TextField(
+            controller: controller,
+            maxLength: 120,
+            decoration: const InputDecoration(labelText: 'Title'),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(c),
+              child: const Text('Cancel'),
+            ),
+            FilledButton(
+              onPressed: () {
+                if (controller.text.trim().isNotEmpty)
+                  Navigator.pop(c, controller.text.trim());
+              },
+              child: const Text('Save draft'),
+            ),
+          ],
+        ),
+      );
+      // The dialog route can still be disposing its editable field this frame.
+      WidgetsBinding.instance.addPostFrameCallback((_) => controller.dispose());
+      if (!mounted || title == null) return false;
+      setState(() {
+        _draft!.settings['title'] = title;
+        _revision++;
+      });
+      await WidgetsBinding.instance.endOfFrame;
+    }
+    await _save();
+    return mounted &&
+        _draft?.id != null &&
+        !_dirty &&
+        _canWrite &&
+        !_draft!.locked;
+  }
+
+  Future<void> _generateWithAi() async {
+    if (!await _prepareAi()) return;
+    setState(() => _busy = true);
+    AiGeneratedBatch? generated;
+    try {
+      final batch = await showFiloBottomSheet<AiGeneratedBatch>(
+        context: context,
+        title: 'Generate with AI',
+        builder: (_) =>
+            AiQuizSheet(classId: widget.classId, quizId: _draft!.id!),
+      );
+      if (!mounted || batch == null) return;
+      generated = batch;
+      final repository = await ref.read(
+        instructorQuizRepositoryProvider.future,
+      );
+      if (repository == null) throw const AiFailure('AUTH');
+      final report = await repository.saveAiBatch(
+        widget.classId,
+        _draft!.id!,
+        batch.questions,
+        batch.context,
+      );
+      if (mounted) await _acceptAiReport(report);
+    } catch (error) {
+      if (mounted) {
+        final journaled = error is AiDraftSaveFailure && error.staged;
+        try {
+          final cache = await ref.read(fileTextCacheProvider.future);
+          final pending = await cache?.pending(_draft!.id!) ?? [];
+          if (mounted)
+            setState(() {
+              _unpersistedAi = pending.isEmpty && !journaled ? generated : null;
+              _aiRefreshRequired = journaled;
+              _pendingAi = pending.isEmpty
+                  ? _unpersistedAi?.questions.length ?? 0
+                  : pending.length;
+              _uncertainAi = pending
+                  .where((p) => p['state'] == 'uncertain')
+                  .length;
+            });
+        } catch (_) {
+          if (mounted)
+            setState(() {
+              _unpersistedAi = journaled ? null : generated;
+              _aiRefreshRequired = journaled;
+              _pendingAi = _unpersistedAi?.questions.length ?? 0;
+            });
+        }
+        if (mounted)
+          setState(
+            () => _error = _unpersistedAi != null
+                ? 'Questions could not be stored. They are kept on this screen until you leave. Retry saving when storage and connection are available.'
+                : 'AI draft saving could not be confirmed. Check saves before retrying; pending drafts are retained for reconciliation.',
+          );
+      }
+    } finally {
+      if (mounted) setState(() => _busy = false);
+    }
+  }
+
+  Future<void> _acceptAiReport(AiDraftSaveReport report) async {
+    final previous = _draft!.questions.map((q) => q.id).toSet();
+    _accept(report.saved);
+    setState(() {
+      _unpersistedAi = null;
+      _aiRefreshRequired = false;
+      _pendingAi = report.pending;
+      _uncertainAi = report.uncertain;
+      for (final q in _draft!.questions.where(
+        (q) => !previous.contains(q.id),
+      )) {
+        _editor(q).status = 'Added';
+        _expanded ??= q.localId;
+      }
+    });
+    showMessage(
+      context,
+      '${report.added == 0
+          ? 'No new question saves were confirmed.'
+          : report.added == 1
+          ? '1 question added as a draft. Review it before publishing.'
+          : '${report.added} questions added as drafts. Review them before publishing.'}${report.pending > 0 ? ' ${report.pending} saves need attention.' : ''}',
+    );
+    if (_expanded != null) await _revealQuestion(_expanded!);
+  }
+
+  Future<void> _retryAiDrafts() async {
+    if (_busy || !_canWrite || _draft?.id == null) return;
+    if (_questionDirty || _draft?.isDirty == true) {
+      showMessage(
+        context,
+        'Save or discard your current edits before checking AI draft saves.',
+      );
+      return;
+    }
+    setState(() => _busy = true);
+    try {
+      final repository = await ref.read(
+        instructorQuizRepositoryProvider.future,
+      );
+      if (repository == null) throw const AiFailure('AUTH');
+      final report = await repository.saveAiBatch(
+        widget.classId,
+        _draft!.id!,
+        _unpersistedAi?.questions ?? [],
+        _unpersistedAi?.context,
+      );
+      if (mounted) await _acceptAiReport(report);
+    } catch (error) {
+      if (mounted) {
+        if (error is AiDraftSaveFailure && error.staged) _unpersistedAi = null;
+        try {
+          final cache = await ref.read(fileTextCacheProvider.future);
+          final pending = await cache?.pending(_draft!.id!) ?? [];
+          if (mounted)
+            setState(() {
+              if (pending.isNotEmpty) _unpersistedAi = null;
+              _pendingAi =
+                  pending.length + (_unpersistedAi?.questions.length ?? 0);
+              _aiRefreshRequired = true;
+              _uncertainAi = pending
+                  .where((p) => p['state'] == 'uncertain')
+                  .length;
+            });
+        } catch (_) {}
+        if (mounted)
+          setState(
+            () => _error = 'Draft saves could not be checked. Your confirmed questions are unchanged. Try again after reconnecting.',
+          );
+      }
+    } finally {
+      if (mounted) setState(() => _busy = false);
+    }
+  }
+
+  Future<void> _stopAiRetries() async {
+    if (_busy || !_canWrite || _draft?.id == null) return;
+    if (_questionDirty || _draft?.isDirty == true) {
+      showMessage(context, 'Save or discard current edits first.');
+      return;
+    }
+    final confirmed = await showFiloConfirmation(
+      context,
+      title: 'Stop retrying pending drafts?',
+      message: 'Confirmed saved questions stay. This discards pending proposals and stops retrying them. A server save already sent may still finish; this does not cancel it.',
+      confirmLabel: 'Stop retrying',
+      cancelLabel: 'Keep drafts',
+      icon: FiloIcons.assessment,
+    );
+    if (!mounted || !confirmed) return;
+    setState(() => _busy = true);
+    try {
+      final repository = await ref.read(
+        instructorQuizRepositoryProvider.future,
+      );
+      if (repository == null) throw const AiFailure('AUTH');
+      final saved = await repository.refreshQuiz(widget.classId, _draft!.id!);
+      await FileTextCache(repository.database).abandonPending(_draft!.id!);
+      if (mounted) {
+        _accept(saved);
+        setState(() {
+          _unpersistedAi = null;
+          _pendingAi = 0;
+          _uncertainAi = 0;
+          _aiRefreshRequired = false;
+        });
+      }
+    } catch (_) {
+      if (mounted)
+        setState(
+          () => _error = 'Pending drafts could not be reconciled. Check your connection and try again.',
+        );
+    } finally {
+      if (mounted) setState(() => _busy = false);
+    }
+  }
+
+  Future<void> _regenerateAi(QuizQuestion question) async {
+    if (!await _prepareAi() || question.id == null) return;
+    if (_draft!.questions.length > 100 ||
+        _draft!.questions.fold<int>(0, (n, q) => n + q.prompt.runes.length) >
+            40000) {
+      showMessage(
+        context,
+        'This quiz exceeds the current regeneration limit of 100 questions or 40,000 prompt characters. Create or edit this question manually.',
+      );
+      return;
+    }
+    final confirmed = await showFiloConfirmation(
+      context,
+      title: 'Regenerate question?',
+      message: 'Replace this question with a different AI-generated question from the same text? Its type and difficulty will stay the same.',
+      confirmLabel: 'Regenerate',
+      cancelLabel: 'Cancel',
+      icon: FiloIcons.assessment,
+    );
+    if (!mounted || !confirmed) return;
+    setState(() => _busy = true);
+    try {
+      final cache = await ref.read(fileTextCacheProvider.future);
+      final ctx = await cache?.contextFor(question.id!);
+      if (!mounted) return;
+      if (ctx != null && ctx.revision != lessonExtractorRevision) {
+        showMessage(
+          context,
+          'This question used an older source reader. Generate a new question from your files instead.',
+        );
+        return;
+      }
+      if (ctx == null) {
+        showMessage(
+          context,
+          'The source context for this question is no longer available. Choose files and generate a new question instead.',
+        );
+        return;
+      }
+      final batch = await showFiloBottomSheet<AiGeneratedBatch>(
+        context: context,
+        title: 'Regenerate question',
+        builder: (_) => AiQuizSheet(
+          classId: widget.classId,
+          quizId: _draft!.id!,
+          regenerateType: question.type,
+          initialContext: ctx,
+          currentPrompts: _draft!.questions.map((q) => q.prompt).toList(),
+        ),
+      );
+      if (!mounted || batch == null || !_canWrite) return;
+      final replacement = batch.questions.single;
+      replacement.payload['points'] = question.points;
+      final repository = await ref.read(
+        instructorQuizRepositoryProvider.future,
+      );
+      if (repository == null) throw const AiFailure('AUTH');
+      final saved = await repository.replaceAiQuestion(
+        widget.classId,
+        _draft!.id!,
+        question.id!,
+        replacement,
+        batch.context,
+      );
+      if (mounted) {
+        _accept(saved);
+        showMessage(
+          context,
+          'Question replaced as a saved draft. Review it before publishing.',
+        );
+      }
+    } catch (_) {
+      if (mounted)
+        setState(() {
+          _draft!.reconciliationRequired = true;
+          _error = 'Replacement could not be confirmed. The original remains displayed. Reload the saved version before making more changes.';
+        });
     } finally {
       if (mounted) setState(() => _busy = false);
     }
   }
 
   Future<void> _addFromBank() async {
-    if (_busy || !_canWrite || _draft!.locked || _draft!.reconciliationRequired)
+    if (_busy ||
+        !_canWrite ||
+        _draft!.locked ||
+        _draft!.reconciliationRequired) {
       return;
+    }
     final copies = await showFiloBottomSheet<List<QuizQuestion>>(
       context: context,
       title: 'Add from question bank',
@@ -174,8 +501,9 @@ class _AssessmentFormScreenState extends ConsumerState<AssessmentFormScreen> {
         copies.isEmpty ||
         !_canWrite ||
         _draft!.locked ||
-        _draft!.reconciliationRequired)
+        _draft!.reconciliationRequired) {
       return;
+    }
     setState(() {
       _draft!.questions.addAll(copies);
       _expanded = copies.first.localId;
@@ -192,6 +520,10 @@ class _AssessmentFormScreenState extends ConsumerState<AssessmentFormScreen> {
   }
 
   Future<void> _questionAction(QuizQuestion q, String action) async {
+    if (action == 'regenerate') {
+      await _regenerateAi(q);
+      return;
+    }
     if (action == 'bank') {
       await _saveToBank(q);
       return;
@@ -221,8 +553,8 @@ class _AssessmentFormScreenState extends ConsumerState<AssessmentFormScreen> {
         _questionDirty = true;
       });
     } else if (action == 'duplicate') {
+      final copy = q.duplicate();
       setState(() {
-        final copy = q.duplicate();
         questions.insert(index + 1, copy);
         final source = _editor(q);
         _editors[copy.localId] = QuestionEditorState(copy)
@@ -231,6 +563,25 @@ class _AssessmentFormScreenState extends ConsumerState<AssessmentFormScreen> {
         _expanded = copy.localId;
         _questionDirty = true;
       });
+      if (q.aiGenerated && _draft!.id != null) {
+        try {
+          final cache = await ref.read(fileTextCacheProvider.future);
+          final sourceContext = await cache?.contextFor(q.id ?? q.localId);
+          if (sourceContext != null && mounted) {
+            await cache!.putContext(
+              copy.id ?? copy.localId,
+              _draft!.id!,
+              sourceContext,
+            );
+          }
+        } catch (_) {
+          if (mounted)
+            showMessage(
+              context,
+              'The question was copied, but its source context could not be copied. Pick sources again for future AI generation.',
+            );
+        }
+      }
     }
   }
 
@@ -325,6 +676,15 @@ class _AssessmentFormScreenState extends ConsumerState<AssessmentFormScreen> {
         );
       }
       if (mounted) setState(() => _error = null);
+      final cache = FileTextCache(repository.database);
+      final pending = await cache.pending(id);
+      if (mounted)
+        setState(() {
+          if (pending.isNotEmpty) _unpersistedAi = null;
+          _aiRefreshRequired = false;
+          _pendingAi = pending.length + (_unpersistedAi?.questions.length ?? 0);
+          _uncertainAi = pending.where((p) => p['state'] == 'uncertain').length;
+        });
     } catch (error) {
       if (mounted) {
         setState(
@@ -968,8 +1328,9 @@ class _AssessmentFormScreenState extends ConsumerState<AssessmentFormScreen> {
                                                         labelText: 'Time limit (minutes)',
                                                       ),
                                                   validator: (value) {
-                                                    if (draft.locked)
+                                                    if (draft.locked) {
                                                       return null;
+                                                    }
                                                     final n = int.tryParse(
                                                       value ?? '',
                                                     );
@@ -1210,8 +1571,9 @@ class _AssessmentFormScreenState extends ConsumerState<AssessmentFormScreen> {
                                                         suffixText: '%',
                                                       ),
                                                   validator: (value) {
-                                                    if (draft.locked)
+                                                    if (draft.locked) {
                                                       return null;
+                                                    }
                                                     if (value == null ||
                                                         value.trim().isEmpty) {
                                                       return null;
@@ -1242,6 +1604,68 @@ class _AssessmentFormScreenState extends ConsumerState<AssessmentFormScreen> {
                                                 ),
                                               ],
                                               if (page == 2) ...[
+                                                if (_pendingAi > 0 ||
+                                                    _aiRefreshRequired) ...[
+                                                  Text(
+                                                    _pendingAi == 0
+                                                        ? 'Refresh saved AI drafts before continuing.'
+                                                        : '$_pendingAi AI draft saves need attention.${_uncertainAi > 0 ? ' $_uncertainAi have an unconfirmed outcome; they will not be inserted again automatically.' : ''}',
+                                                  ),
+                                                  TextButton(
+                                                    onPressed:
+                                                        !_busy && _canWrite
+                                                        ? _retryAiDrafts
+                                                        : null,
+                                                    child: const Text(
+                                                      'Check saves / retry failed drafts',
+                                                    ),
+                                                  ),
+                                                  TextButton(
+                                                    onPressed:
+                                                        !_busy && _canWrite
+                                                        ? _stopAiRetries
+                                                        : null,
+                                                    child: const Text(
+                                                      'Stop retrying pending drafts',
+                                                    ),
+                                                  ),
+                                                ],
+                                                if (!draft.locked) ...[
+                                                  OutlinedButton.icon(
+                                                    style:
+                                                        OutlinedButton.styleFrom(
+                                                          backgroundColor:
+                                                              FiloColors.lime,
+                                                        ),
+                                                    onPressed:
+                                                        contentEditing &&
+                                                            !_published &&
+                                                            _pendingAi == 0 &&
+                                                            !_aiRefreshRequired
+                                                        ? _generateWithAi
+                                                        : null,
+                                                    icon: const Icon(
+                                                      Icons
+                                                          .auto_awesome_outlined,
+                                                    ),
+                                                    label: const Text(
+                                                      'Generate with AI',
+                                                    ),
+                                                  ),
+                                                  if (draft.id == null)
+                                                    const Text(
+                                                      'Your titled draft will be saved before generation.',
+                                                    ),
+                                                  if (_published)
+                                                    const Text(
+                                                      'AI questions must start in a draft assessment.',
+                                                    ),
+                                                  if (!online)
+                                                    const Text(
+                                                      'Connect to the internet to generate questions.',
+                                                    ),
+                                                  const SizedBox(height: 12),
+                                                ],
                                                 Text(
                                                   '${draft.questionCount} ${draft.questionCount == 1 ? 'question' : 'questions'} | ${draft.questions.any((q) {
                                                         final n = int.tryParse(_editor(q).points);
@@ -1309,8 +1733,9 @@ class _AssessmentFormScreenState extends ConsumerState<AssessmentFormScreen> {
                                         sliver: SliverReorderableList(
                                           itemCount: draft.questions.length,
                                           findChildIndexCallback: (key) {
-                                            if (key is! ValueKey<String>)
+                                            if (key is! ValueKey<String>) {
                                               return null;
+                                            }
                                             final index = draft.questions
                                                 .indexWhere(
                                                   (q) => q.localId == key.value,
@@ -1318,17 +1743,22 @@ class _AssessmentFormScreenState extends ConsumerState<AssessmentFormScreen> {
                                             return index < 0 ? null : index;
                                           },
                                           onReorder: (from, to) {
-                                            if (contentEditing)
+                                            if (contentEditing) {
                                               _move(
                                                 from,
                                                 to > from ? to - 1 : to,
                                               );
+                                            }
                                           },
                                           itemBuilder: (context, index) {
                                             final q = draft.questions[index];
                                             return KeyedSubtree(
                                               key: ValueKey(q.localId),
                                               child: QuestionCard(
+                                                canRegenerate:
+                                                    !_published &&
+                                                    _pendingAi == 0 &&
+                                                    !_aiRefreshRequired,
                                                 canSaveToBank:
                                                     online &&
                                                     !_busy &&
@@ -1344,13 +1774,14 @@ class _AssessmentFormScreenState extends ConsumerState<AssessmentFormScreen> {
                                                     _expanded == q.localId,
                                                 enabled: contentEditing,
                                                 onToggle: () {
-                                                  if (!_busy)
+                                                  if (!_busy) {
                                                     setState(
                                                       () => _expanded =
                                                           _expanded == q.localId
                                                           ? null
                                                           : q.localId,
                                                     );
+                                                  }
                                                 },
                                                 onChanged: () => setState(
                                                   () => _questionDirty = true,

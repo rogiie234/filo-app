@@ -27,7 +27,22 @@ class AppDatabase extends _$AppDatabase {
   AppDatabase(super.executor);
 
   @override
-  int get schemaVersion => 9;
+  int get schemaVersion => 10;
+
+  Future<void> _createAiTextCache() async {
+    await customStatement(
+      'CREATE TABLE IF NOT EXISTS file_text_cache (source_key TEXT PRIMARY KEY, text TEXT NOT NULL, character_count INTEGER NOT NULL, extracted_at INTEGER NOT NULL, byte_cap INTEGER NOT NULL, warnings TEXT NOT NULL, revision INTEGER NOT NULL)',
+    );
+    await customStatement(
+      'CREATE TABLE IF NOT EXISTS draft_text_sources (quiz_id TEXT NOT NULL, source_key TEXT NOT NULL, PRIMARY KEY(quiz_id,source_key))',
+    );
+    await customStatement(
+      "CREATE TABLE IF NOT EXISTS ai_question_contexts (question_key TEXT PRIMARY KEY, quiz_id TEXT NOT NULL, context TEXT NOT NULL, state TEXT NOT NULL DEFAULT 'saved', payload TEXT, position INTEGER)",
+    );
+    await customStatement(
+      'CREATE TABLE IF NOT EXISTS ai_settings (key TEXT PRIMARY KEY, value TEXT NOT NULL)',
+    );
+  }
 
   Future<void> _createResultsCache() async {
     await customStatement('''
@@ -169,6 +184,7 @@ class AppDatabase extends _$AppDatabase {
   MigrationStrategy get migration => MigrationStrategy(
     onCreate: (m) async {
       await m.createAll();
+      await _createAiTextCache();
       await _createResultsCache();
       await _createStudentQuizCache();
       await _createExamStorage();
@@ -179,6 +195,7 @@ class AppDatabase extends _$AppDatabase {
       await _createFileSyncState();
     },
     onUpgrade: (m, from, to) async {
+      if (from < 10) await _createAiTextCache();
       if (from < 9) await _createResultsCache();
       if (from < 7) await _createStudentQuizCache();
       if (from < 6) await _createExamStorage();
@@ -195,7 +212,21 @@ class AppDatabase extends _$AppDatabase {
         await _createFileSyncState();
       }
     },
-    beforeOpen: (_) async => customStatement('PRAGMA foreign_keys = ON'),
+    beforeOpen: (_) async {
+      await customStatement('PRAGMA foreign_keys = ON');
+      await customStatement(
+        'DELETE FROM file_text_cache WHERE extracted_at < ? OR revision<>2',
+        [
+          DateTime.now()
+              .toUtc()
+              .subtract(const Duration(days: 30))
+              .millisecondsSinceEpoch,
+        ],
+      );
+      await customStatement(
+        'DELETE FROM draft_text_sources WHERE source_key NOT IN (SELECT source_key FROM file_text_cache)',
+      );
+    },
   );
 
   Future<void> saveProfile(CacheProfilesCompanion profile) =>

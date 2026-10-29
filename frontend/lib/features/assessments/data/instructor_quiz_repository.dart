@@ -6,6 +6,8 @@ import 'package:supabase_flutter/supabase_flutter.dart'
 
 import '../../../data/local/app_database.dart';
 import '../domain/quiz_draft.dart';
+import '../domain/ai_sources.dart';
+import 'file_text_cache.dart';
 
 class QuizReconciliationRequired implements Exception {
   const QuizReconciliationRequired(this.cause);
@@ -13,6 +15,18 @@ class QuizReconciliationRequired implements Exception {
   @override
   String toString() =>
       'The save may be partially complete. Reload and reconcile before saving again. ($cause)';
+}
+
+class AiDraftSaveReport {
+  const AiDraftSaveReport(this.saved, this.added, this.pending, this.uncertain);
+  final InstructorQuiz saved;
+  final int added, pending, uncertain;
+}
+
+class AiDraftSaveFailure implements Exception {
+  const AiDraftSaveFailure(this.staged, this.cause);
+  final bool staged;
+  final Object cause;
 }
 
 class InstructorQuizRepository {
@@ -27,6 +41,206 @@ class InstructorQuizRepository {
   final String userId;
   final bool Function() isOnline;
   final Set<String> _saving = {};
+
+  Future<AiDraftSaveReport> saveAiBatch(
+    String classId,
+    String quizId,
+    List<QuizQuestion> questions,
+    AiSourceContext? context,
+  ) async {
+    if (!_saving.add(classId))
+      throw StateError('A save is already in progress.');
+    final cache = FileTextCache(database);
+    var added = 0;
+    var staged = questions.isEmpty;
+    try {
+      await _authorize(classId, writing: true);
+      if (client.auth.currentUser?.id != userId)
+        throw StateError('The signed-in account changed.');
+      if (context != null) {
+        if ((await cache.pending(quizId)).isNotEmpty)
+          throw StateError('Reconcile pending AI drafts first.');
+        var position = 0;
+        await database.transaction(() async {
+          for (final question in questions) {
+            await cache.putContext(
+              question.localId,
+              quizId,
+              context,
+              state: 'failed',
+              payload: jsonEncode(question.toJson()),
+              position: position++,
+            );
+          }
+        });
+        staged = true;
+      }
+      await _remoteAccess(classId, writing: true);
+      var fresh = await refreshQuiz(classId, quizId);
+      if (fresh.locked || fresh.row['status'] == 'published')
+        throw StateError('AI questions require an unlocked draft assessment.');
+      final pending = await cache.pending(quizId);
+      for (final row in pending) {
+        _connection();
+        final key = row['question_key'] as String;
+        final question = QuizQuestion.fromJson(
+          jsonDecode(row['payload'] as String) as Map<String, dynamic>,
+        );
+        final ctx = AiSourceContext.fromJson(
+          jsonDecode(row['context'] as String) as Map<String, dynamic>,
+        );
+        var position = row['position'] as int;
+        if (row['state'] == 'uncertain') {
+          fresh = await refreshQuiz(classId, quizId);
+          final atPosition = await client
+              .from('questions')
+              .select('id')
+              .eq('quiz_id', quizId)
+              .eq('position', position);
+          final ids = atPosition.map((q) => q['id']).toSet();
+          final matches = fresh.questions
+              .where(
+                (q) =>
+                    ids.contains(q.id) &&
+                    q.aiGenerated &&
+                    quizValuesEqual(q.payload, question.payload),
+              )
+              .toList();
+          if (matches.length == 1) {
+            await cache.bind(key, matches.single.id!);
+            added++;
+          }
+          // No match does not prove an in-flight insert cannot still commit.
+          continue;
+        }
+        await _remoteAccess(classId, writing: true);
+        fresh = await refreshQuiz(classId, quizId);
+        if (fresh.locked || fresh.row['status'] == 'published') break;
+        final lastPosition = await client
+            .from('questions')
+            .select('position')
+            .eq('quiz_id', quizId)
+            .order('position', ascending: false)
+            .limit(1);
+        position = lastPosition.isEmpty
+            ? 0
+            : (lastPosition.first['position'] as int) + 1;
+        await cache.putContext(
+          key,
+          quizId,
+          ctx,
+          state: 'uncertain',
+          payload: row['payload'] as String,
+          position: position,
+        );
+        try {
+          final response = await client
+              .rpc(
+                'save_question',
+                params: {
+                  'p_quiz': quizId,
+                  'p_question': {
+                    ...question.payload,
+                    'id': null,
+                    'position': position,
+                    'ai_generated': true,
+                  },
+                },
+              )
+              .timeout(const Duration(seconds: 30));
+          final id = (response as Map)['question_id'] as String;
+          await cache.bind(key, id);
+          added++;
+        } on PostgrestException catch (error) {
+          if (RegExp(r'^(22|23|42)').hasMatch(error.code ?? '') ||
+              ['PGRST301', 'PGRST302'].contains(error.code)) {
+            await cache.putContext(
+              key,
+              quizId,
+              ctx,
+              state: 'failed',
+              payload: row['payload'] as String,
+              position: position,
+            );
+          }
+          if (['42501', 'PGRST301', 'PGRST302'].contains(error.code) ||
+              error.message.toLowerCase().contains('locked') ||
+              error.message.toLowerCase().contains('started'))
+            break;
+        } catch (_) {
+          // Keep the uncertain record; a later refresh can bind it without a new insert.
+        }
+      }
+      fresh = await refreshQuiz(classId, quizId);
+      await refreshList(classId);
+      final remaining = await cache.pending(quizId);
+      return AiDraftSaveReport(
+        fresh,
+        added,
+        remaining.length,
+        remaining.where((r) => r['state'] == 'uncertain').length,
+      );
+    } catch (error) {
+      // Once journaled, retry from the journal, even if the final refresh failed.
+      throw AiDraftSaveFailure(staged, error);
+    } finally {
+      _saving.remove(classId);
+    }
+  }
+
+  Future<InstructorQuiz> replaceAiQuestion(
+    String classId,
+    String quizId,
+    String questionId,
+    QuizQuestion replacement,
+    AiSourceContext context,
+  ) async {
+    if (!_saving.add(classId))
+      throw StateError('A save is already in progress.');
+    try {
+      await _remoteAccess(classId, writing: true);
+      final fresh = await refreshQuiz(classId, quizId);
+      if (fresh.locked || fresh.row['status'] == 'published')
+        throw StateError('AI questions require an unlocked draft assessment.');
+      final original = fresh.questions
+          .where((q) => q.id == questionId)
+          .firstOrNull;
+      if (original == null || !original.aiGenerated)
+        throw StateError('This question is no longer available.');
+      if (replacement.type != original.type ||
+          replacement.validationErrors().isNotEmpty)
+        throw StateError('The replacement question is invalid.');
+      replacement.payload['points'] = original.points;
+      final position = await client
+          .from('questions')
+          .select('position')
+          .eq('id', questionId)
+          .eq('quiz_id', quizId)
+          .single();
+      await client
+          .rpc(
+            'save_question',
+            params: {
+              'p_quiz': quizId,
+              'p_question': {
+                ...replacement.payload,
+                'id': questionId,
+                'position': position['position'],
+                'ai_generated': true,
+              },
+            },
+          )
+          .timeout(const Duration(seconds: 30));
+      await FileTextCache(database).putContext(questionId, quizId, context);
+      return await refreshQuiz(classId, quizId);
+    } catch (e) {
+      // Existing-ID updates are atomic; never remove the displayed original on failure.
+      throw QuizReconciliationRequired(e);
+    } finally {
+      _saving.remove(classId);
+    }
+  }
+
   final Map<String, int> _listRevisions = {};
   void _changedList(String classId) =>
       _listRevisions.update(classId, (value) => value + 1, ifAbsent: () => 1);
@@ -288,6 +502,8 @@ class InstructorQuizRepository {
         }
       });
       _notify();
+      if (row['status'] == 'published')
+        await FileTextCache(database).deleteForDraft(quizId);
       return quiz;
     } on PostgrestException catch (e) {
       if (e.code == '42501') {
@@ -318,6 +534,13 @@ class InstructorQuizRepository {
     QuizDraft draft, {
     void Function(String localId, String status)? onQuestionProgress,
   }) async {
+    if (draft.id != null &&
+        (await FileTextCache(database).pending(draft.id!))
+            .any((p) => p['state'] == 'uncertain')) {
+      throw const QuizReconciliationRequired(
+        'An AI insert must be reconciled before saving more changes.',
+      );
+    }
     if (draft.reconciliationRequired) {
       throw const QuizReconciliationRequired('Reload required');
     }
@@ -409,6 +632,7 @@ class InstructorQuizRepository {
               },
             );
             q.id = (result as Map)['question_id'] as String;
+            await FileTextCache(database).bind(q.localId, q.id!);
             for (final current in draft.questions) {
               if (current.localId == q.localId) current.id = q.id;
             }
@@ -506,6 +730,7 @@ class InstructorQuizRepository {
       }
       throw QuizReconciliationRequired(error);
     }
+    await FileTextCache(database).deleteForDraft(quizId);
     await database.transaction(() async {
       _changedList(classId);
       await database.customStatement(
@@ -535,6 +760,7 @@ class InstructorQuizRepository {
     await _remoteAccess(classId, writing: true);
     try {
       await client.rpc('publish_quiz', params: {'p_quiz': quizId});
+      await FileTextCache(database).deleteForDraft(quizId);
     } on PostgrestException {
       // An explicit RPC rejection has a known outcome; retain its validation message.
       rethrow;
@@ -542,6 +768,7 @@ class InstructorQuizRepository {
       try {
         final saved = await refreshQuiz(classId, quizId);
         if (saved.row['status'] == 'published') {
+          await FileTextCache(database).deleteForDraft(quizId);
           await refreshList(classId);
           return saved;
         }

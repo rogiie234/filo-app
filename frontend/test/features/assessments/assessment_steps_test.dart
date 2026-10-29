@@ -12,6 +12,8 @@ import 'package:filo/features/assessments/domain/quiz_draft.dart';
 import 'package:filo/features/assessments/presentation/assessment_form_screen.dart';
 import 'package:filo/features/classes/application/class_providers.dart';
 
+import 'support/unused_assessment_client.dart';
+
 class StepRepository extends InstructorQuizRepository {
   StepRepository(AppDatabase database, SupabaseClient client)
     : super(database, client, 'owner', () => true);
@@ -37,9 +39,10 @@ void main() {
     'steps validate, retain unfinished input and save zero questions only on final page',
     (tester) async {
       final db = AppDatabase(NativeDatabase.memory());
-      final client = SupabaseClient('https://example.supabase.co', 'test-key');
-      addTearDown(db.close);
-      addTearDown(client.dispose);
+      addTearDown(() async {
+        await tester.pumpWidget(const SizedBox());
+        await tester.runAsync(db.close);
+      });
       final room = await tester.runAsync(() async {
         await db.customStatement(
           "INSERT INTO cache_profiles(id,role,display_name) VALUES ('owner','instructor','Owner')",
@@ -49,7 +52,7 @@ void main() {
         );
         return (await db.select(db.cacheClasses).get()).single;
       });
-      final repo = StepRepository(db, client);
+      final repo = StepRepository(db, UnusedAssessmentClient());
       await tester.pumpWidget(
         ProviderScope(
           overrides: [
@@ -74,9 +77,12 @@ void main() {
       expect(find.text('Give your assessment a title.'), findsOneWidget);
       final titleInput = find.descendant(
         of: find.byKey(const ValueKey('title-0')),
-        matching: find.byType(TextField),
+        matching: find.byType(EditableText),
       );
-      expect(tester.widget<TextField>(titleInput).focusNode!.hasFocus, isTrue);
+      expect(
+        tester.widget<EditableText>(titleInput).focusNode.hasFocus,
+        isTrue,
+      );
       await tester.enterText(find.byKey(const ValueKey('title-0')), 'My quiz');
       await tester.tap(find.text('Next: Settings'));
       await tester.pumpAndSettle();
@@ -89,10 +95,10 @@ void main() {
       expect(find.text('Step 2 of 3'), findsOneWidget);
       final passingInput = find.descendant(
         of: passing,
-        matching: find.byType(TextField),
+        matching: find.byType(EditableText),
       );
       expect(
-        tester.widget<TextField>(passingInput).focusNode!.hasFocus,
+        tester.widget<EditableText>(passingInput).focusNode.hasFocus,
         isTrue,
       );
       expect(

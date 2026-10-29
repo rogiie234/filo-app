@@ -76,12 +76,14 @@ class QuestionCard extends StatefulWidget {
     required this.onAction,
     this.showActions = true,
     this.canSaveToBank = false,
+    this.canRegenerate = true,
   });
   final QuizQuestion question;
   final QuestionEditorState editor;
   final int index;
   final bool expanded, enabled;
   final bool showActions, canSaveToBank;
+  final bool canRegenerate;
   final VoidCallback onToggle, onChanged;
   final ValueChanged<String> onAction;
   @override
@@ -139,6 +141,9 @@ class _QuestionCardState extends State<QuestionCard> {
     return Padding(
       padding: const EdgeInsets.only(bottom: 12),
       child: FiloPanel(
+        color: e.status == 'Added'
+            ? FiloColors.lime
+            : Theme.of(context).colorScheme.surface,
         padding: const EdgeInsets.all(16),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -172,6 +177,15 @@ class _QuestionCardState extends State<QuestionCard> {
                     enabled: widget.enabled || widget.canSaveToBank,
                     onSelected: widget.onAction,
                     itemBuilder: (_) => [
+                      if (q.aiGenerated)
+                        PopupMenuItem(
+                          enabled:
+                              widget.enabled &&
+                              widget.canRegenerate &&
+                              q.id != null,
+                          value: 'regenerate',
+                          child: const Text('Regenerate this question'),
+                        ),
                       if (widget.canSaveToBank)
                         const PopupMenuItem(
                           value: 'bank',
@@ -246,7 +260,7 @@ class _QuestionCardState extends State<QuestionCard> {
                   mainAxisSize: MainAxisSize.min,
                   children: [
                     Icon(
-                      e.status == 'Saved'
+                      e.status == 'Saved' || e.status == 'Added'
                           ? Icons.check_circle_outline
                           : e.status == 'Save not confirmed'
                           ? Icons.error_outline
@@ -270,9 +284,30 @@ class _QuestionCardState extends State<QuestionCard> {
                   ],
                 ),
                 if (q.aiGenerated)
-                  const Chip(
-                    avatar: Icon(Icons.auto_awesome, size: 18),
-                    label: Text('AI'),
+                  Tooltip(
+                    message: 'AI-generated. Check it before publishing.',
+                    child: Semantics(
+                      label: 'AI-generated. Check it before publishing.',
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 10,
+                          vertical: 6,
+                        ),
+                        decoration: BoxDecoration(
+                          color: FiloColors.lime,
+                          border: Border.all(color: const Color(0xFF526D1E)),
+                          borderRadius: BorderRadius.circular(20),
+                        ),
+                        child: const Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Icon(Icons.auto_awesome, size: 18),
+                            SizedBox(width: 4),
+                            Text('AI'),
+                          ],
+                        ),
+                      ),
+                    ),
                   ),
               ],
             ),

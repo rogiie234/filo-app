@@ -11,8 +11,14 @@ import 'package:filo/features/assessments/domain/bank_question.dart';
 import 'package:filo/features/assessments/domain/quiz_draft.dart';
 import 'package:filo/features/assessments/presentation/question_bank_screen.dart';
 
+class UnusedBankClient implements SupabaseClient {
+  @override
+  dynamic noSuchMethod(Invocation invocation) =>
+      throw StateError('Bank widget fixtures must not use the SDK client.');
+}
+
 class FakeBank extends QuestionBankRepository {
-  FakeBank(SupabaseClient client) : super(client, 'owner', () => true);
+  FakeBank() : super(UnusedBankClient(), 'owner', () => true);
   bool fail = false;
   int writes = 0;
   @override
@@ -90,9 +96,7 @@ void main() {
   testWidgets(
     'picker retains hidden selections and returns unsaved copies in bank order',
     (tester) async {
-      final client = SupabaseClient('https://example.supabase.co', 'test');
-      addTearDown(client.dispose);
-      final bank = FakeBank(client);
+      final bank = FakeBank();
       List<QuizQuestion>? result;
       await tester.pumpWidget(
         ProviderScope(
@@ -125,7 +129,7 @@ void main() {
       await tester.tap(find.text('Alpha'));
       await tester.enterText(find.byType(TextField), 'Beta');
       await tester.pumpAndSettle();
-      await tester.tap(find.text('Beta'));
+      await tester.tap(find.widgetWithText(CheckboxListTile, 'Beta'));
       await tester.tap(find.byType(DropdownButtonFormField<String>));
       await tester.pumpAndSettle();
       await tester.tap(find.text('Essay').last);
@@ -143,9 +147,7 @@ void main() {
   testWidgets(
     'load failure is retryable and never presented as an empty bank',
     (tester) async {
-      final client = SupabaseClient('https://example.supabase.co', 'test');
-      addTearDown(client.dispose);
-      final bank = FakeBank(client)..fail = true;
+      final bank = FakeBank()..fail = true;
       await tester.pumpWidget(
         ProviderScope(
           overrides: [
@@ -171,9 +173,7 @@ void main() {
   testWidgets('bank edit retains input after failure and retries explicitly', (
     tester,
   ) async {
-    final client = SupabaseClient('https://example.supabase.co', 'test');
-    addTearDown(client.dispose);
-    final bank = FakeBank(client);
+    final bank = FakeBank();
     await tester.pumpWidget(
       ProviderScope(
         overrides: [

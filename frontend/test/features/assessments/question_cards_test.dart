@@ -45,7 +45,11 @@ void main() {
         (widget) =>
             widget is TextField && widget.decoration?.labelText == 'Points',
       );
-      expect(tester.widget<TextField>(points).focusNode!.hasFocus, isTrue);
+      final editable = find.descendant(
+        of: points,
+        matching: find.byType(EditableText),
+      );
+      expect(tester.widget<EditableText>(editable).focusNode.hasFocus, isTrue);
       expect(
         tester.getRect(points).overlaps(tester.getRect(find.byType(Scaffold))),
         isTrue,

@@ -12,11 +12,20 @@ import android.provider.Settings
 import android.view.WindowManager
 
 class MainActivity : FlutterActivity() {
+    private var lessonImages: LessonImageReader? = null
     private var examOrientation: Int? = null
     private var pendingPermission: MethodChannel.Result? = null
 
     override fun configureFlutterEngine(flutterEngine: FlutterEngine) {
         super.configureFlutterEngine(flutterEngine)
+        val reader = LessonImageReader(applicationContext)
+        lessonImages = reader
+        MethodChannel(flutterEngine.dartExecutor.binaryMessenger, "com.filo.filo/lesson_image")
+            .setMethodCallHandler { call, result ->
+                val path = call.argument<String>("path")
+                if (call.method == "prepare" && path != null) reader.prepare(path, result)
+                else result.notImplemented()
+            }
         MethodChannel(flutterEngine.dartExecutor.binaryMessenger, "com.filo.filo/exam")
             .setMethodCallHandler { call, result ->
                 if (call.method != "protect" || call.arguments !is Boolean) {
@@ -88,6 +97,7 @@ class MainActivity : FlutterActivity() {
     }
 
     override fun onDestroy() {
+        lessonImages?.close()
         pendingPermission?.success(false)
         pendingPermission = null
         super.onDestroy()

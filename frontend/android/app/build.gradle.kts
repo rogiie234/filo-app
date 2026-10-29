@@ -47,3 +47,8 @@ kotlin {
 flutter {
     source = "../.."
 }
+
+dependencies {
+    implementation("androidx.exifinterface:exifinterface:1.4.1")
+    testImplementation("junit:junit:4.13.2")
+}

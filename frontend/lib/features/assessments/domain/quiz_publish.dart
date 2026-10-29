@@ -43,8 +43,15 @@ List<QuizPublishProblem> quizPublishProblems(QuizDraft draft, DateTime now) {
 
 String quizPublishSummary(QuizDraft draft) {
   String count(int n, String word) => '$n $word${n == 1 ? '' : 's'}';
-  return '${count(draft.questionCount, 'question')}, ${count(draft.totalPoints, 'point')}, ${count(draft.settings['time_limit_minutes'] as int, 'minute')}. Students will be notified.';
+  final aiCount = aiQuestionCount(draft.questions);
+  final reminder = aiCount == 1
+      ? '1 question was written by AI. Have you checked it?'
+      : '$aiCount questions were written by AI. Have you checked them?';
+  return '${count(draft.questionCount, 'question')}, ${count(draft.totalPoints, 'point')}, ${count(draft.settings['time_limit_minutes'] as int, 'minute')}. Students will be notified.${aiCount > 0 ? '\n\n$reminder' : ''}';
 }
+
+int aiQuestionCount(Iterable<QuizQuestion> questions) =>
+    questions.where((q) => q.aiGenerated).length;
 
 String quizFriendlyError(Object error) {
   final text = error.toString();

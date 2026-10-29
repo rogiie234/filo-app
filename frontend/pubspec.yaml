@@ -7,6 +7,9 @@ environment:
   sdk: ^3.13.5
 
 dependencies:
+  google_mlkit_text_recognition: 0.17.1
+  archive: ^4.5.2
+  xml: ^7.0.1
   http: ^1.6.0
   flutter_animate: ^4.5.2
   dio: ^5.11.0
