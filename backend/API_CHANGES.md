@@ -918,3 +918,898 @@ waived check, not a reopened task acceptance gate. Owner can report later issues
 Maintained SQL scripts/tests are lasting regression materials, not disposable files. No
 assistant SQL/live execution/deployment/tests/static analysis/builds, no staging/commit/push.
 No credentials/private question content retained. Unrelated changes preserved.
+
+## M10-BE-03 Q3 staged quiz quality pipeline - 2026-10-28
+
+Owner-authorized replacement of prompt-only live generation. Request keys, four question
+types and response envelope remain unchanged. Live MC candidates now use internal
+correct_answer plus3 distractors; exactly4 options and balanced zero-based correct_index
+are built in code using a per-request seeded RNG. The model no longer chooses positions.
+Returned questions optionally add evidence:string (12–1000 chars), and essays sample_answer:
+string (<=4000) and rubric:[{key_point:string<=500,points:positive integer}], sum=question.points.
+Live candidates require these metadata. No objective/fact/internal candidate keys returned.
+Manual quiz save/publish schemas and student question delivery are unchanged; no metadata
+persistence migration. Instructor response metadata must stay out of student-facing payloads.
+
+Flow: one N+2 blueprint call (requested types/difficulty, unique objective/fact/evidence),
+batched candidate generation, pure validators, separate key-blind batched solve, failed-only
+repair (initial+at most2 retries per objective), terminal drop, same-type spare when available.
+No partial, malformed or ambiguous verifier decision is accepted. Evidence requires exact
+single-source NFKC/whitespace-normalized occurrence, with conservative question/objective/
+evidence lexical alignment. Invalid blueprint slots remain missing; rejected question
+objectives increment dropped_by_type once after exhaustion; repaired attempts appear in
+quality_stats only. A replacement may make missing0 while dropped remains nonzero. No new
+permanent provider request log row per internal call; one usage slot/finalization per quiz.
+
+Validators cover structural/option rules, near-duplicates, same-fact/text overlap, absolute
+TF wording unless explicit statement evidence, vocabulary-based glued words, source-explicit
+acronym expansions, essay metadata/points and majority long-answer cues. Final answer position
+counts differ at most1; options/index remain aligned after drops. Blind MC/TF checks one
+answer vs key; identification compares source-derived variants, essay uses lexical rubric
+coverage. English/lexical heuristics are conservative, not semantic proof or auto-grading.
+Evidence occurrence does not establish entailment; independent solver can agree incorrectly.
+
+Existing auth/verified instructor/class/quiz guards, source/body limits, configuration,
+provider error categories, production test-switch guard and finish retry remain. Same110s
+handler budget,45s maximum per provider call. Clean run3 provider calls; bounded repairs/spares
+can reach13, with source tokens repeated per generation batch. No cost/latency measurements.
+Provider/verification HTTP failures fail closed with existing codes; no unverified fallback.
+No further stage starts near deadline; verified partials possible, zero usable givesAI_BAD_OUTPUT.
+DEV sample mode remains a labelled legacy simulation, not a quality test.
+
+Log ai-generate-quiz: quality_stats once per live run, including errors: numeric calls,
+retries, verifier_disagreements and fixed-rule failure counts only. No source/evidence,
+question/answer/rubric/provider text, IDs, keys or tokens in those stats.
+
+Validation: explicitly requested focused Deno suites run by assistant on2026-10-28:
+34 tests PASS /0FAIL, type checking included. Earlier run30PASS/1FAIL caught acronym extraction,
+fixed and broadened; prior compile issues resolved. Mocked transport/solver tests, not live
+provider schema acceptance or deployment evidence. No live calls or deployment. Owner runtime
+review of new pipeline, current model schema support, actual latency/quota and five-file
+quality completion pending. See docs/ai-prompts.md and docs/ai-quality-check.md (local ignored
+docs) and tests/README.md. No dependencies or migrations added.
+### Q3 contextual identification variants - 2026-10-28
+
+Owner follow-up output exposed an expansion question accepting its own acronym as answer.
+answerVariants now uses stem context: source-supported full-name variants retained, acronym
+already supplied by a full-name/expansion stem excluded; empty resulting answers rejected.
+Parser and quality-rule caller use same helper; no shape change. Added regression; focused
+Deno suites35PASS/0FAIL with type checking. Local/not deployed. See quality report for owner
+output findings and unresolved pasted-spacing versus in-memory diagnostic. No live calls.
+### Q3 independent cognitive/distractor review and contextual variants - 2026-10-28
+
+Owner follow-up response exposed direct recall despite intended Medium, weak alternatives,
+acronym echo/reverse variants and overlong source expansion prefixes. Shared variants now use
+shortest matching source suffix; full-name questions exclude supplied acronym, acronym questions
+exclude expansions. The existing blind batch additionally classifies cognitive_level and
+plausible_options internally. No requested difficulty or source/key sent to reviewer. Code
+requires recall forEasy, interpretation forMedium, multistep forHard and plausible MC options;
+fixed verifier_difficulty/verifier_distractors errors use existing repair/drop path. These
+model judgments can misclassify; no guarantee of calibrated difficulty. No public fields,
+extra calls, dependencies or migration. Local/not deployed;37 focused testsPASS/0FAIL.
+Previous35/34 evidence retained, no live/provider acceptance. See quality report for output.
+### Q3.1 run diagnostics - 2026-10-28
+
+quality_stats additionally logs pipeline_revision:"Q3.1" and trusted difficulty:"easy"|"medium"|
+"hard" so future owner trials can identify current cognitive/distractor verifier code and
+actual request setting. No source, personal IDs, keys, provider payloads or public response
+fields added. Existing numeric/fixed-rule counters unchanged. New regression and focused
+suites38PASS/0FAIL; local/not deployed. Marker cannot establish earlier deployment provenance.
+### Q3.2 task-oriented blueprint - 2026-10-28
+
+Owner DEV67 Medium partial outcome exposed heavy recall rejection and two recall survivors.
+Blueprint adds required internal assessment_task:string(1–1000 chars), separate from fact,
+with concrete learner action/scenario/inference. Medium/Hard planning must apply/interpret/
+compare rather than paraphrase definitions or copied review questions. Generator executes
+planned task and may construct neutral hypothetical examples whose rules/answers follow
+from supplied source; no invented personal/domain facts. This does not relax source grounding.
+Task is planner/generator data only, not in blind payload or public response. Internal schema/
+fixtures/type helper updated; no request API, metadata persistence, student delivery, provider
+call/budget or verifier/retry change. MarkerQ3.2, local/not deployed.40 focused testsPASS/0FAIL,
+including required-task/data-flow and mocked scenario Medium acceptance. Not live improvement.
+See quality report for preserved partial result and one bounded owner Medium trial.
+### Q3.2 owner DEV68 trial limitation - 2026-10-28
+
+Owner Q3.2/medium run returned2of11 with9missing; stats7calls/18question retries/20difficulty
+mismatches,6near-duplicate-option hits,1glued-word hit. Surviving TF still source recall;
+MC designer context still primarily definition recognition. Requested Medium quality target
+FAILED, despite honest partial counts and40PASS mocked test evidence. No guarantee from blind
+classifier; do not equate filtering/test Pass with sound quiz generation. Preserve failed
+trial in ai-quality-check.md. No extra tuning/model switch/retry-budget increase made; proposed
+next investigation is fixed human-labelled difficulty calibration, not another blind reroll.
+### C1 standalone verifier calibration harness - 2026-10-28
+
+Added maintained tests/ai_calibration.ts/test for one optional owner-run Gemini blind batch
+using frozen accepted Markdown and private process environment. Shared blindReviewRequest
+extracted/reused without changing production prompt/schema or public behavior. No new API
+route/test mode/dependency/model selection, no instructor token or deployment needed for
+local harness. Local keys/labels/rubrics withheld from request; results scored separately
+for solving, cognitive agreement and false accepts/rejects.43focused testsPASS/0FAIL with
+read-only reference permission and mocked HTTP. No live calibration or quality acceptance.
+See tests/README.md for owner commands and limits; full task remains open.
+### Q3.3 targeted Medium repair - 2026-10-28
+
+Local implementation only; owner execution pending. Medium generation now requires a
+scenario-dependent decision (initial condition plus change/goal/action and consequence),
+not a profession prefix or longer definition. Failed-objective repairs receive the previous
+parsed question and observed blind cognitive label when available, rather than error names
+alone; they may rebuild the task for the same fact. This private repair context goes only to
+generation, never the blind reviewer or logs. Invalid provider objects are not forwarded.
+The same failure-only two-retry limit, call/deadline bounds and public response remain.
+Option similarity now preserves distinctions in numeric/ordinal/negation markers instead
+of discarding them through word-set overlap; exact/cosmetic duplicates still fail and the
+unchanged blind solver still rejects semantic ambiguity/weak alternatives. This is a lexical
+heuristic, not proof that differing numbers make options valid. Statistics marker Q3.3.
+Two maintained regressions cover repair context/blind isolation and option distinctions.
+No tests/static analysis/builds/live calls/deployment run for this change; owner checks next.
+No dependency, endpoint, schema/auth change, extra provider call or disposable fixture added.
+C1 frozen reference and previous accepted evidence unchanged. This does not resolve the
+five-file report or establish that Medium now succeeds; preserve DEV68 failure until rerun.
+
+### Q3.4 shared difficulty criteria and directional diagnostics - 2026-10-28
+
+Local implementation, owner execution pending. One shared cognitiveCriteria instruction is
+used by generation/blueprint and blind review: recall/recognition, one-rule application,
+and two dependent inferences. Decorative scenarios and longer explanations do not establish
+Medium/Hard. Medium planning now prefers actionable source rules, concrete conditions and
+one inference over glossary facts/repeating worked examples. Failed repairs include the
+fixed difficulty_direction (too_easy/too_hard/null); guidance adds real application for too
+easy and removes dependent steps for too hard without reverting to definitions.
+The existing exact-level rejection gate, source/key/distractor checks, public JSON, deadline,
+call path and two retries per objective remain. No extra model call or dependency added.
+The observed TF giveaway 'guaranteed' is now checked alongside existing absolute words.
+
+quality_stats revision Q3.4 adds difficulty_mismatches.too_easy and .too_hard, each containing
+four question-type integer counters. These count repeated difficulty-rejection attempts,
+not unique questions or model accuracy. Only validated verdicts with matching answer keys
+that reach verifier_difficulty contribute; malformed verdicts/answer failures do not acquire
+a fabricated difficulty direction. Existing counters retained. No source/stems/answers,
+IDs, explanations, raw rationales or credentials added to logs. Repair context stays private
+in memory/generation payload; blind data remains IDs/types/stems/options only. Unknown
+labels still fail malformed validation; helper does not classify them as too easy.
+
+Three maintained mocked regression tests added for direction mapping, shared criteria and
+blind isolation/absolute check, plus per-type counters/bounded rejection/repair direction
+for both too-easy and too-hard paths. Existing clean-run and repair tests extended. No tests,
+static analysis, builds, live calls or deployments executed under owner-only testing policy.
+Run the focused command already documented in tests/README.md before any further deployment
+or live trial. Expected: zero failures; on missing/changed C1 stop, never bypass its hash.
+Frozen C1 content/keys unchanged, but blind instructions changed: prior live C1 agreement
+is historical evidence only, not a Q3.4 runtime Pass. No benchmark answers injected into
+prompts. Prompt agreement and mocked verdicts cannot prove semantic classification; source-
+relative example reuse is not visible to a source-blind reviewer. Instructor review remains
+required. DEV70 failure/44-pass1-fail history and five-file/photo gaps preserved. No new
+runtime/whole-task acceptance or success/latency/cost claim. No disposable materials created.
+
+## Q4 structured application pipeline - 2026-10-28
+
+Owner-approved design implemented locally, NOT tested/deployed. No public endpoint, response
+field/type, auth, database or dependency change. Plans/rationales/reviews remain internal.
+planning.ts adds exact source-span references, application facts, linked inference steps,
+changed-condition contrast and answer binding. Medium requires one step; Hard dependent steps.
+Code assembles evidence instead of accepting retyped quotes. Current bounded references allow
+one or two adjacent spans within one file; unsupported distant context remains a gap.
+review.ts checks all review dimensions independently, including per-option defensibility,
+category/plausibility, scenario use, assumptions and independent essay answer-point coverage.
+Blind review still excludes source/key/plan/target difficulty. Disputes may use one source-aware
+batch with neither preferred key; outcomes support generator/alternative, ambiguity or remain
+unresolved. Keys are never silently flipped. Repairs are revalidated/reviewed; replacements
+retain the requested slot budget, and new duplicates cannot evict already verified items.
+At most3 actions per slot, with audit consuming an action; no increased retry/call/deadline
+ceiling. Clean path3 calls; current three-round loop plus audit at most8, explicit guard13;
+these are structural bounds, not measured cost/latency. Additional metadata increases tokens.
+quality_stats marker Q4; all applicable failure counters may overlap per attempt, source_audits
+summarizes dispositions. No private content added to logs. Optional observer is absent from
+hosted handlers; maintained local ai_quality_trace.ts captures bounded private attempts outside
+workspace/Git. A private HTTP400 provider_error event may retain a bounded, redacted
+structured provider message; no raw body/details/headers or supplied key. Hosted logs
+and public errors remain unchanged. Keep traces private; pattern masking is not a general
+sensitive-data detector. See tests/README.md and local
+ai-prompts.md for owner command/contracts/limits. Legacy buildPrompt/responseSchema inspection
+helpers are not the live pipeline. C1 content/hash unchanged; earlier live evidence does not
+verify the changed reviewer. Prior48PASS/DEV72 failure retained, Q4 acceptance pending.
+
+Q4 provider compatibility adjustment (2026-10-28): remove nested plan-array maxItems
+constraints from planSchema; parsePlan retains original source_refs/facts/steps/dependency
+limits. Top-level batch counts, shape/required fields, byte/deadline budgets and question
+validation remain. No fallback, retry/call increase or public API change. Generic first-call
+HTTP400 does not establish schema complexity as root cause; adjustment is provisional.
+New maintained boundary regression prepared, NOT RUN; no further live request performed.
+
+### Q4.1 JSON-mode compatibility (supersedes provisional nested-schema workaround)
+
+Owner isolated a schema-dependent rejection: same blueprint instructions/lesson accepted
+with tiny schema(200), full blueprint schema rejected(400). Exact field/constraint unknown.
+modelRequest now uses JSON mode without provider-enforced nested schema; full internal
+schema remains in system output instructions. Source/question data stays in separate user
+payload; blind reviewer still receives no key/source/plan/target difficulty. Blueprint,
+generation, verification and C1 runner use same builder; no runtime fallback or new calls.
+All existing parsers/source/quality checks and action/call/time limits retained. Original
+nested plan maxima restored in instruction contract, never relaxed in parser. Public output
+unchanged, revision Q4.1. Tradeoff: JSON mode gives less provider-side shape enforcement;
+malformed output fails local checks under existing budgets. No added endpoints/dependencies.
+Maintained tests/fixtures updated, NOT RUN; no live acceptance/deployment claimed.
+
+Q4.1 diagnostics follow-up: optional private observer now retains bounded/redacted
+non-thought model text, finish reason and parsed shape/outcome, plus HTTP status and
+missing/blocked/decoding metadata. No full HTTP envelope/headers or hosted/public logging.
+Per-response text cap65536characters, existing collector budgets remain. Hosted handler
+still supplies no observer. Parsing/acceptance/call/retry behavior unchanged; malformed
+blueprint cause remains unknown for earlier trace. Maintained offline regression NOT RUN.
+
+### Q4.2 shallow model envelope and planner separation
+
+Owner trace identified completed blueprint text with trailing extra closing brace and mixed
+question fields. modelRequest now enforces only a fixed shallow outer items-array schema;
+full stage schema remains in instructions/local checks. modelItems strictly unwraps one
+items key with object items; syntax errors/aliases/extra outer fields stay invalid. Public
+quiz/exam response unchanged. No heuristic JSON repair or automatic schema fallback.
+Planning shares source/cognitive policies but no longer receives question-construction
+instructions. Blueprint extra question/answer/explanation fields now rejected explicitly.
+Generation/C1 fixtures/callers aligned; frozen reference unchanged. MarkerQ4.2, same call/
+repair/time/byte budgets, no dependencies/endpoints/database/auth changes. Maintained
+regressions updated/prepared, NOT RUN; provider acceptance/live quality pending. No extra
+AI calls/deployment performed. Supersedes Q4.1 schema-free transport, not historical evidence.
+
+### Q4.3 encoded-item model transport (supersedes Q4.2 object-item schema)
+
+Owner Q4.2 trace accepted HTTP200/JSON but returned one type-only item, missing complete
+blueprint. Provider schema now fixes outer items as array of strings; each encodes a full
+JSON object, decoded by shared modelItems. This avoids declaring only generic identity
+properties for provider item objects. Malformed/non-object encoded entries become null
+in place and fail stage checks; envelope aliases/extra keys/non-string items rejected.
+All nested fields preserved, no heuristic syntax repair or inferred defaults. Public quiz
+JSON unchanged; generation/calibration/fixtures share codec. Same local validators, stage
+separation and call/repair/time/byte limits. MarkerQ4.3; private invalid_items metadata added.
+Escaping may add output tokens, inner JSON can still fail; no live acceptance claim.
+Maintained tests updated, NOT RUN. No extra AI calls/deployment/dependency/database changes.
+
+
+## Q4.4 flat typed AI transport - 2026-10-28
+
+Internal provider contract replaces JSON-encoded items with flat typed records. Shared
+wire.ts reconstructs existing planning/question/review/audit records; production and C1
+use the same boundary. Local field/index/array checks preserve rejected positions and
+all downstream source/semantic checks. Public JSON and call/retry/time budgets unchanged.
+Maintained wire_test.ts covers primitive schema shape, Easy/Medium/Hard reconstruction,
+malformed/legacy records, invalid indices, question variants, aligned arrays, review and
+audit mapping. Fixtures and caller assertions updated. Implementation NOT RUN; provider
+compatibility and live quality pending. No new private files or disposable scripts.
+
+Owner offline command (from backend; no Gemini key or instructor token required):
+
+```powershell
+deno test --allow-read=../docs/ai-quality-calibration.md --config supabase/functions/ai-generate-quiz/deno.json supabase/functions/ai-generate-quiz/quiz_test.ts supabase/functions/ai-generate-quiz/quality_test.ts supabase/functions/ai-generate-quiz/structural_test.ts supabase/functions/ai-generate-quiz/wire_test.ts tests/ai_calibration_test.ts
+```
+
+Expected zero failures, including mocked provider/offline/error and bounded-retry cases.
+Stop on failures; supply the error without credentials/private source. No live rerun or
+deployment requested yet; passing mocks do not establish provider/schema compatibility.
+
+
+## Q4.4 owner offline checks passed - 2026-10-28
+
+Owner supplied `ok | 72 passed | 0 failed (807ms)` following the five-suite offline
+command. Evidence source: owner PowerShell result in chat; local Q4.4 working tree,
+exact commit/Deno version not supplied. Scoped result: offline regression PASS;
+not real-provider/schema compatibility, deployed runtime or manual question quality.
+No assistant execution or repeat offline run needed. Explicit whole-task acceptance
+not supplied. Historical Q4.3 live failure and prior accepted scores remain unchanged.
+Next diagnostic is one owner-run local Medium trial using the existing private request
+and approved model/key; keep a new private trace, stop on failure and do not manually
+repeat or raise retry limits. This uses real paid AI calls within existing budgets.
+No deployment or instructor access token is needed for the direct local script.
+Original five-file/photo evaluation remains incomplete. No disposable files created.
+
+
+## Q4.4 owner live Medium timeout - 2026-10-28
+
+Owner reported AI_TIMEOUT, returned0/missing11, calls2/retries0, blueprint_invalid4,
+blueprint_duplicate1, no verifier disagreements/audits/difficulty judgments. Trial failed;
+no quality score. Prior72PASS offline result remains scoped, not contradicted as offline
+coverage and not promoted to live success. No explicit whole-task acceptance.
+
+Read-only inspection of the existing private trace confirms blueprint HTTP200/STOP,
+15524 characters, not truncated,13 parsed records and zero wire-invalid items. Eight
+plans accepted before spare handling, four rejected, one duplicate. Rejected slots0,1,9,10
+quote facts present in the original lesson but not fully contained in their selected
+source spans: two cross an adjacent-span boundary; two cite the preceding span instead
+of the containing span. This is confirmed source-reference mismatch, not evidence that
+the underlying lesson facts are invented. The deterministic evidence gate correctly
+withheld these plans; it must not silently rewrite references or weaken grounding.
+
+The second invocation is question generation in the current sequential flow. No second
+provider response/status appears; execution ended AI_TIMEOUT. Code caps each call at45s
+and overall local run at110s. Exact elapsed per-stage time, whether the call cap or
+remaining overall budget fired, and provider-side cause are not established by this
+trace. Verifier never ran; zero difficulty mismatches do not mean Medium quality passed.
+
+Next engineering focus: sentence-aligned/stable source units with explicit supporting
+rule references, plus bounded stage timing and generation-payload inspection (currently
+repeats application plans). Avoid increasing retry/time limits or another wording-only
+rerun. Any payload optimization must retain candidate-to-plan binding, repairs and
+source validation. No code change or new paid diagnostic in this evidence step.
+Original five-file/photo evaluation remains incomplete. Assistant ran no tests/static
+analysis/build/API/deployment; no disposable/private content copied into repository.
+
+
+## Q4.5 sentence-aware grounding and retained-plan rendering - 2026-10-28
+
+Local implementation NOT RUN. Supersedes Q4.4 generation wire behavior; preserves the
+Q4.4 live timeout/citation failures and scoped owner72PASS offline evidence. No new
+quality score or whole-task acceptance. Original five-file/photo evaluation remains open.
+
+sourceSpans now packs complete sentences at boundaries within the existing400 UTF-16
+unit cap. It uses explicit English-locale Intl.Segmenter sentence segmentation on the
+existing normalized text; language/abbreviation detection is heuristic, not a guarantee.
+Unusually long sentences retain bounded word/Unicode-safe fallback. IDs/offsets are
+code-assigned and deterministic for the same input/runtime, not stable across revisions;
+keep historical traces unchanged and never resolve old citations against new chunking.
+Ordered adjacent same-file reference rules/evidence caps and exact quoted-fact checks
+remain. Wrong preceding-span citations still fail; no automatic reference relocation.
+
+Initial generation omits repeated application fields from its response. Code reuses the
+validated plan by exact objective_id, then runs the same plan/source/key/scenario and
+question checks. Generation input omits each objective's duplicate evidence text while
+retaining source spans, rules and plans. Stem-only/options-only repairs retain plans;
+repairs requiring scenario changes or a full rebuild return the full flat plan. Mixed
+batches enforce this per objective ID, rejecting unknown IDs, unsolicited replacements
+and missing repair plans. Existing options/stem-only merge protections are retained.
+An unsolicited plan during an options-only repair is rejected rather than quietly used;
+it can consume the existing retry budget. Fixtures/tests now model compact responses.
+
+provider_timing emits only fixed-purpose/numeric/status metadata: elapsed_ms,
+request_bytes (serialized UTF-8 request), response_bytes (decoded successful response
+body re-encoded as UTF-8; null when unavailable/incomplete), HTTP status, remaining_ms,
+limit_ms, outcome and timeout_scope. Scope identifies the enforced overall-deadline or
+45-second call limit, not the provider's root cause. response_received means transport
+completed, not that output passed quality checks. Timing excludes verifier reasoning;
+it includes the local request serialization and response processing for that call.
+Metadata is logged normally and copied to the optional private observer; no source,
+question text, headers or key included. Existing private raw capture remains private.
+
+Public response, blind input isolation, model choice and all call/retry/time budgets
+are unchanged. No additional AI calls/dependencies/endpoints/database changes. Smaller
+requests/responses are intended to reduce repeated text; latency/cost improvement is
+unmeasured and no timeout cure is claimed. Frozen C1 reference remains unchanged.
+
+Maintained tests cover sentence packing/long multilingual Unicode fallback, wrong
+citations despite a real source fact, code-owned initial plans/unsolicited replacement,
+mixed retained/full-repair decoding, and timing on success/provider/offline/expired
+deadline. Existing repair/fixture expectations updated. No assistant tests/static
+analysis/build/live API/deployment. Owner runs the existing five-suite offline command;
+expected zero failures, stop and report any failure. No paid rerun until reviewed.
+No disposable materials created or private content copied into repository.
+
+
+## Q4.6 constrained blueprint and bounded generation batches - 2026-10-28
+
+Local implementation, NOT RUN. The Q4.5 live per-call timeout and earlier scoped offline
+results remain historical evidence; no Q4.6 runtime/quality acceptance or score inferred.
+Original five-file/photo evaluation and explicit whole-task acceptance remain pending.
+
+The blueprint provider schema now preserves the internal requested difficulty enum and
+active question-type enum instead of broadening them to all values. Local wire validation
+still rejects violations; downstream validation still checks requested type order and
+difficulty. Nothing relabels Easy plans as Medium. Unknown source/plan content remains
+untrusted. Frozen C1 reference and shared verifier/audit contracts unchanged.
+
+checkBlueprint keeps existing acceptance conditions and returns fixed rejection reasons:
+item shape/extra fields, type, difficulty, objective/fact bounds, invalid source refs,
+unsupported full-source fact, fact absent from selected refs, invalid plan/step count,
+TF outcome and identification-answer bounds. blueprint_invalid aggregate remains; specific
+rule counts can overlap on one item. Duplicate plans also produce a private rejection
+event. Null items already rejected by the wire report item shape; their original values
+remain available only in the existing bounded private provider capture, not ordinary logs.
+No generated text is introduced into ordinary logging or the QA register.
+
+Generation now uses serial batches of at most4 pending slots per round. Each batch is
+constructed, checked and blindly verified before the next starts; duplicate/set checks
+still compare against accepted earlier batches. Repairs/spares keep their existing slot
+action counts. Before starting a batch the pipeline reserves capacity for generation and
+verification under the unchanged13-call total and checks the existing remaining-time
+guard. No unverified generation consumes a lone remaining call. Time/action/call exhaustion
+leaves accurate missing counts and retains only work already verified through the normal
+return path. Existing provider exceptions (including AI_TIMEOUT) still abort with the
+existing error; no new partial-success fallback hides provider failure.
+
+For an otherwise valid11-question run this is planned1blueprint+3generation+3verification
+calls=7 before repairs/audit, versus the prior3 base calls.20questions need5batches/11base
+calls. Total limit13, rounds/slot action limit3, one source audit,45-second per-call and
+110-second local overall deadline remain unchanged. Batching spends more base calls and
+repeats instructions/source, so cost may increase and fewer repairs may fit. Smaller
+outputs may help timeouts but latency/cost/provider benefit is unmeasured. Existing
+provider_timing plus private generation_batch events identify progress without changing
+public questions/dropped_by_type/missing_by_type or introducing endpoints/DB/dependencies.
+
+Maintained synthetic tests cover enum preservation/no relabel, distinct rejection reasons,
+nine-question4/4/1 batch order, verification before the next render,13-call shared budget,
+no unverified final generation and no late batch with verified work retained. Existing
+four-question/single-slot tests keep their small-run behavior. No assistant tests/static
+analysis/build/API/deployment. Owner runs the five-suite offline command, expecting zero
+failures; stop and share full assertion details on failure. No paid trial until reviewed.
+No disposable files created; prior private traces remain outside Git unchanged.
+
+
+## Q4.7 type-specific generation/review contracts - 2026-10-28
+
+Local implementation NOT RUN. Preserves Q4.6 live failure, earlier82PASS mocked scope,
+and original five-file/photo/whole-task gaps. No quality score/runtime acceptance.
+
+Generation batches now group by question type, at most4slots each. The provider schema
+uses that type's exact enum and declares only applicable answer fields, all required.
+MC requires correct_answer and all4aligned distractor arrays; essay fields cannot appear
+in an MC schema. TF/ID/essay have their own required keys. Local decoder also binds type
+to objective ID and retains all strict array/value/source/plan/quality checks. No absent
+metadata is inferred and no unrelated field is silently accepted. Legacy mixed internal
+schema inspection remains supported; production generation uses homogeneous batches.
+
+Homogeneous non-MC blind-review/source-audit internal schemas specify zero option
+reviews. Their provider contracts omit option judgment arrays entirely; the adapter
+reconstructs the empty internal list because these checks are inapplicable. It does not
+invent answer, cognitive level, inference count, conditions or support. Unexpected option
+fields are rejected. MC still requires all option judgments. Mixed C1 calibration keeps
+its existing per-record option-array contract in the same adapter and frozen reference;
+no new calibration call/reference edit. Blind key/source isolation remains unchanged.
+
+Missing/undecodable/duplicate candidate rows now report candidate_wire instead of
+plan_invalid. Formatting/shape-only failures request format repair using the validated
+plan, without selecting a spare. Genuine invalid plans still fail as before. A malformed
+repair cannot erase earlier unresolved semantic findings; private candidate trace marks
+carried_findings separately. Aggregate failure occurrences may include carried findings,
+not additional verifier judgments; difficulty_mismatches counts actual review results.
+No output key flip or acceptance is inferred from solver agreement/disagreement.
+
+The11-question6MC/2TF/2ID/1essay mix uses5typed batches, thus11base calls before repairs/
+audit (Q4.6 planned7); a four-type4-question fixture uses9. The13-call/3-slot-action/one-
+audit/45-second-call/110-second-local-total limits and generation+verification reservation
+remain. Homogeneous batching can increase cost and leave less repair capacity. Larger
+mixed requests may exhaust the unchanged budget and return accurate missing counts on
+the normal return path; existing provider exceptions remain errors. No completion/latency
+or cost improvement is claimed. Public response/endpoints/DB/dependencies unchanged.
+
+Maintained synthetic regressions reproduce missing MC metadata/unrelated essay keys and
+TF two-option judgments; assert required provider fields, non-MC omission/reconstruction,
+wire-error classification/format-only retry/no spare and preservation of known difficulty
+findings. Existing generation order/count/audit fixtures updated for typed batches;
+C1 reference unchanged. No assistant tests/static checks/build/API/deployment. Owner runs
+the checked five-suite command expecting0failures, supplies full errors on failure; no
+paid rerun/deployment until reviewed. No disposable or private materials created/copied.
+
+
+## Q4.8 canonical scenario/task/key rendering - 2026-10-28
+
+Local implementation NOT RUN. Q4.7 partial2/11, offline86PASS and historical failures
+retain their recorded scopes; no new quality score/runtime acceptance. Original five-
+file/photo evaluation and explicit whole-task acceptance remain incomplete.
+
+The existing scenario_goal now means the short student-facing task only. Planner
+instructions no longer request Given/decide/because in that task; source rule/private
+justification remain in fact, steps and expected_outcome. scenario_facts must be actual
+conditions, not procedural task descriptions. renderPlan composes only the facts used
+by steps plus the task, normalizes whitespace and enforces the existing1000-character
+prompt cap. Unused meta facts/private proof are not concatenated. A because-clause in
+the learner goal violates this contract (blueprint_task_justification/blueprint_render,
+or plan_render during repair); this English syntax guard is not a universal semantic
+leak detector. Causal premises belong in conditions; private reasoning never belongs
+in the task. Meaningful-condition selection still needs independent review.
+
+Canonical production generation schemas omit prompt/correct_answer/correct_boolean/
+accepted_answers/sample_answer entirely. The model returns identity, points, explanation,
+MC distractor metadata, essay rubric, and a full plan only when a plan repair is needed.
+Wire/direct construction rejects unsolicited duplicate prompts or keys, including
+paraphrases and contradictions, rather than overwriting them. Code renders one prompt
+and uses the plan expected_outcome as MC key, parsed TF boolean, initial ID answer or
+essay sample. Existing source-based answerVariants supplies ID acronym/full-name variants.
+Legacy candidateSchema inspection/direct parser tests remain supported by default;
+production opts into canonical rendering explicitly. No public response fields changed.
+
+Exact application/source/count/rubric/spacing/duplicate/option/key checks remain: the
+false-positive duplication is removed at construction, not by fuzzy acceptance. The
+canonical plan can still be wrong or reveal an answer. Blind solving sees the final
+rendered question/options without keys or proof and still checks ambiguity, actual
+inference demand and distractors. answer_leaked now fails even Easy; it requires a plan
+repair within existing limits. Appending conditions never automatically establishes
+Medium. Source-audit disagreement handling/no automatic key flip remain unchanged.
+Essay canonical samples/rubrics still require instructor review; existing independent
+essay agreement is lexical rubric coverage, not a proof of semantic correctness.
+
+Stem ambiguity repairs now require a full task/plan revision instead of asking for a
+second independent stem. Options-only repairs retain the code-owned stem/plan/key.
+Code-owned values in a saved previous candidate are trusted local data; untrusted model
+replacement fields are rejected before merging. No new endpoints/dependencies/DB/API
+calls. Same13-call/3-action/one-audit/45-second-call/110-second-local-total limits;11target
+questions still plan11base typed calls before repairs. Output repetition is reduced,
+but latency/cost/real-provider compatibility and quality improvement are unmeasured.
+
+Maintained synthetic tests cover canonical per-type wire omissions/replacement rejection,
+used vs unused conditions/private proof, ID variants, boolean/render limits, task-rule
+leakage and independent Easy leakage rejection. Existing fixtures now emit only permitted
+metadata; Medium task-change tests revise the plan/task rather than invent another stem.
+Source/answer validators and C1 frozen reference unchanged. No assistant tests/static
+checks/build/API/deployment. Owner runs the checked five-suite command expecting0failures;
+stop and share full errors. Hold paid trials/deployment until reviewed. No disposable or
+private materials created/copied; historical private traces remain untouched outsideGit.
+Q4.8 retains the previous observed difficulty/direction across malformed repairs until
+a new parsed candidate replaces that assessment; regression coverage updated, NOT RUN.
+
+## Q4.9 deadline scheduling and verified partial recovery - 2026-10-28
+Implemented, NOT RUN. Q4.8 live timeout remains a failure; owner90PASS applies
+only to the older offline revision. Public JSON/types and13-call/3-action/
+one-source-audit/45s-call/110s-local-total limits unchanged. No new AI calls.
+Pipeline admits a generation/verification pair only if the remaining time covers
+both estimates, and checks again before verification. Estimates use the maximum
+observed duration per stage in this request, with a5s floor; these are scheduling
+heuristics, not guaranteed latency or a promise that all requested items fit.
+Private schedule_deferred records required/remaining milliseconds; time_budget
+is counted in existing quality stats. Source disputes are queued/withheld until
+first-pass active-slot coverage, then one optional audit shares existing budgets.
+Unresolved/unaudited disputes never become accepted and cannot silently reroll.
+A later AI_TIMEOUT with accepted work proceeds through existing final set checks,
+position balancing and exact missing/dropped counts. Only previously verified
+items may survive. timeout_partial is logged/traced. No verified work means the
+timeout still propagates; non-timeout errors still propagate. A final set check
+can remove an earlier accepted item; no empty-result success is promised.
+Maintained regressions cover pair admission, observed slow verification,
+post-generation verification reserve, deferred audit order, late timeout partial
+counts, no-accepted timeout, and non-timeout propagation. No assistant tests,
+static checks, builds, API calls or deployment. Owner must run the five-suite
+command before any paid trial. Medium application/source/answer quality is still
+unresolved; this scheduling fix does not establish question quality. Original
+five-file evaluation/photo and explicit runtime acceptance remain incomplete.
+No temporary/private materials created; prior private traces left unchanged.
+
+## Q4.10 category-label contract and parser diagnostics - 2026-10-28
+Implemented, NOT RUN. Q4.9 owner partial1/11 and earlier failures are retained;
+no live improvement or quality score claimed. Read-only trace inspection found
+three MC constructions rejected by literal distractor-category/plan-label equality.
+Parser now treats the model's category string as diagnostic metadata: nonempty,
+max100characters, exact field structure still required; no literal equality claim
+of semantic validity. Independent blind reviewer still evaluates each actual
+option's same_category/plausible/defensible judgments. A label cannot establish
+category fit, and the public question never receives this diagnostic label.
+Prompt/wire instructions clarify that division. No schema/public JSON changes,
+new AI calls, dependencies, endpoints or DB changes. Source/evidence, application,
+difficulty, answers, ambiguity, duplicate/spacing/rubric checks and all time/call/
+retry limits retained. Genuine category defects must still fail semantic review;
+the reviewer remains fallible and instructor review is required.
+parseCandidate keeps its Question-or-null return and adds an optional internal
+findings collector. First failing structural check supplies a fixed field-specific
+candidate_* code (identity/prompt/explanation/plan/evidence/points/fields/answer,
+distractor count/fields/text/category/misconception/reason/duplicate misconception,
+TF boolean, identification answers/variants, essay sample/rubric). Pipeline uses
+these codes in existing private traces, repair errors and aggregate quality stats
+instead of opaque candidate_shape. Format repair grouping and stale structural
+finding removal recognize the candidate_* family; semantic findings remain carried.
+No private values appear in the fixed rule codes. Malformed provider wire still
+uses candidate_wire; these diagnostics concern the local parsed construction.
+Five maintained regression cases added: equivalent/different diagnostic labels
+preserve parsed question; table-driven structural reasons; label variation reaches
+blind review; matching labels cannot bypass semantic rejection; specific failure
+propagates into bounded format repair/stats. Existing label-only null expectation
+updated; revision assertion nowQ4.10. Existing synthetic fixture and wire shape
+remain applicable. No assistant tests/static checks/build/API/deployment. Owner
+runs five-suite offline command first; stop on errors, hold paid trials/deployment.
+Original five-file/photo, current Medium/live quality and explicit acceptance are
+incomplete. Separate blueprint citation mismatch/provider latency remain open.
+No disposable or private files created/copied; earlier private traces untouched.
+
+## Q4.11 Medium intent and context/material dependencies - 2026-10-28
+Implemented, NOT RUN. Q4.10 partial1/11 and102offlinePASS remain historical scoped
+evidence; no new live/pass/quality score. Internal plans now carry task_kind for
+Medium (outcome/decision/diagnosis); type restrictions: TFdecision, IDdiagnosis,
+MC/essay any of the three. Code renders the corresponding application task rather
+than the model's recognition-style scenario_goal. Model must put the complete
+conditions, goal/action/change/violation into the scenario. Task templates are
+English for the current English lesson trial; source-language task localization
+is not implemented/accepted and must be resolved before broader language rollout.
+Templates/labels do not prove actual reasoning; blind difficulty/application,
+source, answer, leakage, assumptions, ambiguity and distractor checks still gate.
+Scene-setting lives in optional scenario.context, max2strings of250characters.
+Every Medium scenario.fact is material and must appear in its one inference step;
+context cannot be referenced by indices. Rendering includes context and material
+conditions, preserving needed information. Solver may omit context from condition
+quotes; all material facts still require coverage. Context-only quoted reasoning
+is rejected. Role declarations and substring quote matching are fallible; they do
+not prove causal necessity or allow hiding a missing premise. Independent solving
+and assumptions checks plus instructor review remain necessary. Coverage failures
+now log verifier_conditions separately from verifier_application/difficulty and
+trigger bounded plan repair; no automatic acceptance or extra source audit.
+Provider flat contract adds task_kind and scenario_context; wire decoder reconstructs
+internal roles, with empty values omitted at Easy/Hard (which retain existing task
+rendering and dependent-step semantics). Fixed-difficulty blueprint enums constrain
+intent values. Maintained flat-plan fixtures updated. Public question JSON, optional
+evidence/sample/rubric, counts and response shape unchanged. No endpoints/DB/deps,
+additional AI stages/calls or budget increases;13calls/3slotactions/oneaudit/45scall/
+110slocal total retained. Slight request metadata added; no latency/cost improvement
+measured. Blueprint source-reference failures and full11-question completion remain
+open. Frozen C1 reference unchanged; no live calibration claimed.
+Six new maintained cases cover application intents/type restrictions, context omission
+versus missing material coverage, invalid dependencies/bounds, distinct coverage
+rejection, positive independent material coverage, and new flat-role roundtrip/rejection.
+Existing canonical rendering/Medium repair fixtures and revision assertion updated;
+repair examples change scenario conditions instead of a duplicate learner task.
+No assistant tests/static checks/build/API/deployment; owner runs five-suite command
+and stops on errors before any paid trial. Whole-task/five-file/photo/manual/hosted
+and explicit owner acceptance remain incomplete. No private/disposable files created;
+prior traces and failures preserved; private content absent from register/Git.
+
+## Q4.12 spacing false-positive correction and proposed B1 review - 2026-10-28
+Implemented, NOT RUN. gluedWords now recognizes the legitimate conjunction whereas
+in its small grammar vocabulary, preventing a false positive when where/as occur
+separately in the source. No dictionary dependency, auto-correction, blanket skip
+of unknown words or changed meaning. A maintained regression checks casing and
+questionRules integration plus continued rejection of isnot, maintainreferential
+and whereasnot. Vocabulary splitting remains a heuristic and may have other false
+positives; no general English spelling guarantee. Existing validation, application,
+answer, source, difficulty gates, Q4.11 structure and budgets unchanged; revision
+Q4.12 logged. No prompt/verifier relaxation, extra AI calls or automatic reruns.
+Two new synthetic difficulty boundary cases are proposed in the quality report:
+B1-R-ID (name from definition, proposedEasy/DBMS) and B1-D-MC (concrete repeated
+key values, proposedMedium/B). Both await owner content/label review; no model
+calibration or acceptance claimed. Already accepted C1-M-TF covers applying
+uniqueness to concrete rows; do not request repeat acceptance of that control.
+C1 document/hash/runner/evidence untouched. B1 is not a student quiz or part of
+five-file evaluation; no new runner or approval bypass. Do not use pending cases
+as production exemplars or alter the difficulty gate on their basis.
+Owner108PASS and Q4.11 live0/11 retained in scope. No assistant tests/static checks/
+build/API/deployment. Owner next runs offline suite and reviews only the two B1
+proposals; hold paid trials/deployment pending findings. Whole task, current live
+quality, citation/latency/language gaps and original five-file/photo remain open.
+No private source/question copies, secrets or disposable files created; maintained
+report/regression retained, unrelated work unchanged.
+
+## Q4.13 concrete case inputs, direct non-MC construction and bounded parallel waves - 2026-10-28
+Implemented, NOT RUN. Owner B1 live agreement2of2/onecall is retained only for the
+accepted reference cases; C1/B1 frozen content/hash and verifier criteria untouched.
+No new generated-set pass or five-file score. Historical failures remain.
+
+Medium private plans now require scenario.case with a material fact_id,2..6 short
+observable input/state strings (max80characters each) and an action (max250). The
+pivot must equal the contrasted material fact and be referenced by the inference.
+Repeated observed values are allowed. The flat provider adapter adds case_fact_index,
+case_inputs and case_action, with empty sentinels at Easy/Hard. Code renders the
+inputs/action with that material fact; application/coverage checks use the rendered
+material text. Planning requests actual values/states plus a proposed operation,
+resulting state for outcome tasks and concrete evidence for diagnosis. This is
+structural input validation, not proof of realism, counterfactual truth or Medium
+reasoning: independent difficulty/source/answer/distractor/leakage/assumption gates
+remain. English task-operator limitation/citation defects remain unresolved.
+
+First-pass TF/identification text and canonical keys already come from the validated
+blueprint. Code now builds those candidates at1point with the quoted objective rule
+as explanation, then runs all existing candidate/set/application checks and blind
+review. They share non-MC review batches of at most4; no MC judgment arrays are
+requested for mixed TF/ID. Failures still consume bounded slot actions; repairs use
+provider generation. MC distractors and essay rubrics still require generation.
+Public question fields/counts/result shape remain unchanged; no new endpoints,
+database or dependency. Localized per-scenario explanation prose is not generated
+for first-pass TF/ID; rule-based explanations still require instructor review.
+
+Scheduler admits up to2 independent batches per wave, reserves all expected call
+slots before launch, interleaves provider types, and joins all settled work before
+finalization. Deadline admission and recheck before verification retained. Unverified
+or disputed candidates never enter accepted output. Final global set validation,
+position balancing and accurate missing/dropped counts retained. A non-timeout
+provider failure takes precedence over simultaneous timeout; existing timeout-only
+verified-partial recovery retained. No automatic transport retry. One source audit
+still waits for covered first-pass slots and shares existing budgets.
+
+Planned baseline for6MC/2TF/2ID/1essay is8calls (blueprint1,MC4,non-MC review1,
+essay2) before repairs/audit, down from11serial-stage calls. This is a code-path
+count, not measured latency, billing savings or a promise to finish11questions.
+Up to2inflight can increase burst pressure or start a peer before a provider error
+is known; calls stay capped13, slot actions3, source audits1, per-call45s and local
+overall110s. Stats add peak_inflight; timing adds request-local numeric call_id for
+interleaved timing records, without source/question/key content.
+
+Maintained fixtures/provider stage expectations updated for direct TF/ID, concurrent
+waves, concrete cases and unchanged API fields. Six new cases cover8-call complete
+synthetic mix, max2overlap/all joined, simultaneous fatal-error precedence, direct
+non-MC fail-closed review, concrete-input validation/rendering and wire rejection.
+Existing call-cap/deadline/timeout/metadata tests retained/adapted. All synthetic
+model judgments remain mocks, not measured question quality. No B1 production
+exemplar injection or reference edits. No assistant tests/static checks/build/API/
+deployment. Owner next runs five-suite command with read access to both reference
+docs; stop on errors and hold paid trials/deployment. Whole-task/manual/hosted and
+original five-file/photo acceptance remain incomplete. No private/disposable files
+created; existing private traces/unrelated changes retained.
+
+## 2026-10-29 Q4.14 Easy blank task/key correction - NOT RUN
+Confirmed Q4.13 private trace has empty tasks and keys; source inspection shows decoder
+copies these values and wire schema previously allowed empty strings. Ambiguous Easy
+empty-outcomes instructions are a possible cause, not proven provider intent.
+Small correction: wire scenario_goal/expected_outcome now declare minLength1 and local
+primitive validation rejects blank/whitespace-only values. Blueprint instructions
+explicitly retain a complete task and source-supported key for Easy despite empty
+reasoning arrays; final-outcome equality applies only when steps exist. No fallback
+answer fabrication, added provider call/retry, public field/type/count change or
+changes to difficulty/distractor acceptance. Revision Q4.14; existing source/answer
+verification and provider error handling retained. No claim this guarantees11items.
+Maintained wire regression covers all4Easy types, valid empty reasoning arrays,
+empty/whitespace task/key rejection preserving slots, and literal false TF key.
+Revision assertion updated. Fixtures use already nonblank tasks/keys; no new fixtures,
+dependencies/endpoints or disposable files. Owner testing pending; assistant did not
+run tests/static checks/builds/live calls/deployment. Previous117PASS remains Q4.13
+scope, not Q4.14Pass. Owner whole-task acceptance absent; five-file evaluation incomplete.
+
+
+## 2026-10-29 Q4.14 usage diagnostics - implemented, owner checks pending
+
+Observational change only: provider_timing private events now include a usage object
+with promptTokenCount, cachedContentTokenCount, candidatesTokenCount, thoughtsTokenCount
+and totalTokenCount from Gemini usageMetadata, plus existing call ID/purpose/model.
+Only nonnegative safe integers are retained; absent/malformed fields are null, never
+inferred zero. Metadata is captured before candidate validation, including rejected
+HTTP200 responses. HTTP failures, unreadable envelopes and transport failures can
+have unknown usage. request_sent marks an attempted fetch, not confirmed billing.
+Hosted timing logs omit the usage object; public request/response and database schemas,
+Q4.14 prompts/quality rules/model/concurrency/retry/call/deadline limits are unchanged.
+
+The existing owner-only private runner adds summary to its saved report and console:
+model, wall-clock elapsed_ms, provider_calls (fetch attempts), calls_missing_usage
+(any of five fields unknown), per-field tokens {observed_total, observed_calls,
+missing_calls}, requested/returned/returned_by_type/missing_by_type and error.
+Per-call events retain stage timing. Aggregation keys calls by call_id independently
+of bounded event storage and includes joined concurrent peers even when another call
+fails. No observations or unsafe aggregate sums produce null totals; observed zero
+remains zero. No content, secrets or monetary prices are added to usage events.
+Existing private path/no-overwrite/no-auto-retry protections remain. Old traces have
+no retroactive usage; do not derive tokens from bytes or treat absent data as free.
+Manual usable/rejected counts require human inspection, never automatic assignment.
+
+Maintained structural_test.ts adds six mocked regression cases for numeric boundaries,
+success/missing/malformed metadata, rejected candidates, observer isolation, offline
+failure, concurrent fatal failure with a joined peer, zero attempts and aggregate
+overflow. These are NOT RUN by the assistant; no static checks, builds, API calls or
+deployment performed. Prior owner41 targeted passes remain within their earlier scope;
+new diagnostics and full runtime/whole-task acceptance remain pending.
+
+
+## 2026-10-29 direct-v1 owner comparison pipeline - NOT RUN
+
+Owner requested a separate simple generation path to compare against Q4.14 planning.
+Implemented locally in backend/tests/ai_direct.ts and selected ONLY by --direct in the
+existing private ai_quality_trace.ts runner. Default stays Q4.14; hosted handler and
+frontend routes do not select this path. No new endpoint, DB write, deployment, setting
+migration, dependency or paid run. quiz.ts only exposes its existing privateText redactor
+for reuse; production generation rules and transport behavior are unchanged.
+
+Flow: existing validated source/counts/difficulty/focus -> one direct Gemini JSON call
+-> existing basic validateOutput checks -> private candidate output and usage summary.
+No blueprint/objective plans, separate solver, source audit, semantic difficulty gate,
+repair call, spare objectives, canonical rendering or automatic retry. A concise prompt
+asks for source-supported distinct questions and self-review, not independent verification.
+JSON MIME only, no provider schema or Q4 flat-wire adapter. API TextResponseFormat.schema
+is optional: https://ai.google.dev/api/generate-content#TextResponseFormat.
+
+Uses the same configured GEMINI_MODEL/GEMINI_API_KEY and the same request input as the
+baseline; no forced thinking-level setting or claim of web Low equivalence. Direct call
+has a45second maximum within the runner's110second deadline and262144byte response cap.
+Existing HTTP busy/unavailable, malformed/incomplete output and timeout codes remain;
+no key/raw provider error is printed. Existing private output path restriction,
+createNew/no-overwrite and --live requirement remain. Raw candidate text (bounded and
+redacted) stays in the private trace, so malformed output can be inspected without retry.
+Metadata usage is captured before candidate validation; failed calls retain unknowns
+where metadata is absent. All totals use the existing private measurement summary.
+summary.pipeline explicitly identifies direct-v1 or Q4.14.
+
+Basic checks enforce shapes, field limits, valid keys, essay rubric totals if supplied,
+exact prompt deduplication and count caps. Existing manual-format option limits2..10
+remain, although the prompt requests exactly4. No new semantic rejection rules are added.
+A returned question is NOT proof of correct/source-supported/unambiguous content or
+requested difficulty. Essays lacking requested sample/rubric/evidence metadata must be
+noticed in manual review; this comparison intentionally reuses the existing basic gate.
+Never auto-publish or count returned items as manually usable. No result goes into the app.
+
+Seven new maintained mocked cases in backend/tests/ai_direct_test.ts cover11mixed items
+in one call, JSON-only/no planning contract, partial basic rejection without repairs,
+malformed/truncated/zero output, HTTP/offline errors and unknown usage, bounded deadline/
+response size, observer isolation/redaction, input limits and regeneration payloads.
+These checks have NOT RUN; prior six owner usage passes remain prior scope. Request
+owner reruns those six after runner selection change to check the default Q4.14 path.
+Current direct runtime/provider acceptance/manual quality and owner acceptance pending.
+No assistant tests, static checks, builds, live calls or deployment; no disposable files.
+
+
+## 2026-10-29 direct-v2 grouped schema and difficulty examples - NOT RUN
+
+Current private --direct comparison now identifies itself as direct-v2. Supersedes
+only direct-v1 private generation behavior; all direct-v1 traces/results and historical
+TS2366 remain intact. Q4.14 hosted/default generation, public API/database/frontend,
+model/key configuration and thinking settings are unchanged. No extra provider calls,
+blueprints, judges, source audits, spare objectives, repairs or automatic retries.
+The direct call retains45second/262144byte limits, redaction, observer isolation,
+usage accounting, failure codes and the existing private no-overwrite destination.
+
+Provider response is now a native JSON-schema object containing required arrays
+multiple_choice,true_false,identification,essay. Each array has0..requested_count
+items of its own shape; zero-count types must be empty. No union, flat-wire adapter,
+provider item type field or nullable unused answer fields. Every item requires nonblank
+prompt/explanation/evidence and integer points; MC requires exactly4options and valid
+index, TFboolean, IDaccepted answers, essaynonblank sample_answer/rubric. Nested rubric
+points/key_point requirements and current length/type limits are represented in schema.
+Schema is guidance enforced by provider when supported, never proof of semantic quality.
+
+Direct-only decoder requires exactly these4array groups; missing/wrong groups, extra
+root fields, invalidJSON or old raw arrays failAI_BAD_OUTPUT. Per-item missing/extra
+fields, blank common text, invalid essaymetadata or non-four-option MC are rejected;
+existing validateOutput then checks lengths, answer shapes, integer points/rubric sum,
+exact prompt duplication and valid counts. No metadata fabricated or semantically
+repaired. Arrays beyond requested cap count excess items as dropped; only firstNraw
+slots are considered, not filled from over-cap extras after a malformed early item.
+Group determines finaltype. Valid candidates are flattened to existing result.questions
+with dropped/missing_by_type counts. Empty groups reflect missing counts, not dropped
+items. If no valid candidates survive, generator returnsAI_BAD_OUTPUT with private raw
+output/usage retained. Raw traces have grouped shape; public/private result fields and
+CLI --direct/input settings stay compatible, summary.pipeline changes to direct-v2.
+
+Original concise prompt now defines difficulty for all question types: Easyretrieval,
+Mediumone source-supported rule applied to meaningful case conditions, Hardtwo dependent
+inferences using an intermediate result. Three original tile/pack/panel teaching examples
+have self-contained miniature references and answers; explicitly excluded from factual
+lesson context/evidence and not allowed as generated questions. Neutral hypothetical
+case values permitted only with actual-source rules; no outside facts. Longer wording,
+technical vocabulary, decorative cases and recalling several definitions do not establish
+higher difficulty. TF/IDmust infer from cases; essays must align task/sample/rubric.
+MCmutual exclusivity, inherited requirement FIRST specificity, NULLversusempty precision,
+distinct facts and no cross-question answer disclosures are explicit writing rules.
+These are prompts/manual-review criteria, not new semantic rejection gates or promises.
+
+Reference patterns: single-call batching documented by
+https://github.com/AayushNair10/SocraticTutor and mixed-format authoring documented by
+https://github.com/vicajilau/quizdy. Original implementation, no copied repository code,
+frameworks, dependency installs or claims of their demonstrated difficulty accuracy.
+Official guidance: https://ai.google.dev/gemini-api/docs/prompting-strategies and
+https://ai.google.dev/gemini-api/docs/structured-output. No external app/account writes.
+
+Maintained ai_direct_test.ts now has10mocked cases:7updated plus3for required fields,
+MC/rubric validity, malformed groups/partial/excess/zero-count/misplaced itemtype behavior.
+Existing timeout/error/observer/redaction/usage/input/regeneration paths remain covered.
+Tests are NOT RUN by assistant; earlier6ownerusagePass and direct-v1live outcomes retain
+only their earlier scope. New schema provider acceptance, owner mocked/default checks,
+Easy/Medium/Hard improvement and whole-task acceptance remain pending. No assistant
+static checks/build/live calls/deployment. No disposable materials or private question/
+source content created in repository. Graphify refresh pending attempt after documentation.
+
+
+## 2026-10-29 apply accepted direct-v2 to authenticated endpoint - NOT DEPLOYED
+Owner scope reply 'as long as the generation is working' interpreted with preceding
+'apply it' as authorization to wire accepted one-call generator into the backend.
+This is implementation authorization, not proof of successful deployment or waiver
+of M10-BE-03 remaining samples. Owner acceptance of local TXT experiment retained.
+
+Moved unchanged direct-v2generation logic from backend/tests/ai_direct.ts into maintained
+supabase/functions/ai-generate-quiz/direct.ts; private runner/tests import same module.
+Removed old task-created module only after verifying its two callers were updated.
+Authenticated handler now invokes generateDirect; Q4.14generator remains available for
+historical comparison, and private runner without --direct deliberately remains Q4.14.
+No separate provider schema/prompt copies or new runtime mode config. One native grouped
+Gemini call; same public questions/dropped_by_type/missing_by_type response; prompts,
+counts/difficulty/focus/regeneration inputs, evidence/sample/rubric metadata unchanged.
+No answer/source semantic verification added; owner accepts current experimental quality
+with historical difficulty/quotation/repetition/scoring concerns still recorded.
+
+JWT/session/instructor/ownership/archive/delete/quiz-lock checks, input/body limits,
+per-user begin_ai_request, sanitized errors, DEV-only AI_TEST_MODE and finally-based
+finish_ai_request retry remain in handler untouched. Zero surviving questions fail;
+verified-format partial result may return200with missing/dropped counts. Inconsistent
+rubric totals remain rejected, not automatically fixed. No persistence/publication added.
+Direct call45smaximum within110shandler deadline; no provider retries. Numeric hosted
+provider_timing now records pipeline_revision=direct-v2/purpose=direct_generation without
+usage payload or question/source/providertext; private observer retains prior diagnostics.
+No key/model changes, DB migration, dependency/install, frontend integration or deployment.
+
+Handler mocks now use a maintained grouped synthetic provider fixture; Q4fixtures retained
+for historical pipeline tests. Two new endpoint regressions cover1call/public shape/
+terminal success and partial versus malformed-output finalization with no repair.
+Existing denial/scoped-query/concurrency/DEV-simulation/DB/finalization cases retained.
+Owner pending:10direct plus22quiz/handler mocked cases, then DEV deployment/invocation
+withAI_TEST_MODEoff and matching terminal usage evidence. Previous owner10direct/6usage
+Pass and local3difficulty outcomes carried forward within recorded pre-wiring scope.
+No assistant tests/static checks/build/live calls/deployment or disposable materials.
+
+M10-BE-03remains incomplete: onlyTXTsample supplied; fourothermaterials/12sets/numeric
+scores and DEV endpoint evidence pending unless explicitly waived. Updated ai-prompts.md
+is local TechnicalWriter handoff; external recipient/delivery unconfirmed. Current
+implementation available for owner testing; no runtime or whole-task acceptance claimed.

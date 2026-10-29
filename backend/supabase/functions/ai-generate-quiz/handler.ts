@@ -1,8 +1,9 @@
 import { authenticate, corsHeaders, isUuid, json } from "../_shared/otp.ts";
 import {
-  bounded, errors, fail, generate, object, QuizError, readLimited,
+  bounded, errors, fail, object, QuizError, readLimited,
   sampleOutput, validateInput, validateOutput,
 } from "./quiz.ts";
+import { generateDirect } from "./direct.ts";
 import type { ErrorCode } from "./quiz.ts";
 import type { Result } from "./quiz.ts";
 
@@ -75,7 +76,7 @@ export function createHandler(overrides: Partial<Dependencies> = {}) {
           fail(testMode as ErrorCode);
         } else fail("AI_UNAVAILABLE");
       } else {
-        result = await generate(input, deps.env("GEMINI_API_KEY") ?? "", deps.env("GEMINI_MODEL") ?? "", deadline, deps.fetch);
+        result = await generateDirect(input, deps.env("GEMINI_API_KEY") ?? "", deps.env("GEMINI_MODEL") ?? "", deadline, deps.fetch);
       }
     } catch (error) {
       failure = error instanceof QuizError ? error.code : "AI_UNAVAILABLE";
