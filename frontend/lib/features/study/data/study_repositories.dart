@@ -131,6 +131,92 @@ class NotebookSourceRepository {
 class StudyChatRepository {
   StudyChatRepository(this.db);
   final AppDatabase db;
+  Future<StudyChat?> find(String notebookId, String chatId) =>
+      (db.select(db.chats)..where(
+            (c) => c.id.equals(chatId) & c.notebookId.equals(notebookId),
+          ))
+          .getSingleOrNull();
+
+  Future<List<StudyMessage>> getMessages(String chatId) =>
+      (db.select(db.chatMessages)
+            ..where((m) => m.chatId.equals(chatId))
+            ..orderBy([(m) => OrderingTerm.asc(m.position)]))
+          .get();
+
+  Future<(String, String)> saveQuestion({
+    required String notebookId,
+    required String? chatId,
+    required String content,
+    required String mode,
+  }) => db.transaction(() async {
+    requireStudyText(content, 'content', max: 2000);
+    final title = String.fromCharCodes(
+      content.replaceAll(RegExp(r'\s+'), ' ').runes.take(60),
+    );
+    var id = chatId;
+    if (id == null) {
+      id = await create(notebookId, title);
+    }
+    final chat = await find(notebookId, id);
+    if (chat == null || !chat.expiresAt.isAfter(db.now().toUtc()))
+      throw StateError('Chat unavailable');
+    final messages = await getMessages(id);
+    if (messages.isEmpty && chatId != null) await rename(id, title);
+    if (messages.isNotEmpty &&
+        messages.last.role == 'user' &&
+        messages.last.content == content) {
+      if (!{'files', 'general'}.contains(mode))
+        throw ArgumentError('Invalid mode');
+      final now = db.now().toUtc();
+      await (db.update(
+        db.chatMessages,
+      )..where((m) => m.id.equals(messages.last.id))).write(
+        ChatMessagesCompanion(mode: Value(mode), createdAt: Value(now)),
+      );
+      await (db.update(db.chats)..where((c) => c.id.equals(id!))).write(
+        ChatsCompanion(
+          lastMessageAt: Value(now),
+          expiresAt: Value(now.add(const Duration(days: 30))),
+        ),
+      );
+      return (id, messages.last.id);
+    }
+    return (
+      id,
+      await addMessage(chatId: id, role: 'user', content: content, mode: mode),
+    );
+  });
+
+  Future<void> saveReply({
+    required String notebookId,
+    required String chatId,
+    required String questionId,
+    required String content,
+    required String mode,
+  }) => db.transaction(() async {
+    final chat = await find(notebookId, chatId);
+    if (chat == null || !chat.expiresAt.isAfter(db.now().toUtc()))
+      throw StateError('Chat unavailable');
+    final messages = await getMessages(chatId);
+    if (messages.length >= 2 &&
+        messages.last.role == 'assistant' &&
+        messages[messages.length - 2].id == questionId &&
+        messages.last.content == content &&
+        messages.last.mode == mode)
+      return;
+    if (messages.isEmpty ||
+        messages.last.id != questionId ||
+        messages.last.role != 'user') {
+      throw StateError('Question is no longer current');
+    }
+    await addMessage(
+      chatId: chatId,
+      role: 'assistant',
+      content: content,
+      mode: mode,
+    );
+  });
+
   Stream<List<StudyChat>> watch(String notebookId) =>
       (db.select(db.chats)
             ..where((c) => c.notebookId.equals(notebookId))

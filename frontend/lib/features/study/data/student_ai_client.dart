@@ -39,11 +39,13 @@ class StudentAiClient {
     required List<StudyChatInput> messages,
     String? notebookId,
     required AiCancelToken cancel,
+    Future<void> Function(PreparedStudySources, AiCancelToken)? beforeDispatch,
   }) => _text(
     messages: messages,
     notebookId: notebookId,
     summary: false,
     cancel: cancel,
+    beforeDispatch: beforeDispatch,
   );
 
   Future<StudyAiResult<StudyTextAnswer>> summary({
@@ -61,6 +63,7 @@ class StudentAiClient {
     required String? notebookId,
     required bool summary,
     required AiCancelToken cancel,
+    Future<void> Function(PreparedStudySources, AiCancelToken)? beforeDispatch,
   }) => _request(
     notebookId,
     cancel,
@@ -86,6 +89,7 @@ class StudentAiClient {
       return StudyAiResult(answer, sources, serverTruncated: truncated);
     },
     isChat: !summary,
+    beforeDispatch: beforeDispatch,
   );
 
   Future<StudyAiResult<StudyAiBatch<StudyCardInput>>> flashcards({
@@ -142,6 +146,7 @@ class StudentAiClient {
     String function,
     StudyAiResult<T> Function(dynamic, PreparedStudySources) decode, {
     bool isChat = false,
+    Future<void> Function(PreparedStudySources, AiCancelToken)? beforeDispatch,
   }) async {
     PreparedStudySources? prepared;
     AiCancelToken? owned;
@@ -174,6 +179,11 @@ class StudentAiClient {
         if (utf8.encode(jsonEncode(body)).length > 524288)
           throw const StudyAiFailure('TOO_LARGE');
         if (isChat) await guard.waitForChat(operation);
+        _checkAccount(account, operation);
+        if (!isOnline()) throw const StudyAiFailure('OFFLINE');
+        // Commit the question against these exact source prefixes before transport.
+        if (beforeDispatch != null)
+          await operation.wait(beforeDispatch(sources, operation));
         _checkAccount(account, operation);
         if (!isOnline()) throw const StudyAiFailure('OFFLINE');
         if (isChat) guard.markChatDispatched();

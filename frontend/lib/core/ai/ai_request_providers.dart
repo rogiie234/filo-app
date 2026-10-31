@@ -16,6 +16,10 @@ final aiRequestBusyProvider = StreamProvider<bool>(
   (ref) => ref.watch(aiRequestGuardProvider).watchBusy(),
 );
 
+final aiChatCooldownProvider = StreamProvider<Duration>(
+  (ref) => ref.watch(aiRequestGuardProvider).watchChatCooldown(),
+);
+
 /// Token refresh keeps the identity; a new login/session does not.
 String? aiSessionIdentity(Session? session) {
   if (session == null) return null;

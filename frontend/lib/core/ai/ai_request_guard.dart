@@ -19,10 +19,47 @@ class AiRequestGuard {
   late final Duration Function() _elapsed;
   final Future<void> Function(Duration) _sleep;
   final _changes = StreamController<bool>.broadcast(sync: true);
+  final _chatDispatches = StreamController<void>.broadcast(sync: true);
   AiCancelToken? _active;
   Duration? _lastChatDispatch;
   bool _closed = false;
   bool get isBusy => _active != null;
+  Duration get chatCooldownRemaining {
+    final last = _lastChatDispatch;
+    if (last == null) return Duration.zero;
+    final remaining = const Duration(seconds: 3) - (_elapsed() - last);
+    return remaining > Duration.zero ? remaining : Duration.zero;
+  }
+
+  Stream<Duration> watchChatCooldown() => Stream.multi((listener) {
+    Timer? timer;
+    void publish() {
+      timer?.cancel();
+      final remaining = chatCooldownRemaining;
+      listener.add(remaining);
+      if (remaining > Duration.zero) {
+        timer = Timer(
+          remaining < const Duration(seconds: 1)
+              ? remaining
+              : const Duration(seconds: 1),
+          publish,
+        );
+      }
+    }
+
+    final subscription = _chatDispatches.stream.listen(
+      (_) => publish(),
+      onDone: () {
+        timer?.cancel();
+        listener.close();
+      },
+    );
+    publish();
+    listener.onCancel = () {
+      timer?.cancel();
+      return subscription.cancel();
+    };
+  });
 
   Stream<bool> watchBusy() => Stream.multi((listener) {
     final subscription = _changes.stream.listen(
@@ -64,11 +101,15 @@ class AiRequestGuard {
     cancel.check();
   }
 
-  void markChatDispatched() => _lastChatDispatch = _elapsed();
+  void markChatDispatched() {
+    _lastChatDispatch = _elapsed();
+    if (!_closed) _chatDispatches.add(null);
+  }
 
   Future<void> close() async {
     _closed = true;
     _active?.cancel();
     await _changes.close();
+    await _chatDispatches.close();
   }
 }

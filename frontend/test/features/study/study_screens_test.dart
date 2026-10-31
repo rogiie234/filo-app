@@ -1,6 +1,8 @@
 import 'dart:io';
 
 import 'package:drift/native.dart';
+import 'package:filo/core/ai/ai_request_guard.dart';
+import 'package:filo/core/ai/ai_request_providers.dart';
 import 'package:filo/core/connectivity/connectivity_provider.dart';
 import 'package:filo/core/theme/app_theme.dart';
 import 'package:filo/core/widgets/filo_widgets.dart';
@@ -12,6 +14,8 @@ import 'package:filo/features/files/application/files_providers.dart';
 import 'package:filo/features/files/data/file_storage.dart';
 import 'package:filo/features/files/data/files_repository.dart';
 import 'package:filo/features/study/application/study_source_reader.dart';
+import 'package:filo/features/study/application/student_ai_providers.dart';
+import 'package:filo/features/study/data/student_ai_client.dart';
 import 'package:filo/features/study/data/study_repositories.dart';
 import 'package:filo/features/study/domain/study_inputs.dart';
 import 'package:filo/features/study/presentation/study_home_screen.dart';
@@ -41,8 +45,19 @@ void main() {
   late Directory root;
   late FilesRepository files;
   late StudySourceReader reader;
+  late AiRequestGuard guard;
+  late StudentAiClient client;
   setUp(() async {
     db = AppDatabase(NativeDatabase.memory());
+    guard = AiRequestGuard();
+    client = StudentAiClient(
+      invoke: (_, __, ___) async =>
+          throw StateError('Read-only flow must not dispatch'),
+      loadSources: (_) async => [],
+      isOnline: () => false,
+      currentAccount: () => 'student',
+      guard: guard,
+    );
     root = await Directory.systemTemp.createTemp('study-ui-');
     files = FilesRepository(db, FileStorage(root));
     reader = StudySourceReader(
@@ -56,6 +71,7 @@ void main() {
   });
   tearDown(() async {
     reader.cancel.cancel();
+    await guard.close();
     await db.close();
     await root.delete(recursive: true);
   });
@@ -66,6 +82,8 @@ void main() {
       filesRepositoryProvider.overrideWith((ref) async => files),
       studySourceReaderProvider.overrideWith((ref) async => reader),
       connectivityProvider.overrideWith((ref) => Stream.value(false)),
+      aiRequestGuardProvider.overrideWithValue(guard),
+      studentAiClientProvider.overrideWithValue(client),
     ],
     child: MaterialApp(
       theme: AppTheme.light,
@@ -96,7 +114,7 @@ void main() {
       await settleStudy(tester);
       expect(find.text('General knowledge'), findsOneWidget);
       for (final entry in {
-        'Chat': 'No chats yet.',
+        'Chat': 'Ask a question to start a chat.',
         'Summary': 'No summary saved yet.',
         'Flashcards': 'No decks saved yet.',
         'Practice quiz': 'No practice quizzes saved yet.',
@@ -109,7 +127,8 @@ void main() {
         await tester.tap(find.text(entry.key));
         await settleStudy(tester);
         expect(find.text(entry.value), findsOneWidget);
-        expect(find.text('Saved content · read only'), findsOneWidget);
+        if (entry.key != 'Chat')
+          expect(find.text('Saved content · read only'), findsOneWidget);
         await tester.pageBack();
         await tester.pumpAndSettle();
       }
