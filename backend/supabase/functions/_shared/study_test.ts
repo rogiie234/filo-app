@@ -2,10 +2,24 @@ import { createClient } from "@supabase/supabase-js";
 import { errors, generate, knownError, modelRequest, sample, validateInput, validateOutput } from "./study.ts";
 import type { ErrorCode, Kind } from "./study.ts";
 import { createHandler } from "./study_handler.ts";
+import { devTrace } from "./ai_dev.ts";
 
 function assert(value: unknown, message = "Assertion failed"): asserts value {
   if (!value) throw new Error(message);
 }
+
+Deno.test("trace replaces untrusted correlation text and stays silent without DEV opt-in", () => {
+  const events: string[] = [];
+  const request = new Request("https://function.invalid", { headers: { "x-filo-ai-test-id": "private injected content" } });
+  const env = (name: string) => ({ SUPABASE_URL: "https://fiobwfzmqcffbpixzvbq.supabase.co", AI_DEV_TRACE: "on", AI_TEST_MODE: "off" } as Record<string, string>)[name];
+  const trace = devTrace(request, "ai-flashcards", env, (message) => events.push(message));
+  const response = trace.response(new Response("synthetic private response"), null, "NOT_ALLOWED");
+  assert(response.headers.get("x-filo-ai-test-id") !== "private injected content");
+  assert(!events.join().includes("private"));
+  const silent: string[] = [];
+  devTrace(request, "ai-flashcards", () => undefined, (message) => silent.push(message)).event("provider_attempt");
+  equal(silent, []);
+});
 function equal(actual: unknown, expected: unknown) {
   assert(JSON.stringify(actual) === JSON.stringify(expected), `Expected ${JSON.stringify(expected)}, got ${JSON.stringify(actual)}`);
 }
@@ -149,12 +163,14 @@ const userId = "11111111-1111-4111-8111-111111111111";
 const sessionId = "22222222-2222-4222-8222-222222222222";
 const logId = "33333333-3333-4333-8333-333333333333";
 interface Options {
+  trace?: string;
   denied?: "token" | "verified_sessions" | "profiles";
   role?: string; deleted?: boolean; mode?: string; url?: string;
   dbError?: string; beginNull?: boolean; finishFailures?: number;
   provider?: typeof fetch;
 }
 function harness(kind: Kind, options: Options = {}) {
+  const events: string[] = [], holds: number[] = [];
   const calls: { name: string; url?: URL; payload?: Record<string, unknown> }[] = [];
   let providerCalls = 0, finishCalls = 0, active = false;
   const dbFetch: typeof fetch = (url, init) => {
@@ -179,18 +195,37 @@ function harness(kind: Kind, options: Options = {}) {
     auth: { persistSession: false, autoRefreshToken: false, detectSessionInUrl: false }, global: { fetch: dbFetch },
   });
   const handler = createHandler(kind, {
+    log: (message) => events.push(message),
+    sleep: async (ms) => { holds.push(ms); },
     authenticate: async () => {
       calls.push({ name: "token" });
       return options.denied === "token" ? null : { admin, userId, sessionId, email: "private@example.invalid" };
     },
-    env: (name) => ({ SUPABASE_URL: options.url ?? devUrl, AI_TEST_MODE: options.mode ?? "off", GEMINI_API_KEY: "key", GEMINI_MODEL: "model" } as Record<string, string>)[name],
+    env: (name) => ({ SUPABASE_URL: options.url ?? devUrl, AI_TEST_MODE: options.mode ?? "off", AI_DEV_TRACE: options.trace ?? "off", GEMINI_API_KEY: "key", GEMINI_MODEL: "model" } as Record<string, string>)[name],
     fetch: (url, init) => { providerCalls++; return (options.provider ?? provider(kind))(url, init); },
   });
   const request = (payload: unknown = body()) => handler(new Request("https://function.invalid", {
     method: "POST", headers: { Authorization: "Bearer fake", "Content-Type": "application/json" }, body: JSON.stringify(payload),
   }));
-  return { calls, request, handler, providerCalls: () => providerCalls };
+  return { calls, request, handler, events, holds, providerCalls: () => providerCalls };
 }
+
+Deno.test("both structured endpoints gate DEV trace and hold behind real auth and DEV URL", async () => {
+  for (const kind of kinds) {
+    const real = harness(kind, { trace: "on" }); const response = await real.request(); equal(response.status, 200);
+    equal(response.headers.get("x-filo-ai-log-id"), logId);
+    equal(real.events.map((event) => JSON.parse(event).event), ["request", "acquired", "provider_attempt", "provider_settled", "complete"]);
+    for (const event of real.events) for (const secret of ["A short lesson", "private-name", "One answer", "Which option"]) assert(!event.includes(secret));
+    const held = harness(kind, { trace: "on", mode: "hold" }); equal((await held.request()).status, 200);
+    equal(held.holds, [12000]); equal(held.providerCalls(), 0); equal(held.calls.at(-1)!.payload?.p_status, "success");
+    for (const options of [{ denied: "token" as const }, { denied: "verified_sessions" as const }, { role: "instructor" }]) {
+      const h = harness(kind, { ...options, trace: "on", mode: "hold" }); equal((await h.request()).status, 403);
+      equal(h.events.map((event) => JSON.parse(event).event), ["request", "complete"]); equal(h.providerCalls(), 0); equal(h.holds, []);
+    }
+    const production = harness(kind, { trace: "on", mode: "hold", url: "https://production.invalid" });
+    equal((await production.request()).status, 503); equal(production.events, []); equal(production.holds, []);
+  }
+});
 
 Deno.test("both endpoints enforce ordered token, session and active student gates", async () => {
   for (const kind of kinds) {

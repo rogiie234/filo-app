@@ -2648,3 +2648,32 @@ implementation available for owner testing; no runtime or whole-task acceptance 
    scores/owneracceptance separately; no automatic completion or fabricated sample output.
 
 2026-10-29 owner DEV Easy: HTTP 200, 11/11 (6/2/2/1), no reported drops/missing; required essay metadata and 5-point rubric present. See docs/ai-quality-check.md and qa/TEST_ACCEPTANCE.md. Revision/call-count logs and terminal ledger evidence still pending; no new mock Pass or quality score inferred.
+
+## M11-BE-03 student AI security and limits (2026-10-31)
+
+Maintained owner-run DEV runner: `student_ai_security.mjs`; no new dependency. It
+requires explicit DEV targeting and supplied real sessions; it does not create users
+or alter verification. Script controls DEV-only switches, reads the real ledger/logs,
+checks role/limits/concurrency/stale/simulation cases and requests private human review.
+No raw content/credential output or saved response evidence. Reports must be new files
+outside filo-app. Fully automated asserts alone are not full acceptance; noninteractive
+or incomplete review/log evidence returns exit2. Testcases authored, NOT RUN.
+
+From backend:
+
+```powershell
+node --test tests/student_ai_security.test.mjs
+deno test --allow-env --allow-net --config supabase/functions/ai-chat/deno.json supabase/functions/ai-chat/chat_test.ts supabase/functions/_shared/study_test.ts
+node tests/student_ai_security.mjs
+```
+
+Read [owner setup, environment variables, deploy and recovery](../../qa/M11-BE-03-OWNER-VERIFICATION.md)
+before live execution. This workspace guide is outside the filo-app Git repository;
+the maintained runner/API contracts remain in it. Reserve DEV AI access while testing:
+switches are project-wide. Runner cleanup restores AI_TEST_MODE=off and AI_DEV_TRACE=off;
+force-kill or lost access requires the explicit recovery command in that guide.
+
+API sources: [logs](https://supabase.com/docs/reference/api/v1-get-project-logs),
+[log queries](https://supabase.com/docs/guides/observability/advanced-log-filtering),
+[secret updates](https://supabase.com/docs/reference/api/v1-bulk-create-secrets),
+[database query](https://supabase.com/docs/reference/api/v1-run-a-query).

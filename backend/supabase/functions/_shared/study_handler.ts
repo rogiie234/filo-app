@@ -2,18 +2,22 @@ import { authenticate, corsHeaders, isUuid, json } from "./otp.ts";
 import { bounded, readLimited } from "../ai-chat/chat.ts";
 import { errors, fail, generate, knownError, sample, validateInput } from "./study.ts";
 import type { ErrorCode, Kind, Result } from "./study.ts";
+import { devTrace, DEV_URL, HOLD_MS } from "./ai_dev.ts";
 
-const DEV_URL = "https://fiobwfzmqcffbpixzvbq.supabase.co";
 interface Dependencies {
   authenticate: typeof authenticate;
   env: (name: string) => string | undefined;
   fetch: typeof fetch;
+  log: (message: string) => void;
+  sleep: (ms: number) => Promise<void>;
 }
 export function createHandler(kind: Kind, overrides: Partial<Dependencies> = {}) {
-  const deps: Dependencies = { authenticate, env: (name) => Deno.env.get(name), fetch, ...overrides };
+  const deps: Dependencies = { authenticate, env: (name) => Deno.env.get(name), fetch, log: console.log,
+    sleep: (ms) => new Promise((resolve) => setTimeout(resolve, ms)), ...overrides };
   return async (request: Request): Promise<Response> => {
     if (request.method === "OPTIONS") return new Response(null, { status: 204, headers: corsHeaders });
     if (request.method !== "POST") return json({ error: { code: "INVALID_REQUEST", message: "Use POST for this request." } }, 405);
+    const trace = devTrace(request, kind === "flashcards" ? "ai-flashcards" : "ai-mock-quiz", deps.env, deps.log);
     let auth: Awaited<ReturnType<typeof authenticate>> = null;
     let logId: string | null = null;
     let failure: ErrorCode | null = null;
@@ -45,11 +49,13 @@ export function createHandler(kind: Kind, overrides: Partial<Dependencies> = {})
       if (begin.data === null) fail("AI_IN_PROGRESS");
       if (typeof begin.data !== "string" || !isUuid(begin.data)) fail("AI_UNAVAILABLE");
       logId = begin.data;
+      trace.event("acquired", logId);
 
       const testMode = deps.env("AI_TEST_MODE") ?? "off";
       if (testMode !== "off" && testMode !== "") {
         if (deps.env("SUPABASE_URL") !== DEV_URL) fail("AI_UNAVAILABLE");
-        if (testMode === "sample") {
+        if (testMode === "sample" || testMode === "hold") {
+          if (testMode === "hold") await deps.sleep(HOLD_MS);
           result = sample(input);
         } else if (testMode === "unexpected") {
           throw new Error("DEV simulated unexpected failure");
@@ -57,7 +63,7 @@ export function createHandler(kind: Kind, overrides: Partial<Dependencies> = {})
           fail(testMode as ErrorCode);
         } else fail("AI_UNAVAILABLE");
       } else {
-        result = await generate(input, deps.env("GEMINI_API_KEY") ?? "", deps.env("GEMINI_MODEL") ?? "", deps.fetch);
+        result = await generate(input, deps.env("GEMINI_API_KEY") ?? "", deps.env("GEMINI_MODEL") ?? "", trace.fetch(deps.fetch));
       }
     } catch (error) {
       failure = knownError(error) ? error.code : "AI_UNAVAILABLE";
@@ -78,8 +84,8 @@ export function createHandler(kind: Kind, overrides: Partial<Dependencies> = {})
     }
     if (failure) {
       const [status, message] = errors[failure];
-      return json({ error: { code: failure, message } }, status);
+      return trace.response(json({ error: { code: failure, message } }, status), logId, failure);
     }
-    return json(result);
+    return trace.response(json(result), logId, null);
   };
 }

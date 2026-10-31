@@ -2146,3 +2146,77 @@ NOT RUN statement for the corrected local mocked suite; the first failure is pre
 in the [acceptance register](../../qa/TEST_ACCEPTANCE.md). Real DEV/Gemini, actual
 session and DB behavior, log privacy, frontend/offline and owner acceptance remain
 pending. No deployment or live calls were performed.
+
+## M11-BE-03: Student AI security and limits - 2026-10-31
+
+Status: maintained DEV runner and regression tests authored; **NOT RUN**. No live DEV
+result, deployment, new runtime Pass, waiver or owner acceptance is recorded. Prior
+BE-01 13/13 and BE-02 12/12 mocks apply to the prior revision; changed handlers require
+focused owner reruns. No demonstrated database defect or new migration is introduced.
+Owner setup/execution/review guide is outside this repository:
+[QA owner verification](../../qa/M11-BE-03-OWNER-VERIFICATION.md).
+
+`backend/tests/student_ai_security.mjs` (run from backend as `node tests/student_ai_security.mjs`)
+uses Node22+ built-ins, explicit DEV targeting, real supplied actor sessions, service
+ledger access and Management API access. No account/profile/session setup is forged.
+It covers role matrix and real provider controls, input bounds, cross-kind overlap,
+independent students, stale-slot cleanup, simulations, metadata schema/access denial,
+provider markers, function-log scanning and a source injection. Runtime output and
+optional new report outside filo-app contain metadata only; synthetic response/log
+human review uses temporary in-memory loopback pages, not saved raw evidence. Missing
+logs or uncertain reviews leave overall incomplete (exit2); failures exit1; only full
+assertion/review success exits0. Owner acceptance is separate.
+
+New DEV instrumentation is enabled only by exact existing DEV SUPABASE_URL plus
+`AI_DEV_TRACE=on`. It emits JSON events tagged `filo_ai_dev_v1` with exactly:
+`tag`, `request_id` (UUID), `endpoint`, `event`, `log_id` (UUID/null), `error` (code/null).
+Events are request/acquired/provider_attempt/provider_settled/complete. Fetch attempts
+are marked at the outbound provider boundary; ordinary production responses/logs are
+unchanged. A validated UUID `x-filo-ai-test-id` request header is accepted for correlation;
+otherwise a UUID is generated. DEV trace responses add that ID, `x-filo-ai-log-id` only
+if acquired, and `x-filo-ai-test-mode` for propagation checks. These headers disclose
+no content or user/account identity. No new browser CORS header policy is added;
+the test runner uses direct HTTP. Outside DEV or with tracing off, no events or extra
+response headers are emitted.
+
+`AI_TEST_MODE=hold` is a new DEV-only simulation: after real authorization, input
+validation and begin_ai_request, wait12seconds then return the normal labelled sample
+and finish the slot. Other modes retain their mapping. AI_BAD_OUTPUT remains structured
+functions only, not ai-chat. The runner verifies the same student's flashcard refusal
+while chat holds, and observes another student's simultaneous slot. It restores mode
+off, checks propagation and writes trace off in finally, including normal SIGINT/SIGTERM.
+Hard termination/network outages can prevent cleanup; owner recovery commands and
+fixture-ID scope are documented. The runner never bulk-deletes logs; normal request
+rows remain. Only owned stale/access-probe fixtures are removed and removal checked.
+
+Log querying uses current Supabase Management API `/analytics/endpoints/logs` with
+bounded ClickHouse SQL, result/error checks and collection polling, not retired logs.all.
+A request is not deemed provider-free from an empty log query: start/end markers,
+acquisition correspondence and observed positive provider controls are required.
+Canary scanning plus a human review of the selected log window cannot prove unrelated
+runs or all possible prompt injection attacks safe. Source text sent to Gemini may
+contain personal data; this task adds no anonymization promise.
+
+Owner local commands (not executed by assistant):
+
+```powershell
+node --test tests/student_ai_security.test.mjs
+deno test --allow-env --allow-net --config supabase/functions/ai-chat/deno.json supabase/functions/ai-chat/chat_test.ts supabase/functions/_shared/study_test.ts
+```
+
+The maintained Node cases check evidence completeness, forbidden metadata fields,
+terminal-row matching, token/project preflight and rejection before network access.
+Deno cases extend both endpoint handlers for DEV-only trace/hold, auth-first behavior,
+metadata privacy, production refusal and untrusted correlation IDs. No new suite Pass
+is claimed. Remote Management API shape/permissions and real execution remain pending.
+
+### 2026-10-31 focused local test results
+
+At the owner's explicit request, assistant ran the maintained suites on the uncommitted
+Windows workspace revision. Node security-runner tests: **6 passed/0 failed**, exit0,
+184.7806ms. The deliberate fake transport failure printed a failed mock run while its
+cleanup assertion passed; it was not a live project failure. Deno chat and study suites:
+**28 passed/0 failed** (14 each), exit0, 384ms; Deno Check was reported for both. This
+supersedes the earlier NOT RUN statement only for these local mocked suites. No source
+fix, live DEV/Gemini call, deployment, real log review or owner acceptance occurred.
+[QA register](../../qa/TEST_ACCEPTANCE.md) retains scope and remaining evidence.
