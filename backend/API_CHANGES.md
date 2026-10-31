@@ -1813,3 +1813,149 @@ M10-BE-03remains incomplete: onlyTXTsample supplied; fourothermaterials/12sets/n
 scores and DEV endpoint evidence pending unless explicitly waived. Updated ai-prompts.md
 is local TechnicalWriter handoff; external recipient/delivery unconfirmed. Current
 implementation available for owner testing; no runtime or whole-task acceptance claimed.
+
+## M11-BE-01: ai-chat (chat and summary) - 2026-10-31
+
+Status: implemented locally; maintained mocked tests passed on 2026-10-31. DEV deployment,
+real Gemini responses, error branches, logs and owner acceptance are pending.
+M10 acceptance does not establish M11 runtime results. Evidence register:
+[M11 acceptance](../../qa/TEST_ACCEPTANCE.md#m11-be-01-ai-chat-and-summary---2026-10-31).
+
+### Call and authorization
+
+`POST /functions/v1/ai-chat`, `Authorization: Bearer <fresh-access-token>`,
+`Content-Type: application/json` (and the project's public `apikey` header where required).
+OPTIONS returns 204 for CORS; other methods return 405 / INVALID_REQUEST.
+Gateway JWT verification is disabled in config because the handler validates the token
+through Auth and returns the same sanitized NOT_ALLOWED contract for denied callers.
+The checks run in order: valid token, matching user/session in verified_sessions,
+then active, nondeleted student profile. Missing/denied identities return 403 before
+reading the body, acquiring a slot or calling Gemini. Database/configuration failures
+return AI_UNAVAILABLE without allowing the request through.
+
+```json
+{
+  "mode": "chat",
+  "messages": [{ "role": "user", "content": "What do the files explain?" }],
+  "sources": [{ "name": "lesson.txt", "text": "Extracted lesson text." }]
+}
+```
+
+All three fields are required. `mode` is `chat` or `summary`. `messages` is an array
+of at most 10 objects, each with role `user` or `assistant` and nonblank string content
+of at most 2,000 Unicode code points. Send the last 10 in chronological order; the
+server rejects excess history rather than silently discarding it. Chat requires a
+final user message. Summary may use `messages: []`.
+
+`sources` is an array of at most 3 objects with a nonblank `name` (up to 255 Unicode
+code points) and readable string `text`. The combined text limit is 40,000 Unicode
+code points, independently of the message limit. Excess counts/text/name length
+return TOO_LARGE; wrong shapes/types/settings return INVALID_REQUEST. The raw JSON
+body is additionally limited to 524,288 bytes, streamed with a 5-second read bound.
+Unknown object fields are ignored and never included in the prompt.
+
+For general chat, explicitly send `sources: []`. An empty/whitespace selected source
+returns NO_TEXT even alongside readable sources, preventing extraction failure from
+silently becoming general chat. Summary without sources also returns NO_TEXT.
+
+### Response, prompt and privacy
+
+```json
+{ "answer": "A short plain-text answer.", "mode": "files", "truncated": false }
+```
+
+HTTP 200 returns only `answer`, `mode` and `truncated`. Answer is nonblank plain text,
+trimmed and limited to 4,000 Unicode code points. `mode` is `files` for requests with
+readable sources (including summaries), otherwise `general`. `truncated` concerns
+source text only: it is always false because this function rejects excess source
+text and never cuts it. It cannot detect source truncation performed by the caller.
+An answer limited to 4,000 characters does not change that flag.
+
+Trusted system instructions are composed from `docs/study-prompts.md`, common rules
+plus exactly one task. Supplied text and history are JSON-encoded between separate
+`<filo_sources>` and `<filo_messages>` boundaries; angle brackets inside the JSON are
+escaped so supplied content cannot forge the markers. History is interpretation
+data, never source evidence. Source-based chat remains source-only even when a later
+message requests general knowledge; absent information is stated plainly. General
+chat requires an explicitly empty source list. Summaries give an overview and main
+ideas in the source language; chat follows the latest question's language.
+
+Source names, profile/account names, emails and IDs are not added to the Gemini body.
+Only validated message roles/content and source texts are sent. Supplied text may
+itself contain personal information: no automatic anonymization is claimed. The
+system instructs the model to omit personal details; source grounding and omission
+still need semantic owner review. Clients must render answer as text, not executable
+HTML. No conversation, source text, answer, provider body, key, or raw exception is
+written by this function to the usage log or console. The existing metadata-only
+usage log stores account ID, request kind, status, error code and timestamps.
+
+### Request slot, provider and errors
+
+After authorization and validation, call `begin_ai_request(p_user, p_kind)` with
+kind `chat` or `summary`. Null means AI_IN_PROGRESS and acquires no slot. An acquired
+request always attempts `finish_ai_request(p_id, p_status, p_error)` in finally,
+with success/null or failed/the sanitized code. Retry the same idempotent finalization
+once if unconfirmed. If both attempts fail, return AI_UNAVAILABLE; do not claim that
+the terminal database write was confirmed. Existing stale-slot recovery remains
+the database's 2-minute window; a runtime killed before finally may leave a started row.
+
+Use only server secrets GEMINI_API_KEY and GEMINI_MODEL; no model default, SDK or new
+database migration is added. Make one Gemini generateContent call, with plain-text
+output and a 45-second bound covering transport and body reading; abort it afterward.
+Provider JSON is bounded to 262,144 bytes. Do not retry Gemini automatically. Ignore
+thought parts. STOP and MAX_TOKENS replies with readable text are bounded and returned;
+blocked replies discard even partial text. Malformed envelopes, unavailable network,
+missing key/model or unexpected failures receive AI_UNAVAILABLE. The provider adapter
+uses the official [generateContent contract](https://ai.google.dev/api/generate-content).
+
+All errors have exactly `{ "error": { "code": "CODE", "message": "Short English message." } }`.
+
+| Code | HTTP | Message / condition |
+| --- | --- | --- |
+| NOT_ALLOWED | 403 | You are not allowed to use the study assistant. |
+| INVALID_REQUEST | 400 | Check the study mode, messages, and sources. Malformed JSON/settings; method rejection uses 405 and “Use POST for this request.” |
+| NO_TEXT | 400 | Add a readable source to generate a summary or use your files. |
+| TOO_LARGE | 413 | The request is too large. Use fewer messages or less source text. |
+| AI_IN_PROGRESS | 409 | An AI request is already running. Please wait and try again. |
+| AI_BUSY | 503 | The AI assistant is busy. Please try again in a few minutes. Provider 429/500/502/503. |
+| AI_TIMEOUT | 504 | The AI request timed out. Please try again. Provider 408/504, aborted transport or the 45-second deadline. |
+| AI_BLOCKED | 502 | The AI could not return an answer. Try rephrasing your request. Empty replies, prompt blocks, candidate safety/recitation/privacy blocks. |
+| AI_UNAVAILABLE | 503 | The AI assistant is unavailable. Please try again later. Other provider, network, configuration or bookkeeping failures. |
+
+These are backend messages. The draft study UI's PRD busy wording still has its own
+persistence/manual-action release gates; this task does not certify that UI copy.
+
+### DEV test switch and owner handoff
+
+AI_TEST_MODE retains M10's exact DEV URL guard (`https://fiobwfzmqcffbpixzvbq.supabase.co`).
+`off`, empty or unset uses Gemini. In DEV, `sample` returns a fixed, visibly DEV-labeled
+chat answer or summary with the normal response fields; it makes no claim about the
+submitted material. Any code in the error table simulates that error; `unexpected`
+tests generic-exception handling. Unknown modes and non-off modes outside DEV return
+AI_UNAVAILABLE. Real authorization, validation and acquisition run before simulation;
+every acquired simulated request is finalized. Restore AI_TEST_MODE=off in finally
+after owner testing. It is a project-wide secret also used by M10, not a client field.
+
+From `filo-app/backend`, commands for a focused rerun and DEV deployment (deployment not executed by the assistant):
+
+```powershell
+deno test --allow-env --allow-net --config supabase/functions/ai-chat/deno.json supabase/functions/ai-chat/chat_test.ts
+npx supabase functions deploy ai-chat --project-ref fiobwfzmqcffbpixzvbq
+```
+
+The maintained tests mock database and provider calls: authorization order and query
+scope, Unicode/count/body limits, prompt-marker collision handling, identity omission,
+plain text/output bounds, provider error/safety/timeout mappings, slot overlap,
+simulation and finalization retry. A mocked result is not evidence of live Gemini,
+actual database concurrency, logs, deployment, app behavior or owner acceptance.
+Owner live checks must cover file chat, missing source answer, explicit general chat,
+summary, denied instructor/unverified sessions, errors and corresponding terminal
+metadata-only usage rows. Client offline UI, local history/summary saving and retry
+presentation are blocked on the later M11 frontend integration; this task adds no UI.
+
+On 2026-10-31 the user explicitly requested test execution. The assistant ran the
+focused Deno command above on Windows using the installed Deno outside the sandbox:
+**13 passed, 0 failed** (test duration 315 ms, exit 0). An initial sandbox attempt
+could not launch the executable; no tests ran in that attempt. Database and provider
+responses were mocked; no DEV deployment, live Gemini/API request, real-session or log
+inspection was performed. Owner acceptance and live checks remain pending.
