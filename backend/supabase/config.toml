@@ -455,3 +455,17 @@ verify_jwt = false
 import_map = "./functions/ai-chat/deno.json"
 entrypoint = "./functions/ai-chat/index.ts"
 
+[functions.ai-flashcards]
+enabled = true
+# Authenticate inside the handler so every denied token gets NOT_ALLOWED.
+verify_jwt = false
+import_map = "./functions/ai-flashcards/deno.json"
+entrypoint = "./functions/ai-flashcards/index.ts"
+
+[functions.ai-mock-quiz]
+enabled = true
+# Authenticate inside the handler so every denied token gets NOT_ALLOWED.
+verify_jwt = false
+import_map = "./functions/ai-mock-quiz/deno.json"
+entrypoint = "./functions/ai-mock-quiz/index.ts"
+

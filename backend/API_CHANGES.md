@@ -1959,3 +1959,190 @@ focused Deno command above on Windows using the installed Deno outside the sandb
 could not launch the executable; no tests ran in that attempt. Database and provider
 responses were mocked; no DEV deployment, live Gemini/API request, real-session or log
 inspection was performed. Owner acceptance and live checks remain pending.
+
+## M11-BE-02: Flashcards and practice quiz - 2026-10-31
+
+Status: implemented locally; maintained mocked tests authored **NOT RUN**. Deployment,
+real provider quality, actual authorization/ledger behavior, log privacy and explicit
+owner acceptance remain pending. See [acceptance register](../../qa/TEST_ACCEPTANCE.md).
+No database migration, new dependency, server content persistence or frontend storage is added.
+
+### Calls and inputs
+
+POST JSON to `/functions/v1/ai-flashcards` or `/functions/v1/ai-mock-quiz`, with
+`Authorization: Bearer <access-token>` and the usual project API key header. OPTIONS
+returns 204 with existing CORS headers. Gateway JWT verification is disabled in config
+so handler authentication returns NOT_ALLOWED for invalid/missing tokens. A valid token,
+verified session bound to that user, and nondeleted student profile are required.
+Instructors are refused. Auth/database infrastructure failures give AI_UNAVAILABLE.
+
+Both require `sources`: zero to three `{ name, text }` objects. Names must be nonblank
+strings of at most 255 Unicode code points; text must be a string and every supplied
+source must be nonblank. Combined source text cap: 40,000 code points, rejected rather
+than truncated. Names and user metadata are not forwarded to Gemini. `topic_focus` is
+optional, string, max 200 code points, trimmed; with `sources: []`, it must be nonblank.
+With sources, the topic only narrows source-supported content. Unreadable supplied
+sources return NO_TEXT even when a topic is present. Raw JSON cap: 524,288 UTF-8 bytes.
+Incorrect shapes/counts/topic/types give INVALID_REQUEST; excessive source count/name/text
+or body size gives TOO_LARGE. Missing all usable input gives NO_TEXT.
+
+Flashcards require an explicit integer `count` from 5 to 30 (no backend default):
+
+```json
+{
+  "sources": [{ "name": "lesson.txt", "text": "A primary key uniquely identifies each row in a table." }],
+  "topic_focus": "Primary keys",
+  "count": 5
+}
+```
+
+Practice requires `count` exactly 5, 10, 15 or 20, and `types` with one to three unique
+supported values: `multiple_choice`, `true_false`, `identification`. Empty, duplicate
+and unknown types, including essay, are refused.
+
+```json
+{
+  "sources": [],
+  "topic_focus": "Basic relational database terminology",
+  "count": 5,
+  "types": ["multiple_choice", "true_false", "identification"]
+}
+```
+
+The prompt requests each selected type with an even distribution in caller order
+(for five across three types: 2/2/1). This is prompt guidance, not a per-type quota:
+valid partial output may omit a type and is returned without replacement calls.
+Callers must inspect actual returned types.
+
+### Outputs and validation
+
+HTTP 200 returns `{ cards, dropped, missing }` or `{ questions, dropped, missing }`.
+All returned text is trimmed. Text limits count Unicode code points before trimming;
+blank or overlong fields are rejected rather than shortened. These synthetic examples
+intentionally show partial results, not full requested sets:
+
+```json
+{
+  "cards": [{ "front": "What does a primary key identify?", "back": "A row uniquely within a table." }],
+  "dropped": 0,
+  "missing": 4
+}
+```
+
+```json
+{
+  "questions": [
+    { "type": "multiple_choice", "prompt": "Which key uniquely identifies each row?", "options": ["Primary key", "Foreign key", "Table name", "Column position"], "correct_index": 0, "explanation": "The primary key uniquely identifies each row." },
+    { "type": "true_false", "prompt": "A primary key can identify a row uniquely.", "correct_boolean": true, "explanation": "Uniqueness is a primary key property." },
+    { "type": "identification", "prompt": "What is a horizontal record in a table called?", "accepted_answers": ["row", "tuple"], "explanation": "A row, also called a tuple, represents one record." }
+  ],
+  "dropped": 0,
+  "missing": 2
+}
+```
+
+The model returns a JSON array; the backend supplies the wrapper and counts. Strip
+enclosing JSON fences before parsing. Malformed JSON/non-array roots have zero usable
+items. Reject unknown/extra per-item fields. Every raw array element rejected for
+invalidity, duplication, an unrequested type or excess count adds one to `dropped`.
+Invalid roots have no enumerable items and contribute no dropped count. Deduplicate
+fronts/prompts using NFKC, collapsed whitespace and lowercase; keep the first valid
+occurrence. Continue past invalid entries to retain later valid items.
+`missing = requested count - returned count`. Counts describe only the returned
+attempt; a discarded zero-valid first attempt is not added to successful retry counts.
+
+Cards require exactly nonempty `front` (max 200) and `back` (max 500).
+Questions require nonempty `prompt` (max 1000), nonempty `explanation` (max 500), a
+requested `type`, and only its applicable fields:
+
+- `multiple_choice`: exactly four distinct nonempty string `options` (max 500 each)
+  and a single integer `correct_index` from 0 through 3. Reject normalized duplicate
+  options, arrays/multiple keys, string/letter indices and embedded correctness flags.
+- `true_false`: `correct_boolean` must be a real boolean, including false.
+- `identification`: `accepted_answers` contains 1–10 nonempty strings (max 200 each).
+  Normalize duplicates as above, retaining the first trimmed spelling; this does not
+  define the phone's grading normalization.
+
+No essays, points, rubric or evidence fields are accepted. A single answer key and
+distinct options are structurally enforced. Factual correctness, equivalent answers,
+privacy omissions and source fidelity still require human review. Prompt instructions
+do not guarantee semantic correctness or anonymize input sent to the provider.
+
+### Lifecycle, provider and errors
+
+After authorization and input validation, acquire `begin_ai_request(p_user, p_kind)`
+with `flashcards` or `practice_quiz`; null means AI_IN_PROGRESS. Every acquired slot
+is finalized in finally as success/null or failed/sanitized code. Retry the same
+idempotent finish once if unconfirmed; two finish failures give AI_UNAVAILABLE.
+No source, topic, name, generated content, token or raw provider response is logged.
+Only the existing metadata ledger is written. A process killed before finally may
+leave a started row until existing stale-slot recovery; terminal writes cannot be
+confirmed when the database is unavailable.
+
+Use existing GEMINI_API_KEY and GEMINI_MODEL server configuration, JSON response mode,
+a 45-second transport/body bound per call, and a 262,144-byte provider body cap.
+Ignore thought parts. STOP/MAX_TOKENS replies still require local validation.
+When a nonempty model reply yields zero valid items, retry generation once under the
+same slot; a second zero-valid reply gives AI_BAD_OUTPUT. At most two serial calls
+(90 seconds of provider work) are made. Partial valid results are not retried. Empty
+or safety-blocked replies immediately give AI_BLOCKED. Provider/transport/configuration
+failures retain ai-chat mappings and are not automatically retried.
+
+Errors use `{ "error": { "code": "CODE", "message": "..." } }`:
+
+| Code | HTTP | Exact message |
+| --- | --- | --- |
+| NOT_ALLOWED | 403 | You are not allowed to use the study assistant. |
+| INVALID_REQUEST | 400 | Check the study settings, topic, and sources. |
+| NO_TEXT | 400 | Provide readable source text or a topic with no sources. |
+| TOO_LARGE | 413 | The request is too large. Use less source text. |
+| AI_IN_PROGRESS | 409 | An AI request is already running. Please wait and try again. |
+| AI_BUSY | 503 | The AI assistant is busy. Please try again in a few minutes. |
+| AI_TIMEOUT | 504 | The AI request timed out. Please try again. |
+| AI_BLOCKED | 502 | The AI could not return an answer. Try rephrasing your request. |
+| AI_BAD_OUTPUT | 502 | The AI could not produce valid study material. Try a different topic or source text. |
+| AI_UNAVAILABLE | 503 | The AI assistant is unavailable. Please try again later. |
+
+Non-POST methods use INVALID_REQUEST, HTTP 405, `Use POST for this request.`
+Provider 408/504 or abort/deadline gives AI_TIMEOUT; 429/500/502/503 gives AI_BUSY;
+empty/blocked candidates give AI_BLOCKED. Malformed provider envelopes, other HTTP
+statuses, network errors, unexpected finish reasons and missing config give
+AI_UNAVAILABLE. Bad generated JSON differs from a malformed provider envelope.
+
+### DEV switch and owner commands
+
+AI_TEST_MODE follows ai-chat: unset/empty/off calls Gemini; sample returns count-matching,
+visibly DEV-labelled synthetic data; each code above simulates that error; unexpected
+simulates a generic exception. Real authorization, validation and acquisition still
+happen first, and acquired requests finalize. Unknown modes or any non-off mode outside
+`https://fiobwfzmqcffbpixzvbq.supabase.co` fail AI_UNAVAILABLE. This is a project-wide
+secret, not a client option; restore off in finally after simulations. Simulations do
+not establish real provider behavior, safety filtering or semantic quality.
+
+From `filo-app/backend` (owner execution only):
+
+```powershell
+deno test --allow-env --allow-net --config supabase/functions/ai-flashcards/deno.json supabase/functions/_shared/study_test.ts
+npx supabase functions deploy ai-flashcards --project-ref fiobwfzmqcffbpixzvbq
+npx supabase functions deploy ai-mock-quiz --project-ref fiobwfzmqcffbpixzvbq
+npx supabase secrets set AI_TEST_MODE=off --project-ref fiobwfzmqcffbpixzvbq
+```
+
+Maintained mocked tests cover both kinds, bounds, answer variants, duplicate/essay/
+conflicting-field rejection, partial/zero output, retry, provider mappings, safe data
+markers, auth scope, DEV modes, slot overlap and finish retry. They are authored, not
+executed. Owner live checks must cover source and topic modes, all supported types,
+instructor/unverified refusal, errors, overlap/retry and matching terminal metadata
+rows/log privacy. Frontend offline save/reopen and error/retry UI await later integration.
+
+### 2026-10-31 focused mocked test results
+
+At the owner's explicit request, assistant ran the command above. The first permitted
+run reported 11 passed/1 failed (92ms): the true/false assertion compared serialized
+object property order. Corrected the test assertion only, with no production change;
+the full rerun reported **12 passed/0 failed** (77ms, exit 0), and Deno reported Check.
+The initial sandbox launch failed before testing. This supersedes only the earlier
+NOT RUN statement for the corrected local mocked suite; the first failure is preserved
+in the [acceptance register](../../qa/TEST_ACCEPTANCE.md). Real DEV/Gemini, actual
+session and DB behavior, log privacy, frontend/offline and owner acceptance remain
+pending. No deployment or live calls were performed.
