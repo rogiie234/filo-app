@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:supabase_flutter/supabase_flutter.dart';
 
+import '../../../core/ai/ai_request_guard.dart';
 import '../domain/ai_sources.dart';
 import '../domain/quiz_draft.dart';
 import 'ai_quiz_response.dart';
@@ -61,12 +62,19 @@ class AiQuizClient {
     required this.isOnline,
     required this.currentUser,
     this.timeout = const Duration(seconds: 60),
-  });
+    AiRequestGuard? guard,
+    this.invokeCancellable,
+  }) : guard = guard ?? AiRequestGuard();
   final Future<dynamic> Function(Map<String, dynamic>) invoke;
+  final Future<dynamic> Function(Map<String, dynamic>, Future<void>)?
+  invokeCancellable;
   final bool Function() isOnline;
   final String? Function() currentUser;
   final Duration timeout;
-  final _waitingUsers = <String>{};
+  final AiRequestGuard guard;
+  AiCancelToken? _active;
+
+  void cancelActive() => _active?.cancel();
 
   Future<AiGeneratedBatch> generate({
     required String classId,
@@ -82,7 +90,7 @@ class AiQuizClient {
     if (!isOnline()) throw const AiFailure('OFFLINE');
     final user = currentUser();
     if (user == null) throw const AiFailure('AUTH');
-    if (_waitingUsers.contains(user)) throw const AiFailure('AI_IN_PROGRESS');
+    if (guard.isBusy) throw const AiFailure('AI_IN_PROGRESS');
     try {
       LessonTextExtractor.validateSources(texts);
     } on LessonReadException catch (e) {
@@ -110,10 +118,12 @@ class AiQuizClient {
                 40000)) {
       throw const AiFailure('INVALID_REQUEST');
     }
-    _waitingUsers.add(user);
+    AiCancelToken? owned;
     try {
-      final data = await cancel.wait(
-        invoke({
+      return await guard.run(cancel, (operation) async {
+        owned = operation;
+        _active = operation;
+        final body = <String, dynamic>{
           'class_id': classId,
           'quiz_id': quizId,
           'texts': texts,
@@ -125,25 +135,30 @@ class AiQuizClient {
             'type': regenerateType,
             'current_prompts': currentPrompts,
           },
-        }).timeout(timeout),
-      );
-      cancel.check();
-      if (currentUser() != user) throw const AiFailure('AUTH');
-      List<QuizQuestion> questions;
-      try {
-        questions = decodeAiQuestions(data, counts);
-      } catch (_) {
-        throw const AiFailure('AI_BAD_OUTPUT');
-      }
-      for (final q in questions) {
-        q.payload['points'] = q.type == 'essay' ? 5 : 1;
-      }
-      return AiGeneratedBatch(
-        questions,
-        context,
-        Map<String, int>.from(data['missing_by_type'] as Map),
-        Map<String, int>.from(data['dropped_by_type'] as Map),
-      );
+        };
+        final data =
+            await (invokeCancellable?.call(body, operation.cancelled) ??
+                invoke(body));
+        operation.check();
+        if (currentUser() != user) throw const AiFailure('AUTH');
+        List<QuizQuestion> questions;
+        try {
+          questions = decodeAiQuestions(data, counts);
+        } catch (_) {
+          throw const AiFailure('AI_BAD_OUTPUT');
+        }
+        for (final q in questions) {
+          q.payload['points'] = q.type == 'essay' ? 5 : 1;
+        }
+        return AiGeneratedBatch(
+          questions,
+          context,
+          Map<String, int>.from(data['missing_by_type'] as Map),
+          Map<String, int>.from(data['dropped_by_type'] as Map),
+        );
+      }, timeout: timeout);
+    } on AiRequestInProgress {
+      throw const AiFailure('AI_IN_PROGRESS');
     } on AiFailure {
       rethrow;
     } on AiCancelled {
@@ -163,7 +178,7 @@ class AiQuizClient {
     } catch (_) {
       throw const AiFailure('UNKNOWN');
     } finally {
-      _waitingUsers.remove(user);
+      if (identical(_active, owned)) _active = null;
     }
   }
 }
