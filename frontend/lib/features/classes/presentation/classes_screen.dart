@@ -16,6 +16,7 @@ import '../../grading/presentation/work_queue_screen.dart';
 import '../../drive_backup/data/drive_backup_service.dart';
 import '../../drive_backup/presentation/drive_backup_screen.dart';
 import '../../files/presentation/my_files_screen.dart';
+import '../../study/presentation/study_home_screen.dart';
 import '../../../core/sync/sync_providers.dart';
 import '../../../core/sync/background_sync.dart';
 import 'classes_widgets.dart';
@@ -114,7 +115,9 @@ class _ClassesScreenState extends ConsumerState<ClassesScreen> {
           ),
         ],
       ),
-      body: live && _destination == 2
+      body: live && student && _destination == 3
+          ? const StudyHomeScreen()
+          : live && _destination == 2
           ? const MyFilesScreen()
           : live && _destination == 1
           ? WorkQueueScreen(student: student, embedded: true)
@@ -294,9 +297,9 @@ class _ClassesScreenState extends ConsumerState<ClassesScreen> {
           if (live) _SyncErrorStatus(),
           NavigationBar(
             animationDuration: Duration.zero,
-            selectedIndex: _destination,
+            selectedIndex: !student && _destination == 3 ? 0 : _destination,
             onDestinationSelected: (index) {
-              if (index <= 2 && live) {
+              if (live && (index <= 2 || (student && index == 3))) {
                 setState(() => _destination = index);
               } else if (index != 0) {
                 showMessage(context, 'This area will be available soon.');

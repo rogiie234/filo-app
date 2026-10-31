@@ -56,7 +56,7 @@ class FileTextCache {
     );
   }
 
-  Future<void> save(LessonText result, String quizId) async {
+  Future<void> save(LessonText result, [String? quizId]) async {
     final text = result.text;
     final byteSize = await _utf8BytesInBackground(text);
     if (!validKey(result.sourceKey) ||
@@ -77,7 +77,7 @@ class FileTextCache {
           lessonExtractorRevision,
         ],
       );
-      await associate(quizId, result.sourceKey);
+      if (quizId != null) await associate(quizId, result.sourceKey);
     });
   }
 
