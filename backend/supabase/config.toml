@@ -448,3 +448,10 @@ verify_jwt = false
 import_map = "./functions/ai-generate-quiz/deno.json"
 entrypoint = "./functions/ai-generate-quiz/index.ts"
 
+[functions.ai-chat]
+enabled = true
+# Authenticate inside the handler so every denied token gets NOT_ALLOWED.
+verify_jwt = false
+import_map = "./functions/ai-chat/deno.json"
+entrypoint = "./functions/ai-chat/index.ts"
+
