@@ -2677,3 +2677,35 @@ API sources: [logs](https://supabase.com/docs/reference/api/v1-get-project-logs)
 [log queries](https://supabase.com/docs/guides/observability/advanced-log-filtering),
 [secret updates](https://supabase.com/docs/reference/api/v1-bulk-create-secrets),
 [database query](https://supabase.com/docs/reference/api/v1-run-a-query).
+
+## M11-BE-04 shared Gemini quota measurement
+
+`student_ai_quota.mjs` is the maintained DEV-only Node 22 runner. It does not change
+settings or retry requests. M11-SA-01 retention and an owner-confirmed Asia/Manila
+off-peak window are mandatory; both are currently unconfirmed. No run is authorized
+by the existence of this script. See the workspace's `qa/M11-BE-04-OWNER-VERIFICATION.md`
+(outside this repository) for the required metadata config and evidence review.
+
+From backend, owner runs local mocked checks first:
+
+```powershell
+node --test tests/student_ai_quota.test.mjs
+```
+
+Set DEV `FILO_LOAD_SERVICE_ROLE_KEY` and `FILO_LOAD_ANON_KEY` via a secret manager.
+Verify the deployed revision/model and actual AI Studio limits/usage, `AI_TEST_MODE=off`
+and `AI_DEV_TRACE=on`. Populate the guide's config outside the app. During the approved
+window, with a fresh quota snapshot and a NEW output directory:
+
+```powershell
+node tests/student_ai_quota.mjs run ../../qa/quota-config.local.json ../../qa/quota-run-2026-XX-XX
+node tests/student_ai_quota.mjs cleanup - ../../qa/quota-run-2026-XX-XX
+```
+
+The second command is recovery only if needed; it never calls Gemini. The first creates
+40 tagged synthetic students, measures 150/300/600 calls in that order, then verifies
+removal of its own accounts/profiles/sessions. Existing usage-ledger metadata is retained.
+Results are metadata-only; exit0 is not task acceptance. Record provider-attribution
+gaps, cumulative shared quota and owner-reviewed recommendation before accepting.
+Restore trace off after evidence review; runner never changes test/auth/quota settings.
+Tests and live workload were NOT RUN during implementation.
