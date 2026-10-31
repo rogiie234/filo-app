@@ -9641,6 +9641,4439 @@ class LocalFilesCompanion extends UpdateCompanion<LocalFileRecord> {
   }
 }
 
+class $NotebooksTable extends Notebooks
+    with TableInfo<$NotebooksTable, StudyNotebook> {
+  @override
+  final GeneratedDatabase attachedDatabase;
+  final String? _alias;
+  $NotebooksTable(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _idMeta = const VerificationMeta('id');
+  @override
+  late final GeneratedColumn<String> id = GeneratedColumn<String>(
+    'id',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _nameMeta = const VerificationMeta('name');
+  @override
+  late final GeneratedColumn<String> name = GeneratedColumn<String>(
+    'name',
+    aliasedName,
+    false,
+    check: () =>
+        ComparableExpr(StringExpressionOperators(name).trim().length)
+            .isBiggerThanValue(0),
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _createdAtMeta = const VerificationMeta(
+    'createdAt',
+  );
+  @override
+  late final GeneratedColumn<DateTime> createdAt = GeneratedColumn<DateTime>(
+    'created_at',
+    aliasedName,
+    false,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _updatedAtMeta = const VerificationMeta(
+    'updatedAt',
+  );
+  @override
+  late final GeneratedColumn<DateTime> updatedAt = GeneratedColumn<DateTime>(
+    'updated_at',
+    aliasedName,
+    false,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _lastOpenedAtMeta = const VerificationMeta(
+    'lastOpenedAt',
+  );
+  @override
+  late final GeneratedColumn<DateTime> lastOpenedAt = GeneratedColumn<DateTime>(
+    'last_opened_at',
+    aliasedName,
+    false,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: true,
+  );
+  @override
+  List<GeneratedColumn> get $columns => [
+    id,
+    name,
+    createdAt,
+    updatedAt,
+    lastOpenedAt,
+  ];
+  @override
+  String get aliasedName => _alias ?? actualTableName;
+  @override
+  String get actualTableName => $name;
+  static const String $name = 'notebooks';
+  @override
+  VerificationContext validateIntegrity(
+    Insertable<StudyNotebook> instance, {
+    bool isInserting = false,
+  }) {
+    final context = VerificationContext();
+    final data = instance.toColumns(true);
+    if (data.containsKey('id')) {
+      context.handle(_idMeta, id.isAcceptableOrUnknown(data['id']!, _idMeta));
+    } else if (isInserting) {
+      context.missing(_idMeta);
+    }
+    if (data.containsKey('name')) {
+      context.handle(
+        _nameMeta,
+        name.isAcceptableOrUnknown(data['name']!, _nameMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_nameMeta);
+    }
+    if (data.containsKey('created_at')) {
+      context.handle(
+        _createdAtMeta,
+        createdAt.isAcceptableOrUnknown(data['created_at']!, _createdAtMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_createdAtMeta);
+    }
+    if (data.containsKey('updated_at')) {
+      context.handle(
+        _updatedAtMeta,
+        updatedAt.isAcceptableOrUnknown(data['updated_at']!, _updatedAtMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_updatedAtMeta);
+    }
+    if (data.containsKey('last_opened_at')) {
+      context.handle(
+        _lastOpenedAtMeta,
+        lastOpenedAt.isAcceptableOrUnknown(
+          data['last_opened_at']!,
+          _lastOpenedAtMeta,
+        ),
+      );
+    } else if (isInserting) {
+      context.missing(_lastOpenedAtMeta);
+    }
+    return context;
+  }
+
+  @override
+  Set<GeneratedColumn> get $primaryKey => {id};
+  @override
+  StudyNotebook map(Map<String, dynamic> data, {String? tablePrefix}) {
+    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
+    return StudyNotebook(
+      id: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}id'],
+      )!,
+      name: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}name'],
+      )!,
+      createdAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}created_at'],
+      )!,
+      updatedAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}updated_at'],
+      )!,
+      lastOpenedAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}last_opened_at'],
+      )!,
+    );
+  }
+
+  @override
+  $NotebooksTable createAlias(String alias) {
+    return $NotebooksTable(attachedDatabase, alias);
+  }
+}
+
+class StudyNotebook extends DataClass implements Insertable<StudyNotebook> {
+  final String id;
+  final String name;
+  final DateTime createdAt;
+  final DateTime updatedAt;
+  final DateTime lastOpenedAt;
+  const StudyNotebook({
+    required this.id,
+    required this.name,
+    required this.createdAt,
+    required this.updatedAt,
+    required this.lastOpenedAt,
+  });
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    map['id'] = Variable<String>(id);
+    map['name'] = Variable<String>(name);
+    map['created_at'] = Variable<DateTime>(createdAt);
+    map['updated_at'] = Variable<DateTime>(updatedAt);
+    map['last_opened_at'] = Variable<DateTime>(lastOpenedAt);
+    return map;
+  }
+
+  NotebooksCompanion toCompanion(bool nullToAbsent) {
+    return NotebooksCompanion(
+      id: Value(id),
+      name: Value(name),
+      createdAt: Value(createdAt),
+      updatedAt: Value(updatedAt),
+      lastOpenedAt: Value(lastOpenedAt),
+    );
+  }
+
+  factory StudyNotebook.fromJson(
+    Map<String, dynamic> json, {
+    ValueSerializer? serializer,
+  }) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return StudyNotebook(
+      id: serializer.fromJson<String>(json['id']),
+      name: serializer.fromJson<String>(json['name']),
+      createdAt: serializer.fromJson<DateTime>(json['createdAt']),
+      updatedAt: serializer.fromJson<DateTime>(json['updatedAt']),
+      lastOpenedAt: serializer.fromJson<DateTime>(json['lastOpenedAt']),
+    );
+  }
+  @override
+  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return <String, dynamic>{
+      'id': serializer.toJson<String>(id),
+      'name': serializer.toJson<String>(name),
+      'createdAt': serializer.toJson<DateTime>(createdAt),
+      'updatedAt': serializer.toJson<DateTime>(updatedAt),
+      'lastOpenedAt': serializer.toJson<DateTime>(lastOpenedAt),
+    };
+  }
+
+  StudyNotebook copyWith({
+    String? id,
+    String? name,
+    DateTime? createdAt,
+    DateTime? updatedAt,
+    DateTime? lastOpenedAt,
+  }) => StudyNotebook(
+    id: id ?? this.id,
+    name: name ?? this.name,
+    createdAt: createdAt ?? this.createdAt,
+    updatedAt: updatedAt ?? this.updatedAt,
+    lastOpenedAt: lastOpenedAt ?? this.lastOpenedAt,
+  );
+  StudyNotebook copyWithCompanion(NotebooksCompanion data) {
+    return StudyNotebook(
+      id: data.id.present ? data.id.value : this.id,
+      name: data.name.present ? data.name.value : this.name,
+      createdAt: data.createdAt.present ? data.createdAt.value : this.createdAt,
+      updatedAt: data.updatedAt.present ? data.updatedAt.value : this.updatedAt,
+      lastOpenedAt: data.lastOpenedAt.present
+          ? data.lastOpenedAt.value
+          : this.lastOpenedAt,
+    );
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('StudyNotebook(')
+          ..write('id: $id, ')
+          ..write('name: $name, ')
+          ..write('createdAt: $createdAt, ')
+          ..write('updatedAt: $updatedAt, ')
+          ..write('lastOpenedAt: $lastOpenedAt')
+          ..write(')'))
+        .toString();
+  }
+
+  @override
+  int get hashCode => Object.hash(id, name, createdAt, updatedAt, lastOpenedAt);
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is StudyNotebook &&
+          other.id == this.id &&
+          other.name == this.name &&
+          other.createdAt == this.createdAt &&
+          other.updatedAt == this.updatedAt &&
+          other.lastOpenedAt == this.lastOpenedAt);
+}
+
+class NotebooksCompanion extends UpdateCompanion<StudyNotebook> {
+  final Value<String> id;
+  final Value<String> name;
+  final Value<DateTime> createdAt;
+  final Value<DateTime> updatedAt;
+  final Value<DateTime> lastOpenedAt;
+  final Value<int> rowid;
+  const NotebooksCompanion({
+    this.id = const Value.absent(),
+    this.name = const Value.absent(),
+    this.createdAt = const Value.absent(),
+    this.updatedAt = const Value.absent(),
+    this.lastOpenedAt = const Value.absent(),
+    this.rowid = const Value.absent(),
+  });
+  NotebooksCompanion.insert({
+    required String id,
+    required String name,
+    required DateTime createdAt,
+    required DateTime updatedAt,
+    required DateTime lastOpenedAt,
+    this.rowid = const Value.absent(),
+  }) : id = Value(id),
+       name = Value(name),
+       createdAt = Value(createdAt),
+       updatedAt = Value(updatedAt),
+       lastOpenedAt = Value(lastOpenedAt);
+  static Insertable<StudyNotebook> custom({
+    Expression<String>? id,
+    Expression<String>? name,
+    Expression<DateTime>? createdAt,
+    Expression<DateTime>? updatedAt,
+    Expression<DateTime>? lastOpenedAt,
+    Expression<int>? rowid,
+  }) {
+    return RawValuesInsertable({
+      if (id != null) 'id': id,
+      if (name != null) 'name': name,
+      if (createdAt != null) 'created_at': createdAt,
+      if (updatedAt != null) 'updated_at': updatedAt,
+      if (lastOpenedAt != null) 'last_opened_at': lastOpenedAt,
+      if (rowid != null) 'rowid': rowid,
+    });
+  }
+
+  NotebooksCompanion copyWith({
+    Value<String>? id,
+    Value<String>? name,
+    Value<DateTime>? createdAt,
+    Value<DateTime>? updatedAt,
+    Value<DateTime>? lastOpenedAt,
+    Value<int>? rowid,
+  }) {
+    return NotebooksCompanion(
+      id: id ?? this.id,
+      name: name ?? this.name,
+      createdAt: createdAt ?? this.createdAt,
+      updatedAt: updatedAt ?? this.updatedAt,
+      lastOpenedAt: lastOpenedAt ?? this.lastOpenedAt,
+      rowid: rowid ?? this.rowid,
+    );
+  }
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (id.present) {
+      map['id'] = Variable<String>(id.value);
+    }
+    if (name.present) {
+      map['name'] = Variable<String>(name.value);
+    }
+    if (createdAt.present) {
+      map['created_at'] = Variable<DateTime>(createdAt.value);
+    }
+    if (updatedAt.present) {
+      map['updated_at'] = Variable<DateTime>(updatedAt.value);
+    }
+    if (lastOpenedAt.present) {
+      map['last_opened_at'] = Variable<DateTime>(lastOpenedAt.value);
+    }
+    if (rowid.present) {
+      map['rowid'] = Variable<int>(rowid.value);
+    }
+    return map;
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('NotebooksCompanion(')
+          ..write('id: $id, ')
+          ..write('name: $name, ')
+          ..write('createdAt: $createdAt, ')
+          ..write('updatedAt: $updatedAt, ')
+          ..write('lastOpenedAt: $lastOpenedAt, ')
+          ..write('rowid: $rowid')
+          ..write(')'))
+        .toString();
+  }
+}
+
+class $NotebookSourcesTable extends NotebookSources
+    with TableInfo<$NotebookSourcesTable, StudySource> {
+  @override
+  final GeneratedDatabase attachedDatabase;
+  final String? _alias;
+  $NotebookSourcesTable(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _idMeta = const VerificationMeta('id');
+  @override
+  late final GeneratedColumn<String> id = GeneratedColumn<String>(
+    'id',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _notebookIdMeta = const VerificationMeta(
+    'notebookId',
+  );
+  @override
+  late final GeneratedColumn<String> notebookId = GeneratedColumn<String>(
+    'notebook_id',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'REFERENCES notebooks (id) ON DELETE CASCADE',
+    ),
+  );
+  static const VerificationMeta _fileIdMeta = const VerificationMeta('fileId');
+  @override
+  late final GeneratedColumn<String> fileId = GeneratedColumn<String>(
+    'file_id',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _nameMeta = const VerificationMeta('name');
+  @override
+  late final GeneratedColumn<String> name = GeneratedColumn<String>(
+    'name',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _sourceKeyMeta = const VerificationMeta(
+    'sourceKey',
+  );
+  @override
+  late final GeneratedColumn<String> sourceKey = GeneratedColumn<String>(
+    'source_key',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _extractedTextMeta = const VerificationMeta(
+    'extractedText',
+  );
+  @override
+  late final GeneratedColumn<String> extractedText = GeneratedColumn<String>(
+    'extracted_text',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _extractorRevisionMeta = const VerificationMeta(
+    'extractorRevision',
+  );
+  @override
+  late final GeneratedColumn<int> extractorRevision = GeneratedColumn<int>(
+    'extractor_revision',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _extractedAtMeta = const VerificationMeta(
+    'extractedAt',
+  );
+  @override
+  late final GeneratedColumn<DateTime> extractedAt = GeneratedColumn<DateTime>(
+    'extracted_at',
+    aliasedName,
+    false,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _createdAtMeta = const VerificationMeta(
+    'createdAt',
+  );
+  @override
+  late final GeneratedColumn<DateTime> createdAt = GeneratedColumn<DateTime>(
+    'created_at',
+    aliasedName,
+    false,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: true,
+  );
+  @override
+  List<GeneratedColumn> get $columns => [
+    id,
+    notebookId,
+    fileId,
+    name,
+    sourceKey,
+    extractedText,
+    extractorRevision,
+    extractedAt,
+    createdAt,
+  ];
+  @override
+  String get aliasedName => _alias ?? actualTableName;
+  @override
+  String get actualTableName => $name;
+  static const String $name = 'notebook_sources';
+  @override
+  VerificationContext validateIntegrity(
+    Insertable<StudySource> instance, {
+    bool isInserting = false,
+  }) {
+    final context = VerificationContext();
+    final data = instance.toColumns(true);
+    if (data.containsKey('id')) {
+      context.handle(_idMeta, id.isAcceptableOrUnknown(data['id']!, _idMeta));
+    } else if (isInserting) {
+      context.missing(_idMeta);
+    }
+    if (data.containsKey('notebook_id')) {
+      context.handle(
+        _notebookIdMeta,
+        notebookId.isAcceptableOrUnknown(data['notebook_id']!, _notebookIdMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_notebookIdMeta);
+    }
+    if (data.containsKey('file_id')) {
+      context.handle(
+        _fileIdMeta,
+        fileId.isAcceptableOrUnknown(data['file_id']!, _fileIdMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_fileIdMeta);
+    }
+    if (data.containsKey('name')) {
+      context.handle(
+        _nameMeta,
+        name.isAcceptableOrUnknown(data['name']!, _nameMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_nameMeta);
+    }
+    if (data.containsKey('source_key')) {
+      context.handle(
+        _sourceKeyMeta,
+        sourceKey.isAcceptableOrUnknown(data['source_key']!, _sourceKeyMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_sourceKeyMeta);
+    }
+    if (data.containsKey('extracted_text')) {
+      context.handle(
+        _extractedTextMeta,
+        extractedText.isAcceptableOrUnknown(
+          data['extracted_text']!,
+          _extractedTextMeta,
+        ),
+      );
+    } else if (isInserting) {
+      context.missing(_extractedTextMeta);
+    }
+    if (data.containsKey('extractor_revision')) {
+      context.handle(
+        _extractorRevisionMeta,
+        extractorRevision.isAcceptableOrUnknown(
+          data['extractor_revision']!,
+          _extractorRevisionMeta,
+        ),
+      );
+    } else if (isInserting) {
+      context.missing(_extractorRevisionMeta);
+    }
+    if (data.containsKey('extracted_at')) {
+      context.handle(
+        _extractedAtMeta,
+        extractedAt.isAcceptableOrUnknown(
+          data['extracted_at']!,
+          _extractedAtMeta,
+        ),
+      );
+    } else if (isInserting) {
+      context.missing(_extractedAtMeta);
+    }
+    if (data.containsKey('created_at')) {
+      context.handle(
+        _createdAtMeta,
+        createdAt.isAcceptableOrUnknown(data['created_at']!, _createdAtMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_createdAtMeta);
+    }
+    return context;
+  }
+
+  @override
+  Set<GeneratedColumn> get $primaryKey => {id};
+  @override
+  List<Set<GeneratedColumn>> get uniqueKeys => [
+    {notebookId, sourceKey},
+  ];
+  @override
+  StudySource map(Map<String, dynamic> data, {String? tablePrefix}) {
+    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
+    return StudySource(
+      id: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}id'],
+      )!,
+      notebookId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}notebook_id'],
+      )!,
+      fileId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}file_id'],
+      )!,
+      name: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}name'],
+      )!,
+      sourceKey: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}source_key'],
+      )!,
+      extractedText: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}extracted_text'],
+      )!,
+      extractorRevision: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}extractor_revision'],
+      )!,
+      extractedAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}extracted_at'],
+      )!,
+      createdAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}created_at'],
+      )!,
+    );
+  }
+
+  @override
+  $NotebookSourcesTable createAlias(String alias) {
+    return $NotebookSourcesTable(attachedDatabase, alias);
+  }
+}
+
+class StudySource extends DataClass implements Insertable<StudySource> {
+  final String id;
+  final String notebookId;
+  final String fileId;
+  final String name;
+  final String sourceKey;
+  final String extractedText;
+  final int extractorRevision;
+  final DateTime extractedAt;
+  final DateTime createdAt;
+  const StudySource({
+    required this.id,
+    required this.notebookId,
+    required this.fileId,
+    required this.name,
+    required this.sourceKey,
+    required this.extractedText,
+    required this.extractorRevision,
+    required this.extractedAt,
+    required this.createdAt,
+  });
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    map['id'] = Variable<String>(id);
+    map['notebook_id'] = Variable<String>(notebookId);
+    map['file_id'] = Variable<String>(fileId);
+    map['name'] = Variable<String>(name);
+    map['source_key'] = Variable<String>(sourceKey);
+    map['extracted_text'] = Variable<String>(extractedText);
+    map['extractor_revision'] = Variable<int>(extractorRevision);
+    map['extracted_at'] = Variable<DateTime>(extractedAt);
+    map['created_at'] = Variable<DateTime>(createdAt);
+    return map;
+  }
+
+  NotebookSourcesCompanion toCompanion(bool nullToAbsent) {
+    return NotebookSourcesCompanion(
+      id: Value(id),
+      notebookId: Value(notebookId),
+      fileId: Value(fileId),
+      name: Value(name),
+      sourceKey: Value(sourceKey),
+      extractedText: Value(extractedText),
+      extractorRevision: Value(extractorRevision),
+      extractedAt: Value(extractedAt),
+      createdAt: Value(createdAt),
+    );
+  }
+
+  factory StudySource.fromJson(
+    Map<String, dynamic> json, {
+    ValueSerializer? serializer,
+  }) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return StudySource(
+      id: serializer.fromJson<String>(json['id']),
+      notebookId: serializer.fromJson<String>(json['notebookId']),
+      fileId: serializer.fromJson<String>(json['fileId']),
+      name: serializer.fromJson<String>(json['name']),
+      sourceKey: serializer.fromJson<String>(json['sourceKey']),
+      extractedText: serializer.fromJson<String>(json['extractedText']),
+      extractorRevision: serializer.fromJson<int>(json['extractorRevision']),
+      extractedAt: serializer.fromJson<DateTime>(json['extractedAt']),
+      createdAt: serializer.fromJson<DateTime>(json['createdAt']),
+    );
+  }
+  @override
+  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return <String, dynamic>{
+      'id': serializer.toJson<String>(id),
+      'notebookId': serializer.toJson<String>(notebookId),
+      'fileId': serializer.toJson<String>(fileId),
+      'name': serializer.toJson<String>(name),
+      'sourceKey': serializer.toJson<String>(sourceKey),
+      'extractedText': serializer.toJson<String>(extractedText),
+      'extractorRevision': serializer.toJson<int>(extractorRevision),
+      'extractedAt': serializer.toJson<DateTime>(extractedAt),
+      'createdAt': serializer.toJson<DateTime>(createdAt),
+    };
+  }
+
+  StudySource copyWith({
+    String? id,
+    String? notebookId,
+    String? fileId,
+    String? name,
+    String? sourceKey,
+    String? extractedText,
+    int? extractorRevision,
+    DateTime? extractedAt,
+    DateTime? createdAt,
+  }) => StudySource(
+    id: id ?? this.id,
+    notebookId: notebookId ?? this.notebookId,
+    fileId: fileId ?? this.fileId,
+    name: name ?? this.name,
+    sourceKey: sourceKey ?? this.sourceKey,
+    extractedText: extractedText ?? this.extractedText,
+    extractorRevision: extractorRevision ?? this.extractorRevision,
+    extractedAt: extractedAt ?? this.extractedAt,
+    createdAt: createdAt ?? this.createdAt,
+  );
+  StudySource copyWithCompanion(NotebookSourcesCompanion data) {
+    return StudySource(
+      id: data.id.present ? data.id.value : this.id,
+      notebookId: data.notebookId.present
+          ? data.notebookId.value
+          : this.notebookId,
+      fileId: data.fileId.present ? data.fileId.value : this.fileId,
+      name: data.name.present ? data.name.value : this.name,
+      sourceKey: data.sourceKey.present ? data.sourceKey.value : this.sourceKey,
+      extractedText: data.extractedText.present
+          ? data.extractedText.value
+          : this.extractedText,
+      extractorRevision: data.extractorRevision.present
+          ? data.extractorRevision.value
+          : this.extractorRevision,
+      extractedAt: data.extractedAt.present
+          ? data.extractedAt.value
+          : this.extractedAt,
+      createdAt: data.createdAt.present ? data.createdAt.value : this.createdAt,
+    );
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('StudySource(')
+          ..write('id: $id, ')
+          ..write('notebookId: $notebookId, ')
+          ..write('fileId: $fileId, ')
+          ..write('name: $name, ')
+          ..write('sourceKey: $sourceKey, ')
+          ..write('extractedText: $extractedText, ')
+          ..write('extractorRevision: $extractorRevision, ')
+          ..write('extractedAt: $extractedAt, ')
+          ..write('createdAt: $createdAt')
+          ..write(')'))
+        .toString();
+  }
+
+  @override
+  int get hashCode => Object.hash(
+    id,
+    notebookId,
+    fileId,
+    name,
+    sourceKey,
+    extractedText,
+    extractorRevision,
+    extractedAt,
+    createdAt,
+  );
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is StudySource &&
+          other.id == this.id &&
+          other.notebookId == this.notebookId &&
+          other.fileId == this.fileId &&
+          other.name == this.name &&
+          other.sourceKey == this.sourceKey &&
+          other.extractedText == this.extractedText &&
+          other.extractorRevision == this.extractorRevision &&
+          other.extractedAt == this.extractedAt &&
+          other.createdAt == this.createdAt);
+}
+
+class NotebookSourcesCompanion extends UpdateCompanion<StudySource> {
+  final Value<String> id;
+  final Value<String> notebookId;
+  final Value<String> fileId;
+  final Value<String> name;
+  final Value<String> sourceKey;
+  final Value<String> extractedText;
+  final Value<int> extractorRevision;
+  final Value<DateTime> extractedAt;
+  final Value<DateTime> createdAt;
+  final Value<int> rowid;
+  const NotebookSourcesCompanion({
+    this.id = const Value.absent(),
+    this.notebookId = const Value.absent(),
+    this.fileId = const Value.absent(),
+    this.name = const Value.absent(),
+    this.sourceKey = const Value.absent(),
+    this.extractedText = const Value.absent(),
+    this.extractorRevision = const Value.absent(),
+    this.extractedAt = const Value.absent(),
+    this.createdAt = const Value.absent(),
+    this.rowid = const Value.absent(),
+  });
+  NotebookSourcesCompanion.insert({
+    required String id,
+    required String notebookId,
+    required String fileId,
+    required String name,
+    required String sourceKey,
+    required String extractedText,
+    required int extractorRevision,
+    required DateTime extractedAt,
+    required DateTime createdAt,
+    this.rowid = const Value.absent(),
+  }) : id = Value(id),
+       notebookId = Value(notebookId),
+       fileId = Value(fileId),
+       name = Value(name),
+       sourceKey = Value(sourceKey),
+       extractedText = Value(extractedText),
+       extractorRevision = Value(extractorRevision),
+       extractedAt = Value(extractedAt),
+       createdAt = Value(createdAt);
+  static Insertable<StudySource> custom({
+    Expression<String>? id,
+    Expression<String>? notebookId,
+    Expression<String>? fileId,
+    Expression<String>? name,
+    Expression<String>? sourceKey,
+    Expression<String>? extractedText,
+    Expression<int>? extractorRevision,
+    Expression<DateTime>? extractedAt,
+    Expression<DateTime>? createdAt,
+    Expression<int>? rowid,
+  }) {
+    return RawValuesInsertable({
+      if (id != null) 'id': id,
+      if (notebookId != null) 'notebook_id': notebookId,
+      if (fileId != null) 'file_id': fileId,
+      if (name != null) 'name': name,
+      if (sourceKey != null) 'source_key': sourceKey,
+      if (extractedText != null) 'extracted_text': extractedText,
+      if (extractorRevision != null) 'extractor_revision': extractorRevision,
+      if (extractedAt != null) 'extracted_at': extractedAt,
+      if (createdAt != null) 'created_at': createdAt,
+      if (rowid != null) 'rowid': rowid,
+    });
+  }
+
+  NotebookSourcesCompanion copyWith({
+    Value<String>? id,
+    Value<String>? notebookId,
+    Value<String>? fileId,
+    Value<String>? name,
+    Value<String>? sourceKey,
+    Value<String>? extractedText,
+    Value<int>? extractorRevision,
+    Value<DateTime>? extractedAt,
+    Value<DateTime>? createdAt,
+    Value<int>? rowid,
+  }) {
+    return NotebookSourcesCompanion(
+      id: id ?? this.id,
+      notebookId: notebookId ?? this.notebookId,
+      fileId: fileId ?? this.fileId,
+      name: name ?? this.name,
+      sourceKey: sourceKey ?? this.sourceKey,
+      extractedText: extractedText ?? this.extractedText,
+      extractorRevision: extractorRevision ?? this.extractorRevision,
+      extractedAt: extractedAt ?? this.extractedAt,
+      createdAt: createdAt ?? this.createdAt,
+      rowid: rowid ?? this.rowid,
+    );
+  }
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (id.present) {
+      map['id'] = Variable<String>(id.value);
+    }
+    if (notebookId.present) {
+      map['notebook_id'] = Variable<String>(notebookId.value);
+    }
+    if (fileId.present) {
+      map['file_id'] = Variable<String>(fileId.value);
+    }
+    if (name.present) {
+      map['name'] = Variable<String>(name.value);
+    }
+    if (sourceKey.present) {
+      map['source_key'] = Variable<String>(sourceKey.value);
+    }
+    if (extractedText.present) {
+      map['extracted_text'] = Variable<String>(extractedText.value);
+    }
+    if (extractorRevision.present) {
+      map['extractor_revision'] = Variable<int>(extractorRevision.value);
+    }
+    if (extractedAt.present) {
+      map['extracted_at'] = Variable<DateTime>(extractedAt.value);
+    }
+    if (createdAt.present) {
+      map['created_at'] = Variable<DateTime>(createdAt.value);
+    }
+    if (rowid.present) {
+      map['rowid'] = Variable<int>(rowid.value);
+    }
+    return map;
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('NotebookSourcesCompanion(')
+          ..write('id: $id, ')
+          ..write('notebookId: $notebookId, ')
+          ..write('fileId: $fileId, ')
+          ..write('name: $name, ')
+          ..write('sourceKey: $sourceKey, ')
+          ..write('extractedText: $extractedText, ')
+          ..write('extractorRevision: $extractorRevision, ')
+          ..write('extractedAt: $extractedAt, ')
+          ..write('createdAt: $createdAt, ')
+          ..write('rowid: $rowid')
+          ..write(')'))
+        .toString();
+  }
+}
+
+class $ChatsTable extends Chats with TableInfo<$ChatsTable, StudyChat> {
+  @override
+  final GeneratedDatabase attachedDatabase;
+  final String? _alias;
+  $ChatsTable(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _idMeta = const VerificationMeta('id');
+  @override
+  late final GeneratedColumn<String> id = GeneratedColumn<String>(
+    'id',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _notebookIdMeta = const VerificationMeta(
+    'notebookId',
+  );
+  @override
+  late final GeneratedColumn<String> notebookId = GeneratedColumn<String>(
+    'notebook_id',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'REFERENCES notebooks (id) ON DELETE CASCADE',
+    ),
+  );
+  static const VerificationMeta _titleMeta = const VerificationMeta('title');
+  @override
+  late final GeneratedColumn<String> title = GeneratedColumn<String>(
+    'title',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _createdAtMeta = const VerificationMeta(
+    'createdAt',
+  );
+  @override
+  late final GeneratedColumn<DateTime> createdAt = GeneratedColumn<DateTime>(
+    'created_at',
+    aliasedName,
+    false,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _lastMessageAtMeta = const VerificationMeta(
+    'lastMessageAt',
+  );
+  @override
+  late final GeneratedColumn<DateTime> lastMessageAt =
+      GeneratedColumn<DateTime>(
+        'last_message_at',
+        aliasedName,
+        false,
+        type: DriftSqlType.dateTime,
+        requiredDuringInsert: true,
+      );
+  static const VerificationMeta _expiresAtMeta = const VerificationMeta(
+    'expiresAt',
+  );
+  @override
+  late final GeneratedColumn<DateTime> expiresAt = GeneratedColumn<DateTime>(
+    'expires_at',
+    aliasedName,
+    false,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: true,
+  );
+  @override
+  List<GeneratedColumn> get $columns => [
+    id,
+    notebookId,
+    title,
+    createdAt,
+    lastMessageAt,
+    expiresAt,
+  ];
+  @override
+  String get aliasedName => _alias ?? actualTableName;
+  @override
+  String get actualTableName => $name;
+  static const String $name = 'chats';
+  @override
+  VerificationContext validateIntegrity(
+    Insertable<StudyChat> instance, {
+    bool isInserting = false,
+  }) {
+    final context = VerificationContext();
+    final data = instance.toColumns(true);
+    if (data.containsKey('id')) {
+      context.handle(_idMeta, id.isAcceptableOrUnknown(data['id']!, _idMeta));
+    } else if (isInserting) {
+      context.missing(_idMeta);
+    }
+    if (data.containsKey('notebook_id')) {
+      context.handle(
+        _notebookIdMeta,
+        notebookId.isAcceptableOrUnknown(data['notebook_id']!, _notebookIdMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_notebookIdMeta);
+    }
+    if (data.containsKey('title')) {
+      context.handle(
+        _titleMeta,
+        title.isAcceptableOrUnknown(data['title']!, _titleMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_titleMeta);
+    }
+    if (data.containsKey('created_at')) {
+      context.handle(
+        _createdAtMeta,
+        createdAt.isAcceptableOrUnknown(data['created_at']!, _createdAtMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_createdAtMeta);
+    }
+    if (data.containsKey('last_message_at')) {
+      context.handle(
+        _lastMessageAtMeta,
+        lastMessageAt.isAcceptableOrUnknown(
+          data['last_message_at']!,
+          _lastMessageAtMeta,
+        ),
+      );
+    } else if (isInserting) {
+      context.missing(_lastMessageAtMeta);
+    }
+    if (data.containsKey('expires_at')) {
+      context.handle(
+        _expiresAtMeta,
+        expiresAt.isAcceptableOrUnknown(data['expires_at']!, _expiresAtMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_expiresAtMeta);
+    }
+    return context;
+  }
+
+  @override
+  Set<GeneratedColumn> get $primaryKey => {id};
+  @override
+  StudyChat map(Map<String, dynamic> data, {String? tablePrefix}) {
+    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
+    return StudyChat(
+      id: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}id'],
+      )!,
+      notebookId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}notebook_id'],
+      )!,
+      title: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}title'],
+      )!,
+      createdAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}created_at'],
+      )!,
+      lastMessageAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}last_message_at'],
+      )!,
+      expiresAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}expires_at'],
+      )!,
+    );
+  }
+
+  @override
+  $ChatsTable createAlias(String alias) {
+    return $ChatsTable(attachedDatabase, alias);
+  }
+}
+
+class StudyChat extends DataClass implements Insertable<StudyChat> {
+  final String id;
+  final String notebookId;
+  final String title;
+  final DateTime createdAt;
+  final DateTime lastMessageAt;
+  final DateTime expiresAt;
+  const StudyChat({
+    required this.id,
+    required this.notebookId,
+    required this.title,
+    required this.createdAt,
+    required this.lastMessageAt,
+    required this.expiresAt,
+  });
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    map['id'] = Variable<String>(id);
+    map['notebook_id'] = Variable<String>(notebookId);
+    map['title'] = Variable<String>(title);
+    map['created_at'] = Variable<DateTime>(createdAt);
+    map['last_message_at'] = Variable<DateTime>(lastMessageAt);
+    map['expires_at'] = Variable<DateTime>(expiresAt);
+    return map;
+  }
+
+  ChatsCompanion toCompanion(bool nullToAbsent) {
+    return ChatsCompanion(
+      id: Value(id),
+      notebookId: Value(notebookId),
+      title: Value(title),
+      createdAt: Value(createdAt),
+      lastMessageAt: Value(lastMessageAt),
+      expiresAt: Value(expiresAt),
+    );
+  }
+
+  factory StudyChat.fromJson(
+    Map<String, dynamic> json, {
+    ValueSerializer? serializer,
+  }) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return StudyChat(
+      id: serializer.fromJson<String>(json['id']),
+      notebookId: serializer.fromJson<String>(json['notebookId']),
+      title: serializer.fromJson<String>(json['title']),
+      createdAt: serializer.fromJson<DateTime>(json['createdAt']),
+      lastMessageAt: serializer.fromJson<DateTime>(json['lastMessageAt']),
+      expiresAt: serializer.fromJson<DateTime>(json['expiresAt']),
+    );
+  }
+  @override
+  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return <String, dynamic>{
+      'id': serializer.toJson<String>(id),
+      'notebookId': serializer.toJson<String>(notebookId),
+      'title': serializer.toJson<String>(title),
+      'createdAt': serializer.toJson<DateTime>(createdAt),
+      'lastMessageAt': serializer.toJson<DateTime>(lastMessageAt),
+      'expiresAt': serializer.toJson<DateTime>(expiresAt),
+    };
+  }
+
+  StudyChat copyWith({
+    String? id,
+    String? notebookId,
+    String? title,
+    DateTime? createdAt,
+    DateTime? lastMessageAt,
+    DateTime? expiresAt,
+  }) => StudyChat(
+    id: id ?? this.id,
+    notebookId: notebookId ?? this.notebookId,
+    title: title ?? this.title,
+    createdAt: createdAt ?? this.createdAt,
+    lastMessageAt: lastMessageAt ?? this.lastMessageAt,
+    expiresAt: expiresAt ?? this.expiresAt,
+  );
+  StudyChat copyWithCompanion(ChatsCompanion data) {
+    return StudyChat(
+      id: data.id.present ? data.id.value : this.id,
+      notebookId: data.notebookId.present
+          ? data.notebookId.value
+          : this.notebookId,
+      title: data.title.present ? data.title.value : this.title,
+      createdAt: data.createdAt.present ? data.createdAt.value : this.createdAt,
+      lastMessageAt: data.lastMessageAt.present
+          ? data.lastMessageAt.value
+          : this.lastMessageAt,
+      expiresAt: data.expiresAt.present ? data.expiresAt.value : this.expiresAt,
+    );
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('StudyChat(')
+          ..write('id: $id, ')
+          ..write('notebookId: $notebookId, ')
+          ..write('title: $title, ')
+          ..write('createdAt: $createdAt, ')
+          ..write('lastMessageAt: $lastMessageAt, ')
+          ..write('expiresAt: $expiresAt')
+          ..write(')'))
+        .toString();
+  }
+
+  @override
+  int get hashCode =>
+      Object.hash(id, notebookId, title, createdAt, lastMessageAt, expiresAt);
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is StudyChat &&
+          other.id == this.id &&
+          other.notebookId == this.notebookId &&
+          other.title == this.title &&
+          other.createdAt == this.createdAt &&
+          other.lastMessageAt == this.lastMessageAt &&
+          other.expiresAt == this.expiresAt);
+}
+
+class ChatsCompanion extends UpdateCompanion<StudyChat> {
+  final Value<String> id;
+  final Value<String> notebookId;
+  final Value<String> title;
+  final Value<DateTime> createdAt;
+  final Value<DateTime> lastMessageAt;
+  final Value<DateTime> expiresAt;
+  final Value<int> rowid;
+  const ChatsCompanion({
+    this.id = const Value.absent(),
+    this.notebookId = const Value.absent(),
+    this.title = const Value.absent(),
+    this.createdAt = const Value.absent(),
+    this.lastMessageAt = const Value.absent(),
+    this.expiresAt = const Value.absent(),
+    this.rowid = const Value.absent(),
+  });
+  ChatsCompanion.insert({
+    required String id,
+    required String notebookId,
+    required String title,
+    required DateTime createdAt,
+    required DateTime lastMessageAt,
+    required DateTime expiresAt,
+    this.rowid = const Value.absent(),
+  }) : id = Value(id),
+       notebookId = Value(notebookId),
+       title = Value(title),
+       createdAt = Value(createdAt),
+       lastMessageAt = Value(lastMessageAt),
+       expiresAt = Value(expiresAt);
+  static Insertable<StudyChat> custom({
+    Expression<String>? id,
+    Expression<String>? notebookId,
+    Expression<String>? title,
+    Expression<DateTime>? createdAt,
+    Expression<DateTime>? lastMessageAt,
+    Expression<DateTime>? expiresAt,
+    Expression<int>? rowid,
+  }) {
+    return RawValuesInsertable({
+      if (id != null) 'id': id,
+      if (notebookId != null) 'notebook_id': notebookId,
+      if (title != null) 'title': title,
+      if (createdAt != null) 'created_at': createdAt,
+      if (lastMessageAt != null) 'last_message_at': lastMessageAt,
+      if (expiresAt != null) 'expires_at': expiresAt,
+      if (rowid != null) 'rowid': rowid,
+    });
+  }
+
+  ChatsCompanion copyWith({
+    Value<String>? id,
+    Value<String>? notebookId,
+    Value<String>? title,
+    Value<DateTime>? createdAt,
+    Value<DateTime>? lastMessageAt,
+    Value<DateTime>? expiresAt,
+    Value<int>? rowid,
+  }) {
+    return ChatsCompanion(
+      id: id ?? this.id,
+      notebookId: notebookId ?? this.notebookId,
+      title: title ?? this.title,
+      createdAt: createdAt ?? this.createdAt,
+      lastMessageAt: lastMessageAt ?? this.lastMessageAt,
+      expiresAt: expiresAt ?? this.expiresAt,
+      rowid: rowid ?? this.rowid,
+    );
+  }
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (id.present) {
+      map['id'] = Variable<String>(id.value);
+    }
+    if (notebookId.present) {
+      map['notebook_id'] = Variable<String>(notebookId.value);
+    }
+    if (title.present) {
+      map['title'] = Variable<String>(title.value);
+    }
+    if (createdAt.present) {
+      map['created_at'] = Variable<DateTime>(createdAt.value);
+    }
+    if (lastMessageAt.present) {
+      map['last_message_at'] = Variable<DateTime>(lastMessageAt.value);
+    }
+    if (expiresAt.present) {
+      map['expires_at'] = Variable<DateTime>(expiresAt.value);
+    }
+    if (rowid.present) {
+      map['rowid'] = Variable<int>(rowid.value);
+    }
+    return map;
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('ChatsCompanion(')
+          ..write('id: $id, ')
+          ..write('notebookId: $notebookId, ')
+          ..write('title: $title, ')
+          ..write('createdAt: $createdAt, ')
+          ..write('lastMessageAt: $lastMessageAt, ')
+          ..write('expiresAt: $expiresAt, ')
+          ..write('rowid: $rowid')
+          ..write(')'))
+        .toString();
+  }
+}
+
+class $ChatMessagesTable extends ChatMessages
+    with TableInfo<$ChatMessagesTable, StudyMessage> {
+  @override
+  final GeneratedDatabase attachedDatabase;
+  final String? _alias;
+  $ChatMessagesTable(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _idMeta = const VerificationMeta('id');
+  @override
+  late final GeneratedColumn<String> id = GeneratedColumn<String>(
+    'id',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _chatIdMeta = const VerificationMeta('chatId');
+  @override
+  late final GeneratedColumn<String> chatId = GeneratedColumn<String>(
+    'chat_id',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'REFERENCES chats (id) ON DELETE CASCADE',
+    ),
+  );
+  static const VerificationMeta _roleMeta = const VerificationMeta('role');
+  @override
+  late final GeneratedColumn<String> role = GeneratedColumn<String>(
+    'role',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _contentMeta = const VerificationMeta(
+    'content',
+  );
+  @override
+  late final GeneratedColumn<String> content = GeneratedColumn<String>(
+    'content',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _modeMeta = const VerificationMeta('mode');
+  @override
+  late final GeneratedColumn<String> mode = GeneratedColumn<String>(
+    'mode',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _createdAtMeta = const VerificationMeta(
+    'createdAt',
+  );
+  @override
+  late final GeneratedColumn<DateTime> createdAt = GeneratedColumn<DateTime>(
+    'created_at',
+    aliasedName,
+    false,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _positionMeta = const VerificationMeta(
+    'position',
+  );
+  @override
+  late final GeneratedColumn<int> position = GeneratedColumn<int>(
+    'position',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: true,
+  );
+  @override
+  List<GeneratedColumn> get $columns => [
+    id,
+    chatId,
+    role,
+    content,
+    mode,
+    createdAt,
+    position,
+  ];
+  @override
+  String get aliasedName => _alias ?? actualTableName;
+  @override
+  String get actualTableName => $name;
+  static const String $name = 'chat_messages';
+  @override
+  VerificationContext validateIntegrity(
+    Insertable<StudyMessage> instance, {
+    bool isInserting = false,
+  }) {
+    final context = VerificationContext();
+    final data = instance.toColumns(true);
+    if (data.containsKey('id')) {
+      context.handle(_idMeta, id.isAcceptableOrUnknown(data['id']!, _idMeta));
+    } else if (isInserting) {
+      context.missing(_idMeta);
+    }
+    if (data.containsKey('chat_id')) {
+      context.handle(
+        _chatIdMeta,
+        chatId.isAcceptableOrUnknown(data['chat_id']!, _chatIdMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_chatIdMeta);
+    }
+    if (data.containsKey('role')) {
+      context.handle(
+        _roleMeta,
+        role.isAcceptableOrUnknown(data['role']!, _roleMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_roleMeta);
+    }
+    if (data.containsKey('content')) {
+      context.handle(
+        _contentMeta,
+        content.isAcceptableOrUnknown(data['content']!, _contentMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_contentMeta);
+    }
+    if (data.containsKey('mode')) {
+      context.handle(
+        _modeMeta,
+        mode.isAcceptableOrUnknown(data['mode']!, _modeMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_modeMeta);
+    }
+    if (data.containsKey('created_at')) {
+      context.handle(
+        _createdAtMeta,
+        createdAt.isAcceptableOrUnknown(data['created_at']!, _createdAtMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_createdAtMeta);
+    }
+    if (data.containsKey('position')) {
+      context.handle(
+        _positionMeta,
+        position.isAcceptableOrUnknown(data['position']!, _positionMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_positionMeta);
+    }
+    return context;
+  }
+
+  @override
+  Set<GeneratedColumn> get $primaryKey => {id};
+  @override
+  List<Set<GeneratedColumn>> get uniqueKeys => [
+    {chatId, position},
+  ];
+  @override
+  StudyMessage map(Map<String, dynamic> data, {String? tablePrefix}) {
+    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
+    return StudyMessage(
+      id: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}id'],
+      )!,
+      chatId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}chat_id'],
+      )!,
+      role: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}role'],
+      )!,
+      content: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}content'],
+      )!,
+      mode: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}mode'],
+      )!,
+      createdAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}created_at'],
+      )!,
+      position: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}position'],
+      )!,
+    );
+  }
+
+  @override
+  $ChatMessagesTable createAlias(String alias) {
+    return $ChatMessagesTable(attachedDatabase, alias);
+  }
+}
+
+class StudyMessage extends DataClass implements Insertable<StudyMessage> {
+  final String id;
+  final String chatId;
+  final String role;
+  final String content;
+  final String mode;
+  final DateTime createdAt;
+  final int position;
+  const StudyMessage({
+    required this.id,
+    required this.chatId,
+    required this.role,
+    required this.content,
+    required this.mode,
+    required this.createdAt,
+    required this.position,
+  });
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    map['id'] = Variable<String>(id);
+    map['chat_id'] = Variable<String>(chatId);
+    map['role'] = Variable<String>(role);
+    map['content'] = Variable<String>(content);
+    map['mode'] = Variable<String>(mode);
+    map['created_at'] = Variable<DateTime>(createdAt);
+    map['position'] = Variable<int>(position);
+    return map;
+  }
+
+  ChatMessagesCompanion toCompanion(bool nullToAbsent) {
+    return ChatMessagesCompanion(
+      id: Value(id),
+      chatId: Value(chatId),
+      role: Value(role),
+      content: Value(content),
+      mode: Value(mode),
+      createdAt: Value(createdAt),
+      position: Value(position),
+    );
+  }
+
+  factory StudyMessage.fromJson(
+    Map<String, dynamic> json, {
+    ValueSerializer? serializer,
+  }) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return StudyMessage(
+      id: serializer.fromJson<String>(json['id']),
+      chatId: serializer.fromJson<String>(json['chatId']),
+      role: serializer.fromJson<String>(json['role']),
+      content: serializer.fromJson<String>(json['content']),
+      mode: serializer.fromJson<String>(json['mode']),
+      createdAt: serializer.fromJson<DateTime>(json['createdAt']),
+      position: serializer.fromJson<int>(json['position']),
+    );
+  }
+  @override
+  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return <String, dynamic>{
+      'id': serializer.toJson<String>(id),
+      'chatId': serializer.toJson<String>(chatId),
+      'role': serializer.toJson<String>(role),
+      'content': serializer.toJson<String>(content),
+      'mode': serializer.toJson<String>(mode),
+      'createdAt': serializer.toJson<DateTime>(createdAt),
+      'position': serializer.toJson<int>(position),
+    };
+  }
+
+  StudyMessage copyWith({
+    String? id,
+    String? chatId,
+    String? role,
+    String? content,
+    String? mode,
+    DateTime? createdAt,
+    int? position,
+  }) => StudyMessage(
+    id: id ?? this.id,
+    chatId: chatId ?? this.chatId,
+    role: role ?? this.role,
+    content: content ?? this.content,
+    mode: mode ?? this.mode,
+    createdAt: createdAt ?? this.createdAt,
+    position: position ?? this.position,
+  );
+  StudyMessage copyWithCompanion(ChatMessagesCompanion data) {
+    return StudyMessage(
+      id: data.id.present ? data.id.value : this.id,
+      chatId: data.chatId.present ? data.chatId.value : this.chatId,
+      role: data.role.present ? data.role.value : this.role,
+      content: data.content.present ? data.content.value : this.content,
+      mode: data.mode.present ? data.mode.value : this.mode,
+      createdAt: data.createdAt.present ? data.createdAt.value : this.createdAt,
+      position: data.position.present ? data.position.value : this.position,
+    );
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('StudyMessage(')
+          ..write('id: $id, ')
+          ..write('chatId: $chatId, ')
+          ..write('role: $role, ')
+          ..write('content: $content, ')
+          ..write('mode: $mode, ')
+          ..write('createdAt: $createdAt, ')
+          ..write('position: $position')
+          ..write(')'))
+        .toString();
+  }
+
+  @override
+  int get hashCode =>
+      Object.hash(id, chatId, role, content, mode, createdAt, position);
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is StudyMessage &&
+          other.id == this.id &&
+          other.chatId == this.chatId &&
+          other.role == this.role &&
+          other.content == this.content &&
+          other.mode == this.mode &&
+          other.createdAt == this.createdAt &&
+          other.position == this.position);
+}
+
+class ChatMessagesCompanion extends UpdateCompanion<StudyMessage> {
+  final Value<String> id;
+  final Value<String> chatId;
+  final Value<String> role;
+  final Value<String> content;
+  final Value<String> mode;
+  final Value<DateTime> createdAt;
+  final Value<int> position;
+  final Value<int> rowid;
+  const ChatMessagesCompanion({
+    this.id = const Value.absent(),
+    this.chatId = const Value.absent(),
+    this.role = const Value.absent(),
+    this.content = const Value.absent(),
+    this.mode = const Value.absent(),
+    this.createdAt = const Value.absent(),
+    this.position = const Value.absent(),
+    this.rowid = const Value.absent(),
+  });
+  ChatMessagesCompanion.insert({
+    required String id,
+    required String chatId,
+    required String role,
+    required String content,
+    required String mode,
+    required DateTime createdAt,
+    required int position,
+    this.rowid = const Value.absent(),
+  }) : id = Value(id),
+       chatId = Value(chatId),
+       role = Value(role),
+       content = Value(content),
+       mode = Value(mode),
+       createdAt = Value(createdAt),
+       position = Value(position);
+  static Insertable<StudyMessage> custom({
+    Expression<String>? id,
+    Expression<String>? chatId,
+    Expression<String>? role,
+    Expression<String>? content,
+    Expression<String>? mode,
+    Expression<DateTime>? createdAt,
+    Expression<int>? position,
+    Expression<int>? rowid,
+  }) {
+    return RawValuesInsertable({
+      if (id != null) 'id': id,
+      if (chatId != null) 'chat_id': chatId,
+      if (role != null) 'role': role,
+      if (content != null) 'content': content,
+      if (mode != null) 'mode': mode,
+      if (createdAt != null) 'created_at': createdAt,
+      if (position != null) 'position': position,
+      if (rowid != null) 'rowid': rowid,
+    });
+  }
+
+  ChatMessagesCompanion copyWith({
+    Value<String>? id,
+    Value<String>? chatId,
+    Value<String>? role,
+    Value<String>? content,
+    Value<String>? mode,
+    Value<DateTime>? createdAt,
+    Value<int>? position,
+    Value<int>? rowid,
+  }) {
+    return ChatMessagesCompanion(
+      id: id ?? this.id,
+      chatId: chatId ?? this.chatId,
+      role: role ?? this.role,
+      content: content ?? this.content,
+      mode: mode ?? this.mode,
+      createdAt: createdAt ?? this.createdAt,
+      position: position ?? this.position,
+      rowid: rowid ?? this.rowid,
+    );
+  }
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (id.present) {
+      map['id'] = Variable<String>(id.value);
+    }
+    if (chatId.present) {
+      map['chat_id'] = Variable<String>(chatId.value);
+    }
+    if (role.present) {
+      map['role'] = Variable<String>(role.value);
+    }
+    if (content.present) {
+      map['content'] = Variable<String>(content.value);
+    }
+    if (mode.present) {
+      map['mode'] = Variable<String>(mode.value);
+    }
+    if (createdAt.present) {
+      map['created_at'] = Variable<DateTime>(createdAt.value);
+    }
+    if (position.present) {
+      map['position'] = Variable<int>(position.value);
+    }
+    if (rowid.present) {
+      map['rowid'] = Variable<int>(rowid.value);
+    }
+    return map;
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('ChatMessagesCompanion(')
+          ..write('id: $id, ')
+          ..write('chatId: $chatId, ')
+          ..write('role: $role, ')
+          ..write('content: $content, ')
+          ..write('mode: $mode, ')
+          ..write('createdAt: $createdAt, ')
+          ..write('position: $position, ')
+          ..write('rowid: $rowid')
+          ..write(')'))
+        .toString();
+  }
+}
+
+class $SummariesTable extends Summaries
+    with TableInfo<$SummariesTable, StudySummary> {
+  @override
+  final GeneratedDatabase attachedDatabase;
+  final String? _alias;
+  $SummariesTable(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _notebookIdMeta = const VerificationMeta(
+    'notebookId',
+  );
+  @override
+  late final GeneratedColumn<String> notebookId = GeneratedColumn<String>(
+    'notebook_id',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'REFERENCES notebooks (id) ON DELETE CASCADE',
+    ),
+  );
+  static const VerificationMeta _contentMeta = const VerificationMeta(
+    'content',
+  );
+  @override
+  late final GeneratedColumn<String> content = GeneratedColumn<String>(
+    'content',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _createdAtMeta = const VerificationMeta(
+    'createdAt',
+  );
+  @override
+  late final GeneratedColumn<DateTime> createdAt = GeneratedColumn<DateTime>(
+    'created_at',
+    aliasedName,
+    false,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _updatedAtMeta = const VerificationMeta(
+    'updatedAt',
+  );
+  @override
+  late final GeneratedColumn<DateTime> updatedAt = GeneratedColumn<DateTime>(
+    'updated_at',
+    aliasedName,
+    false,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: true,
+  );
+  @override
+  List<GeneratedColumn> get $columns => [
+    notebookId,
+    content,
+    createdAt,
+    updatedAt,
+  ];
+  @override
+  String get aliasedName => _alias ?? actualTableName;
+  @override
+  String get actualTableName => $name;
+  static const String $name = 'summaries';
+  @override
+  VerificationContext validateIntegrity(
+    Insertable<StudySummary> instance, {
+    bool isInserting = false,
+  }) {
+    final context = VerificationContext();
+    final data = instance.toColumns(true);
+    if (data.containsKey('notebook_id')) {
+      context.handle(
+        _notebookIdMeta,
+        notebookId.isAcceptableOrUnknown(data['notebook_id']!, _notebookIdMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_notebookIdMeta);
+    }
+    if (data.containsKey('content')) {
+      context.handle(
+        _contentMeta,
+        content.isAcceptableOrUnknown(data['content']!, _contentMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_contentMeta);
+    }
+    if (data.containsKey('created_at')) {
+      context.handle(
+        _createdAtMeta,
+        createdAt.isAcceptableOrUnknown(data['created_at']!, _createdAtMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_createdAtMeta);
+    }
+    if (data.containsKey('updated_at')) {
+      context.handle(
+        _updatedAtMeta,
+        updatedAt.isAcceptableOrUnknown(data['updated_at']!, _updatedAtMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_updatedAtMeta);
+    }
+    return context;
+  }
+
+  @override
+  Set<GeneratedColumn> get $primaryKey => {notebookId};
+  @override
+  StudySummary map(Map<String, dynamic> data, {String? tablePrefix}) {
+    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
+    return StudySummary(
+      notebookId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}notebook_id'],
+      )!,
+      content: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}content'],
+      )!,
+      createdAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}created_at'],
+      )!,
+      updatedAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}updated_at'],
+      )!,
+    );
+  }
+
+  @override
+  $SummariesTable createAlias(String alias) {
+    return $SummariesTable(attachedDatabase, alias);
+  }
+}
+
+class StudySummary extends DataClass implements Insertable<StudySummary> {
+  final String notebookId;
+  final String content;
+  final DateTime createdAt;
+  final DateTime updatedAt;
+  const StudySummary({
+    required this.notebookId,
+    required this.content,
+    required this.createdAt,
+    required this.updatedAt,
+  });
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    map['notebook_id'] = Variable<String>(notebookId);
+    map['content'] = Variable<String>(content);
+    map['created_at'] = Variable<DateTime>(createdAt);
+    map['updated_at'] = Variable<DateTime>(updatedAt);
+    return map;
+  }
+
+  SummariesCompanion toCompanion(bool nullToAbsent) {
+    return SummariesCompanion(
+      notebookId: Value(notebookId),
+      content: Value(content),
+      createdAt: Value(createdAt),
+      updatedAt: Value(updatedAt),
+    );
+  }
+
+  factory StudySummary.fromJson(
+    Map<String, dynamic> json, {
+    ValueSerializer? serializer,
+  }) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return StudySummary(
+      notebookId: serializer.fromJson<String>(json['notebookId']),
+      content: serializer.fromJson<String>(json['content']),
+      createdAt: serializer.fromJson<DateTime>(json['createdAt']),
+      updatedAt: serializer.fromJson<DateTime>(json['updatedAt']),
+    );
+  }
+  @override
+  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return <String, dynamic>{
+      'notebookId': serializer.toJson<String>(notebookId),
+      'content': serializer.toJson<String>(content),
+      'createdAt': serializer.toJson<DateTime>(createdAt),
+      'updatedAt': serializer.toJson<DateTime>(updatedAt),
+    };
+  }
+
+  StudySummary copyWith({
+    String? notebookId,
+    String? content,
+    DateTime? createdAt,
+    DateTime? updatedAt,
+  }) => StudySummary(
+    notebookId: notebookId ?? this.notebookId,
+    content: content ?? this.content,
+    createdAt: createdAt ?? this.createdAt,
+    updatedAt: updatedAt ?? this.updatedAt,
+  );
+  StudySummary copyWithCompanion(SummariesCompanion data) {
+    return StudySummary(
+      notebookId: data.notebookId.present
+          ? data.notebookId.value
+          : this.notebookId,
+      content: data.content.present ? data.content.value : this.content,
+      createdAt: data.createdAt.present ? data.createdAt.value : this.createdAt,
+      updatedAt: data.updatedAt.present ? data.updatedAt.value : this.updatedAt,
+    );
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('StudySummary(')
+          ..write('notebookId: $notebookId, ')
+          ..write('content: $content, ')
+          ..write('createdAt: $createdAt, ')
+          ..write('updatedAt: $updatedAt')
+          ..write(')'))
+        .toString();
+  }
+
+  @override
+  int get hashCode => Object.hash(notebookId, content, createdAt, updatedAt);
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is StudySummary &&
+          other.notebookId == this.notebookId &&
+          other.content == this.content &&
+          other.createdAt == this.createdAt &&
+          other.updatedAt == this.updatedAt);
+}
+
+class SummariesCompanion extends UpdateCompanion<StudySummary> {
+  final Value<String> notebookId;
+  final Value<String> content;
+  final Value<DateTime> createdAt;
+  final Value<DateTime> updatedAt;
+  final Value<int> rowid;
+  const SummariesCompanion({
+    this.notebookId = const Value.absent(),
+    this.content = const Value.absent(),
+    this.createdAt = const Value.absent(),
+    this.updatedAt = const Value.absent(),
+    this.rowid = const Value.absent(),
+  });
+  SummariesCompanion.insert({
+    required String notebookId,
+    required String content,
+    required DateTime createdAt,
+    required DateTime updatedAt,
+    this.rowid = const Value.absent(),
+  }) : notebookId = Value(notebookId),
+       content = Value(content),
+       createdAt = Value(createdAt),
+       updatedAt = Value(updatedAt);
+  static Insertable<StudySummary> custom({
+    Expression<String>? notebookId,
+    Expression<String>? content,
+    Expression<DateTime>? createdAt,
+    Expression<DateTime>? updatedAt,
+    Expression<int>? rowid,
+  }) {
+    return RawValuesInsertable({
+      if (notebookId != null) 'notebook_id': notebookId,
+      if (content != null) 'content': content,
+      if (createdAt != null) 'created_at': createdAt,
+      if (updatedAt != null) 'updated_at': updatedAt,
+      if (rowid != null) 'rowid': rowid,
+    });
+  }
+
+  SummariesCompanion copyWith({
+    Value<String>? notebookId,
+    Value<String>? content,
+    Value<DateTime>? createdAt,
+    Value<DateTime>? updatedAt,
+    Value<int>? rowid,
+  }) {
+    return SummariesCompanion(
+      notebookId: notebookId ?? this.notebookId,
+      content: content ?? this.content,
+      createdAt: createdAt ?? this.createdAt,
+      updatedAt: updatedAt ?? this.updatedAt,
+      rowid: rowid ?? this.rowid,
+    );
+  }
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (notebookId.present) {
+      map['notebook_id'] = Variable<String>(notebookId.value);
+    }
+    if (content.present) {
+      map['content'] = Variable<String>(content.value);
+    }
+    if (createdAt.present) {
+      map['created_at'] = Variable<DateTime>(createdAt.value);
+    }
+    if (updatedAt.present) {
+      map['updated_at'] = Variable<DateTime>(updatedAt.value);
+    }
+    if (rowid.present) {
+      map['rowid'] = Variable<int>(rowid.value);
+    }
+    return map;
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('SummariesCompanion(')
+          ..write('notebookId: $notebookId, ')
+          ..write('content: $content, ')
+          ..write('createdAt: $createdAt, ')
+          ..write('updatedAt: $updatedAt, ')
+          ..write('rowid: $rowid')
+          ..write(')'))
+        .toString();
+  }
+}
+
+class $FlashcardDecksTable extends FlashcardDecks
+    with TableInfo<$FlashcardDecksTable, StudyDeck> {
+  @override
+  final GeneratedDatabase attachedDatabase;
+  final String? _alias;
+  $FlashcardDecksTable(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _idMeta = const VerificationMeta('id');
+  @override
+  late final GeneratedColumn<String> id = GeneratedColumn<String>(
+    'id',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _notebookIdMeta = const VerificationMeta(
+    'notebookId',
+  );
+  @override
+  late final GeneratedColumn<String> notebookId = GeneratedColumn<String>(
+    'notebook_id',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'REFERENCES notebooks (id) ON DELETE CASCADE',
+    ),
+  );
+  static const VerificationMeta _titleMeta = const VerificationMeta('title');
+  @override
+  late final GeneratedColumn<String> title = GeneratedColumn<String>(
+    'title',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _settingsMeta = const VerificationMeta(
+    'settings',
+  );
+  @override
+  late final GeneratedColumn<String> settings = GeneratedColumn<String>(
+    'settings',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _createdAtMeta = const VerificationMeta(
+    'createdAt',
+  );
+  @override
+  late final GeneratedColumn<DateTime> createdAt = GeneratedColumn<DateTime>(
+    'created_at',
+    aliasedName,
+    false,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _updatedAtMeta = const VerificationMeta(
+    'updatedAt',
+  );
+  @override
+  late final GeneratedColumn<DateTime> updatedAt = GeneratedColumn<DateTime>(
+    'updated_at',
+    aliasedName,
+    false,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: true,
+  );
+  @override
+  List<GeneratedColumn> get $columns => [
+    id,
+    notebookId,
+    title,
+    settings,
+    createdAt,
+    updatedAt,
+  ];
+  @override
+  String get aliasedName => _alias ?? actualTableName;
+  @override
+  String get actualTableName => $name;
+  static const String $name = 'flashcard_decks';
+  @override
+  VerificationContext validateIntegrity(
+    Insertable<StudyDeck> instance, {
+    bool isInserting = false,
+  }) {
+    final context = VerificationContext();
+    final data = instance.toColumns(true);
+    if (data.containsKey('id')) {
+      context.handle(_idMeta, id.isAcceptableOrUnknown(data['id']!, _idMeta));
+    } else if (isInserting) {
+      context.missing(_idMeta);
+    }
+    if (data.containsKey('notebook_id')) {
+      context.handle(
+        _notebookIdMeta,
+        notebookId.isAcceptableOrUnknown(data['notebook_id']!, _notebookIdMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_notebookIdMeta);
+    }
+    if (data.containsKey('title')) {
+      context.handle(
+        _titleMeta,
+        title.isAcceptableOrUnknown(data['title']!, _titleMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_titleMeta);
+    }
+    if (data.containsKey('settings')) {
+      context.handle(
+        _settingsMeta,
+        settings.isAcceptableOrUnknown(data['settings']!, _settingsMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_settingsMeta);
+    }
+    if (data.containsKey('created_at')) {
+      context.handle(
+        _createdAtMeta,
+        createdAt.isAcceptableOrUnknown(data['created_at']!, _createdAtMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_createdAtMeta);
+    }
+    if (data.containsKey('updated_at')) {
+      context.handle(
+        _updatedAtMeta,
+        updatedAt.isAcceptableOrUnknown(data['updated_at']!, _updatedAtMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_updatedAtMeta);
+    }
+    return context;
+  }
+
+  @override
+  Set<GeneratedColumn> get $primaryKey => {id};
+  @override
+  StudyDeck map(Map<String, dynamic> data, {String? tablePrefix}) {
+    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
+    return StudyDeck(
+      id: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}id'],
+      )!,
+      notebookId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}notebook_id'],
+      )!,
+      title: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}title'],
+      )!,
+      settings: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}settings'],
+      )!,
+      createdAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}created_at'],
+      )!,
+      updatedAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}updated_at'],
+      )!,
+    );
+  }
+
+  @override
+  $FlashcardDecksTable createAlias(String alias) {
+    return $FlashcardDecksTable(attachedDatabase, alias);
+  }
+}
+
+class StudyDeck extends DataClass implements Insertable<StudyDeck> {
+  final String id;
+  final String notebookId;
+  final String title;
+  final String settings;
+  final DateTime createdAt;
+  final DateTime updatedAt;
+  const StudyDeck({
+    required this.id,
+    required this.notebookId,
+    required this.title,
+    required this.settings,
+    required this.createdAt,
+    required this.updatedAt,
+  });
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    map['id'] = Variable<String>(id);
+    map['notebook_id'] = Variable<String>(notebookId);
+    map['title'] = Variable<String>(title);
+    map['settings'] = Variable<String>(settings);
+    map['created_at'] = Variable<DateTime>(createdAt);
+    map['updated_at'] = Variable<DateTime>(updatedAt);
+    return map;
+  }
+
+  FlashcardDecksCompanion toCompanion(bool nullToAbsent) {
+    return FlashcardDecksCompanion(
+      id: Value(id),
+      notebookId: Value(notebookId),
+      title: Value(title),
+      settings: Value(settings),
+      createdAt: Value(createdAt),
+      updatedAt: Value(updatedAt),
+    );
+  }
+
+  factory StudyDeck.fromJson(
+    Map<String, dynamic> json, {
+    ValueSerializer? serializer,
+  }) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return StudyDeck(
+      id: serializer.fromJson<String>(json['id']),
+      notebookId: serializer.fromJson<String>(json['notebookId']),
+      title: serializer.fromJson<String>(json['title']),
+      settings: serializer.fromJson<String>(json['settings']),
+      createdAt: serializer.fromJson<DateTime>(json['createdAt']),
+      updatedAt: serializer.fromJson<DateTime>(json['updatedAt']),
+    );
+  }
+  @override
+  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return <String, dynamic>{
+      'id': serializer.toJson<String>(id),
+      'notebookId': serializer.toJson<String>(notebookId),
+      'title': serializer.toJson<String>(title),
+      'settings': serializer.toJson<String>(settings),
+      'createdAt': serializer.toJson<DateTime>(createdAt),
+      'updatedAt': serializer.toJson<DateTime>(updatedAt),
+    };
+  }
+
+  StudyDeck copyWith({
+    String? id,
+    String? notebookId,
+    String? title,
+    String? settings,
+    DateTime? createdAt,
+    DateTime? updatedAt,
+  }) => StudyDeck(
+    id: id ?? this.id,
+    notebookId: notebookId ?? this.notebookId,
+    title: title ?? this.title,
+    settings: settings ?? this.settings,
+    createdAt: createdAt ?? this.createdAt,
+    updatedAt: updatedAt ?? this.updatedAt,
+  );
+  StudyDeck copyWithCompanion(FlashcardDecksCompanion data) {
+    return StudyDeck(
+      id: data.id.present ? data.id.value : this.id,
+      notebookId: data.notebookId.present
+          ? data.notebookId.value
+          : this.notebookId,
+      title: data.title.present ? data.title.value : this.title,
+      settings: data.settings.present ? data.settings.value : this.settings,
+      createdAt: data.createdAt.present ? data.createdAt.value : this.createdAt,
+      updatedAt: data.updatedAt.present ? data.updatedAt.value : this.updatedAt,
+    );
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('StudyDeck(')
+          ..write('id: $id, ')
+          ..write('notebookId: $notebookId, ')
+          ..write('title: $title, ')
+          ..write('settings: $settings, ')
+          ..write('createdAt: $createdAt, ')
+          ..write('updatedAt: $updatedAt')
+          ..write(')'))
+        .toString();
+  }
+
+  @override
+  int get hashCode =>
+      Object.hash(id, notebookId, title, settings, createdAt, updatedAt);
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is StudyDeck &&
+          other.id == this.id &&
+          other.notebookId == this.notebookId &&
+          other.title == this.title &&
+          other.settings == this.settings &&
+          other.createdAt == this.createdAt &&
+          other.updatedAt == this.updatedAt);
+}
+
+class FlashcardDecksCompanion extends UpdateCompanion<StudyDeck> {
+  final Value<String> id;
+  final Value<String> notebookId;
+  final Value<String> title;
+  final Value<String> settings;
+  final Value<DateTime> createdAt;
+  final Value<DateTime> updatedAt;
+  final Value<int> rowid;
+  const FlashcardDecksCompanion({
+    this.id = const Value.absent(),
+    this.notebookId = const Value.absent(),
+    this.title = const Value.absent(),
+    this.settings = const Value.absent(),
+    this.createdAt = const Value.absent(),
+    this.updatedAt = const Value.absent(),
+    this.rowid = const Value.absent(),
+  });
+  FlashcardDecksCompanion.insert({
+    required String id,
+    required String notebookId,
+    required String title,
+    required String settings,
+    required DateTime createdAt,
+    required DateTime updatedAt,
+    this.rowid = const Value.absent(),
+  }) : id = Value(id),
+       notebookId = Value(notebookId),
+       title = Value(title),
+       settings = Value(settings),
+       createdAt = Value(createdAt),
+       updatedAt = Value(updatedAt);
+  static Insertable<StudyDeck> custom({
+    Expression<String>? id,
+    Expression<String>? notebookId,
+    Expression<String>? title,
+    Expression<String>? settings,
+    Expression<DateTime>? createdAt,
+    Expression<DateTime>? updatedAt,
+    Expression<int>? rowid,
+  }) {
+    return RawValuesInsertable({
+      if (id != null) 'id': id,
+      if (notebookId != null) 'notebook_id': notebookId,
+      if (title != null) 'title': title,
+      if (settings != null) 'settings': settings,
+      if (createdAt != null) 'created_at': createdAt,
+      if (updatedAt != null) 'updated_at': updatedAt,
+      if (rowid != null) 'rowid': rowid,
+    });
+  }
+
+  FlashcardDecksCompanion copyWith({
+    Value<String>? id,
+    Value<String>? notebookId,
+    Value<String>? title,
+    Value<String>? settings,
+    Value<DateTime>? createdAt,
+    Value<DateTime>? updatedAt,
+    Value<int>? rowid,
+  }) {
+    return FlashcardDecksCompanion(
+      id: id ?? this.id,
+      notebookId: notebookId ?? this.notebookId,
+      title: title ?? this.title,
+      settings: settings ?? this.settings,
+      createdAt: createdAt ?? this.createdAt,
+      updatedAt: updatedAt ?? this.updatedAt,
+      rowid: rowid ?? this.rowid,
+    );
+  }
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (id.present) {
+      map['id'] = Variable<String>(id.value);
+    }
+    if (notebookId.present) {
+      map['notebook_id'] = Variable<String>(notebookId.value);
+    }
+    if (title.present) {
+      map['title'] = Variable<String>(title.value);
+    }
+    if (settings.present) {
+      map['settings'] = Variable<String>(settings.value);
+    }
+    if (createdAt.present) {
+      map['created_at'] = Variable<DateTime>(createdAt.value);
+    }
+    if (updatedAt.present) {
+      map['updated_at'] = Variable<DateTime>(updatedAt.value);
+    }
+    if (rowid.present) {
+      map['rowid'] = Variable<int>(rowid.value);
+    }
+    return map;
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('FlashcardDecksCompanion(')
+          ..write('id: $id, ')
+          ..write('notebookId: $notebookId, ')
+          ..write('title: $title, ')
+          ..write('settings: $settings, ')
+          ..write('createdAt: $createdAt, ')
+          ..write('updatedAt: $updatedAt, ')
+          ..write('rowid: $rowid')
+          ..write(')'))
+        .toString();
+  }
+}
+
+class $FlashcardsTable extends Flashcards
+    with TableInfo<$FlashcardsTable, StudyCard> {
+  @override
+  final GeneratedDatabase attachedDatabase;
+  final String? _alias;
+  $FlashcardsTable(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _idMeta = const VerificationMeta('id');
+  @override
+  late final GeneratedColumn<String> id = GeneratedColumn<String>(
+    'id',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _deckIdMeta = const VerificationMeta('deckId');
+  @override
+  late final GeneratedColumn<String> deckId = GeneratedColumn<String>(
+    'deck_id',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'REFERENCES flashcard_decks (id) ON DELETE CASCADE',
+    ),
+  );
+  static const VerificationMeta _frontMeta = const VerificationMeta('front');
+  @override
+  late final GeneratedColumn<String> front = GeneratedColumn<String>(
+    'front',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _backMeta = const VerificationMeta('back');
+  @override
+  late final GeneratedColumn<String> back = GeneratedColumn<String>(
+    'back',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _statusMeta = const VerificationMeta('status');
+  @override
+  late final GeneratedColumn<String> status = GeneratedColumn<String>(
+    'status',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+    defaultValue: const Constant('new'),
+  );
+  static const VerificationMeta _positionMeta = const VerificationMeta(
+    'position',
+  );
+  @override
+  late final GeneratedColumn<int> position = GeneratedColumn<int>(
+    'position',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: true,
+  );
+  @override
+  List<GeneratedColumn> get $columns => [
+    id,
+    deckId,
+    front,
+    back,
+    status,
+    position,
+  ];
+  @override
+  String get aliasedName => _alias ?? actualTableName;
+  @override
+  String get actualTableName => $name;
+  static const String $name = 'flashcards';
+  @override
+  VerificationContext validateIntegrity(
+    Insertable<StudyCard> instance, {
+    bool isInserting = false,
+  }) {
+    final context = VerificationContext();
+    final data = instance.toColumns(true);
+    if (data.containsKey('id')) {
+      context.handle(_idMeta, id.isAcceptableOrUnknown(data['id']!, _idMeta));
+    } else if (isInserting) {
+      context.missing(_idMeta);
+    }
+    if (data.containsKey('deck_id')) {
+      context.handle(
+        _deckIdMeta,
+        deckId.isAcceptableOrUnknown(data['deck_id']!, _deckIdMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_deckIdMeta);
+    }
+    if (data.containsKey('front')) {
+      context.handle(
+        _frontMeta,
+        front.isAcceptableOrUnknown(data['front']!, _frontMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_frontMeta);
+    }
+    if (data.containsKey('back')) {
+      context.handle(
+        _backMeta,
+        back.isAcceptableOrUnknown(data['back']!, _backMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_backMeta);
+    }
+    if (data.containsKey('status')) {
+      context.handle(
+        _statusMeta,
+        status.isAcceptableOrUnknown(data['status']!, _statusMeta),
+      );
+    }
+    if (data.containsKey('position')) {
+      context.handle(
+        _positionMeta,
+        position.isAcceptableOrUnknown(data['position']!, _positionMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_positionMeta);
+    }
+    return context;
+  }
+
+  @override
+  Set<GeneratedColumn> get $primaryKey => {id};
+  @override
+  List<Set<GeneratedColumn>> get uniqueKeys => [
+    {deckId, position},
+  ];
+  @override
+  StudyCard map(Map<String, dynamic> data, {String? tablePrefix}) {
+    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
+    return StudyCard(
+      id: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}id'],
+      )!,
+      deckId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}deck_id'],
+      )!,
+      front: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}front'],
+      )!,
+      back: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}back'],
+      )!,
+      status: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}status'],
+      )!,
+      position: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}position'],
+      )!,
+    );
+  }
+
+  @override
+  $FlashcardsTable createAlias(String alias) {
+    return $FlashcardsTable(attachedDatabase, alias);
+  }
+}
+
+class StudyCard extends DataClass implements Insertable<StudyCard> {
+  final String id;
+  final String deckId;
+  final String front;
+  final String back;
+  final String status;
+  final int position;
+  const StudyCard({
+    required this.id,
+    required this.deckId,
+    required this.front,
+    required this.back,
+    required this.status,
+    required this.position,
+  });
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    map['id'] = Variable<String>(id);
+    map['deck_id'] = Variable<String>(deckId);
+    map['front'] = Variable<String>(front);
+    map['back'] = Variable<String>(back);
+    map['status'] = Variable<String>(status);
+    map['position'] = Variable<int>(position);
+    return map;
+  }
+
+  FlashcardsCompanion toCompanion(bool nullToAbsent) {
+    return FlashcardsCompanion(
+      id: Value(id),
+      deckId: Value(deckId),
+      front: Value(front),
+      back: Value(back),
+      status: Value(status),
+      position: Value(position),
+    );
+  }
+
+  factory StudyCard.fromJson(
+    Map<String, dynamic> json, {
+    ValueSerializer? serializer,
+  }) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return StudyCard(
+      id: serializer.fromJson<String>(json['id']),
+      deckId: serializer.fromJson<String>(json['deckId']),
+      front: serializer.fromJson<String>(json['front']),
+      back: serializer.fromJson<String>(json['back']),
+      status: serializer.fromJson<String>(json['status']),
+      position: serializer.fromJson<int>(json['position']),
+    );
+  }
+  @override
+  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return <String, dynamic>{
+      'id': serializer.toJson<String>(id),
+      'deckId': serializer.toJson<String>(deckId),
+      'front': serializer.toJson<String>(front),
+      'back': serializer.toJson<String>(back),
+      'status': serializer.toJson<String>(status),
+      'position': serializer.toJson<int>(position),
+    };
+  }
+
+  StudyCard copyWith({
+    String? id,
+    String? deckId,
+    String? front,
+    String? back,
+    String? status,
+    int? position,
+  }) => StudyCard(
+    id: id ?? this.id,
+    deckId: deckId ?? this.deckId,
+    front: front ?? this.front,
+    back: back ?? this.back,
+    status: status ?? this.status,
+    position: position ?? this.position,
+  );
+  StudyCard copyWithCompanion(FlashcardsCompanion data) {
+    return StudyCard(
+      id: data.id.present ? data.id.value : this.id,
+      deckId: data.deckId.present ? data.deckId.value : this.deckId,
+      front: data.front.present ? data.front.value : this.front,
+      back: data.back.present ? data.back.value : this.back,
+      status: data.status.present ? data.status.value : this.status,
+      position: data.position.present ? data.position.value : this.position,
+    );
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('StudyCard(')
+          ..write('id: $id, ')
+          ..write('deckId: $deckId, ')
+          ..write('front: $front, ')
+          ..write('back: $back, ')
+          ..write('status: $status, ')
+          ..write('position: $position')
+          ..write(')'))
+        .toString();
+  }
+
+  @override
+  int get hashCode => Object.hash(id, deckId, front, back, status, position);
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is StudyCard &&
+          other.id == this.id &&
+          other.deckId == this.deckId &&
+          other.front == this.front &&
+          other.back == this.back &&
+          other.status == this.status &&
+          other.position == this.position);
+}
+
+class FlashcardsCompanion extends UpdateCompanion<StudyCard> {
+  final Value<String> id;
+  final Value<String> deckId;
+  final Value<String> front;
+  final Value<String> back;
+  final Value<String> status;
+  final Value<int> position;
+  final Value<int> rowid;
+  const FlashcardsCompanion({
+    this.id = const Value.absent(),
+    this.deckId = const Value.absent(),
+    this.front = const Value.absent(),
+    this.back = const Value.absent(),
+    this.status = const Value.absent(),
+    this.position = const Value.absent(),
+    this.rowid = const Value.absent(),
+  });
+  FlashcardsCompanion.insert({
+    required String id,
+    required String deckId,
+    required String front,
+    required String back,
+    this.status = const Value.absent(),
+    required int position,
+    this.rowid = const Value.absent(),
+  }) : id = Value(id),
+       deckId = Value(deckId),
+       front = Value(front),
+       back = Value(back),
+       position = Value(position);
+  static Insertable<StudyCard> custom({
+    Expression<String>? id,
+    Expression<String>? deckId,
+    Expression<String>? front,
+    Expression<String>? back,
+    Expression<String>? status,
+    Expression<int>? position,
+    Expression<int>? rowid,
+  }) {
+    return RawValuesInsertable({
+      if (id != null) 'id': id,
+      if (deckId != null) 'deck_id': deckId,
+      if (front != null) 'front': front,
+      if (back != null) 'back': back,
+      if (status != null) 'status': status,
+      if (position != null) 'position': position,
+      if (rowid != null) 'rowid': rowid,
+    });
+  }
+
+  FlashcardsCompanion copyWith({
+    Value<String>? id,
+    Value<String>? deckId,
+    Value<String>? front,
+    Value<String>? back,
+    Value<String>? status,
+    Value<int>? position,
+    Value<int>? rowid,
+  }) {
+    return FlashcardsCompanion(
+      id: id ?? this.id,
+      deckId: deckId ?? this.deckId,
+      front: front ?? this.front,
+      back: back ?? this.back,
+      status: status ?? this.status,
+      position: position ?? this.position,
+      rowid: rowid ?? this.rowid,
+    );
+  }
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (id.present) {
+      map['id'] = Variable<String>(id.value);
+    }
+    if (deckId.present) {
+      map['deck_id'] = Variable<String>(deckId.value);
+    }
+    if (front.present) {
+      map['front'] = Variable<String>(front.value);
+    }
+    if (back.present) {
+      map['back'] = Variable<String>(back.value);
+    }
+    if (status.present) {
+      map['status'] = Variable<String>(status.value);
+    }
+    if (position.present) {
+      map['position'] = Variable<int>(position.value);
+    }
+    if (rowid.present) {
+      map['rowid'] = Variable<int>(rowid.value);
+    }
+    return map;
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('FlashcardsCompanion(')
+          ..write('id: $id, ')
+          ..write('deckId: $deckId, ')
+          ..write('front: $front, ')
+          ..write('back: $back, ')
+          ..write('status: $status, ')
+          ..write('position: $position, ')
+          ..write('rowid: $rowid')
+          ..write(')'))
+        .toString();
+  }
+}
+
+class $PracticeQuizzesTable extends PracticeQuizzes
+    with TableInfo<$PracticeQuizzesTable, StudyQuiz> {
+  @override
+  final GeneratedDatabase attachedDatabase;
+  final String? _alias;
+  $PracticeQuizzesTable(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _idMeta = const VerificationMeta('id');
+  @override
+  late final GeneratedColumn<String> id = GeneratedColumn<String>(
+    'id',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _notebookIdMeta = const VerificationMeta(
+    'notebookId',
+  );
+  @override
+  late final GeneratedColumn<String> notebookId = GeneratedColumn<String>(
+    'notebook_id',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'REFERENCES notebooks (id) ON DELETE CASCADE',
+    ),
+  );
+  static const VerificationMeta _titleMeta = const VerificationMeta('title');
+  @override
+  late final GeneratedColumn<String> title = GeneratedColumn<String>(
+    'title',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _settingsMeta = const VerificationMeta(
+    'settings',
+  );
+  @override
+  late final GeneratedColumn<String> settings = GeneratedColumn<String>(
+    'settings',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _createdAtMeta = const VerificationMeta(
+    'createdAt',
+  );
+  @override
+  late final GeneratedColumn<DateTime> createdAt = GeneratedColumn<DateTime>(
+    'created_at',
+    aliasedName,
+    false,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _updatedAtMeta = const VerificationMeta(
+    'updatedAt',
+  );
+  @override
+  late final GeneratedColumn<DateTime> updatedAt = GeneratedColumn<DateTime>(
+    'updated_at',
+    aliasedName,
+    false,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: true,
+  );
+  @override
+  List<GeneratedColumn> get $columns => [
+    id,
+    notebookId,
+    title,
+    settings,
+    createdAt,
+    updatedAt,
+  ];
+  @override
+  String get aliasedName => _alias ?? actualTableName;
+  @override
+  String get actualTableName => $name;
+  static const String $name = 'practice_quizzes';
+  @override
+  VerificationContext validateIntegrity(
+    Insertable<StudyQuiz> instance, {
+    bool isInserting = false,
+  }) {
+    final context = VerificationContext();
+    final data = instance.toColumns(true);
+    if (data.containsKey('id')) {
+      context.handle(_idMeta, id.isAcceptableOrUnknown(data['id']!, _idMeta));
+    } else if (isInserting) {
+      context.missing(_idMeta);
+    }
+    if (data.containsKey('notebook_id')) {
+      context.handle(
+        _notebookIdMeta,
+        notebookId.isAcceptableOrUnknown(data['notebook_id']!, _notebookIdMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_notebookIdMeta);
+    }
+    if (data.containsKey('title')) {
+      context.handle(
+        _titleMeta,
+        title.isAcceptableOrUnknown(data['title']!, _titleMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_titleMeta);
+    }
+    if (data.containsKey('settings')) {
+      context.handle(
+        _settingsMeta,
+        settings.isAcceptableOrUnknown(data['settings']!, _settingsMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_settingsMeta);
+    }
+    if (data.containsKey('created_at')) {
+      context.handle(
+        _createdAtMeta,
+        createdAt.isAcceptableOrUnknown(data['created_at']!, _createdAtMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_createdAtMeta);
+    }
+    if (data.containsKey('updated_at')) {
+      context.handle(
+        _updatedAtMeta,
+        updatedAt.isAcceptableOrUnknown(data['updated_at']!, _updatedAtMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_updatedAtMeta);
+    }
+    return context;
+  }
+
+  @override
+  Set<GeneratedColumn> get $primaryKey => {id};
+  @override
+  StudyQuiz map(Map<String, dynamic> data, {String? tablePrefix}) {
+    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
+    return StudyQuiz(
+      id: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}id'],
+      )!,
+      notebookId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}notebook_id'],
+      )!,
+      title: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}title'],
+      )!,
+      settings: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}settings'],
+      )!,
+      createdAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}created_at'],
+      )!,
+      updatedAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}updated_at'],
+      )!,
+    );
+  }
+
+  @override
+  $PracticeQuizzesTable createAlias(String alias) {
+    return $PracticeQuizzesTable(attachedDatabase, alias);
+  }
+}
+
+class StudyQuiz extends DataClass implements Insertable<StudyQuiz> {
+  final String id;
+  final String notebookId;
+  final String title;
+  final String settings;
+  final DateTime createdAt;
+  final DateTime updatedAt;
+  const StudyQuiz({
+    required this.id,
+    required this.notebookId,
+    required this.title,
+    required this.settings,
+    required this.createdAt,
+    required this.updatedAt,
+  });
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    map['id'] = Variable<String>(id);
+    map['notebook_id'] = Variable<String>(notebookId);
+    map['title'] = Variable<String>(title);
+    map['settings'] = Variable<String>(settings);
+    map['created_at'] = Variable<DateTime>(createdAt);
+    map['updated_at'] = Variable<DateTime>(updatedAt);
+    return map;
+  }
+
+  PracticeQuizzesCompanion toCompanion(bool nullToAbsent) {
+    return PracticeQuizzesCompanion(
+      id: Value(id),
+      notebookId: Value(notebookId),
+      title: Value(title),
+      settings: Value(settings),
+      createdAt: Value(createdAt),
+      updatedAt: Value(updatedAt),
+    );
+  }
+
+  factory StudyQuiz.fromJson(
+    Map<String, dynamic> json, {
+    ValueSerializer? serializer,
+  }) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return StudyQuiz(
+      id: serializer.fromJson<String>(json['id']),
+      notebookId: serializer.fromJson<String>(json['notebookId']),
+      title: serializer.fromJson<String>(json['title']),
+      settings: serializer.fromJson<String>(json['settings']),
+      createdAt: serializer.fromJson<DateTime>(json['createdAt']),
+      updatedAt: serializer.fromJson<DateTime>(json['updatedAt']),
+    );
+  }
+  @override
+  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return <String, dynamic>{
+      'id': serializer.toJson<String>(id),
+      'notebookId': serializer.toJson<String>(notebookId),
+      'title': serializer.toJson<String>(title),
+      'settings': serializer.toJson<String>(settings),
+      'createdAt': serializer.toJson<DateTime>(createdAt),
+      'updatedAt': serializer.toJson<DateTime>(updatedAt),
+    };
+  }
+
+  StudyQuiz copyWith({
+    String? id,
+    String? notebookId,
+    String? title,
+    String? settings,
+    DateTime? createdAt,
+    DateTime? updatedAt,
+  }) => StudyQuiz(
+    id: id ?? this.id,
+    notebookId: notebookId ?? this.notebookId,
+    title: title ?? this.title,
+    settings: settings ?? this.settings,
+    createdAt: createdAt ?? this.createdAt,
+    updatedAt: updatedAt ?? this.updatedAt,
+  );
+  StudyQuiz copyWithCompanion(PracticeQuizzesCompanion data) {
+    return StudyQuiz(
+      id: data.id.present ? data.id.value : this.id,
+      notebookId: data.notebookId.present
+          ? data.notebookId.value
+          : this.notebookId,
+      title: data.title.present ? data.title.value : this.title,
+      settings: data.settings.present ? data.settings.value : this.settings,
+      createdAt: data.createdAt.present ? data.createdAt.value : this.createdAt,
+      updatedAt: data.updatedAt.present ? data.updatedAt.value : this.updatedAt,
+    );
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('StudyQuiz(')
+          ..write('id: $id, ')
+          ..write('notebookId: $notebookId, ')
+          ..write('title: $title, ')
+          ..write('settings: $settings, ')
+          ..write('createdAt: $createdAt, ')
+          ..write('updatedAt: $updatedAt')
+          ..write(')'))
+        .toString();
+  }
+
+  @override
+  int get hashCode =>
+      Object.hash(id, notebookId, title, settings, createdAt, updatedAt);
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is StudyQuiz &&
+          other.id == this.id &&
+          other.notebookId == this.notebookId &&
+          other.title == this.title &&
+          other.settings == this.settings &&
+          other.createdAt == this.createdAt &&
+          other.updatedAt == this.updatedAt);
+}
+
+class PracticeQuizzesCompanion extends UpdateCompanion<StudyQuiz> {
+  final Value<String> id;
+  final Value<String> notebookId;
+  final Value<String> title;
+  final Value<String> settings;
+  final Value<DateTime> createdAt;
+  final Value<DateTime> updatedAt;
+  final Value<int> rowid;
+  const PracticeQuizzesCompanion({
+    this.id = const Value.absent(),
+    this.notebookId = const Value.absent(),
+    this.title = const Value.absent(),
+    this.settings = const Value.absent(),
+    this.createdAt = const Value.absent(),
+    this.updatedAt = const Value.absent(),
+    this.rowid = const Value.absent(),
+  });
+  PracticeQuizzesCompanion.insert({
+    required String id,
+    required String notebookId,
+    required String title,
+    required String settings,
+    required DateTime createdAt,
+    required DateTime updatedAt,
+    this.rowid = const Value.absent(),
+  }) : id = Value(id),
+       notebookId = Value(notebookId),
+       title = Value(title),
+       settings = Value(settings),
+       createdAt = Value(createdAt),
+       updatedAt = Value(updatedAt);
+  static Insertable<StudyQuiz> custom({
+    Expression<String>? id,
+    Expression<String>? notebookId,
+    Expression<String>? title,
+    Expression<String>? settings,
+    Expression<DateTime>? createdAt,
+    Expression<DateTime>? updatedAt,
+    Expression<int>? rowid,
+  }) {
+    return RawValuesInsertable({
+      if (id != null) 'id': id,
+      if (notebookId != null) 'notebook_id': notebookId,
+      if (title != null) 'title': title,
+      if (settings != null) 'settings': settings,
+      if (createdAt != null) 'created_at': createdAt,
+      if (updatedAt != null) 'updated_at': updatedAt,
+      if (rowid != null) 'rowid': rowid,
+    });
+  }
+
+  PracticeQuizzesCompanion copyWith({
+    Value<String>? id,
+    Value<String>? notebookId,
+    Value<String>? title,
+    Value<String>? settings,
+    Value<DateTime>? createdAt,
+    Value<DateTime>? updatedAt,
+    Value<int>? rowid,
+  }) {
+    return PracticeQuizzesCompanion(
+      id: id ?? this.id,
+      notebookId: notebookId ?? this.notebookId,
+      title: title ?? this.title,
+      settings: settings ?? this.settings,
+      createdAt: createdAt ?? this.createdAt,
+      updatedAt: updatedAt ?? this.updatedAt,
+      rowid: rowid ?? this.rowid,
+    );
+  }
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (id.present) {
+      map['id'] = Variable<String>(id.value);
+    }
+    if (notebookId.present) {
+      map['notebook_id'] = Variable<String>(notebookId.value);
+    }
+    if (title.present) {
+      map['title'] = Variable<String>(title.value);
+    }
+    if (settings.present) {
+      map['settings'] = Variable<String>(settings.value);
+    }
+    if (createdAt.present) {
+      map['created_at'] = Variable<DateTime>(createdAt.value);
+    }
+    if (updatedAt.present) {
+      map['updated_at'] = Variable<DateTime>(updatedAt.value);
+    }
+    if (rowid.present) {
+      map['rowid'] = Variable<int>(rowid.value);
+    }
+    return map;
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('PracticeQuizzesCompanion(')
+          ..write('id: $id, ')
+          ..write('notebookId: $notebookId, ')
+          ..write('title: $title, ')
+          ..write('settings: $settings, ')
+          ..write('createdAt: $createdAt, ')
+          ..write('updatedAt: $updatedAt, ')
+          ..write('rowid: $rowid')
+          ..write(')'))
+        .toString();
+  }
+}
+
+class $PracticeQuestionsTable extends PracticeQuestions
+    with TableInfo<$PracticeQuestionsTable, StudyQuestion> {
+  @override
+  final GeneratedDatabase attachedDatabase;
+  final String? _alias;
+  $PracticeQuestionsTable(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _idMeta = const VerificationMeta('id');
+  @override
+  late final GeneratedColumn<String> id = GeneratedColumn<String>(
+    'id',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _quizIdMeta = const VerificationMeta('quizId');
+  @override
+  late final GeneratedColumn<String> quizId = GeneratedColumn<String>(
+    'quiz_id',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'REFERENCES practice_quizzes (id) ON DELETE CASCADE',
+    ),
+  );
+  static const VerificationMeta _typeMeta = const VerificationMeta('type');
+  @override
+  late final GeneratedColumn<String> type = GeneratedColumn<String>(
+    'type',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _promptMeta = const VerificationMeta('prompt');
+  @override
+  late final GeneratedColumn<String> prompt = GeneratedColumn<String>(
+    'prompt',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _optionsMeta = const VerificationMeta(
+    'options',
+  );
+  @override
+  late final GeneratedColumn<String> options = GeneratedColumn<String>(
+    'options',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _correctIndexMeta = const VerificationMeta(
+    'correctIndex',
+  );
+  @override
+  late final GeneratedColumn<int> correctIndex = GeneratedColumn<int>(
+    'correct_index',
+    aliasedName,
+    true,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _correctBooleanMeta = const VerificationMeta(
+    'correctBoolean',
+  );
+  @override
+  late final GeneratedColumn<bool> correctBoolean = GeneratedColumn<bool>(
+    'correct_boolean',
+    aliasedName,
+    true,
+    type: DriftSqlType.bool,
+    requiredDuringInsert: false,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'CHECK ("correct_boolean" IN (0, 1))',
+    ),
+  );
+  static const VerificationMeta _acceptedAnswersMeta = const VerificationMeta(
+    'acceptedAnswers',
+  );
+  @override
+  late final GeneratedColumn<String> acceptedAnswers = GeneratedColumn<String>(
+    'accepted_answers',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _explanationMeta = const VerificationMeta(
+    'explanation',
+  );
+  @override
+  late final GeneratedColumn<String> explanation = GeneratedColumn<String>(
+    'explanation',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _positionMeta = const VerificationMeta(
+    'position',
+  );
+  @override
+  late final GeneratedColumn<int> position = GeneratedColumn<int>(
+    'position',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: true,
+  );
+  @override
+  List<GeneratedColumn> get $columns => [
+    id,
+    quizId,
+    type,
+    prompt,
+    options,
+    correctIndex,
+    correctBoolean,
+    acceptedAnswers,
+    explanation,
+    position,
+  ];
+  @override
+  String get aliasedName => _alias ?? actualTableName;
+  @override
+  String get actualTableName => $name;
+  static const String $name = 'practice_questions';
+  @override
+  VerificationContext validateIntegrity(
+    Insertable<StudyQuestion> instance, {
+    bool isInserting = false,
+  }) {
+    final context = VerificationContext();
+    final data = instance.toColumns(true);
+    if (data.containsKey('id')) {
+      context.handle(_idMeta, id.isAcceptableOrUnknown(data['id']!, _idMeta));
+    } else if (isInserting) {
+      context.missing(_idMeta);
+    }
+    if (data.containsKey('quiz_id')) {
+      context.handle(
+        _quizIdMeta,
+        quizId.isAcceptableOrUnknown(data['quiz_id']!, _quizIdMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_quizIdMeta);
+    }
+    if (data.containsKey('type')) {
+      context.handle(
+        _typeMeta,
+        type.isAcceptableOrUnknown(data['type']!, _typeMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_typeMeta);
+    }
+    if (data.containsKey('prompt')) {
+      context.handle(
+        _promptMeta,
+        prompt.isAcceptableOrUnknown(data['prompt']!, _promptMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_promptMeta);
+    }
+    if (data.containsKey('options')) {
+      context.handle(
+        _optionsMeta,
+        options.isAcceptableOrUnknown(data['options']!, _optionsMeta),
+      );
+    }
+    if (data.containsKey('correct_index')) {
+      context.handle(
+        _correctIndexMeta,
+        correctIndex.isAcceptableOrUnknown(
+          data['correct_index']!,
+          _correctIndexMeta,
+        ),
+      );
+    }
+    if (data.containsKey('correct_boolean')) {
+      context.handle(
+        _correctBooleanMeta,
+        correctBoolean.isAcceptableOrUnknown(
+          data['correct_boolean']!,
+          _correctBooleanMeta,
+        ),
+      );
+    }
+    if (data.containsKey('accepted_answers')) {
+      context.handle(
+        _acceptedAnswersMeta,
+        acceptedAnswers.isAcceptableOrUnknown(
+          data['accepted_answers']!,
+          _acceptedAnswersMeta,
+        ),
+      );
+    }
+    if (data.containsKey('explanation')) {
+      context.handle(
+        _explanationMeta,
+        explanation.isAcceptableOrUnknown(
+          data['explanation']!,
+          _explanationMeta,
+        ),
+      );
+    } else if (isInserting) {
+      context.missing(_explanationMeta);
+    }
+    if (data.containsKey('position')) {
+      context.handle(
+        _positionMeta,
+        position.isAcceptableOrUnknown(data['position']!, _positionMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_positionMeta);
+    }
+    return context;
+  }
+
+  @override
+  Set<GeneratedColumn> get $primaryKey => {id};
+  @override
+  List<Set<GeneratedColumn>> get uniqueKeys => [
+    {quizId, position},
+  ];
+  @override
+  StudyQuestion map(Map<String, dynamic> data, {String? tablePrefix}) {
+    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
+    return StudyQuestion(
+      id: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}id'],
+      )!,
+      quizId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}quiz_id'],
+      )!,
+      type: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}type'],
+      )!,
+      prompt: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}prompt'],
+      )!,
+      options: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}options'],
+      ),
+      correctIndex: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}correct_index'],
+      ),
+      correctBoolean: attachedDatabase.typeMapping.read(
+        DriftSqlType.bool,
+        data['${effectivePrefix}correct_boolean'],
+      ),
+      acceptedAnswers: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}accepted_answers'],
+      ),
+      explanation: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}explanation'],
+      )!,
+      position: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}position'],
+      )!,
+    );
+  }
+
+  @override
+  $PracticeQuestionsTable createAlias(String alias) {
+    return $PracticeQuestionsTable(attachedDatabase, alias);
+  }
+}
+
+class StudyQuestion extends DataClass implements Insertable<StudyQuestion> {
+  final String id;
+  final String quizId;
+  final String type;
+  final String prompt;
+  final String? options;
+  final int? correctIndex;
+  final bool? correctBoolean;
+  final String? acceptedAnswers;
+  final String explanation;
+  final int position;
+  const StudyQuestion({
+    required this.id,
+    required this.quizId,
+    required this.type,
+    required this.prompt,
+    this.options,
+    this.correctIndex,
+    this.correctBoolean,
+    this.acceptedAnswers,
+    required this.explanation,
+    required this.position,
+  });
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    map['id'] = Variable<String>(id);
+    map['quiz_id'] = Variable<String>(quizId);
+    map['type'] = Variable<String>(type);
+    map['prompt'] = Variable<String>(prompt);
+    if (!nullToAbsent || options != null) {
+      map['options'] = Variable<String>(options);
+    }
+    if (!nullToAbsent || correctIndex != null) {
+      map['correct_index'] = Variable<int>(correctIndex);
+    }
+    if (!nullToAbsent || correctBoolean != null) {
+      map['correct_boolean'] = Variable<bool>(correctBoolean);
+    }
+    if (!nullToAbsent || acceptedAnswers != null) {
+      map['accepted_answers'] = Variable<String>(acceptedAnswers);
+    }
+    map['explanation'] = Variable<String>(explanation);
+    map['position'] = Variable<int>(position);
+    return map;
+  }
+
+  PracticeQuestionsCompanion toCompanion(bool nullToAbsent) {
+    return PracticeQuestionsCompanion(
+      id: Value(id),
+      quizId: Value(quizId),
+      type: Value(type),
+      prompt: Value(prompt),
+      options: options == null && nullToAbsent
+          ? const Value.absent()
+          : Value(options),
+      correctIndex: correctIndex == null && nullToAbsent
+          ? const Value.absent()
+          : Value(correctIndex),
+      correctBoolean: correctBoolean == null && nullToAbsent
+          ? const Value.absent()
+          : Value(correctBoolean),
+      acceptedAnswers: acceptedAnswers == null && nullToAbsent
+          ? const Value.absent()
+          : Value(acceptedAnswers),
+      explanation: Value(explanation),
+      position: Value(position),
+    );
+  }
+
+  factory StudyQuestion.fromJson(
+    Map<String, dynamic> json, {
+    ValueSerializer? serializer,
+  }) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return StudyQuestion(
+      id: serializer.fromJson<String>(json['id']),
+      quizId: serializer.fromJson<String>(json['quizId']),
+      type: serializer.fromJson<String>(json['type']),
+      prompt: serializer.fromJson<String>(json['prompt']),
+      options: serializer.fromJson<String?>(json['options']),
+      correctIndex: serializer.fromJson<int?>(json['correctIndex']),
+      correctBoolean: serializer.fromJson<bool?>(json['correctBoolean']),
+      acceptedAnswers: serializer.fromJson<String?>(json['acceptedAnswers']),
+      explanation: serializer.fromJson<String>(json['explanation']),
+      position: serializer.fromJson<int>(json['position']),
+    );
+  }
+  @override
+  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return <String, dynamic>{
+      'id': serializer.toJson<String>(id),
+      'quizId': serializer.toJson<String>(quizId),
+      'type': serializer.toJson<String>(type),
+      'prompt': serializer.toJson<String>(prompt),
+      'options': serializer.toJson<String?>(options),
+      'correctIndex': serializer.toJson<int?>(correctIndex),
+      'correctBoolean': serializer.toJson<bool?>(correctBoolean),
+      'acceptedAnswers': serializer.toJson<String?>(acceptedAnswers),
+      'explanation': serializer.toJson<String>(explanation),
+      'position': serializer.toJson<int>(position),
+    };
+  }
+
+  StudyQuestion copyWith({
+    String? id,
+    String? quizId,
+    String? type,
+    String? prompt,
+    Value<String?> options = const Value.absent(),
+    Value<int?> correctIndex = const Value.absent(),
+    Value<bool?> correctBoolean = const Value.absent(),
+    Value<String?> acceptedAnswers = const Value.absent(),
+    String? explanation,
+    int? position,
+  }) => StudyQuestion(
+    id: id ?? this.id,
+    quizId: quizId ?? this.quizId,
+    type: type ?? this.type,
+    prompt: prompt ?? this.prompt,
+    options: options.present ? options.value : this.options,
+    correctIndex: correctIndex.present ? correctIndex.value : this.correctIndex,
+    correctBoolean: correctBoolean.present
+        ? correctBoolean.value
+        : this.correctBoolean,
+    acceptedAnswers: acceptedAnswers.present
+        ? acceptedAnswers.value
+        : this.acceptedAnswers,
+    explanation: explanation ?? this.explanation,
+    position: position ?? this.position,
+  );
+  StudyQuestion copyWithCompanion(PracticeQuestionsCompanion data) {
+    return StudyQuestion(
+      id: data.id.present ? data.id.value : this.id,
+      quizId: data.quizId.present ? data.quizId.value : this.quizId,
+      type: data.type.present ? data.type.value : this.type,
+      prompt: data.prompt.present ? data.prompt.value : this.prompt,
+      options: data.options.present ? data.options.value : this.options,
+      correctIndex: data.correctIndex.present
+          ? data.correctIndex.value
+          : this.correctIndex,
+      correctBoolean: data.correctBoolean.present
+          ? data.correctBoolean.value
+          : this.correctBoolean,
+      acceptedAnswers: data.acceptedAnswers.present
+          ? data.acceptedAnswers.value
+          : this.acceptedAnswers,
+      explanation: data.explanation.present
+          ? data.explanation.value
+          : this.explanation,
+      position: data.position.present ? data.position.value : this.position,
+    );
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('StudyQuestion(')
+          ..write('id: $id, ')
+          ..write('quizId: $quizId, ')
+          ..write('type: $type, ')
+          ..write('prompt: $prompt, ')
+          ..write('options: $options, ')
+          ..write('correctIndex: $correctIndex, ')
+          ..write('correctBoolean: $correctBoolean, ')
+          ..write('acceptedAnswers: $acceptedAnswers, ')
+          ..write('explanation: $explanation, ')
+          ..write('position: $position')
+          ..write(')'))
+        .toString();
+  }
+
+  @override
+  int get hashCode => Object.hash(
+    id,
+    quizId,
+    type,
+    prompt,
+    options,
+    correctIndex,
+    correctBoolean,
+    acceptedAnswers,
+    explanation,
+    position,
+  );
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is StudyQuestion &&
+          other.id == this.id &&
+          other.quizId == this.quizId &&
+          other.type == this.type &&
+          other.prompt == this.prompt &&
+          other.options == this.options &&
+          other.correctIndex == this.correctIndex &&
+          other.correctBoolean == this.correctBoolean &&
+          other.acceptedAnswers == this.acceptedAnswers &&
+          other.explanation == this.explanation &&
+          other.position == this.position);
+}
+
+class PracticeQuestionsCompanion extends UpdateCompanion<StudyQuestion> {
+  final Value<String> id;
+  final Value<String> quizId;
+  final Value<String> type;
+  final Value<String> prompt;
+  final Value<String?> options;
+  final Value<int?> correctIndex;
+  final Value<bool?> correctBoolean;
+  final Value<String?> acceptedAnswers;
+  final Value<String> explanation;
+  final Value<int> position;
+  final Value<int> rowid;
+  const PracticeQuestionsCompanion({
+    this.id = const Value.absent(),
+    this.quizId = const Value.absent(),
+    this.type = const Value.absent(),
+    this.prompt = const Value.absent(),
+    this.options = const Value.absent(),
+    this.correctIndex = const Value.absent(),
+    this.correctBoolean = const Value.absent(),
+    this.acceptedAnswers = const Value.absent(),
+    this.explanation = const Value.absent(),
+    this.position = const Value.absent(),
+    this.rowid = const Value.absent(),
+  });
+  PracticeQuestionsCompanion.insert({
+    required String id,
+    required String quizId,
+    required String type,
+    required String prompt,
+    this.options = const Value.absent(),
+    this.correctIndex = const Value.absent(),
+    this.correctBoolean = const Value.absent(),
+    this.acceptedAnswers = const Value.absent(),
+    required String explanation,
+    required int position,
+    this.rowid = const Value.absent(),
+  }) : id = Value(id),
+       quizId = Value(quizId),
+       type = Value(type),
+       prompt = Value(prompt),
+       explanation = Value(explanation),
+       position = Value(position);
+  static Insertable<StudyQuestion> custom({
+    Expression<String>? id,
+    Expression<String>? quizId,
+    Expression<String>? type,
+    Expression<String>? prompt,
+    Expression<String>? options,
+    Expression<int>? correctIndex,
+    Expression<bool>? correctBoolean,
+    Expression<String>? acceptedAnswers,
+    Expression<String>? explanation,
+    Expression<int>? position,
+    Expression<int>? rowid,
+  }) {
+    return RawValuesInsertable({
+      if (id != null) 'id': id,
+      if (quizId != null) 'quiz_id': quizId,
+      if (type != null) 'type': type,
+      if (prompt != null) 'prompt': prompt,
+      if (options != null) 'options': options,
+      if (correctIndex != null) 'correct_index': correctIndex,
+      if (correctBoolean != null) 'correct_boolean': correctBoolean,
+      if (acceptedAnswers != null) 'accepted_answers': acceptedAnswers,
+      if (explanation != null) 'explanation': explanation,
+      if (position != null) 'position': position,
+      if (rowid != null) 'rowid': rowid,
+    });
+  }
+
+  PracticeQuestionsCompanion copyWith({
+    Value<String>? id,
+    Value<String>? quizId,
+    Value<String>? type,
+    Value<String>? prompt,
+    Value<String?>? options,
+    Value<int?>? correctIndex,
+    Value<bool?>? correctBoolean,
+    Value<String?>? acceptedAnswers,
+    Value<String>? explanation,
+    Value<int>? position,
+    Value<int>? rowid,
+  }) {
+    return PracticeQuestionsCompanion(
+      id: id ?? this.id,
+      quizId: quizId ?? this.quizId,
+      type: type ?? this.type,
+      prompt: prompt ?? this.prompt,
+      options: options ?? this.options,
+      correctIndex: correctIndex ?? this.correctIndex,
+      correctBoolean: correctBoolean ?? this.correctBoolean,
+      acceptedAnswers: acceptedAnswers ?? this.acceptedAnswers,
+      explanation: explanation ?? this.explanation,
+      position: position ?? this.position,
+      rowid: rowid ?? this.rowid,
+    );
+  }
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (id.present) {
+      map['id'] = Variable<String>(id.value);
+    }
+    if (quizId.present) {
+      map['quiz_id'] = Variable<String>(quizId.value);
+    }
+    if (type.present) {
+      map['type'] = Variable<String>(type.value);
+    }
+    if (prompt.present) {
+      map['prompt'] = Variable<String>(prompt.value);
+    }
+    if (options.present) {
+      map['options'] = Variable<String>(options.value);
+    }
+    if (correctIndex.present) {
+      map['correct_index'] = Variable<int>(correctIndex.value);
+    }
+    if (correctBoolean.present) {
+      map['correct_boolean'] = Variable<bool>(correctBoolean.value);
+    }
+    if (acceptedAnswers.present) {
+      map['accepted_answers'] = Variable<String>(acceptedAnswers.value);
+    }
+    if (explanation.present) {
+      map['explanation'] = Variable<String>(explanation.value);
+    }
+    if (position.present) {
+      map['position'] = Variable<int>(position.value);
+    }
+    if (rowid.present) {
+      map['rowid'] = Variable<int>(rowid.value);
+    }
+    return map;
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('PracticeQuestionsCompanion(')
+          ..write('id: $id, ')
+          ..write('quizId: $quizId, ')
+          ..write('type: $type, ')
+          ..write('prompt: $prompt, ')
+          ..write('options: $options, ')
+          ..write('correctIndex: $correctIndex, ')
+          ..write('correctBoolean: $correctBoolean, ')
+          ..write('acceptedAnswers: $acceptedAnswers, ')
+          ..write('explanation: $explanation, ')
+          ..write('position: $position, ')
+          ..write('rowid: $rowid')
+          ..write(')'))
+        .toString();
+  }
+}
+
+class $PracticeAttemptsTable extends PracticeAttempts
+    with TableInfo<$PracticeAttemptsTable, StudyAttempt> {
+  @override
+  final GeneratedDatabase attachedDatabase;
+  final String? _alias;
+  $PracticeAttemptsTable(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _idMeta = const VerificationMeta('id');
+  @override
+  late final GeneratedColumn<String> id = GeneratedColumn<String>(
+    'id',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _quizIdMeta = const VerificationMeta('quizId');
+  @override
+  late final GeneratedColumn<String> quizId = GeneratedColumn<String>(
+    'quiz_id',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'REFERENCES practice_quizzes (id) ON DELETE CASCADE',
+    ),
+  );
+  static const VerificationMeta _attemptedAtMeta = const VerificationMeta(
+    'attemptedAt',
+  );
+  @override
+  late final GeneratedColumn<DateTime> attemptedAt = GeneratedColumn<DateTime>(
+    'attempted_at',
+    aliasedName,
+    false,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _scoreMeta = const VerificationMeta('score');
+  @override
+  late final GeneratedColumn<int> score = GeneratedColumn<int>(
+    'score',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _totalMeta = const VerificationMeta('total');
+  @override
+  late final GeneratedColumn<int> total = GeneratedColumn<int>(
+    'total',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _resultsMeta = const VerificationMeta(
+    'results',
+  );
+  @override
+  late final GeneratedColumn<String> results = GeneratedColumn<String>(
+    'results',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  @override
+  List<GeneratedColumn> get $columns => [
+    id,
+    quizId,
+    attemptedAt,
+    score,
+    total,
+    results,
+  ];
+  @override
+  String get aliasedName => _alias ?? actualTableName;
+  @override
+  String get actualTableName => $name;
+  static const String $name = 'practice_attempts';
+  @override
+  VerificationContext validateIntegrity(
+    Insertable<StudyAttempt> instance, {
+    bool isInserting = false,
+  }) {
+    final context = VerificationContext();
+    final data = instance.toColumns(true);
+    if (data.containsKey('id')) {
+      context.handle(_idMeta, id.isAcceptableOrUnknown(data['id']!, _idMeta));
+    } else if (isInserting) {
+      context.missing(_idMeta);
+    }
+    if (data.containsKey('quiz_id')) {
+      context.handle(
+        _quizIdMeta,
+        quizId.isAcceptableOrUnknown(data['quiz_id']!, _quizIdMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_quizIdMeta);
+    }
+    if (data.containsKey('attempted_at')) {
+      context.handle(
+        _attemptedAtMeta,
+        attemptedAt.isAcceptableOrUnknown(
+          data['attempted_at']!,
+          _attemptedAtMeta,
+        ),
+      );
+    } else if (isInserting) {
+      context.missing(_attemptedAtMeta);
+    }
+    if (data.containsKey('score')) {
+      context.handle(
+        _scoreMeta,
+        score.isAcceptableOrUnknown(data['score']!, _scoreMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_scoreMeta);
+    }
+    if (data.containsKey('total')) {
+      context.handle(
+        _totalMeta,
+        total.isAcceptableOrUnknown(data['total']!, _totalMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_totalMeta);
+    }
+    if (data.containsKey('results')) {
+      context.handle(
+        _resultsMeta,
+        results.isAcceptableOrUnknown(data['results']!, _resultsMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_resultsMeta);
+    }
+    return context;
+  }
+
+  @override
+  Set<GeneratedColumn> get $primaryKey => {id};
+  @override
+  StudyAttempt map(Map<String, dynamic> data, {String? tablePrefix}) {
+    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
+    return StudyAttempt(
+      id: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}id'],
+      )!,
+      quizId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}quiz_id'],
+      )!,
+      attemptedAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}attempted_at'],
+      )!,
+      score: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}score'],
+      )!,
+      total: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}total'],
+      )!,
+      results: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}results'],
+      )!,
+    );
+  }
+
+  @override
+  $PracticeAttemptsTable createAlias(String alias) {
+    return $PracticeAttemptsTable(attachedDatabase, alias);
+  }
+}
+
+class StudyAttempt extends DataClass implements Insertable<StudyAttempt> {
+  final String id;
+  final String quizId;
+  final DateTime attemptedAt;
+  final int score;
+  final int total;
+  final String results;
+  const StudyAttempt({
+    required this.id,
+    required this.quizId,
+    required this.attemptedAt,
+    required this.score,
+    required this.total,
+    required this.results,
+  });
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    map['id'] = Variable<String>(id);
+    map['quiz_id'] = Variable<String>(quizId);
+    map['attempted_at'] = Variable<DateTime>(attemptedAt);
+    map['score'] = Variable<int>(score);
+    map['total'] = Variable<int>(total);
+    map['results'] = Variable<String>(results);
+    return map;
+  }
+
+  PracticeAttemptsCompanion toCompanion(bool nullToAbsent) {
+    return PracticeAttemptsCompanion(
+      id: Value(id),
+      quizId: Value(quizId),
+      attemptedAt: Value(attemptedAt),
+      score: Value(score),
+      total: Value(total),
+      results: Value(results),
+    );
+  }
+
+  factory StudyAttempt.fromJson(
+    Map<String, dynamic> json, {
+    ValueSerializer? serializer,
+  }) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return StudyAttempt(
+      id: serializer.fromJson<String>(json['id']),
+      quizId: serializer.fromJson<String>(json['quizId']),
+      attemptedAt: serializer.fromJson<DateTime>(json['attemptedAt']),
+      score: serializer.fromJson<int>(json['score']),
+      total: serializer.fromJson<int>(json['total']),
+      results: serializer.fromJson<String>(json['results']),
+    );
+  }
+  @override
+  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return <String, dynamic>{
+      'id': serializer.toJson<String>(id),
+      'quizId': serializer.toJson<String>(quizId),
+      'attemptedAt': serializer.toJson<DateTime>(attemptedAt),
+      'score': serializer.toJson<int>(score),
+      'total': serializer.toJson<int>(total),
+      'results': serializer.toJson<String>(results),
+    };
+  }
+
+  StudyAttempt copyWith({
+    String? id,
+    String? quizId,
+    DateTime? attemptedAt,
+    int? score,
+    int? total,
+    String? results,
+  }) => StudyAttempt(
+    id: id ?? this.id,
+    quizId: quizId ?? this.quizId,
+    attemptedAt: attemptedAt ?? this.attemptedAt,
+    score: score ?? this.score,
+    total: total ?? this.total,
+    results: results ?? this.results,
+  );
+  StudyAttempt copyWithCompanion(PracticeAttemptsCompanion data) {
+    return StudyAttempt(
+      id: data.id.present ? data.id.value : this.id,
+      quizId: data.quizId.present ? data.quizId.value : this.quizId,
+      attemptedAt: data.attemptedAt.present
+          ? data.attemptedAt.value
+          : this.attemptedAt,
+      score: data.score.present ? data.score.value : this.score,
+      total: data.total.present ? data.total.value : this.total,
+      results: data.results.present ? data.results.value : this.results,
+    );
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('StudyAttempt(')
+          ..write('id: $id, ')
+          ..write('quizId: $quizId, ')
+          ..write('attemptedAt: $attemptedAt, ')
+          ..write('score: $score, ')
+          ..write('total: $total, ')
+          ..write('results: $results')
+          ..write(')'))
+        .toString();
+  }
+
+  @override
+  int get hashCode =>
+      Object.hash(id, quizId, attemptedAt, score, total, results);
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is StudyAttempt &&
+          other.id == this.id &&
+          other.quizId == this.quizId &&
+          other.attemptedAt == this.attemptedAt &&
+          other.score == this.score &&
+          other.total == this.total &&
+          other.results == this.results);
+}
+
+class PracticeAttemptsCompanion extends UpdateCompanion<StudyAttempt> {
+  final Value<String> id;
+  final Value<String> quizId;
+  final Value<DateTime> attemptedAt;
+  final Value<int> score;
+  final Value<int> total;
+  final Value<String> results;
+  final Value<int> rowid;
+  const PracticeAttemptsCompanion({
+    this.id = const Value.absent(),
+    this.quizId = const Value.absent(),
+    this.attemptedAt = const Value.absent(),
+    this.score = const Value.absent(),
+    this.total = const Value.absent(),
+    this.results = const Value.absent(),
+    this.rowid = const Value.absent(),
+  });
+  PracticeAttemptsCompanion.insert({
+    required String id,
+    required String quizId,
+    required DateTime attemptedAt,
+    required int score,
+    required int total,
+    required String results,
+    this.rowid = const Value.absent(),
+  }) : id = Value(id),
+       quizId = Value(quizId),
+       attemptedAt = Value(attemptedAt),
+       score = Value(score),
+       total = Value(total),
+       results = Value(results);
+  static Insertable<StudyAttempt> custom({
+    Expression<String>? id,
+    Expression<String>? quizId,
+    Expression<DateTime>? attemptedAt,
+    Expression<int>? score,
+    Expression<int>? total,
+    Expression<String>? results,
+    Expression<int>? rowid,
+  }) {
+    return RawValuesInsertable({
+      if (id != null) 'id': id,
+      if (quizId != null) 'quiz_id': quizId,
+      if (attemptedAt != null) 'attempted_at': attemptedAt,
+      if (score != null) 'score': score,
+      if (total != null) 'total': total,
+      if (results != null) 'results': results,
+      if (rowid != null) 'rowid': rowid,
+    });
+  }
+
+  PracticeAttemptsCompanion copyWith({
+    Value<String>? id,
+    Value<String>? quizId,
+    Value<DateTime>? attemptedAt,
+    Value<int>? score,
+    Value<int>? total,
+    Value<String>? results,
+    Value<int>? rowid,
+  }) {
+    return PracticeAttemptsCompanion(
+      id: id ?? this.id,
+      quizId: quizId ?? this.quizId,
+      attemptedAt: attemptedAt ?? this.attemptedAt,
+      score: score ?? this.score,
+      total: total ?? this.total,
+      results: results ?? this.results,
+      rowid: rowid ?? this.rowid,
+    );
+  }
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (id.present) {
+      map['id'] = Variable<String>(id.value);
+    }
+    if (quizId.present) {
+      map['quiz_id'] = Variable<String>(quizId.value);
+    }
+    if (attemptedAt.present) {
+      map['attempted_at'] = Variable<DateTime>(attemptedAt.value);
+    }
+    if (score.present) {
+      map['score'] = Variable<int>(score.value);
+    }
+    if (total.present) {
+      map['total'] = Variable<int>(total.value);
+    }
+    if (results.present) {
+      map['results'] = Variable<String>(results.value);
+    }
+    if (rowid.present) {
+      map['rowid'] = Variable<int>(rowid.value);
+    }
+    return map;
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('PracticeAttemptsCompanion(')
+          ..write('id: $id, ')
+          ..write('quizId: $quizId, ')
+          ..write('attemptedAt: $attemptedAt, ')
+          ..write('score: $score, ')
+          ..write('total: $total, ')
+          ..write('results: $results, ')
+          ..write('rowid: $rowid')
+          ..write(')'))
+        .toString();
+  }
+}
+
 abstract class _$AppDatabase extends GeneratedDatabase {
   _$AppDatabase(QueryExecutor e) : super(e);
   $AppDatabaseManager get managers => $AppDatabaseManager(this);
@@ -9665,6 +14098,23 @@ abstract class _$AppDatabase extends GeneratedDatabase {
   late final $OutboxTable outbox = $OutboxTable(this);
   late final $LocalFoldersTable localFolders = $LocalFoldersTable(this);
   late final $LocalFilesTable localFiles = $LocalFilesTable(this);
+  late final $NotebooksTable notebooks = $NotebooksTable(this);
+  late final $NotebookSourcesTable notebookSources = $NotebookSourcesTable(
+    this,
+  );
+  late final $ChatsTable chats = $ChatsTable(this);
+  late final $ChatMessagesTable chatMessages = $ChatMessagesTable(this);
+  late final $SummariesTable summaries = $SummariesTable(this);
+  late final $FlashcardDecksTable flashcardDecks = $FlashcardDecksTable(this);
+  late final $FlashcardsTable flashcards = $FlashcardsTable(this);
+  late final $PracticeQuizzesTable practiceQuizzes = $PracticeQuizzesTable(
+    this,
+  );
+  late final $PracticeQuestionsTable practiceQuestions =
+      $PracticeQuestionsTable(this);
+  late final $PracticeAttemptsTable practiceAttempts = $PracticeAttemptsTable(
+    this,
+  );
   late final Index cacheIdxClassesOwner = Index(
     'cache_idx_classes_owner',
     'CREATE INDEX cache_idx_classes_owner ON cache_classes (owner_id) WHERE deleted_at IS NULL',
@@ -9737,6 +14187,34 @@ abstract class _$AppDatabase extends GeneratedDatabase {
     'local_files_attachment',
     'CREATE UNIQUE INDEX local_files_attachment ON local_files (source_attachment_id) WHERE source_attachment_id IS NOT NULL',
   );
+  late final Index studyIdxNotebooksOpened = Index(
+    'study_idx_notebooks_opened',
+    'CREATE INDEX study_idx_notebooks_opened ON notebooks (last_opened_at)',
+  );
+  late final Index studyIdxChatsNotebook = Index(
+    'study_idx_chats_notebook',
+    'CREATE INDEX study_idx_chats_notebook ON chats (notebook_id, last_message_at)',
+  );
+  late final Index studyIdxChatsExpiry = Index(
+    'study_idx_chats_expiry',
+    'CREATE INDEX study_idx_chats_expiry ON chats (expires_at)',
+  );
+  late final Index studyIdxMessagesChat = Index(
+    'study_idx_messages_chat',
+    'CREATE INDEX study_idx_messages_chat ON chat_messages (chat_id, created_at, position)',
+  );
+  late final Index studyIdxDecksNotebook = Index(
+    'study_idx_decks_notebook',
+    'CREATE INDEX study_idx_decks_notebook ON flashcard_decks (notebook_id, created_at)',
+  );
+  late final Index studyIdxQuizzesNotebook = Index(
+    'study_idx_quizzes_notebook',
+    'CREATE INDEX study_idx_quizzes_notebook ON practice_quizzes (notebook_id, created_at)',
+  );
+  late final Index studyIdxAttemptsQuiz = Index(
+    'study_idx_attempts_quiz',
+    'CREATE INDEX study_idx_attempts_quiz ON practice_attempts (quiz_id, attempted_at)',
+  );
   @override
   Iterable<TableInfo<Table, Object?>> get allTables =>
       allSchemaEntities.whereType<TableInfo<Table, Object?>>();
@@ -9757,6 +14235,16 @@ abstract class _$AppDatabase extends GeneratedDatabase {
     outbox,
     localFolders,
     localFiles,
+    notebooks,
+    notebookSources,
+    chats,
+    chatMessages,
+    summaries,
+    flashcardDecks,
+    flashcards,
+    practiceQuizzes,
+    practiceQuestions,
+    practiceAttempts,
     cacheIdxClassesOwner,
     cacheIdxMembersStudent,
     cacheIdxMembersClass,
@@ -9775,6 +14263,13 @@ abstract class _$AppDatabase extends GeneratedDatabase {
     localFilesFolderName,
     localFilesName,
     localFilesAttachment,
+    studyIdxNotebooksOpened,
+    studyIdxChatsNotebook,
+    studyIdxChatsExpiry,
+    studyIdxMessagesChat,
+    studyIdxDecksNotebook,
+    studyIdxQuizzesNotebook,
+    studyIdxAttemptsQuiz,
   ];
   @override
   StreamQueryUpdateRules get streamUpdateRules => const StreamQueryUpdateRules([
@@ -9840,6 +14335,69 @@ abstract class _$AppDatabase extends GeneratedDatabase {
         limitUpdateKind: UpdateKind.delete,
       ),
       result: [TableUpdate('cache_notifications', kind: UpdateKind.delete)],
+    ),
+    WritePropagation(
+      on: TableUpdateQuery.onTableName(
+        'notebooks',
+        limitUpdateKind: UpdateKind.delete,
+      ),
+      result: [TableUpdate('notebook_sources', kind: UpdateKind.delete)],
+    ),
+    WritePropagation(
+      on: TableUpdateQuery.onTableName(
+        'notebooks',
+        limitUpdateKind: UpdateKind.delete,
+      ),
+      result: [TableUpdate('chats', kind: UpdateKind.delete)],
+    ),
+    WritePropagation(
+      on: TableUpdateQuery.onTableName(
+        'chats',
+        limitUpdateKind: UpdateKind.delete,
+      ),
+      result: [TableUpdate('chat_messages', kind: UpdateKind.delete)],
+    ),
+    WritePropagation(
+      on: TableUpdateQuery.onTableName(
+        'notebooks',
+        limitUpdateKind: UpdateKind.delete,
+      ),
+      result: [TableUpdate('summaries', kind: UpdateKind.delete)],
+    ),
+    WritePropagation(
+      on: TableUpdateQuery.onTableName(
+        'notebooks',
+        limitUpdateKind: UpdateKind.delete,
+      ),
+      result: [TableUpdate('flashcard_decks', kind: UpdateKind.delete)],
+    ),
+    WritePropagation(
+      on: TableUpdateQuery.onTableName(
+        'flashcard_decks',
+        limitUpdateKind: UpdateKind.delete,
+      ),
+      result: [TableUpdate('flashcards', kind: UpdateKind.delete)],
+    ),
+    WritePropagation(
+      on: TableUpdateQuery.onTableName(
+        'notebooks',
+        limitUpdateKind: UpdateKind.delete,
+      ),
+      result: [TableUpdate('practice_quizzes', kind: UpdateKind.delete)],
+    ),
+    WritePropagation(
+      on: TableUpdateQuery.onTableName(
+        'practice_quizzes',
+        limitUpdateKind: UpdateKind.delete,
+      ),
+      result: [TableUpdate('practice_questions', kind: UpdateKind.delete)],
+    ),
+    WritePropagation(
+      on: TableUpdateQuery.onTableName(
+        'practice_quizzes',
+        limitUpdateKind: UpdateKind.delete,
+      ),
+      result: [TableUpdate('practice_attempts', kind: UpdateKind.delete)],
     ),
   ]);
 }
@@ -18097,6 +22655,4248 @@ typedef $$LocalFilesTableProcessedTableManager =
       LocalFileRecord,
       PrefetchHooks Function({bool folderId})
     >;
+typedef $$NotebooksTableCreateCompanionBuilder = NotebooksCompanion Function({
+  required String id,
+  required String name,
+  required DateTime createdAt,
+  required DateTime updatedAt,
+  required DateTime lastOpenedAt,
+  Value<int> rowid,
+});
+typedef $$NotebooksTableUpdateCompanionBuilder = NotebooksCompanion Function({
+  Value<String> id,
+  Value<String> name,
+  Value<DateTime> createdAt,
+  Value<DateTime> updatedAt,
+  Value<DateTime> lastOpenedAt,
+  Value<int> rowid,
+});
+
+final class $$NotebooksTableReferences
+    extends BaseReferences<_$AppDatabase, $NotebooksTable, StudyNotebook> {
+  $$NotebooksTableReferences(super.$_db, super.$_table, super.$_typedResult);
+
+  static MultiTypedResultKey<$NotebookSourcesTable, List<StudySource>>
+  _notebookSourcesRefsTable(_$AppDatabase db) => MultiTypedResultKey.fromTable(
+    db.notebookSources,
+    aliasName: 'notebooks__id__notebook_sources__notebook_id',
+  );
+
+  $$NotebookSourcesTableProcessedTableManager get notebookSourcesRefs {
+    final manager = $$NotebookSourcesTableTableManager(
+      $_db,
+      $_db.notebookSources,
+    ).filter((f) => f.notebookId.id.sqlEquals($_itemColumn<String>('id')!));
+
+    final cache = $_typedResult.readTableOrNull(
+      _notebookSourcesRefsTable($_db),
+    );
+    return ProcessedTableManager(
+      manager.$state.copyWith(prefetchedData: cache),
+    );
+  }
+
+  static MultiTypedResultKey<$ChatsTable, List<StudyChat>> _chatsRefsTable(
+    _$AppDatabase db,
+  ) => MultiTypedResultKey.fromTable(
+    db.chats,
+    aliasName: 'notebooks__id__chats__notebook_id',
+  );
+
+  $$ChatsTableProcessedTableManager get chatsRefs {
+    final manager = $$ChatsTableTableManager(
+      $_db,
+      $_db.chats,
+    ).filter((f) => f.notebookId.id.sqlEquals($_itemColumn<String>('id')!));
+
+    final cache = $_typedResult.readTableOrNull(_chatsRefsTable($_db));
+    return ProcessedTableManager(
+      manager.$state.copyWith(prefetchedData: cache),
+    );
+  }
+
+  static MultiTypedResultKey<$SummariesTable, List<StudySummary>>
+  _summariesRefsTable(_$AppDatabase db) => MultiTypedResultKey.fromTable(
+    db.summaries,
+    aliasName: 'notebooks__id__summaries__notebook_id',
+  );
+
+  $$SummariesTableProcessedTableManager get summariesRefs {
+    final manager = $$SummariesTableTableManager(
+      $_db,
+      $_db.summaries,
+    ).filter((f) => f.notebookId.id.sqlEquals($_itemColumn<String>('id')!));
+
+    final cache = $_typedResult.readTableOrNull(_summariesRefsTable($_db));
+    return ProcessedTableManager(
+      manager.$state.copyWith(prefetchedData: cache),
+    );
+  }
+
+  static MultiTypedResultKey<$FlashcardDecksTable, List<StudyDeck>>
+  _flashcardDecksRefsTable(_$AppDatabase db) => MultiTypedResultKey.fromTable(
+    db.flashcardDecks,
+    aliasName: 'notebooks__id__flashcard_decks__notebook_id',
+  );
+
+  $$FlashcardDecksTableProcessedTableManager get flashcardDecksRefs {
+    final manager = $$FlashcardDecksTableTableManager(
+      $_db,
+      $_db.flashcardDecks,
+    ).filter((f) => f.notebookId.id.sqlEquals($_itemColumn<String>('id')!));
+
+    final cache = $_typedResult.readTableOrNull(_flashcardDecksRefsTable($_db));
+    return ProcessedTableManager(
+      manager.$state.copyWith(prefetchedData: cache),
+    );
+  }
+
+  static MultiTypedResultKey<$PracticeQuizzesTable, List<StudyQuiz>>
+  _practiceQuizzesRefsTable(_$AppDatabase db) => MultiTypedResultKey.fromTable(
+    db.practiceQuizzes,
+    aliasName: 'notebooks__id__practice_quizzes__notebook_id',
+  );
+
+  $$PracticeQuizzesTableProcessedTableManager get practiceQuizzesRefs {
+    final manager = $$PracticeQuizzesTableTableManager(
+      $_db,
+      $_db.practiceQuizzes,
+    ).filter((f) => f.notebookId.id.sqlEquals($_itemColumn<String>('id')!));
+
+    final cache = $_typedResult.readTableOrNull(
+      _practiceQuizzesRefsTable($_db),
+    );
+    return ProcessedTableManager(
+      manager.$state.copyWith(prefetchedData: cache),
+    );
+  }
+}
+
+class $$NotebooksTableFilterComposer
+    extends Composer<_$AppDatabase, $NotebooksTable> {
+  $$NotebooksTableFilterComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnFilters<String> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get name => $composableBuilder(
+    column: $table.name,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get createdAt => $composableBuilder(
+    column: $table.createdAt,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get updatedAt => $composableBuilder(
+    column: $table.updatedAt,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get lastOpenedAt => $composableBuilder(
+    column: $table.lastOpenedAt,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  Expression<bool> notebookSourcesRefs(
+    Expression<bool> Function($$NotebookSourcesTableFilterComposer f) f,
+  ) {
+    final $$NotebookSourcesTableFilterComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.id,
+      referencedTable: $db.notebookSources,
+      getReferencedColumn: (t) => t.notebookId,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$NotebookSourcesTableFilterComposer(
+            $db: $db,
+            $table: $db.notebookSources,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return f(composer);
+  }
+
+  Expression<bool> chatsRefs(
+    Expression<bool> Function($$ChatsTableFilterComposer f) f,
+  ) {
+    final $$ChatsTableFilterComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.id,
+      referencedTable: $db.chats,
+      getReferencedColumn: (t) => t.notebookId,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$ChatsTableFilterComposer(
+            $db: $db,
+            $table: $db.chats,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return f(composer);
+  }
+
+  Expression<bool> summariesRefs(
+    Expression<bool> Function($$SummariesTableFilterComposer f) f,
+  ) {
+    final $$SummariesTableFilterComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.id,
+      referencedTable: $db.summaries,
+      getReferencedColumn: (t) => t.notebookId,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$SummariesTableFilterComposer(
+            $db: $db,
+            $table: $db.summaries,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return f(composer);
+  }
+
+  Expression<bool> flashcardDecksRefs(
+    Expression<bool> Function($$FlashcardDecksTableFilterComposer f) f,
+  ) {
+    final $$FlashcardDecksTableFilterComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.id,
+      referencedTable: $db.flashcardDecks,
+      getReferencedColumn: (t) => t.notebookId,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$FlashcardDecksTableFilterComposer(
+            $db: $db,
+            $table: $db.flashcardDecks,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return f(composer);
+  }
+
+  Expression<bool> practiceQuizzesRefs(
+    Expression<bool> Function($$PracticeQuizzesTableFilterComposer f) f,
+  ) {
+    final $$PracticeQuizzesTableFilterComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.id,
+      referencedTable: $db.practiceQuizzes,
+      getReferencedColumn: (t) => t.notebookId,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$PracticeQuizzesTableFilterComposer(
+            $db: $db,
+            $table: $db.practiceQuizzes,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return f(composer);
+  }
+}
+
+class $$NotebooksTableOrderingComposer
+    extends Composer<_$AppDatabase, $NotebooksTable> {
+  $$NotebooksTableOrderingComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnOrderings<String> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get name => $composableBuilder(
+    column: $table.name,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get createdAt => $composableBuilder(
+    column: $table.createdAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get updatedAt => $composableBuilder(
+    column: $table.updatedAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get lastOpenedAt => $composableBuilder(
+    column: $table.lastOpenedAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+}
+
+class $$NotebooksTableAnnotationComposer
+    extends Composer<_$AppDatabase, $NotebooksTable> {
+  $$NotebooksTableAnnotationComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  GeneratedColumn<String> get id =>
+      $composableBuilder(column: $table.id, builder: (column) => column);
+
+  GeneratedColumn<String> get name =>
+      $composableBuilder(column: $table.name, builder: (column) => column);
+
+  GeneratedColumn<DateTime> get createdAt =>
+      $composableBuilder(column: $table.createdAt, builder: (column) => column);
+
+  GeneratedColumn<DateTime> get updatedAt =>
+      $composableBuilder(column: $table.updatedAt, builder: (column) => column);
+
+  GeneratedColumn<DateTime> get lastOpenedAt => $composableBuilder(
+    column: $table.lastOpenedAt,
+    builder: (column) => column,
+  );
+
+  Expression<T> notebookSourcesRefs<T extends Object>(
+    Expression<T> Function($$NotebookSourcesTableAnnotationComposer a) f,
+  ) {
+    final $$NotebookSourcesTableAnnotationComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.id,
+      referencedTable: $db.notebookSources,
+      getReferencedColumn: (t) => t.notebookId,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$NotebookSourcesTableAnnotationComposer(
+            $db: $db,
+            $table: $db.notebookSources,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return f(composer);
+  }
+
+  Expression<T> chatsRefs<T extends Object>(
+    Expression<T> Function($$ChatsTableAnnotationComposer a) f,
+  ) {
+    final $$ChatsTableAnnotationComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.id,
+      referencedTable: $db.chats,
+      getReferencedColumn: (t) => t.notebookId,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$ChatsTableAnnotationComposer(
+            $db: $db,
+            $table: $db.chats,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return f(composer);
+  }
+
+  Expression<T> summariesRefs<T extends Object>(
+    Expression<T> Function($$SummariesTableAnnotationComposer a) f,
+  ) {
+    final $$SummariesTableAnnotationComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.id,
+      referencedTable: $db.summaries,
+      getReferencedColumn: (t) => t.notebookId,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$SummariesTableAnnotationComposer(
+            $db: $db,
+            $table: $db.summaries,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return f(composer);
+  }
+
+  Expression<T> flashcardDecksRefs<T extends Object>(
+    Expression<T> Function($$FlashcardDecksTableAnnotationComposer a) f,
+  ) {
+    final $$FlashcardDecksTableAnnotationComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.id,
+      referencedTable: $db.flashcardDecks,
+      getReferencedColumn: (t) => t.notebookId,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$FlashcardDecksTableAnnotationComposer(
+            $db: $db,
+            $table: $db.flashcardDecks,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return f(composer);
+  }
+
+  Expression<T> practiceQuizzesRefs<T extends Object>(
+    Expression<T> Function($$PracticeQuizzesTableAnnotationComposer a) f,
+  ) {
+    final $$PracticeQuizzesTableAnnotationComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.id,
+      referencedTable: $db.practiceQuizzes,
+      getReferencedColumn: (t) => t.notebookId,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$PracticeQuizzesTableAnnotationComposer(
+            $db: $db,
+            $table: $db.practiceQuizzes,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return f(composer);
+  }
+}
+
+class $$NotebooksTableTableManager
+    extends
+        RootTableManager<
+          _$AppDatabase,
+          $NotebooksTable,
+          StudyNotebook,
+          $$NotebooksTableFilterComposer,
+          $$NotebooksTableOrderingComposer,
+          $$NotebooksTableAnnotationComposer,
+          $$NotebooksTableCreateCompanionBuilder,
+          $$NotebooksTableUpdateCompanionBuilder,
+          (StudyNotebook, $$NotebooksTableReferences),
+          StudyNotebook,
+          PrefetchHooks Function({
+            bool notebookSourcesRefs,
+            bool chatsRefs,
+            bool summariesRefs,
+            bool flashcardDecksRefs,
+            bool practiceQuizzesRefs,
+          })
+        > {
+  $$NotebooksTableTableManager(_$AppDatabase db, $NotebooksTable table)
+    : super(
+        TableManagerState(
+          db: db,
+          table: table,
+          createFilteringComposer: () =>
+              $$NotebooksTableFilterComposer($db: db, $table: table),
+          createOrderingComposer: () =>
+              $$NotebooksTableOrderingComposer($db: db, $table: table),
+          createComputedFieldComposer: () =>
+              $$NotebooksTableAnnotationComposer($db: db, $table: table),
+          updateCompanionCallback:
+              ({
+                Value<String> id = const Value.absent(),
+                Value<String> name = const Value.absent(),
+                Value<DateTime> createdAt = const Value.absent(),
+                Value<DateTime> updatedAt = const Value.absent(),
+                Value<DateTime> lastOpenedAt = const Value.absent(),
+                Value<int> rowid = const Value.absent(),
+              }) => NotebooksCompanion(
+                id: id,
+                name: name,
+                createdAt: createdAt,
+                updatedAt: updatedAt,
+                lastOpenedAt: lastOpenedAt,
+                rowid: rowid,
+              ),
+          createCompanionCallback:
+              ({
+                required String id,
+                required String name,
+                required DateTime createdAt,
+                required DateTime updatedAt,
+                required DateTime lastOpenedAt,
+                Value<int> rowid = const Value.absent(),
+              }) => NotebooksCompanion.insert(
+                id: id,
+                name: name,
+                createdAt: createdAt,
+                updatedAt: updatedAt,
+                lastOpenedAt: lastOpenedAt,
+                rowid: rowid,
+              ),
+          withReferenceMapper: (p0) => p0
+              .map(
+                (e) => (
+                  e.readTable<$NotebooksTable, StudyNotebook>(table),
+                  $$NotebooksTableReferences(db, table, e),
+                ),
+              )
+              .toList(),
+          prefetchHooksCallback:
+              ({
+                notebookSourcesRefs = false,
+                chatsRefs = false,
+                summariesRefs = false,
+                flashcardDecksRefs = false,
+                practiceQuizzesRefs = false,
+              }) {
+                return PrefetchHooks(
+                  db: db,
+                  explicitlyWatchedTables: [
+                    if (notebookSourcesRefs) db.notebookSources,
+                    if (chatsRefs) db.chats,
+                    if (summariesRefs) db.summaries,
+                    if (flashcardDecksRefs) db.flashcardDecks,
+                    if (practiceQuizzesRefs) db.practiceQuizzes,
+                  ],
+                  addJoins: null,
+                  getPrefetchedDataCallback: (items) async {
+                    return [
+                      if (notebookSourcesRefs)
+                        await $_getPrefetchedData<
+                          StudyNotebook,
+                          $NotebooksTable,
+                          StudySource
+                        >(
+                          currentTable: table,
+                          referencedTable: $$NotebooksTableReferences
+                              ._notebookSourcesRefsTable(db),
+                          managerFromTypedResult: (p0) =>
+                              $$NotebooksTableReferences(
+                                db,
+                                table,
+                                p0,
+                              ).notebookSourcesRefs,
+                          referencedItemsForCurrentItem:
+                              (item, referencedItems) => referencedItems.where(
+                                (e) => e.notebookId == item.id,
+                              ),
+                          typedResults: items,
+                        ),
+                      if (chatsRefs)
+                        await $_getPrefetchedData<
+                          StudyNotebook,
+                          $NotebooksTable,
+                          StudyChat
+                        >(
+                          currentTable: table,
+                          referencedTable: $$NotebooksTableReferences
+                              ._chatsRefsTable(db),
+                          managerFromTypedResult: (p0) =>
+                              $$NotebooksTableReferences(
+                                db,
+                                table,
+                                p0,
+                              ).chatsRefs,
+                          referencedItemsForCurrentItem:
+                              (item, referencedItems) => referencedItems.where(
+                                (e) => e.notebookId == item.id,
+                              ),
+                          typedResults: items,
+                        ),
+                      if (summariesRefs)
+                        await $_getPrefetchedData<
+                          StudyNotebook,
+                          $NotebooksTable,
+                          StudySummary
+                        >(
+                          currentTable: table,
+                          referencedTable: $$NotebooksTableReferences
+                              ._summariesRefsTable(db),
+                          managerFromTypedResult: (p0) =>
+                              $$NotebooksTableReferences(
+                                db,
+                                table,
+                                p0,
+                              ).summariesRefs,
+                          referencedItemsForCurrentItem:
+                              (item, referencedItems) => referencedItems.where(
+                                (e) => e.notebookId == item.id,
+                              ),
+                          typedResults: items,
+                        ),
+                      if (flashcardDecksRefs)
+                        await $_getPrefetchedData<
+                          StudyNotebook,
+                          $NotebooksTable,
+                          StudyDeck
+                        >(
+                          currentTable: table,
+                          referencedTable: $$NotebooksTableReferences
+                              ._flashcardDecksRefsTable(db),
+                          managerFromTypedResult: (p0) =>
+                              $$NotebooksTableReferences(
+                                db,
+                                table,
+                                p0,
+                              ).flashcardDecksRefs,
+                          referencedItemsForCurrentItem:
+                              (item, referencedItems) => referencedItems.where(
+                                (e) => e.notebookId == item.id,
+                              ),
+                          typedResults: items,
+                        ),
+                      if (practiceQuizzesRefs)
+                        await $_getPrefetchedData<
+                          StudyNotebook,
+                          $NotebooksTable,
+                          StudyQuiz
+                        >(
+                          currentTable: table,
+                          referencedTable: $$NotebooksTableReferences
+                              ._practiceQuizzesRefsTable(db),
+                          managerFromTypedResult: (p0) =>
+                              $$NotebooksTableReferences(
+                                db,
+                                table,
+                                p0,
+                              ).practiceQuizzesRefs,
+                          referencedItemsForCurrentItem:
+                              (item, referencedItems) => referencedItems.where(
+                                (e) => e.notebookId == item.id,
+                              ),
+                          typedResults: items,
+                        ),
+                    ];
+                  },
+                );
+              },
+        ),
+      );
+}
+
+typedef $$NotebooksTableProcessedTableManager =
+    ProcessedTableManager<
+      _$AppDatabase,
+      $NotebooksTable,
+      StudyNotebook,
+      $$NotebooksTableFilterComposer,
+      $$NotebooksTableOrderingComposer,
+      $$NotebooksTableAnnotationComposer,
+      $$NotebooksTableCreateCompanionBuilder,
+      $$NotebooksTableUpdateCompanionBuilder,
+      (StudyNotebook, $$NotebooksTableReferences),
+      StudyNotebook,
+      PrefetchHooks Function({
+        bool notebookSourcesRefs,
+        bool chatsRefs,
+        bool summariesRefs,
+        bool flashcardDecksRefs,
+        bool practiceQuizzesRefs,
+      })
+    >;
+typedef $$NotebookSourcesTableCreateCompanionBuilder =
+    NotebookSourcesCompanion Function({
+      required String id,
+      required String notebookId,
+      required String fileId,
+      required String name,
+      required String sourceKey,
+      required String extractedText,
+      required int extractorRevision,
+      required DateTime extractedAt,
+      required DateTime createdAt,
+      Value<int> rowid,
+    });
+typedef $$NotebookSourcesTableUpdateCompanionBuilder =
+    NotebookSourcesCompanion Function({
+      Value<String> id,
+      Value<String> notebookId,
+      Value<String> fileId,
+      Value<String> name,
+      Value<String> sourceKey,
+      Value<String> extractedText,
+      Value<int> extractorRevision,
+      Value<DateTime> extractedAt,
+      Value<DateTime> createdAt,
+      Value<int> rowid,
+    });
+
+final class $$NotebookSourcesTableReferences
+    extends BaseReferences<_$AppDatabase, $NotebookSourcesTable, StudySource> {
+  $$NotebookSourcesTableReferences(
+    super.$_db,
+    super.$_table,
+    super.$_typedResult,
+  );
+
+  static $NotebooksTable _notebookIdTable(_$AppDatabase db) =>
+      db.notebooks.createAlias('notebook_sources__notebook_id__notebooks__id');
+
+  $$NotebooksTableProcessedTableManager get notebookId {
+    final $_column = $_itemColumn<String>('notebook_id')!;
+
+    final manager = $$NotebooksTableTableManager(
+      $_db,
+      $_db.notebooks,
+    ).filter((f) => f.id.sqlEquals($_column));
+    final item = $_typedResult.readTableOrNull(_notebookIdTable($_db));
+    if (item == null) return manager;
+    return ProcessedTableManager(
+      manager.$state.copyWith(prefetchedData: [item]),
+    );
+  }
+}
+
+class $$NotebookSourcesTableFilterComposer
+    extends Composer<_$AppDatabase, $NotebookSourcesTable> {
+  $$NotebookSourcesTableFilterComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnFilters<String> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get fileId => $composableBuilder(
+    column: $table.fileId,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get name => $composableBuilder(
+    column: $table.name,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get sourceKey => $composableBuilder(
+    column: $table.sourceKey,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get extractedText => $composableBuilder(
+    column: $table.extractedText,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get extractorRevision => $composableBuilder(
+    column: $table.extractorRevision,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get extractedAt => $composableBuilder(
+    column: $table.extractedAt,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get createdAt => $composableBuilder(
+    column: $table.createdAt,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  $$NotebooksTableFilterComposer get notebookId {
+    final $$NotebooksTableFilterComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.notebookId,
+      referencedTable: $db.notebooks,
+      getReferencedColumn: (t) => t.id,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$NotebooksTableFilterComposer(
+            $db: $db,
+            $table: $db.notebooks,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return composer;
+  }
+}
+
+class $$NotebookSourcesTableOrderingComposer
+    extends Composer<_$AppDatabase, $NotebookSourcesTable> {
+  $$NotebookSourcesTableOrderingComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnOrderings<String> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get fileId => $composableBuilder(
+    column: $table.fileId,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get name => $composableBuilder(
+    column: $table.name,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get sourceKey => $composableBuilder(
+    column: $table.sourceKey,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get extractedText => $composableBuilder(
+    column: $table.extractedText,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get extractorRevision => $composableBuilder(
+    column: $table.extractorRevision,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get extractedAt => $composableBuilder(
+    column: $table.extractedAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get createdAt => $composableBuilder(
+    column: $table.createdAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  $$NotebooksTableOrderingComposer get notebookId {
+    final $$NotebooksTableOrderingComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.notebookId,
+      referencedTable: $db.notebooks,
+      getReferencedColumn: (t) => t.id,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$NotebooksTableOrderingComposer(
+            $db: $db,
+            $table: $db.notebooks,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return composer;
+  }
+}
+
+class $$NotebookSourcesTableAnnotationComposer
+    extends Composer<_$AppDatabase, $NotebookSourcesTable> {
+  $$NotebookSourcesTableAnnotationComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  GeneratedColumn<String> get id =>
+      $composableBuilder(column: $table.id, builder: (column) => column);
+
+  GeneratedColumn<String> get fileId =>
+      $composableBuilder(column: $table.fileId, builder: (column) => column);
+
+  GeneratedColumn<String> get name =>
+      $composableBuilder(column: $table.name, builder: (column) => column);
+
+  GeneratedColumn<String> get sourceKey =>
+      $composableBuilder(column: $table.sourceKey, builder: (column) => column);
+
+  GeneratedColumn<String> get extractedText => $composableBuilder(
+    column: $table.extractedText,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<int> get extractorRevision => $composableBuilder(
+    column: $table.extractorRevision,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<DateTime> get extractedAt => $composableBuilder(
+    column: $table.extractedAt,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<DateTime> get createdAt =>
+      $composableBuilder(column: $table.createdAt, builder: (column) => column);
+
+  $$NotebooksTableAnnotationComposer get notebookId {
+    final $$NotebooksTableAnnotationComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.notebookId,
+      referencedTable: $db.notebooks,
+      getReferencedColumn: (t) => t.id,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$NotebooksTableAnnotationComposer(
+            $db: $db,
+            $table: $db.notebooks,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return composer;
+  }
+}
+
+class $$NotebookSourcesTableTableManager
+    extends
+        RootTableManager<
+          _$AppDatabase,
+          $NotebookSourcesTable,
+          StudySource,
+          $$NotebookSourcesTableFilterComposer,
+          $$NotebookSourcesTableOrderingComposer,
+          $$NotebookSourcesTableAnnotationComposer,
+          $$NotebookSourcesTableCreateCompanionBuilder,
+          $$NotebookSourcesTableUpdateCompanionBuilder,
+          (StudySource, $$NotebookSourcesTableReferences),
+          StudySource,
+          PrefetchHooks Function({bool notebookId})
+        > {
+  $$NotebookSourcesTableTableManager(
+    _$AppDatabase db,
+    $NotebookSourcesTable table,
+  ) : super(
+        TableManagerState(
+          db: db,
+          table: table,
+          createFilteringComposer: () =>
+              $$NotebookSourcesTableFilterComposer($db: db, $table: table),
+          createOrderingComposer: () =>
+              $$NotebookSourcesTableOrderingComposer($db: db, $table: table),
+          createComputedFieldComposer: () =>
+              $$NotebookSourcesTableAnnotationComposer($db: db, $table: table),
+          updateCompanionCallback:
+              ({
+                Value<String> id = const Value.absent(),
+                Value<String> notebookId = const Value.absent(),
+                Value<String> fileId = const Value.absent(),
+                Value<String> name = const Value.absent(),
+                Value<String> sourceKey = const Value.absent(),
+                Value<String> extractedText = const Value.absent(),
+                Value<int> extractorRevision = const Value.absent(),
+                Value<DateTime> extractedAt = const Value.absent(),
+                Value<DateTime> createdAt = const Value.absent(),
+                Value<int> rowid = const Value.absent(),
+              }) => NotebookSourcesCompanion(
+                id: id,
+                notebookId: notebookId,
+                fileId: fileId,
+                name: name,
+                sourceKey: sourceKey,
+                extractedText: extractedText,
+                extractorRevision: extractorRevision,
+                extractedAt: extractedAt,
+                createdAt: createdAt,
+                rowid: rowid,
+              ),
+          createCompanionCallback:
+              ({
+                required String id,
+                required String notebookId,
+                required String fileId,
+                required String name,
+                required String sourceKey,
+                required String extractedText,
+                required int extractorRevision,
+                required DateTime extractedAt,
+                required DateTime createdAt,
+                Value<int> rowid = const Value.absent(),
+              }) => NotebookSourcesCompanion.insert(
+                id: id,
+                notebookId: notebookId,
+                fileId: fileId,
+                name: name,
+                sourceKey: sourceKey,
+                extractedText: extractedText,
+                extractorRevision: extractorRevision,
+                extractedAt: extractedAt,
+                createdAt: createdAt,
+                rowid: rowid,
+              ),
+          withReferenceMapper: (p0) => p0
+              .map(
+                (e) => (
+                  e.readTable<$NotebookSourcesTable, StudySource>(table),
+                  $$NotebookSourcesTableReferences(db, table, e),
+                ),
+              )
+              .toList(),
+          prefetchHooksCallback: ({notebookId = false}) {
+            return PrefetchHooks(
+              db: db,
+              explicitlyWatchedTables: [],
+              addJoins:
+                  <
+                    T extends TableManagerState<
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic
+                    >
+                  >(state) {
+                    if (notebookId) {
+                      state = state.withJoin(
+                        currentTable: table,
+                        currentColumn: table.notebookId,
+                        referencedTable: $$NotebookSourcesTableReferences
+                            ._notebookIdTable(db),
+                        referencedColumn: $$NotebookSourcesTableReferences
+                            ._notebookIdTable(db)
+                            .id,
+                      ) as T;
+                    }
+
+                    return state;
+                  },
+              getPrefetchedDataCallback: (items) async {
+                return [];
+              },
+            );
+          },
+        ),
+      );
+}
+
+typedef $$NotebookSourcesTableProcessedTableManager =
+    ProcessedTableManager<
+      _$AppDatabase,
+      $NotebookSourcesTable,
+      StudySource,
+      $$NotebookSourcesTableFilterComposer,
+      $$NotebookSourcesTableOrderingComposer,
+      $$NotebookSourcesTableAnnotationComposer,
+      $$NotebookSourcesTableCreateCompanionBuilder,
+      $$NotebookSourcesTableUpdateCompanionBuilder,
+      (StudySource, $$NotebookSourcesTableReferences),
+      StudySource,
+      PrefetchHooks Function({bool notebookId})
+    >;
+typedef $$ChatsTableCreateCompanionBuilder = ChatsCompanion Function({
+  required String id,
+  required String notebookId,
+  required String title,
+  required DateTime createdAt,
+  required DateTime lastMessageAt,
+  required DateTime expiresAt,
+  Value<int> rowid,
+});
+typedef $$ChatsTableUpdateCompanionBuilder = ChatsCompanion Function({
+  Value<String> id,
+  Value<String> notebookId,
+  Value<String> title,
+  Value<DateTime> createdAt,
+  Value<DateTime> lastMessageAt,
+  Value<DateTime> expiresAt,
+  Value<int> rowid,
+});
+
+final class $$ChatsTableReferences
+    extends BaseReferences<_$AppDatabase, $ChatsTable, StudyChat> {
+  $$ChatsTableReferences(super.$_db, super.$_table, super.$_typedResult);
+
+  static $NotebooksTable _notebookIdTable(_$AppDatabase db) =>
+      db.notebooks.createAlias('chats__notebook_id__notebooks__id');
+
+  $$NotebooksTableProcessedTableManager get notebookId {
+    final $_column = $_itemColumn<String>('notebook_id')!;
+
+    final manager = $$NotebooksTableTableManager(
+      $_db,
+      $_db.notebooks,
+    ).filter((f) => f.id.sqlEquals($_column));
+    final item = $_typedResult.readTableOrNull(_notebookIdTable($_db));
+    if (item == null) return manager;
+    return ProcessedTableManager(
+      manager.$state.copyWith(prefetchedData: [item]),
+    );
+  }
+
+  static MultiTypedResultKey<$ChatMessagesTable, List<StudyMessage>>
+  _chatMessagesRefsTable(_$AppDatabase db) => MultiTypedResultKey.fromTable(
+    db.chatMessages,
+    aliasName: 'chats__id__chat_messages__chat_id',
+  );
+
+  $$ChatMessagesTableProcessedTableManager get chatMessagesRefs {
+    final manager = $$ChatMessagesTableTableManager(
+      $_db,
+      $_db.chatMessages,
+    ).filter((f) => f.chatId.id.sqlEquals($_itemColumn<String>('id')!));
+
+    final cache = $_typedResult.readTableOrNull(_chatMessagesRefsTable($_db));
+    return ProcessedTableManager(
+      manager.$state.copyWith(prefetchedData: cache),
+    );
+  }
+}
+
+class $$ChatsTableFilterComposer extends Composer<_$AppDatabase, $ChatsTable> {
+  $$ChatsTableFilterComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnFilters<String> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get title => $composableBuilder(
+    column: $table.title,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get createdAt => $composableBuilder(
+    column: $table.createdAt,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get lastMessageAt => $composableBuilder(
+    column: $table.lastMessageAt,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get expiresAt => $composableBuilder(
+    column: $table.expiresAt,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  $$NotebooksTableFilterComposer get notebookId {
+    final $$NotebooksTableFilterComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.notebookId,
+      referencedTable: $db.notebooks,
+      getReferencedColumn: (t) => t.id,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$NotebooksTableFilterComposer(
+            $db: $db,
+            $table: $db.notebooks,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return composer;
+  }
+
+  Expression<bool> chatMessagesRefs(
+    Expression<bool> Function($$ChatMessagesTableFilterComposer f) f,
+  ) {
+    final $$ChatMessagesTableFilterComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.id,
+      referencedTable: $db.chatMessages,
+      getReferencedColumn: (t) => t.chatId,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$ChatMessagesTableFilterComposer(
+            $db: $db,
+            $table: $db.chatMessages,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return f(composer);
+  }
+}
+
+class $$ChatsTableOrderingComposer
+    extends Composer<_$AppDatabase, $ChatsTable> {
+  $$ChatsTableOrderingComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnOrderings<String> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get title => $composableBuilder(
+    column: $table.title,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get createdAt => $composableBuilder(
+    column: $table.createdAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get lastMessageAt => $composableBuilder(
+    column: $table.lastMessageAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get expiresAt => $composableBuilder(
+    column: $table.expiresAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  $$NotebooksTableOrderingComposer get notebookId {
+    final $$NotebooksTableOrderingComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.notebookId,
+      referencedTable: $db.notebooks,
+      getReferencedColumn: (t) => t.id,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$NotebooksTableOrderingComposer(
+            $db: $db,
+            $table: $db.notebooks,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return composer;
+  }
+}
+
+class $$ChatsTableAnnotationComposer
+    extends Composer<_$AppDatabase, $ChatsTable> {
+  $$ChatsTableAnnotationComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  GeneratedColumn<String> get id =>
+      $composableBuilder(column: $table.id, builder: (column) => column);
+
+  GeneratedColumn<String> get title =>
+      $composableBuilder(column: $table.title, builder: (column) => column);
+
+  GeneratedColumn<DateTime> get createdAt =>
+      $composableBuilder(column: $table.createdAt, builder: (column) => column);
+
+  GeneratedColumn<DateTime> get lastMessageAt => $composableBuilder(
+    column: $table.lastMessageAt,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<DateTime> get expiresAt =>
+      $composableBuilder(column: $table.expiresAt, builder: (column) => column);
+
+  $$NotebooksTableAnnotationComposer get notebookId {
+    final $$NotebooksTableAnnotationComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.notebookId,
+      referencedTable: $db.notebooks,
+      getReferencedColumn: (t) => t.id,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$NotebooksTableAnnotationComposer(
+            $db: $db,
+            $table: $db.notebooks,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return composer;
+  }
+
+  Expression<T> chatMessagesRefs<T extends Object>(
+    Expression<T> Function($$ChatMessagesTableAnnotationComposer a) f,
+  ) {
+    final $$ChatMessagesTableAnnotationComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.id,
+      referencedTable: $db.chatMessages,
+      getReferencedColumn: (t) => t.chatId,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$ChatMessagesTableAnnotationComposer(
+            $db: $db,
+            $table: $db.chatMessages,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return f(composer);
+  }
+}
+
+class $$ChatsTableTableManager
+    extends
+        RootTableManager<
+          _$AppDatabase,
+          $ChatsTable,
+          StudyChat,
+          $$ChatsTableFilterComposer,
+          $$ChatsTableOrderingComposer,
+          $$ChatsTableAnnotationComposer,
+          $$ChatsTableCreateCompanionBuilder,
+          $$ChatsTableUpdateCompanionBuilder,
+          (StudyChat, $$ChatsTableReferences),
+          StudyChat,
+          PrefetchHooks Function({bool notebookId, bool chatMessagesRefs})
+        > {
+  $$ChatsTableTableManager(_$AppDatabase db, $ChatsTable table)
+    : super(
+        TableManagerState(
+          db: db,
+          table: table,
+          createFilteringComposer: () =>
+              $$ChatsTableFilterComposer($db: db, $table: table),
+          createOrderingComposer: () =>
+              $$ChatsTableOrderingComposer($db: db, $table: table),
+          createComputedFieldComposer: () =>
+              $$ChatsTableAnnotationComposer($db: db, $table: table),
+          updateCompanionCallback:
+              ({
+                Value<String> id = const Value.absent(),
+                Value<String> notebookId = const Value.absent(),
+                Value<String> title = const Value.absent(),
+                Value<DateTime> createdAt = const Value.absent(),
+                Value<DateTime> lastMessageAt = const Value.absent(),
+                Value<DateTime> expiresAt = const Value.absent(),
+                Value<int> rowid = const Value.absent(),
+              }) => ChatsCompanion(
+                id: id,
+                notebookId: notebookId,
+                title: title,
+                createdAt: createdAt,
+                lastMessageAt: lastMessageAt,
+                expiresAt: expiresAt,
+                rowid: rowid,
+              ),
+          createCompanionCallback:
+              ({
+                required String id,
+                required String notebookId,
+                required String title,
+                required DateTime createdAt,
+                required DateTime lastMessageAt,
+                required DateTime expiresAt,
+                Value<int> rowid = const Value.absent(),
+              }) => ChatsCompanion.insert(
+                id: id,
+                notebookId: notebookId,
+                title: title,
+                createdAt: createdAt,
+                lastMessageAt: lastMessageAt,
+                expiresAt: expiresAt,
+                rowid: rowid,
+              ),
+          withReferenceMapper: (p0) => p0
+              .map(
+                (e) => (
+                  e.readTable<$ChatsTable, StudyChat>(table),
+                  $$ChatsTableReferences(db, table, e),
+                ),
+              )
+              .toList(),
+          prefetchHooksCallback:
+              ({notebookId = false, chatMessagesRefs = false}) {
+                return PrefetchHooks(
+                  db: db,
+                  explicitlyWatchedTables: [
+                    if (chatMessagesRefs) db.chatMessages,
+                  ],
+                  addJoins:
+                      <
+                        T extends TableManagerState<
+                          dynamic,
+                          dynamic,
+                          dynamic,
+                          dynamic,
+                          dynamic,
+                          dynamic,
+                          dynamic,
+                          dynamic,
+                          dynamic,
+                          dynamic,
+                          dynamic
+                        >
+                      >(state) {
+                        if (notebookId) {
+                          state = state.withJoin(
+                            currentTable: table,
+                            currentColumn: table.notebookId,
+                            referencedTable: $$ChatsTableReferences
+                                ._notebookIdTable(db),
+                            referencedColumn: $$ChatsTableReferences
+                                ._notebookIdTable(db)
+                                .id,
+                          ) as T;
+                        }
+
+                        return state;
+                      },
+                  getPrefetchedDataCallback: (items) async {
+                    return [
+                      if (chatMessagesRefs)
+                        await $_getPrefetchedData<
+                          StudyChat,
+                          $ChatsTable,
+                          StudyMessage
+                        >(
+                          currentTable: table,
+                          referencedTable: $$ChatsTableReferences
+                              ._chatMessagesRefsTable(db),
+                          managerFromTypedResult: (p0) =>
+                              $$ChatsTableReferences(
+                                db,
+                                table,
+                                p0,
+                              ).chatMessagesRefs,
+                          referencedItemsForCurrentItem:
+                              (item, referencedItems) => referencedItems.where(
+                                (e) => e.chatId == item.id,
+                              ),
+                          typedResults: items,
+                        ),
+                    ];
+                  },
+                );
+              },
+        ),
+      );
+}
+
+typedef $$ChatsTableProcessedTableManager =
+    ProcessedTableManager<
+      _$AppDatabase,
+      $ChatsTable,
+      StudyChat,
+      $$ChatsTableFilterComposer,
+      $$ChatsTableOrderingComposer,
+      $$ChatsTableAnnotationComposer,
+      $$ChatsTableCreateCompanionBuilder,
+      $$ChatsTableUpdateCompanionBuilder,
+      (StudyChat, $$ChatsTableReferences),
+      StudyChat,
+      PrefetchHooks Function({bool notebookId, bool chatMessagesRefs})
+    >;
+typedef $$ChatMessagesTableCreateCompanionBuilder =
+    ChatMessagesCompanion Function({
+      required String id,
+      required String chatId,
+      required String role,
+      required String content,
+      required String mode,
+      required DateTime createdAt,
+      required int position,
+      Value<int> rowid,
+    });
+typedef $$ChatMessagesTableUpdateCompanionBuilder =
+    ChatMessagesCompanion Function({
+      Value<String> id,
+      Value<String> chatId,
+      Value<String> role,
+      Value<String> content,
+      Value<String> mode,
+      Value<DateTime> createdAt,
+      Value<int> position,
+      Value<int> rowid,
+    });
+
+final class $$ChatMessagesTableReferences
+    extends BaseReferences<_$AppDatabase, $ChatMessagesTable, StudyMessage> {
+  $$ChatMessagesTableReferences(super.$_db, super.$_table, super.$_typedResult);
+
+  static $ChatsTable _chatIdTable(_$AppDatabase db) =>
+      db.chats.createAlias('chat_messages__chat_id__chats__id');
+
+  $$ChatsTableProcessedTableManager get chatId {
+    final $_column = $_itemColumn<String>('chat_id')!;
+
+    final manager = $$ChatsTableTableManager(
+      $_db,
+      $_db.chats,
+    ).filter((f) => f.id.sqlEquals($_column));
+    final item = $_typedResult.readTableOrNull(_chatIdTable($_db));
+    if (item == null) return manager;
+    return ProcessedTableManager(
+      manager.$state.copyWith(prefetchedData: [item]),
+    );
+  }
+}
+
+class $$ChatMessagesTableFilterComposer
+    extends Composer<_$AppDatabase, $ChatMessagesTable> {
+  $$ChatMessagesTableFilterComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnFilters<String> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get role => $composableBuilder(
+    column: $table.role,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get content => $composableBuilder(
+    column: $table.content,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get mode => $composableBuilder(
+    column: $table.mode,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get createdAt => $composableBuilder(
+    column: $table.createdAt,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get position => $composableBuilder(
+    column: $table.position,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  $$ChatsTableFilterComposer get chatId {
+    final $$ChatsTableFilterComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.chatId,
+      referencedTable: $db.chats,
+      getReferencedColumn: (t) => t.id,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$ChatsTableFilterComposer(
+            $db: $db,
+            $table: $db.chats,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return composer;
+  }
+}
+
+class $$ChatMessagesTableOrderingComposer
+    extends Composer<_$AppDatabase, $ChatMessagesTable> {
+  $$ChatMessagesTableOrderingComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnOrderings<String> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get role => $composableBuilder(
+    column: $table.role,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get content => $composableBuilder(
+    column: $table.content,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get mode => $composableBuilder(
+    column: $table.mode,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get createdAt => $composableBuilder(
+    column: $table.createdAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get position => $composableBuilder(
+    column: $table.position,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  $$ChatsTableOrderingComposer get chatId {
+    final $$ChatsTableOrderingComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.chatId,
+      referencedTable: $db.chats,
+      getReferencedColumn: (t) => t.id,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$ChatsTableOrderingComposer(
+            $db: $db,
+            $table: $db.chats,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return composer;
+  }
+}
+
+class $$ChatMessagesTableAnnotationComposer
+    extends Composer<_$AppDatabase, $ChatMessagesTable> {
+  $$ChatMessagesTableAnnotationComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  GeneratedColumn<String> get id =>
+      $composableBuilder(column: $table.id, builder: (column) => column);
+
+  GeneratedColumn<String> get role =>
+      $composableBuilder(column: $table.role, builder: (column) => column);
+
+  GeneratedColumn<String> get content =>
+      $composableBuilder(column: $table.content, builder: (column) => column);
+
+  GeneratedColumn<String> get mode =>
+      $composableBuilder(column: $table.mode, builder: (column) => column);
+
+  GeneratedColumn<DateTime> get createdAt =>
+      $composableBuilder(column: $table.createdAt, builder: (column) => column);
+
+  GeneratedColumn<int> get position =>
+      $composableBuilder(column: $table.position, builder: (column) => column);
+
+  $$ChatsTableAnnotationComposer get chatId {
+    final $$ChatsTableAnnotationComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.chatId,
+      referencedTable: $db.chats,
+      getReferencedColumn: (t) => t.id,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$ChatsTableAnnotationComposer(
+            $db: $db,
+            $table: $db.chats,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return composer;
+  }
+}
+
+class $$ChatMessagesTableTableManager
+    extends
+        RootTableManager<
+          _$AppDatabase,
+          $ChatMessagesTable,
+          StudyMessage,
+          $$ChatMessagesTableFilterComposer,
+          $$ChatMessagesTableOrderingComposer,
+          $$ChatMessagesTableAnnotationComposer,
+          $$ChatMessagesTableCreateCompanionBuilder,
+          $$ChatMessagesTableUpdateCompanionBuilder,
+          (StudyMessage, $$ChatMessagesTableReferences),
+          StudyMessage,
+          PrefetchHooks Function({bool chatId})
+        > {
+  $$ChatMessagesTableTableManager(_$AppDatabase db, $ChatMessagesTable table)
+    : super(
+        TableManagerState(
+          db: db,
+          table: table,
+          createFilteringComposer: () =>
+              $$ChatMessagesTableFilterComposer($db: db, $table: table),
+          createOrderingComposer: () =>
+              $$ChatMessagesTableOrderingComposer($db: db, $table: table),
+          createComputedFieldComposer: () =>
+              $$ChatMessagesTableAnnotationComposer($db: db, $table: table),
+          updateCompanionCallback:
+              ({
+                Value<String> id = const Value.absent(),
+                Value<String> chatId = const Value.absent(),
+                Value<String> role = const Value.absent(),
+                Value<String> content = const Value.absent(),
+                Value<String> mode = const Value.absent(),
+                Value<DateTime> createdAt = const Value.absent(),
+                Value<int> position = const Value.absent(),
+                Value<int> rowid = const Value.absent(),
+              }) => ChatMessagesCompanion(
+                id: id,
+                chatId: chatId,
+                role: role,
+                content: content,
+                mode: mode,
+                createdAt: createdAt,
+                position: position,
+                rowid: rowid,
+              ),
+          createCompanionCallback:
+              ({
+                required String id,
+                required String chatId,
+                required String role,
+                required String content,
+                required String mode,
+                required DateTime createdAt,
+                required int position,
+                Value<int> rowid = const Value.absent(),
+              }) => ChatMessagesCompanion.insert(
+                id: id,
+                chatId: chatId,
+                role: role,
+                content: content,
+                mode: mode,
+                createdAt: createdAt,
+                position: position,
+                rowid: rowid,
+              ),
+          withReferenceMapper: (p0) => p0
+              .map(
+                (e) => (
+                  e.readTable<$ChatMessagesTable, StudyMessage>(table),
+                  $$ChatMessagesTableReferences(db, table, e),
+                ),
+              )
+              .toList(),
+          prefetchHooksCallback: ({chatId = false}) {
+            return PrefetchHooks(
+              db: db,
+              explicitlyWatchedTables: [],
+              addJoins:
+                  <
+                    T extends TableManagerState<
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic
+                    >
+                  >(state) {
+                    if (chatId) {
+                      state = state.withJoin(
+                        currentTable: table,
+                        currentColumn: table.chatId,
+                        referencedTable: $$ChatMessagesTableReferences
+                            ._chatIdTable(db),
+                        referencedColumn: $$ChatMessagesTableReferences
+                            ._chatIdTable(db)
+                            .id,
+                      ) as T;
+                    }
+
+                    return state;
+                  },
+              getPrefetchedDataCallback: (items) async {
+                return [];
+              },
+            );
+          },
+        ),
+      );
+}
+
+typedef $$ChatMessagesTableProcessedTableManager =
+    ProcessedTableManager<
+      _$AppDatabase,
+      $ChatMessagesTable,
+      StudyMessage,
+      $$ChatMessagesTableFilterComposer,
+      $$ChatMessagesTableOrderingComposer,
+      $$ChatMessagesTableAnnotationComposer,
+      $$ChatMessagesTableCreateCompanionBuilder,
+      $$ChatMessagesTableUpdateCompanionBuilder,
+      (StudyMessage, $$ChatMessagesTableReferences),
+      StudyMessage,
+      PrefetchHooks Function({bool chatId})
+    >;
+typedef $$SummariesTableCreateCompanionBuilder = SummariesCompanion Function({
+  required String notebookId,
+  required String content,
+  required DateTime createdAt,
+  required DateTime updatedAt,
+  Value<int> rowid,
+});
+typedef $$SummariesTableUpdateCompanionBuilder = SummariesCompanion Function({
+  Value<String> notebookId,
+  Value<String> content,
+  Value<DateTime> createdAt,
+  Value<DateTime> updatedAt,
+  Value<int> rowid,
+});
+
+final class $$SummariesTableReferences
+    extends BaseReferences<_$AppDatabase, $SummariesTable, StudySummary> {
+  $$SummariesTableReferences(super.$_db, super.$_table, super.$_typedResult);
+
+  static $NotebooksTable _notebookIdTable(_$AppDatabase db) =>
+      db.notebooks.createAlias('summaries__notebook_id__notebooks__id');
+
+  $$NotebooksTableProcessedTableManager get notebookId {
+    final $_column = $_itemColumn<String>('notebook_id')!;
+
+    final manager = $$NotebooksTableTableManager(
+      $_db,
+      $_db.notebooks,
+    ).filter((f) => f.id.sqlEquals($_column));
+    final item = $_typedResult.readTableOrNull(_notebookIdTable($_db));
+    if (item == null) return manager;
+    return ProcessedTableManager(
+      manager.$state.copyWith(prefetchedData: [item]),
+    );
+  }
+}
+
+class $$SummariesTableFilterComposer
+    extends Composer<_$AppDatabase, $SummariesTable> {
+  $$SummariesTableFilterComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnFilters<String> get content => $composableBuilder(
+    column: $table.content,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get createdAt => $composableBuilder(
+    column: $table.createdAt,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get updatedAt => $composableBuilder(
+    column: $table.updatedAt,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  $$NotebooksTableFilterComposer get notebookId {
+    final $$NotebooksTableFilterComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.notebookId,
+      referencedTable: $db.notebooks,
+      getReferencedColumn: (t) => t.id,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$NotebooksTableFilterComposer(
+            $db: $db,
+            $table: $db.notebooks,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return composer;
+  }
+}
+
+class $$SummariesTableOrderingComposer
+    extends Composer<_$AppDatabase, $SummariesTable> {
+  $$SummariesTableOrderingComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnOrderings<String> get content => $composableBuilder(
+    column: $table.content,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get createdAt => $composableBuilder(
+    column: $table.createdAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get updatedAt => $composableBuilder(
+    column: $table.updatedAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  $$NotebooksTableOrderingComposer get notebookId {
+    final $$NotebooksTableOrderingComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.notebookId,
+      referencedTable: $db.notebooks,
+      getReferencedColumn: (t) => t.id,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$NotebooksTableOrderingComposer(
+            $db: $db,
+            $table: $db.notebooks,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return composer;
+  }
+}
+
+class $$SummariesTableAnnotationComposer
+    extends Composer<_$AppDatabase, $SummariesTable> {
+  $$SummariesTableAnnotationComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  GeneratedColumn<String> get content =>
+      $composableBuilder(column: $table.content, builder: (column) => column);
+
+  GeneratedColumn<DateTime> get createdAt =>
+      $composableBuilder(column: $table.createdAt, builder: (column) => column);
+
+  GeneratedColumn<DateTime> get updatedAt =>
+      $composableBuilder(column: $table.updatedAt, builder: (column) => column);
+
+  $$NotebooksTableAnnotationComposer get notebookId {
+    final $$NotebooksTableAnnotationComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.notebookId,
+      referencedTable: $db.notebooks,
+      getReferencedColumn: (t) => t.id,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$NotebooksTableAnnotationComposer(
+            $db: $db,
+            $table: $db.notebooks,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return composer;
+  }
+}
+
+class $$SummariesTableTableManager
+    extends
+        RootTableManager<
+          _$AppDatabase,
+          $SummariesTable,
+          StudySummary,
+          $$SummariesTableFilterComposer,
+          $$SummariesTableOrderingComposer,
+          $$SummariesTableAnnotationComposer,
+          $$SummariesTableCreateCompanionBuilder,
+          $$SummariesTableUpdateCompanionBuilder,
+          (StudySummary, $$SummariesTableReferences),
+          StudySummary,
+          PrefetchHooks Function({bool notebookId})
+        > {
+  $$SummariesTableTableManager(_$AppDatabase db, $SummariesTable table)
+    : super(
+        TableManagerState(
+          db: db,
+          table: table,
+          createFilteringComposer: () =>
+              $$SummariesTableFilterComposer($db: db, $table: table),
+          createOrderingComposer: () =>
+              $$SummariesTableOrderingComposer($db: db, $table: table),
+          createComputedFieldComposer: () =>
+              $$SummariesTableAnnotationComposer($db: db, $table: table),
+          updateCompanionCallback:
+              ({
+                Value<String> notebookId = const Value.absent(),
+                Value<String> content = const Value.absent(),
+                Value<DateTime> createdAt = const Value.absent(),
+                Value<DateTime> updatedAt = const Value.absent(),
+                Value<int> rowid = const Value.absent(),
+              }) => SummariesCompanion(
+                notebookId: notebookId,
+                content: content,
+                createdAt: createdAt,
+                updatedAt: updatedAt,
+                rowid: rowid,
+              ),
+          createCompanionCallback:
+              ({
+                required String notebookId,
+                required String content,
+                required DateTime createdAt,
+                required DateTime updatedAt,
+                Value<int> rowid = const Value.absent(),
+              }) => SummariesCompanion.insert(
+                notebookId: notebookId,
+                content: content,
+                createdAt: createdAt,
+                updatedAt: updatedAt,
+                rowid: rowid,
+              ),
+          withReferenceMapper: (p0) => p0
+              .map(
+                (e) => (
+                  e.readTable<$SummariesTable, StudySummary>(table),
+                  $$SummariesTableReferences(db, table, e),
+                ),
+              )
+              .toList(),
+          prefetchHooksCallback: ({notebookId = false}) {
+            return PrefetchHooks(
+              db: db,
+              explicitlyWatchedTables: [],
+              addJoins:
+                  <
+                    T extends TableManagerState<
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic
+                    >
+                  >(state) {
+                    if (notebookId) {
+                      state = state.withJoin(
+                        currentTable: table,
+                        currentColumn: table.notebookId,
+                        referencedTable: $$SummariesTableReferences
+                            ._notebookIdTable(db),
+                        referencedColumn: $$SummariesTableReferences
+                            ._notebookIdTable(db)
+                            .id,
+                      ) as T;
+                    }
+
+                    return state;
+                  },
+              getPrefetchedDataCallback: (items) async {
+                return [];
+              },
+            );
+          },
+        ),
+      );
+}
+
+typedef $$SummariesTableProcessedTableManager =
+    ProcessedTableManager<
+      _$AppDatabase,
+      $SummariesTable,
+      StudySummary,
+      $$SummariesTableFilterComposer,
+      $$SummariesTableOrderingComposer,
+      $$SummariesTableAnnotationComposer,
+      $$SummariesTableCreateCompanionBuilder,
+      $$SummariesTableUpdateCompanionBuilder,
+      (StudySummary, $$SummariesTableReferences),
+      StudySummary,
+      PrefetchHooks Function({bool notebookId})
+    >;
+typedef $$FlashcardDecksTableCreateCompanionBuilder =
+    FlashcardDecksCompanion Function({
+      required String id,
+      required String notebookId,
+      required String title,
+      required String settings,
+      required DateTime createdAt,
+      required DateTime updatedAt,
+      Value<int> rowid,
+    });
+typedef $$FlashcardDecksTableUpdateCompanionBuilder =
+    FlashcardDecksCompanion Function({
+      Value<String> id,
+      Value<String> notebookId,
+      Value<String> title,
+      Value<String> settings,
+      Value<DateTime> createdAt,
+      Value<DateTime> updatedAt,
+      Value<int> rowid,
+    });
+
+final class $$FlashcardDecksTableReferences
+    extends BaseReferences<_$AppDatabase, $FlashcardDecksTable, StudyDeck> {
+  $$FlashcardDecksTableReferences(
+    super.$_db,
+    super.$_table,
+    super.$_typedResult,
+  );
+
+  static $NotebooksTable _notebookIdTable(_$AppDatabase db) =>
+      db.notebooks.createAlias('flashcard_decks__notebook_id__notebooks__id');
+
+  $$NotebooksTableProcessedTableManager get notebookId {
+    final $_column = $_itemColumn<String>('notebook_id')!;
+
+    final manager = $$NotebooksTableTableManager(
+      $_db,
+      $_db.notebooks,
+    ).filter((f) => f.id.sqlEquals($_column));
+    final item = $_typedResult.readTableOrNull(_notebookIdTable($_db));
+    if (item == null) return manager;
+    return ProcessedTableManager(
+      manager.$state.copyWith(prefetchedData: [item]),
+    );
+  }
+
+  static MultiTypedResultKey<$FlashcardsTable, List<StudyCard>>
+  _flashcardsRefsTable(_$AppDatabase db) => MultiTypedResultKey.fromTable(
+    db.flashcards,
+    aliasName: 'flashcard_decks__id__flashcards__deck_id',
+  );
+
+  $$FlashcardsTableProcessedTableManager get flashcardsRefs {
+    final manager = $$FlashcardsTableTableManager(
+      $_db,
+      $_db.flashcards,
+    ).filter((f) => f.deckId.id.sqlEquals($_itemColumn<String>('id')!));
+
+    final cache = $_typedResult.readTableOrNull(_flashcardsRefsTable($_db));
+    return ProcessedTableManager(
+      manager.$state.copyWith(prefetchedData: cache),
+    );
+  }
+}
+
+class $$FlashcardDecksTableFilterComposer
+    extends Composer<_$AppDatabase, $FlashcardDecksTable> {
+  $$FlashcardDecksTableFilterComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnFilters<String> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get title => $composableBuilder(
+    column: $table.title,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get settings => $composableBuilder(
+    column: $table.settings,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get createdAt => $composableBuilder(
+    column: $table.createdAt,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get updatedAt => $composableBuilder(
+    column: $table.updatedAt,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  $$NotebooksTableFilterComposer get notebookId {
+    final $$NotebooksTableFilterComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.notebookId,
+      referencedTable: $db.notebooks,
+      getReferencedColumn: (t) => t.id,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$NotebooksTableFilterComposer(
+            $db: $db,
+            $table: $db.notebooks,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return composer;
+  }
+
+  Expression<bool> flashcardsRefs(
+    Expression<bool> Function($$FlashcardsTableFilterComposer f) f,
+  ) {
+    final $$FlashcardsTableFilterComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.id,
+      referencedTable: $db.flashcards,
+      getReferencedColumn: (t) => t.deckId,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$FlashcardsTableFilterComposer(
+            $db: $db,
+            $table: $db.flashcards,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return f(composer);
+  }
+}
+
+class $$FlashcardDecksTableOrderingComposer
+    extends Composer<_$AppDatabase, $FlashcardDecksTable> {
+  $$FlashcardDecksTableOrderingComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnOrderings<String> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get title => $composableBuilder(
+    column: $table.title,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get settings => $composableBuilder(
+    column: $table.settings,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get createdAt => $composableBuilder(
+    column: $table.createdAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get updatedAt => $composableBuilder(
+    column: $table.updatedAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  $$NotebooksTableOrderingComposer get notebookId {
+    final $$NotebooksTableOrderingComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.notebookId,
+      referencedTable: $db.notebooks,
+      getReferencedColumn: (t) => t.id,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$NotebooksTableOrderingComposer(
+            $db: $db,
+            $table: $db.notebooks,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return composer;
+  }
+}
+
+class $$FlashcardDecksTableAnnotationComposer
+    extends Composer<_$AppDatabase, $FlashcardDecksTable> {
+  $$FlashcardDecksTableAnnotationComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  GeneratedColumn<String> get id =>
+      $composableBuilder(column: $table.id, builder: (column) => column);
+
+  GeneratedColumn<String> get title =>
+      $composableBuilder(column: $table.title, builder: (column) => column);
+
+  GeneratedColumn<String> get settings =>
+      $composableBuilder(column: $table.settings, builder: (column) => column);
+
+  GeneratedColumn<DateTime> get createdAt =>
+      $composableBuilder(column: $table.createdAt, builder: (column) => column);
+
+  GeneratedColumn<DateTime> get updatedAt =>
+      $composableBuilder(column: $table.updatedAt, builder: (column) => column);
+
+  $$NotebooksTableAnnotationComposer get notebookId {
+    final $$NotebooksTableAnnotationComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.notebookId,
+      referencedTable: $db.notebooks,
+      getReferencedColumn: (t) => t.id,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$NotebooksTableAnnotationComposer(
+            $db: $db,
+            $table: $db.notebooks,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return composer;
+  }
+
+  Expression<T> flashcardsRefs<T extends Object>(
+    Expression<T> Function($$FlashcardsTableAnnotationComposer a) f,
+  ) {
+    final $$FlashcardsTableAnnotationComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.id,
+      referencedTable: $db.flashcards,
+      getReferencedColumn: (t) => t.deckId,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$FlashcardsTableAnnotationComposer(
+            $db: $db,
+            $table: $db.flashcards,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return f(composer);
+  }
+}
+
+class $$FlashcardDecksTableTableManager
+    extends
+        RootTableManager<
+          _$AppDatabase,
+          $FlashcardDecksTable,
+          StudyDeck,
+          $$FlashcardDecksTableFilterComposer,
+          $$FlashcardDecksTableOrderingComposer,
+          $$FlashcardDecksTableAnnotationComposer,
+          $$FlashcardDecksTableCreateCompanionBuilder,
+          $$FlashcardDecksTableUpdateCompanionBuilder,
+          (StudyDeck, $$FlashcardDecksTableReferences),
+          StudyDeck,
+          PrefetchHooks Function({bool notebookId, bool flashcardsRefs})
+        > {
+  $$FlashcardDecksTableTableManager(
+    _$AppDatabase db,
+    $FlashcardDecksTable table,
+  ) : super(
+        TableManagerState(
+          db: db,
+          table: table,
+          createFilteringComposer: () =>
+              $$FlashcardDecksTableFilterComposer($db: db, $table: table),
+          createOrderingComposer: () =>
+              $$FlashcardDecksTableOrderingComposer($db: db, $table: table),
+          createComputedFieldComposer: () =>
+              $$FlashcardDecksTableAnnotationComposer($db: db, $table: table),
+          updateCompanionCallback:
+              ({
+                Value<String> id = const Value.absent(),
+                Value<String> notebookId = const Value.absent(),
+                Value<String> title = const Value.absent(),
+                Value<String> settings = const Value.absent(),
+                Value<DateTime> createdAt = const Value.absent(),
+                Value<DateTime> updatedAt = const Value.absent(),
+                Value<int> rowid = const Value.absent(),
+              }) => FlashcardDecksCompanion(
+                id: id,
+                notebookId: notebookId,
+                title: title,
+                settings: settings,
+                createdAt: createdAt,
+                updatedAt: updatedAt,
+                rowid: rowid,
+              ),
+          createCompanionCallback:
+              ({
+                required String id,
+                required String notebookId,
+                required String title,
+                required String settings,
+                required DateTime createdAt,
+                required DateTime updatedAt,
+                Value<int> rowid = const Value.absent(),
+              }) => FlashcardDecksCompanion.insert(
+                id: id,
+                notebookId: notebookId,
+                title: title,
+                settings: settings,
+                createdAt: createdAt,
+                updatedAt: updatedAt,
+                rowid: rowid,
+              ),
+          withReferenceMapper: (p0) => p0
+              .map(
+                (e) => (
+                  e.readTable<$FlashcardDecksTable, StudyDeck>(table),
+                  $$FlashcardDecksTableReferences(db, table, e),
+                ),
+              )
+              .toList(),
+          prefetchHooksCallback:
+              ({notebookId = false, flashcardsRefs = false}) {
+                return PrefetchHooks(
+                  db: db,
+                  explicitlyWatchedTables: [if (flashcardsRefs) db.flashcards],
+                  addJoins:
+                      <
+                        T extends TableManagerState<
+                          dynamic,
+                          dynamic,
+                          dynamic,
+                          dynamic,
+                          dynamic,
+                          dynamic,
+                          dynamic,
+                          dynamic,
+                          dynamic,
+                          dynamic,
+                          dynamic
+                        >
+                      >(state) {
+                        if (notebookId) {
+                          state = state.withJoin(
+                            currentTable: table,
+                            currentColumn: table.notebookId,
+                            referencedTable: $$FlashcardDecksTableReferences
+                                ._notebookIdTable(db),
+                            referencedColumn: $$FlashcardDecksTableReferences
+                                ._notebookIdTable(db)
+                                .id,
+                          ) as T;
+                        }
+
+                        return state;
+                      },
+                  getPrefetchedDataCallback: (items) async {
+                    return [
+                      if (flashcardsRefs)
+                        await $_getPrefetchedData<
+                          StudyDeck,
+                          $FlashcardDecksTable,
+                          StudyCard
+                        >(
+                          currentTable: table,
+                          referencedTable: $$FlashcardDecksTableReferences
+                              ._flashcardsRefsTable(db),
+                          managerFromTypedResult: (p0) =>
+                              $$FlashcardDecksTableReferences(
+                                db,
+                                table,
+                                p0,
+                              ).flashcardsRefs,
+                          referencedItemsForCurrentItem:
+                              (item, referencedItems) => referencedItems.where(
+                                (e) => e.deckId == item.id,
+                              ),
+                          typedResults: items,
+                        ),
+                    ];
+                  },
+                );
+              },
+        ),
+      );
+}
+
+typedef $$FlashcardDecksTableProcessedTableManager =
+    ProcessedTableManager<
+      _$AppDatabase,
+      $FlashcardDecksTable,
+      StudyDeck,
+      $$FlashcardDecksTableFilterComposer,
+      $$FlashcardDecksTableOrderingComposer,
+      $$FlashcardDecksTableAnnotationComposer,
+      $$FlashcardDecksTableCreateCompanionBuilder,
+      $$FlashcardDecksTableUpdateCompanionBuilder,
+      (StudyDeck, $$FlashcardDecksTableReferences),
+      StudyDeck,
+      PrefetchHooks Function({bool notebookId, bool flashcardsRefs})
+    >;
+typedef $$FlashcardsTableCreateCompanionBuilder = FlashcardsCompanion Function({
+  required String id,
+  required String deckId,
+  required String front,
+  required String back,
+  Value<String> status,
+  required int position,
+  Value<int> rowid,
+});
+typedef $$FlashcardsTableUpdateCompanionBuilder = FlashcardsCompanion Function({
+  Value<String> id,
+  Value<String> deckId,
+  Value<String> front,
+  Value<String> back,
+  Value<String> status,
+  Value<int> position,
+  Value<int> rowid,
+});
+
+final class $$FlashcardsTableReferences
+    extends BaseReferences<_$AppDatabase, $FlashcardsTable, StudyCard> {
+  $$FlashcardsTableReferences(super.$_db, super.$_table, super.$_typedResult);
+
+  static $FlashcardDecksTable _deckIdTable(_$AppDatabase db) =>
+      db.flashcardDecks.createAlias('flashcards__deck_id__flashcard_decks__id');
+
+  $$FlashcardDecksTableProcessedTableManager get deckId {
+    final $_column = $_itemColumn<String>('deck_id')!;
+
+    final manager = $$FlashcardDecksTableTableManager(
+      $_db,
+      $_db.flashcardDecks,
+    ).filter((f) => f.id.sqlEquals($_column));
+    final item = $_typedResult.readTableOrNull(_deckIdTable($_db));
+    if (item == null) return manager;
+    return ProcessedTableManager(
+      manager.$state.copyWith(prefetchedData: [item]),
+    );
+  }
+}
+
+class $$FlashcardsTableFilterComposer
+    extends Composer<_$AppDatabase, $FlashcardsTable> {
+  $$FlashcardsTableFilterComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnFilters<String> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get front => $composableBuilder(
+    column: $table.front,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get back => $composableBuilder(
+    column: $table.back,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get status => $composableBuilder(
+    column: $table.status,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get position => $composableBuilder(
+    column: $table.position,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  $$FlashcardDecksTableFilterComposer get deckId {
+    final $$FlashcardDecksTableFilterComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.deckId,
+      referencedTable: $db.flashcardDecks,
+      getReferencedColumn: (t) => t.id,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$FlashcardDecksTableFilterComposer(
+            $db: $db,
+            $table: $db.flashcardDecks,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return composer;
+  }
+}
+
+class $$FlashcardsTableOrderingComposer
+    extends Composer<_$AppDatabase, $FlashcardsTable> {
+  $$FlashcardsTableOrderingComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnOrderings<String> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get front => $composableBuilder(
+    column: $table.front,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get back => $composableBuilder(
+    column: $table.back,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get status => $composableBuilder(
+    column: $table.status,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get position => $composableBuilder(
+    column: $table.position,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  $$FlashcardDecksTableOrderingComposer get deckId {
+    final $$FlashcardDecksTableOrderingComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.deckId,
+      referencedTable: $db.flashcardDecks,
+      getReferencedColumn: (t) => t.id,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$FlashcardDecksTableOrderingComposer(
+            $db: $db,
+            $table: $db.flashcardDecks,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return composer;
+  }
+}
+
+class $$FlashcardsTableAnnotationComposer
+    extends Composer<_$AppDatabase, $FlashcardsTable> {
+  $$FlashcardsTableAnnotationComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  GeneratedColumn<String> get id =>
+      $composableBuilder(column: $table.id, builder: (column) => column);
+
+  GeneratedColumn<String> get front =>
+      $composableBuilder(column: $table.front, builder: (column) => column);
+
+  GeneratedColumn<String> get back =>
+      $composableBuilder(column: $table.back, builder: (column) => column);
+
+  GeneratedColumn<String> get status =>
+      $composableBuilder(column: $table.status, builder: (column) => column);
+
+  GeneratedColumn<int> get position =>
+      $composableBuilder(column: $table.position, builder: (column) => column);
+
+  $$FlashcardDecksTableAnnotationComposer get deckId {
+    final $$FlashcardDecksTableAnnotationComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.deckId,
+      referencedTable: $db.flashcardDecks,
+      getReferencedColumn: (t) => t.id,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$FlashcardDecksTableAnnotationComposer(
+            $db: $db,
+            $table: $db.flashcardDecks,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return composer;
+  }
+}
+
+class $$FlashcardsTableTableManager
+    extends
+        RootTableManager<
+          _$AppDatabase,
+          $FlashcardsTable,
+          StudyCard,
+          $$FlashcardsTableFilterComposer,
+          $$FlashcardsTableOrderingComposer,
+          $$FlashcardsTableAnnotationComposer,
+          $$FlashcardsTableCreateCompanionBuilder,
+          $$FlashcardsTableUpdateCompanionBuilder,
+          (StudyCard, $$FlashcardsTableReferences),
+          StudyCard,
+          PrefetchHooks Function({bool deckId})
+        > {
+  $$FlashcardsTableTableManager(_$AppDatabase db, $FlashcardsTable table)
+    : super(
+        TableManagerState(
+          db: db,
+          table: table,
+          createFilteringComposer: () =>
+              $$FlashcardsTableFilterComposer($db: db, $table: table),
+          createOrderingComposer: () =>
+              $$FlashcardsTableOrderingComposer($db: db, $table: table),
+          createComputedFieldComposer: () =>
+              $$FlashcardsTableAnnotationComposer($db: db, $table: table),
+          updateCompanionCallback:
+              ({
+                Value<String> id = const Value.absent(),
+                Value<String> deckId = const Value.absent(),
+                Value<String> front = const Value.absent(),
+                Value<String> back = const Value.absent(),
+                Value<String> status = const Value.absent(),
+                Value<int> position = const Value.absent(),
+                Value<int> rowid = const Value.absent(),
+              }) => FlashcardsCompanion(
+                id: id,
+                deckId: deckId,
+                front: front,
+                back: back,
+                status: status,
+                position: position,
+                rowid: rowid,
+              ),
+          createCompanionCallback:
+              ({
+                required String id,
+                required String deckId,
+                required String front,
+                required String back,
+                Value<String> status = const Value.absent(),
+                required int position,
+                Value<int> rowid = const Value.absent(),
+              }) => FlashcardsCompanion.insert(
+                id: id,
+                deckId: deckId,
+                front: front,
+                back: back,
+                status: status,
+                position: position,
+                rowid: rowid,
+              ),
+          withReferenceMapper: (p0) => p0
+              .map(
+                (e) => (
+                  e.readTable<$FlashcardsTable, StudyCard>(table),
+                  $$FlashcardsTableReferences(db, table, e),
+                ),
+              )
+              .toList(),
+          prefetchHooksCallback: ({deckId = false}) {
+            return PrefetchHooks(
+              db: db,
+              explicitlyWatchedTables: [],
+              addJoins:
+                  <
+                    T extends TableManagerState<
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic
+                    >
+                  >(state) {
+                    if (deckId) {
+                      state = state.withJoin(
+                        currentTable: table,
+                        currentColumn: table.deckId,
+                        referencedTable: $$FlashcardsTableReferences
+                            ._deckIdTable(db),
+                        referencedColumn: $$FlashcardsTableReferences
+                            ._deckIdTable(db)
+                            .id,
+                      ) as T;
+                    }
+
+                    return state;
+                  },
+              getPrefetchedDataCallback: (items) async {
+                return [];
+              },
+            );
+          },
+        ),
+      );
+}
+
+typedef $$FlashcardsTableProcessedTableManager =
+    ProcessedTableManager<
+      _$AppDatabase,
+      $FlashcardsTable,
+      StudyCard,
+      $$FlashcardsTableFilterComposer,
+      $$FlashcardsTableOrderingComposer,
+      $$FlashcardsTableAnnotationComposer,
+      $$FlashcardsTableCreateCompanionBuilder,
+      $$FlashcardsTableUpdateCompanionBuilder,
+      (StudyCard, $$FlashcardsTableReferences),
+      StudyCard,
+      PrefetchHooks Function({bool deckId})
+    >;
+typedef $$PracticeQuizzesTableCreateCompanionBuilder =
+    PracticeQuizzesCompanion Function({
+      required String id,
+      required String notebookId,
+      required String title,
+      required String settings,
+      required DateTime createdAt,
+      required DateTime updatedAt,
+      Value<int> rowid,
+    });
+typedef $$PracticeQuizzesTableUpdateCompanionBuilder =
+    PracticeQuizzesCompanion Function({
+      Value<String> id,
+      Value<String> notebookId,
+      Value<String> title,
+      Value<String> settings,
+      Value<DateTime> createdAt,
+      Value<DateTime> updatedAt,
+      Value<int> rowid,
+    });
+
+final class $$PracticeQuizzesTableReferences
+    extends BaseReferences<_$AppDatabase, $PracticeQuizzesTable, StudyQuiz> {
+  $$PracticeQuizzesTableReferences(
+    super.$_db,
+    super.$_table,
+    super.$_typedResult,
+  );
+
+  static $NotebooksTable _notebookIdTable(_$AppDatabase db) =>
+      db.notebooks.createAlias('practice_quizzes__notebook_id__notebooks__id');
+
+  $$NotebooksTableProcessedTableManager get notebookId {
+    final $_column = $_itemColumn<String>('notebook_id')!;
+
+    final manager = $$NotebooksTableTableManager(
+      $_db,
+      $_db.notebooks,
+    ).filter((f) => f.id.sqlEquals($_column));
+    final item = $_typedResult.readTableOrNull(_notebookIdTable($_db));
+    if (item == null) return manager;
+    return ProcessedTableManager(
+      manager.$state.copyWith(prefetchedData: [item]),
+    );
+  }
+
+  static MultiTypedResultKey<$PracticeQuestionsTable, List<StudyQuestion>>
+  _practiceQuestionsRefsTable(_$AppDatabase db) =>
+      MultiTypedResultKey.fromTable(
+        db.practiceQuestions,
+        aliasName: 'practice_quizzes__id__practice_questions__quiz_id',
+      );
+
+  $$PracticeQuestionsTableProcessedTableManager get practiceQuestionsRefs {
+    final manager = $$PracticeQuestionsTableTableManager(
+      $_db,
+      $_db.practiceQuestions,
+    ).filter((f) => f.quizId.id.sqlEquals($_itemColumn<String>('id')!));
+
+    final cache = $_typedResult.readTableOrNull(
+      _practiceQuestionsRefsTable($_db),
+    );
+    return ProcessedTableManager(
+      manager.$state.copyWith(prefetchedData: cache),
+    );
+  }
+
+  static MultiTypedResultKey<$PracticeAttemptsTable, List<StudyAttempt>>
+  _practiceAttemptsRefsTable(_$AppDatabase db) => MultiTypedResultKey.fromTable(
+    db.practiceAttempts,
+    aliasName: 'practice_quizzes__id__practice_attempts__quiz_id',
+  );
+
+  $$PracticeAttemptsTableProcessedTableManager get practiceAttemptsRefs {
+    final manager = $$PracticeAttemptsTableTableManager(
+      $_db,
+      $_db.practiceAttempts,
+    ).filter((f) => f.quizId.id.sqlEquals($_itemColumn<String>('id')!));
+
+    final cache = $_typedResult.readTableOrNull(
+      _practiceAttemptsRefsTable($_db),
+    );
+    return ProcessedTableManager(
+      manager.$state.copyWith(prefetchedData: cache),
+    );
+  }
+}
+
+class $$PracticeQuizzesTableFilterComposer
+    extends Composer<_$AppDatabase, $PracticeQuizzesTable> {
+  $$PracticeQuizzesTableFilterComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnFilters<String> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get title => $composableBuilder(
+    column: $table.title,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get settings => $composableBuilder(
+    column: $table.settings,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get createdAt => $composableBuilder(
+    column: $table.createdAt,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get updatedAt => $composableBuilder(
+    column: $table.updatedAt,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  $$NotebooksTableFilterComposer get notebookId {
+    final $$NotebooksTableFilterComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.notebookId,
+      referencedTable: $db.notebooks,
+      getReferencedColumn: (t) => t.id,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$NotebooksTableFilterComposer(
+            $db: $db,
+            $table: $db.notebooks,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return composer;
+  }
+
+  Expression<bool> practiceQuestionsRefs(
+    Expression<bool> Function($$PracticeQuestionsTableFilterComposer f) f,
+  ) {
+    final $$PracticeQuestionsTableFilterComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.id,
+      referencedTable: $db.practiceQuestions,
+      getReferencedColumn: (t) => t.quizId,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$PracticeQuestionsTableFilterComposer(
+            $db: $db,
+            $table: $db.practiceQuestions,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return f(composer);
+  }
+
+  Expression<bool> practiceAttemptsRefs(
+    Expression<bool> Function($$PracticeAttemptsTableFilterComposer f) f,
+  ) {
+    final $$PracticeAttemptsTableFilterComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.id,
+      referencedTable: $db.practiceAttempts,
+      getReferencedColumn: (t) => t.quizId,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$PracticeAttemptsTableFilterComposer(
+            $db: $db,
+            $table: $db.practiceAttempts,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return f(composer);
+  }
+}
+
+class $$PracticeQuizzesTableOrderingComposer
+    extends Composer<_$AppDatabase, $PracticeQuizzesTable> {
+  $$PracticeQuizzesTableOrderingComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnOrderings<String> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get title => $composableBuilder(
+    column: $table.title,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get settings => $composableBuilder(
+    column: $table.settings,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get createdAt => $composableBuilder(
+    column: $table.createdAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get updatedAt => $composableBuilder(
+    column: $table.updatedAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  $$NotebooksTableOrderingComposer get notebookId {
+    final $$NotebooksTableOrderingComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.notebookId,
+      referencedTable: $db.notebooks,
+      getReferencedColumn: (t) => t.id,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$NotebooksTableOrderingComposer(
+            $db: $db,
+            $table: $db.notebooks,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return composer;
+  }
+}
+
+class $$PracticeQuizzesTableAnnotationComposer
+    extends Composer<_$AppDatabase, $PracticeQuizzesTable> {
+  $$PracticeQuizzesTableAnnotationComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  GeneratedColumn<String> get id =>
+      $composableBuilder(column: $table.id, builder: (column) => column);
+
+  GeneratedColumn<String> get title =>
+      $composableBuilder(column: $table.title, builder: (column) => column);
+
+  GeneratedColumn<String> get settings =>
+      $composableBuilder(column: $table.settings, builder: (column) => column);
+
+  GeneratedColumn<DateTime> get createdAt =>
+      $composableBuilder(column: $table.createdAt, builder: (column) => column);
+
+  GeneratedColumn<DateTime> get updatedAt =>
+      $composableBuilder(column: $table.updatedAt, builder: (column) => column);
+
+  $$NotebooksTableAnnotationComposer get notebookId {
+    final $$NotebooksTableAnnotationComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.notebookId,
+      referencedTable: $db.notebooks,
+      getReferencedColumn: (t) => t.id,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$NotebooksTableAnnotationComposer(
+            $db: $db,
+            $table: $db.notebooks,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return composer;
+  }
+
+  Expression<T> practiceQuestionsRefs<T extends Object>(
+    Expression<T> Function($$PracticeQuestionsTableAnnotationComposer a) f,
+  ) {
+    final $$PracticeQuestionsTableAnnotationComposer composer =
+        $composerBuilder(
+          composer: this,
+          getCurrentColumn: (t) => t.id,
+          referencedTable: $db.practiceQuestions,
+          getReferencedColumn: (t) => t.quizId,
+          builder:
+              (
+                joinBuilder, {
+                $addJoinBuilderToRootComposer,
+                $removeJoinBuilderFromRootComposer,
+              }) => $$PracticeQuestionsTableAnnotationComposer(
+                $db: $db,
+                $table: $db.practiceQuestions,
+                $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+                joinBuilder: joinBuilder,
+                $removeJoinBuilderFromRootComposer:
+                    $removeJoinBuilderFromRootComposer,
+              ),
+        );
+    return f(composer);
+  }
+
+  Expression<T> practiceAttemptsRefs<T extends Object>(
+    Expression<T> Function($$PracticeAttemptsTableAnnotationComposer a) f,
+  ) {
+    final $$PracticeAttemptsTableAnnotationComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.id,
+      referencedTable: $db.practiceAttempts,
+      getReferencedColumn: (t) => t.quizId,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$PracticeAttemptsTableAnnotationComposer(
+            $db: $db,
+            $table: $db.practiceAttempts,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return f(composer);
+  }
+}
+
+class $$PracticeQuizzesTableTableManager
+    extends
+        RootTableManager<
+          _$AppDatabase,
+          $PracticeQuizzesTable,
+          StudyQuiz,
+          $$PracticeQuizzesTableFilterComposer,
+          $$PracticeQuizzesTableOrderingComposer,
+          $$PracticeQuizzesTableAnnotationComposer,
+          $$PracticeQuizzesTableCreateCompanionBuilder,
+          $$PracticeQuizzesTableUpdateCompanionBuilder,
+          (StudyQuiz, $$PracticeQuizzesTableReferences),
+          StudyQuiz,
+          PrefetchHooks Function({
+            bool notebookId,
+            bool practiceQuestionsRefs,
+            bool practiceAttemptsRefs,
+          })
+        > {
+  $$PracticeQuizzesTableTableManager(
+    _$AppDatabase db,
+    $PracticeQuizzesTable table,
+  ) : super(
+        TableManagerState(
+          db: db,
+          table: table,
+          createFilteringComposer: () =>
+              $$PracticeQuizzesTableFilterComposer($db: db, $table: table),
+          createOrderingComposer: () =>
+              $$PracticeQuizzesTableOrderingComposer($db: db, $table: table),
+          createComputedFieldComposer: () =>
+              $$PracticeQuizzesTableAnnotationComposer($db: db, $table: table),
+          updateCompanionCallback:
+              ({
+                Value<String> id = const Value.absent(),
+                Value<String> notebookId = const Value.absent(),
+                Value<String> title = const Value.absent(),
+                Value<String> settings = const Value.absent(),
+                Value<DateTime> createdAt = const Value.absent(),
+                Value<DateTime> updatedAt = const Value.absent(),
+                Value<int> rowid = const Value.absent(),
+              }) => PracticeQuizzesCompanion(
+                id: id,
+                notebookId: notebookId,
+                title: title,
+                settings: settings,
+                createdAt: createdAt,
+                updatedAt: updatedAt,
+                rowid: rowid,
+              ),
+          createCompanionCallback:
+              ({
+                required String id,
+                required String notebookId,
+                required String title,
+                required String settings,
+                required DateTime createdAt,
+                required DateTime updatedAt,
+                Value<int> rowid = const Value.absent(),
+              }) => PracticeQuizzesCompanion.insert(
+                id: id,
+                notebookId: notebookId,
+                title: title,
+                settings: settings,
+                createdAt: createdAt,
+                updatedAt: updatedAt,
+                rowid: rowid,
+              ),
+          withReferenceMapper: (p0) => p0
+              .map(
+                (e) => (
+                  e.readTable<$PracticeQuizzesTable, StudyQuiz>(table),
+                  $$PracticeQuizzesTableReferences(db, table, e),
+                ),
+              )
+              .toList(),
+          prefetchHooksCallback:
+              ({
+                notebookId = false,
+                practiceQuestionsRefs = false,
+                practiceAttemptsRefs = false,
+              }) {
+                return PrefetchHooks(
+                  db: db,
+                  explicitlyWatchedTables: [
+                    if (practiceQuestionsRefs) db.practiceQuestions,
+                    if (practiceAttemptsRefs) db.practiceAttempts,
+                  ],
+                  addJoins:
+                      <
+                        T extends TableManagerState<
+                          dynamic,
+                          dynamic,
+                          dynamic,
+                          dynamic,
+                          dynamic,
+                          dynamic,
+                          dynamic,
+                          dynamic,
+                          dynamic,
+                          dynamic,
+                          dynamic
+                        >
+                      >(state) {
+                        if (notebookId) {
+                          state = state.withJoin(
+                            currentTable: table,
+                            currentColumn: table.notebookId,
+                            referencedTable: $$PracticeQuizzesTableReferences
+                                ._notebookIdTable(db),
+                            referencedColumn: $$PracticeQuizzesTableReferences
+                                ._notebookIdTable(db)
+                                .id,
+                          ) as T;
+                        }
+
+                        return state;
+                      },
+                  getPrefetchedDataCallback: (items) async {
+                    return [
+                      if (practiceQuestionsRefs)
+                        await $_getPrefetchedData<
+                          StudyQuiz,
+                          $PracticeQuizzesTable,
+                          StudyQuestion
+                        >(
+                          currentTable: table,
+                          referencedTable: $$PracticeQuizzesTableReferences
+                              ._practiceQuestionsRefsTable(db),
+                          managerFromTypedResult: (p0) =>
+                              $$PracticeQuizzesTableReferences(
+                                db,
+                                table,
+                                p0,
+                              ).practiceQuestionsRefs,
+                          referencedItemsForCurrentItem:
+                              (item, referencedItems) => referencedItems.where(
+                                (e) => e.quizId == item.id,
+                              ),
+                          typedResults: items,
+                        ),
+                      if (practiceAttemptsRefs)
+                        await $_getPrefetchedData<
+                          StudyQuiz,
+                          $PracticeQuizzesTable,
+                          StudyAttempt
+                        >(
+                          currentTable: table,
+                          referencedTable: $$PracticeQuizzesTableReferences
+                              ._practiceAttemptsRefsTable(db),
+                          managerFromTypedResult: (p0) =>
+                              $$PracticeQuizzesTableReferences(
+                                db,
+                                table,
+                                p0,
+                              ).practiceAttemptsRefs,
+                          referencedItemsForCurrentItem:
+                              (item, referencedItems) => referencedItems.where(
+                                (e) => e.quizId == item.id,
+                              ),
+                          typedResults: items,
+                        ),
+                    ];
+                  },
+                );
+              },
+        ),
+      );
+}
+
+typedef $$PracticeQuizzesTableProcessedTableManager =
+    ProcessedTableManager<
+      _$AppDatabase,
+      $PracticeQuizzesTable,
+      StudyQuiz,
+      $$PracticeQuizzesTableFilterComposer,
+      $$PracticeQuizzesTableOrderingComposer,
+      $$PracticeQuizzesTableAnnotationComposer,
+      $$PracticeQuizzesTableCreateCompanionBuilder,
+      $$PracticeQuizzesTableUpdateCompanionBuilder,
+      (StudyQuiz, $$PracticeQuizzesTableReferences),
+      StudyQuiz,
+      PrefetchHooks Function({
+        bool notebookId,
+        bool practiceQuestionsRefs,
+        bool practiceAttemptsRefs,
+      })
+    >;
+typedef $$PracticeQuestionsTableCreateCompanionBuilder =
+    PracticeQuestionsCompanion Function({
+      required String id,
+      required String quizId,
+      required String type,
+      required String prompt,
+      Value<String?> options,
+      Value<int?> correctIndex,
+      Value<bool?> correctBoolean,
+      Value<String?> acceptedAnswers,
+      required String explanation,
+      required int position,
+      Value<int> rowid,
+    });
+typedef $$PracticeQuestionsTableUpdateCompanionBuilder =
+    PracticeQuestionsCompanion Function({
+      Value<String> id,
+      Value<String> quizId,
+      Value<String> type,
+      Value<String> prompt,
+      Value<String?> options,
+      Value<int?> correctIndex,
+      Value<bool?> correctBoolean,
+      Value<String?> acceptedAnswers,
+      Value<String> explanation,
+      Value<int> position,
+      Value<int> rowid,
+    });
+
+final class $$PracticeQuestionsTableReferences
+    extends
+        BaseReferences<_$AppDatabase, $PracticeQuestionsTable, StudyQuestion> {
+  $$PracticeQuestionsTableReferences(
+    super.$_db,
+    super.$_table,
+    super.$_typedResult,
+  );
+
+  static $PracticeQuizzesTable _quizIdTable(_$AppDatabase db) => db
+      .practiceQuizzes
+      .createAlias('practice_questions__quiz_id__practice_quizzes__id');
+
+  $$PracticeQuizzesTableProcessedTableManager get quizId {
+    final $_column = $_itemColumn<String>('quiz_id')!;
+
+    final manager = $$PracticeQuizzesTableTableManager(
+      $_db,
+      $_db.practiceQuizzes,
+    ).filter((f) => f.id.sqlEquals($_column));
+    final item = $_typedResult.readTableOrNull(_quizIdTable($_db));
+    if (item == null) return manager;
+    return ProcessedTableManager(
+      manager.$state.copyWith(prefetchedData: [item]),
+    );
+  }
+}
+
+class $$PracticeQuestionsTableFilterComposer
+    extends Composer<_$AppDatabase, $PracticeQuestionsTable> {
+  $$PracticeQuestionsTableFilterComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnFilters<String> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get type => $composableBuilder(
+    column: $table.type,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get prompt => $composableBuilder(
+    column: $table.prompt,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get options => $composableBuilder(
+    column: $table.options,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get correctIndex => $composableBuilder(
+    column: $table.correctIndex,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<bool> get correctBoolean => $composableBuilder(
+    column: $table.correctBoolean,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get acceptedAnswers => $composableBuilder(
+    column: $table.acceptedAnswers,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get explanation => $composableBuilder(
+    column: $table.explanation,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get position => $composableBuilder(
+    column: $table.position,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  $$PracticeQuizzesTableFilterComposer get quizId {
+    final $$PracticeQuizzesTableFilterComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.quizId,
+      referencedTable: $db.practiceQuizzes,
+      getReferencedColumn: (t) => t.id,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$PracticeQuizzesTableFilterComposer(
+            $db: $db,
+            $table: $db.practiceQuizzes,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return composer;
+  }
+}
+
+class $$PracticeQuestionsTableOrderingComposer
+    extends Composer<_$AppDatabase, $PracticeQuestionsTable> {
+  $$PracticeQuestionsTableOrderingComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnOrderings<String> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get type => $composableBuilder(
+    column: $table.type,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get prompt => $composableBuilder(
+    column: $table.prompt,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get options => $composableBuilder(
+    column: $table.options,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get correctIndex => $composableBuilder(
+    column: $table.correctIndex,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<bool> get correctBoolean => $composableBuilder(
+    column: $table.correctBoolean,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get acceptedAnswers => $composableBuilder(
+    column: $table.acceptedAnswers,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get explanation => $composableBuilder(
+    column: $table.explanation,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get position => $composableBuilder(
+    column: $table.position,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  $$PracticeQuizzesTableOrderingComposer get quizId {
+    final $$PracticeQuizzesTableOrderingComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.quizId,
+      referencedTable: $db.practiceQuizzes,
+      getReferencedColumn: (t) => t.id,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$PracticeQuizzesTableOrderingComposer(
+            $db: $db,
+            $table: $db.practiceQuizzes,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return composer;
+  }
+}
+
+class $$PracticeQuestionsTableAnnotationComposer
+    extends Composer<_$AppDatabase, $PracticeQuestionsTable> {
+  $$PracticeQuestionsTableAnnotationComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  GeneratedColumn<String> get id =>
+      $composableBuilder(column: $table.id, builder: (column) => column);
+
+  GeneratedColumn<String> get type =>
+      $composableBuilder(column: $table.type, builder: (column) => column);
+
+  GeneratedColumn<String> get prompt =>
+      $composableBuilder(column: $table.prompt, builder: (column) => column);
+
+  GeneratedColumn<String> get options =>
+      $composableBuilder(column: $table.options, builder: (column) => column);
+
+  GeneratedColumn<int> get correctIndex => $composableBuilder(
+    column: $table.correctIndex,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<bool> get correctBoolean => $composableBuilder(
+    column: $table.correctBoolean,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get acceptedAnswers => $composableBuilder(
+    column: $table.acceptedAnswers,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get explanation => $composableBuilder(
+    column: $table.explanation,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<int> get position =>
+      $composableBuilder(column: $table.position, builder: (column) => column);
+
+  $$PracticeQuizzesTableAnnotationComposer get quizId {
+    final $$PracticeQuizzesTableAnnotationComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.quizId,
+      referencedTable: $db.practiceQuizzes,
+      getReferencedColumn: (t) => t.id,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$PracticeQuizzesTableAnnotationComposer(
+            $db: $db,
+            $table: $db.practiceQuizzes,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return composer;
+  }
+}
+
+class $$PracticeQuestionsTableTableManager
+    extends
+        RootTableManager<
+          _$AppDatabase,
+          $PracticeQuestionsTable,
+          StudyQuestion,
+          $$PracticeQuestionsTableFilterComposer,
+          $$PracticeQuestionsTableOrderingComposer,
+          $$PracticeQuestionsTableAnnotationComposer,
+          $$PracticeQuestionsTableCreateCompanionBuilder,
+          $$PracticeQuestionsTableUpdateCompanionBuilder,
+          (StudyQuestion, $$PracticeQuestionsTableReferences),
+          StudyQuestion,
+          PrefetchHooks Function({bool quizId})
+        > {
+  $$PracticeQuestionsTableTableManager(
+    _$AppDatabase db,
+    $PracticeQuestionsTable table,
+  ) : super(
+        TableManagerState(
+          db: db,
+          table: table,
+          createFilteringComposer: () =>
+              $$PracticeQuestionsTableFilterComposer($db: db, $table: table),
+          createOrderingComposer: () =>
+              $$PracticeQuestionsTableOrderingComposer($db: db, $table: table),
+          createComputedFieldComposer: () =>
+              $$PracticeQuestionsTableAnnotationComposer(
+                $db: db,
+                $table: table,
+              ),
+          updateCompanionCallback:
+              ({
+                Value<String> id = const Value.absent(),
+                Value<String> quizId = const Value.absent(),
+                Value<String> type = const Value.absent(),
+                Value<String> prompt = const Value.absent(),
+                Value<String?> options = const Value.absent(),
+                Value<int?> correctIndex = const Value.absent(),
+                Value<bool?> correctBoolean = const Value.absent(),
+                Value<String?> acceptedAnswers = const Value.absent(),
+                Value<String> explanation = const Value.absent(),
+                Value<int> position = const Value.absent(),
+                Value<int> rowid = const Value.absent(),
+              }) => PracticeQuestionsCompanion(
+                id: id,
+                quizId: quizId,
+                type: type,
+                prompt: prompt,
+                options: options,
+                correctIndex: correctIndex,
+                correctBoolean: correctBoolean,
+                acceptedAnswers: acceptedAnswers,
+                explanation: explanation,
+                position: position,
+                rowid: rowid,
+              ),
+          createCompanionCallback:
+              ({
+                required String id,
+                required String quizId,
+                required String type,
+                required String prompt,
+                Value<String?> options = const Value.absent(),
+                Value<int?> correctIndex = const Value.absent(),
+                Value<bool?> correctBoolean = const Value.absent(),
+                Value<String?> acceptedAnswers = const Value.absent(),
+                required String explanation,
+                required int position,
+                Value<int> rowid = const Value.absent(),
+              }) => PracticeQuestionsCompanion.insert(
+                id: id,
+                quizId: quizId,
+                type: type,
+                prompt: prompt,
+                options: options,
+                correctIndex: correctIndex,
+                correctBoolean: correctBoolean,
+                acceptedAnswers: acceptedAnswers,
+                explanation: explanation,
+                position: position,
+                rowid: rowid,
+              ),
+          withReferenceMapper: (p0) => p0
+              .map(
+                (e) => (
+                  e.readTable<$PracticeQuestionsTable, StudyQuestion>(table),
+                  $$PracticeQuestionsTableReferences(db, table, e),
+                ),
+              )
+              .toList(),
+          prefetchHooksCallback: ({quizId = false}) {
+            return PrefetchHooks(
+              db: db,
+              explicitlyWatchedTables: [],
+              addJoins:
+                  <
+                    T extends TableManagerState<
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic
+                    >
+                  >(state) {
+                    if (quizId) {
+                      state = state.withJoin(
+                        currentTable: table,
+                        currentColumn: table.quizId,
+                        referencedTable: $$PracticeQuestionsTableReferences
+                            ._quizIdTable(db),
+                        referencedColumn: $$PracticeQuestionsTableReferences
+                            ._quizIdTable(db)
+                            .id,
+                      ) as T;
+                    }
+
+                    return state;
+                  },
+              getPrefetchedDataCallback: (items) async {
+                return [];
+              },
+            );
+          },
+        ),
+      );
+}
+
+typedef $$PracticeQuestionsTableProcessedTableManager =
+    ProcessedTableManager<
+      _$AppDatabase,
+      $PracticeQuestionsTable,
+      StudyQuestion,
+      $$PracticeQuestionsTableFilterComposer,
+      $$PracticeQuestionsTableOrderingComposer,
+      $$PracticeQuestionsTableAnnotationComposer,
+      $$PracticeQuestionsTableCreateCompanionBuilder,
+      $$PracticeQuestionsTableUpdateCompanionBuilder,
+      (StudyQuestion, $$PracticeQuestionsTableReferences),
+      StudyQuestion,
+      PrefetchHooks Function({bool quizId})
+    >;
+typedef $$PracticeAttemptsTableCreateCompanionBuilder =
+    PracticeAttemptsCompanion Function({
+      required String id,
+      required String quizId,
+      required DateTime attemptedAt,
+      required int score,
+      required int total,
+      required String results,
+      Value<int> rowid,
+    });
+typedef $$PracticeAttemptsTableUpdateCompanionBuilder =
+    PracticeAttemptsCompanion Function({
+      Value<String> id,
+      Value<String> quizId,
+      Value<DateTime> attemptedAt,
+      Value<int> score,
+      Value<int> total,
+      Value<String> results,
+      Value<int> rowid,
+    });
+
+final class $$PracticeAttemptsTableReferences
+    extends
+        BaseReferences<_$AppDatabase, $PracticeAttemptsTable, StudyAttempt> {
+  $$PracticeAttemptsTableReferences(
+    super.$_db,
+    super.$_table,
+    super.$_typedResult,
+  );
+
+  static $PracticeQuizzesTable _quizIdTable(_$AppDatabase db) => db
+      .practiceQuizzes
+      .createAlias('practice_attempts__quiz_id__practice_quizzes__id');
+
+  $$PracticeQuizzesTableProcessedTableManager get quizId {
+    final $_column = $_itemColumn<String>('quiz_id')!;
+
+    final manager = $$PracticeQuizzesTableTableManager(
+      $_db,
+      $_db.practiceQuizzes,
+    ).filter((f) => f.id.sqlEquals($_column));
+    final item = $_typedResult.readTableOrNull(_quizIdTable($_db));
+    if (item == null) return manager;
+    return ProcessedTableManager(
+      manager.$state.copyWith(prefetchedData: [item]),
+    );
+  }
+}
+
+class $$PracticeAttemptsTableFilterComposer
+    extends Composer<_$AppDatabase, $PracticeAttemptsTable> {
+  $$PracticeAttemptsTableFilterComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnFilters<String> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get attemptedAt => $composableBuilder(
+    column: $table.attemptedAt,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get score => $composableBuilder(
+    column: $table.score,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get total => $composableBuilder(
+    column: $table.total,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get results => $composableBuilder(
+    column: $table.results,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  $$PracticeQuizzesTableFilterComposer get quizId {
+    final $$PracticeQuizzesTableFilterComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.quizId,
+      referencedTable: $db.practiceQuizzes,
+      getReferencedColumn: (t) => t.id,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$PracticeQuizzesTableFilterComposer(
+            $db: $db,
+            $table: $db.practiceQuizzes,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return composer;
+  }
+}
+
+class $$PracticeAttemptsTableOrderingComposer
+    extends Composer<_$AppDatabase, $PracticeAttemptsTable> {
+  $$PracticeAttemptsTableOrderingComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnOrderings<String> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get attemptedAt => $composableBuilder(
+    column: $table.attemptedAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get score => $composableBuilder(
+    column: $table.score,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get total => $composableBuilder(
+    column: $table.total,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get results => $composableBuilder(
+    column: $table.results,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  $$PracticeQuizzesTableOrderingComposer get quizId {
+    final $$PracticeQuizzesTableOrderingComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.quizId,
+      referencedTable: $db.practiceQuizzes,
+      getReferencedColumn: (t) => t.id,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$PracticeQuizzesTableOrderingComposer(
+            $db: $db,
+            $table: $db.practiceQuizzes,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return composer;
+  }
+}
+
+class $$PracticeAttemptsTableAnnotationComposer
+    extends Composer<_$AppDatabase, $PracticeAttemptsTable> {
+  $$PracticeAttemptsTableAnnotationComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  GeneratedColumn<String> get id =>
+      $composableBuilder(column: $table.id, builder: (column) => column);
+
+  GeneratedColumn<DateTime> get attemptedAt => $composableBuilder(
+    column: $table.attemptedAt,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<int> get score =>
+      $composableBuilder(column: $table.score, builder: (column) => column);
+
+  GeneratedColumn<int> get total =>
+      $composableBuilder(column: $table.total, builder: (column) => column);
+
+  GeneratedColumn<String> get results =>
+      $composableBuilder(column: $table.results, builder: (column) => column);
+
+  $$PracticeQuizzesTableAnnotationComposer get quizId {
+    final $$PracticeQuizzesTableAnnotationComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.quizId,
+      referencedTable: $db.practiceQuizzes,
+      getReferencedColumn: (t) => t.id,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$PracticeQuizzesTableAnnotationComposer(
+            $db: $db,
+            $table: $db.practiceQuizzes,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return composer;
+  }
+}
+
+class $$PracticeAttemptsTableTableManager
+    extends
+        RootTableManager<
+          _$AppDatabase,
+          $PracticeAttemptsTable,
+          StudyAttempt,
+          $$PracticeAttemptsTableFilterComposer,
+          $$PracticeAttemptsTableOrderingComposer,
+          $$PracticeAttemptsTableAnnotationComposer,
+          $$PracticeAttemptsTableCreateCompanionBuilder,
+          $$PracticeAttemptsTableUpdateCompanionBuilder,
+          (StudyAttempt, $$PracticeAttemptsTableReferences),
+          StudyAttempt,
+          PrefetchHooks Function({bool quizId})
+        > {
+  $$PracticeAttemptsTableTableManager(
+    _$AppDatabase db,
+    $PracticeAttemptsTable table,
+  ) : super(
+        TableManagerState(
+          db: db,
+          table: table,
+          createFilteringComposer: () =>
+              $$PracticeAttemptsTableFilterComposer($db: db, $table: table),
+          createOrderingComposer: () =>
+              $$PracticeAttemptsTableOrderingComposer($db: db, $table: table),
+          createComputedFieldComposer: () =>
+              $$PracticeAttemptsTableAnnotationComposer($db: db, $table: table),
+          updateCompanionCallback:
+              ({
+                Value<String> id = const Value.absent(),
+                Value<String> quizId = const Value.absent(),
+                Value<DateTime> attemptedAt = const Value.absent(),
+                Value<int> score = const Value.absent(),
+                Value<int> total = const Value.absent(),
+                Value<String> results = const Value.absent(),
+                Value<int> rowid = const Value.absent(),
+              }) => PracticeAttemptsCompanion(
+                id: id,
+                quizId: quizId,
+                attemptedAt: attemptedAt,
+                score: score,
+                total: total,
+                results: results,
+                rowid: rowid,
+              ),
+          createCompanionCallback:
+              ({
+                required String id,
+                required String quizId,
+                required DateTime attemptedAt,
+                required int score,
+                required int total,
+                required String results,
+                Value<int> rowid = const Value.absent(),
+              }) => PracticeAttemptsCompanion.insert(
+                id: id,
+                quizId: quizId,
+                attemptedAt: attemptedAt,
+                score: score,
+                total: total,
+                results: results,
+                rowid: rowid,
+              ),
+          withReferenceMapper: (p0) => p0
+              .map(
+                (e) => (
+                  e.readTable<$PracticeAttemptsTable, StudyAttempt>(table),
+                  $$PracticeAttemptsTableReferences(db, table, e),
+                ),
+              )
+              .toList(),
+          prefetchHooksCallback: ({quizId = false}) {
+            return PrefetchHooks(
+              db: db,
+              explicitlyWatchedTables: [],
+              addJoins:
+                  <
+                    T extends TableManagerState<
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic
+                    >
+                  >(state) {
+                    if (quizId) {
+                      state = state.withJoin(
+                        currentTable: table,
+                        currentColumn: table.quizId,
+                        referencedTable: $$PracticeAttemptsTableReferences
+                            ._quizIdTable(db),
+                        referencedColumn: $$PracticeAttemptsTableReferences
+                            ._quizIdTable(db)
+                            .id,
+                      ) as T;
+                    }
+
+                    return state;
+                  },
+              getPrefetchedDataCallback: (items) async {
+                return [];
+              },
+            );
+          },
+        ),
+      );
+}
+
+typedef $$PracticeAttemptsTableProcessedTableManager =
+    ProcessedTableManager<
+      _$AppDatabase,
+      $PracticeAttemptsTable,
+      StudyAttempt,
+      $$PracticeAttemptsTableFilterComposer,
+      $$PracticeAttemptsTableOrderingComposer,
+      $$PracticeAttemptsTableAnnotationComposer,
+      $$PracticeAttemptsTableCreateCompanionBuilder,
+      $$PracticeAttemptsTableUpdateCompanionBuilder,
+      (StudyAttempt, $$PracticeAttemptsTableReferences),
+      StudyAttempt,
+      PrefetchHooks Function({bool quizId})
+    >;
 
 class $AppDatabaseManager {
   final _$AppDatabase _db;
@@ -18131,4 +26931,24 @@ class $AppDatabaseManager {
       $$LocalFoldersTableTableManager(_db, _db.localFolders);
   $$LocalFilesTableTableManager get localFiles =>
       $$LocalFilesTableTableManager(_db, _db.localFiles);
+  $$NotebooksTableTableManager get notebooks =>
+      $$NotebooksTableTableManager(_db, _db.notebooks);
+  $$NotebookSourcesTableTableManager get notebookSources =>
+      $$NotebookSourcesTableTableManager(_db, _db.notebookSources);
+  $$ChatsTableTableManager get chats =>
+      $$ChatsTableTableManager(_db, _db.chats);
+  $$ChatMessagesTableTableManager get chatMessages =>
+      $$ChatMessagesTableTableManager(_db, _db.chatMessages);
+  $$SummariesTableTableManager get summaries =>
+      $$SummariesTableTableManager(_db, _db.summaries);
+  $$FlashcardDecksTableTableManager get flashcardDecks =>
+      $$FlashcardDecksTableTableManager(_db, _db.flashcardDecks);
+  $$FlashcardsTableTableManager get flashcards =>
+      $$FlashcardsTableTableManager(_db, _db.flashcards);
+  $$PracticeQuizzesTableTableManager get practiceQuizzes =>
+      $$PracticeQuizzesTableTableManager(_db, _db.practiceQuizzes);
+  $$PracticeQuestionsTableTableManager get practiceQuestions =>
+      $$PracticeQuestionsTableTableManager(_db, _db.practiceQuestions);
+  $$PracticeAttemptsTableTableManager get practiceAttempts =>
+      $$PracticeAttemptsTableTableManager(_db, _db.practiceAttempts);
 }

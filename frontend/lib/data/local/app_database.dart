@@ -1,6 +1,7 @@
 import 'package:drift/drift.dart';
 
 import 'tables.dart';
+import 'study_tables.dart';
 
 part 'app_database.g.dart';
 
@@ -21,13 +22,30 @@ part 'app_database.g.dart';
     Outbox,
     LocalFolders,
     LocalFiles,
+    Notebooks,
+    NotebookSources,
+    Chats,
+    ChatMessages,
+    Summaries,
+    FlashcardDecks,
+    Flashcards,
+    PracticeQuizzes,
+    PracticeQuestions,
+    PracticeAttempts,
   ],
 )
 class AppDatabase extends _$AppDatabase {
-  AppDatabase(super.executor);
+  AppDatabase(super.executor, {DateTime Function()? now})
+    : now = now ?? DateTime.now;
+
+  final DateTime Function() now;
 
   @override
-  int get schemaVersion => 10;
+  int get schemaVersion => 11;
+
+  Future<int> purgeExpiredStudyChats() => (delete(
+    chats,
+  )..where((row) => row.expiresAt.isSmallerOrEqualValue(now().toUtc()))).go();
 
   Future<void> _createAiTextCache() async {
     await customStatement(
@@ -195,6 +213,37 @@ class AppDatabase extends _$AppDatabase {
       await _createFileSyncState();
     },
     onUpgrade: (m, from, to) async {
+      if (from < 11) {
+        // Some legacy fixtures already contain newer tables at an older version.
+        final existing = (await customSelect(
+          "SELECT name FROM sqlite_master WHERE type='table'",
+        ).get()).map((row) => row.read<String>('name')).toSet();
+        for (final table in <TableInfo<Table, dynamic>>[
+          notebooks,
+          notebookSources,
+          chats,
+          chatMessages,
+          summaries,
+          flashcardDecks,
+          flashcards,
+          practiceQuizzes,
+          practiceQuestions,
+          practiceAttempts,
+        ]) {
+          if (!existing.contains(table.actualTableName))
+            await m.createTable(table);
+        }
+        for (final index in allSchemaEntities.whereType<Index>()) {
+          if (index.entityName.startsWith('study_idx_')) {
+            await customStatement(
+              index.createIndexStmt.replaceFirst(
+                'CREATE INDEX ',
+                'CREATE INDEX IF NOT EXISTS ',
+              ),
+            );
+          }
+        }
+      }
       if (from < 10) await _createAiTextCache();
       if (from < 9) await _createResultsCache();
       if (from < 7) await _createStudentQuizCache();
@@ -214,6 +263,7 @@ class AppDatabase extends _$AppDatabase {
     },
     beforeOpen: (_) async {
       await customStatement('PRAGMA foreign_keys = ON');
+      await purgeExpiredStudyChats();
       await customStatement(
         'DELETE FROM file_text_cache WHERE extracted_at < ? OR revision<>2',
         [

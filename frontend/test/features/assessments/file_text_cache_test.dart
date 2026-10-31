@@ -148,7 +148,7 @@ void main() {
     await cache.bind('unrelated-local-id', 'server');
     expect(await cache.contextFor('server'), isNotNull);
   });
-  test('v9 to v10 upgrade preserves existing profile data', () async {
+  test('v9 upgrade preserves existing profile data', () async {
     final dir = await Directory.systemTemp.createTemp('filo-ai-migration');
     addTearDown(() => dir.delete(recursive: true));
     final file = File('${dir.path}/cache.sqlite');
@@ -176,7 +176,7 @@ void main() {
       (await db.customSelect('PRAGMA user_version').getSingle()).read<int>(
         'user_version',
       ),
-      10,
+      db.schemaVersion,
     );
   });
   test('startup removes old/incompatible cache entries without deleting other app data', () async {
