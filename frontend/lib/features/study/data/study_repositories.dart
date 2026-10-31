@@ -514,6 +514,8 @@ class StudyQuizRepository {
     required String title,
     required StudyQuizSettings settings,
     required List<StudyQuestionInput> questions,
+    String? quizId,
+    bool Function()? canCommit,
   }) async {
     requireStudyText(title, 'title');
     settings.validate();
@@ -525,8 +527,47 @@ class StudyQuizRepository {
         throw ArgumentError('Unselected question type');
     }
     return db.transaction(() async {
+      void checkCurrent() {
+        if (canCommit != null && !canCommit())
+          throw StateError('Quiz save is no longer current');
+      }
+
+      checkCurrent();
+      final id = quizId ?? _uuid.v4();
+      final existing = await (db.select(
+        db.practiceQuizzes,
+      )..where((q) => q.id.equals(id))).getSingleOrNull();
+      if (existing != null) {
+        final saved =
+            await (db.select(db.practiceQuestions)
+                  ..where((q) => q.quizId.equals(id))
+                  ..orderBy([(q) => OrderingTerm.asc(q.position)]))
+                .get();
+        if (existing.notebookId != notebookId ||
+            existing.title != title.trim() ||
+            existing.settings != jsonEncode(settings.toJson()) ||
+            saved.length != questions.length)
+          throw StateError('Quiz save mismatch');
+        for (var i = 0; i < questions.length; i++) {
+          final q = questions[i], row = saved[i];
+          if (q.type != row.type ||
+              q.prompt != row.prompt ||
+              q.explanation != row.explanation ||
+              q.correctIndex != row.correctIndex ||
+              q.correctBoolean != row.correctBoolean ||
+              (q.options == null ? null : jsonEncode(q.options)) !=
+                  row.options ||
+              (q.acceptedAnswers == null
+                      ? null
+                      : jsonEncode(q.acceptedAnswers)) !=
+                  row.acceptedAnswers)
+            throw StateError('Quiz questions mismatch');
+        }
+        checkCurrent();
+        return id;
+      }
       await _checkLimit(db, 'practice_quizzes', 10, notebookId: notebookId);
-      final id = _uuid.v4(), time = db.now().toUtc();
+      final time = db.now().toUtc();
       await db
           .into(db.practiceQuizzes)
           .insert(
@@ -564,6 +605,7 @@ class StudyQuizRepository {
               ),
             );
       }
+      checkCurrent();
       return id;
     });
   }
@@ -592,8 +634,16 @@ class StudyAttemptRepository {
           .watch();
   Future<String> save(
     String quizId,
-    List<StudyQuestionResult> results,
-  ) => db.transaction(() async {
+    List<StudyQuestionResult> results, {
+    String? attemptId,
+    bool Function()? canCommit,
+  }) => db.transaction(() async {
+    void checkCurrent() {
+      if (canCommit != null && !canCommit())
+        throw StateError('Attempt is no longer current');
+    }
+
+    checkCurrent();
     final questions = await (db.select(
       db.practiceQuestions,
     )..where((q) => q.quizId.equals(quizId))).get();
@@ -615,7 +665,17 @@ class StudyAttemptRepository {
         throw ArgumentError('Invalid attempt answer');
       }
     }
-    final id = _uuid.v4();
+    final id = attemptId ?? _uuid.v4();
+    final encoded = jsonEncode(results.map((r) => r.toJson()).toList());
+    final existing = await (db.select(
+      db.practiceAttempts,
+    )..where((a) => a.id.equals(id))).getSingleOrNull();
+    if (existing != null) {
+      if (existing.quizId != quizId || existing.results != encoded)
+        throw StateError('Attempt save mismatch');
+      checkCurrent();
+      return id;
+    }
     await db
         .into(db.practiceAttempts)
         .insert(
@@ -625,9 +685,10 @@ class StudyAttemptRepository {
             attemptedAt: db.now().toUtc(),
             score: results.where((r) => r.correct).length,
             total: results.length,
-            results: jsonEncode(results.map((r) => r.toJson()).toList()),
+            results: encoded,
           ),
         );
+    checkCurrent();
     return id;
   });
   Future<int> delete(String id) =>

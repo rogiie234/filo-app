@@ -128,7 +128,7 @@ void main() {
         await settleStudy(tester);
         expect(find.text(entry.value), findsOneWidget);
         if (entry.key == 'Practice quiz')
-          expect(find.text('Saved content · read only'), findsOneWidget);
+          expect(find.text('Generate practice quiz'), findsOneWidget);
         await tester.pageBack();
         await tester.pumpAndSettle();
       }
