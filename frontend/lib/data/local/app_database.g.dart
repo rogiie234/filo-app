@@ -11496,6 +11496,17 @@ class $SummariesTable extends Summaries
     type: DriftSqlType.string,
     requiredDuringInsert: true,
   );
+  static const VerificationMeta _usageJsonMeta = const VerificationMeta(
+    'usageJson',
+  );
+  @override
+  late final GeneratedColumn<String> usageJson = GeneratedColumn<String>(
+    'usage_json',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
   static const VerificationMeta _createdAtMeta = const VerificationMeta(
     'createdAt',
   );
@@ -11522,6 +11533,7 @@ class $SummariesTable extends Summaries
   List<GeneratedColumn> get $columns => [
     notebookId,
     content,
+    usageJson,
     createdAt,
     updatedAt,
   ];
@@ -11552,6 +11564,12 @@ class $SummariesTable extends Summaries
       );
     } else if (isInserting) {
       context.missing(_contentMeta);
+    }
+    if (data.containsKey('usage_json')) {
+      context.handle(
+        _usageJsonMeta,
+        usageJson.isAcceptableOrUnknown(data['usage_json']!, _usageJsonMeta),
+      );
     }
     if (data.containsKey('created_at')) {
       context.handle(
@@ -11586,6 +11604,10 @@ class $SummariesTable extends Summaries
         DriftSqlType.string,
         data['${effectivePrefix}content'],
       )!,
+      usageJson: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}usage_json'],
+      ),
       createdAt: attachedDatabase.typeMapping.read(
         DriftSqlType.dateTime,
         data['${effectivePrefix}created_at'],
@@ -11606,11 +11628,13 @@ class $SummariesTable extends Summaries
 class StudySummary extends DataClass implements Insertable<StudySummary> {
   final String notebookId;
   final String content;
+  final String? usageJson;
   final DateTime createdAt;
   final DateTime updatedAt;
   const StudySummary({
     required this.notebookId,
     required this.content,
+    this.usageJson,
     required this.createdAt,
     required this.updatedAt,
   });
@@ -11619,6 +11643,9 @@ class StudySummary extends DataClass implements Insertable<StudySummary> {
     final map = <String, Expression>{};
     map['notebook_id'] = Variable<String>(notebookId);
     map['content'] = Variable<String>(content);
+    if (!nullToAbsent || usageJson != null) {
+      map['usage_json'] = Variable<String>(usageJson);
+    }
     map['created_at'] = Variable<DateTime>(createdAt);
     map['updated_at'] = Variable<DateTime>(updatedAt);
     return map;
@@ -11628,6 +11655,9 @@ class StudySummary extends DataClass implements Insertable<StudySummary> {
     return SummariesCompanion(
       notebookId: Value(notebookId),
       content: Value(content),
+      usageJson: usageJson == null && nullToAbsent
+          ? const Value.absent()
+          : Value(usageJson),
       createdAt: Value(createdAt),
       updatedAt: Value(updatedAt),
     );
@@ -11641,6 +11671,7 @@ class StudySummary extends DataClass implements Insertable<StudySummary> {
     return StudySummary(
       notebookId: serializer.fromJson<String>(json['notebookId']),
       content: serializer.fromJson<String>(json['content']),
+      usageJson: serializer.fromJson<String?>(json['usageJson']),
       createdAt: serializer.fromJson<DateTime>(json['createdAt']),
       updatedAt: serializer.fromJson<DateTime>(json['updatedAt']),
     );
@@ -11651,6 +11682,7 @@ class StudySummary extends DataClass implements Insertable<StudySummary> {
     return <String, dynamic>{
       'notebookId': serializer.toJson<String>(notebookId),
       'content': serializer.toJson<String>(content),
+      'usageJson': serializer.toJson<String?>(usageJson),
       'createdAt': serializer.toJson<DateTime>(createdAt),
       'updatedAt': serializer.toJson<DateTime>(updatedAt),
     };
@@ -11659,11 +11691,13 @@ class StudySummary extends DataClass implements Insertable<StudySummary> {
   StudySummary copyWith({
     String? notebookId,
     String? content,
+    Value<String?> usageJson = const Value.absent(),
     DateTime? createdAt,
     DateTime? updatedAt,
   }) => StudySummary(
     notebookId: notebookId ?? this.notebookId,
     content: content ?? this.content,
+    usageJson: usageJson.present ? usageJson.value : this.usageJson,
     createdAt: createdAt ?? this.createdAt,
     updatedAt: updatedAt ?? this.updatedAt,
   );
@@ -11673,6 +11707,7 @@ class StudySummary extends DataClass implements Insertable<StudySummary> {
           ? data.notebookId.value
           : this.notebookId,
       content: data.content.present ? data.content.value : this.content,
+      usageJson: data.usageJson.present ? data.usageJson.value : this.usageJson,
       createdAt: data.createdAt.present ? data.createdAt.value : this.createdAt,
       updatedAt: data.updatedAt.present ? data.updatedAt.value : this.updatedAt,
     );
@@ -11683,6 +11718,7 @@ class StudySummary extends DataClass implements Insertable<StudySummary> {
     return (StringBuffer('StudySummary(')
           ..write('notebookId: $notebookId, ')
           ..write('content: $content, ')
+          ..write('usageJson: $usageJson, ')
           ..write('createdAt: $createdAt, ')
           ..write('updatedAt: $updatedAt')
           ..write(')'))
@@ -11690,13 +11726,15 @@ class StudySummary extends DataClass implements Insertable<StudySummary> {
   }
 
   @override
-  int get hashCode => Object.hash(notebookId, content, createdAt, updatedAt);
+  int get hashCode =>
+      Object.hash(notebookId, content, usageJson, createdAt, updatedAt);
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
       (other is StudySummary &&
           other.notebookId == this.notebookId &&
           other.content == this.content &&
+          other.usageJson == this.usageJson &&
           other.createdAt == this.createdAt &&
           other.updatedAt == this.updatedAt);
 }
@@ -11704,12 +11742,14 @@ class StudySummary extends DataClass implements Insertable<StudySummary> {
 class SummariesCompanion extends UpdateCompanion<StudySummary> {
   final Value<String> notebookId;
   final Value<String> content;
+  final Value<String?> usageJson;
   final Value<DateTime> createdAt;
   final Value<DateTime> updatedAt;
   final Value<int> rowid;
   const SummariesCompanion({
     this.notebookId = const Value.absent(),
     this.content = const Value.absent(),
+    this.usageJson = const Value.absent(),
     this.createdAt = const Value.absent(),
     this.updatedAt = const Value.absent(),
     this.rowid = const Value.absent(),
@@ -11717,6 +11757,7 @@ class SummariesCompanion extends UpdateCompanion<StudySummary> {
   SummariesCompanion.insert({
     required String notebookId,
     required String content,
+    this.usageJson = const Value.absent(),
     required DateTime createdAt,
     required DateTime updatedAt,
     this.rowid = const Value.absent(),
@@ -11727,6 +11768,7 @@ class SummariesCompanion extends UpdateCompanion<StudySummary> {
   static Insertable<StudySummary> custom({
     Expression<String>? notebookId,
     Expression<String>? content,
+    Expression<String>? usageJson,
     Expression<DateTime>? createdAt,
     Expression<DateTime>? updatedAt,
     Expression<int>? rowid,
@@ -11734,6 +11776,7 @@ class SummariesCompanion extends UpdateCompanion<StudySummary> {
     return RawValuesInsertable({
       if (notebookId != null) 'notebook_id': notebookId,
       if (content != null) 'content': content,
+      if (usageJson != null) 'usage_json': usageJson,
       if (createdAt != null) 'created_at': createdAt,
       if (updatedAt != null) 'updated_at': updatedAt,
       if (rowid != null) 'rowid': rowid,
@@ -11743,6 +11786,7 @@ class SummariesCompanion extends UpdateCompanion<StudySummary> {
   SummariesCompanion copyWith({
     Value<String>? notebookId,
     Value<String>? content,
+    Value<String?>? usageJson,
     Value<DateTime>? createdAt,
     Value<DateTime>? updatedAt,
     Value<int>? rowid,
@@ -11750,6 +11794,7 @@ class SummariesCompanion extends UpdateCompanion<StudySummary> {
     return SummariesCompanion(
       notebookId: notebookId ?? this.notebookId,
       content: content ?? this.content,
+      usageJson: usageJson ?? this.usageJson,
       createdAt: createdAt ?? this.createdAt,
       updatedAt: updatedAt ?? this.updatedAt,
       rowid: rowid ?? this.rowid,
@@ -11764,6 +11809,9 @@ class SummariesCompanion extends UpdateCompanion<StudySummary> {
     }
     if (content.present) {
       map['content'] = Variable<String>(content.value);
+    }
+    if (usageJson.present) {
+      map['usage_json'] = Variable<String>(usageJson.value);
     }
     if (createdAt.present) {
       map['created_at'] = Variable<DateTime>(createdAt.value);
@@ -11782,6 +11830,7 @@ class SummariesCompanion extends UpdateCompanion<StudySummary> {
     return (StringBuffer('SummariesCompanion(')
           ..write('notebookId: $notebookId, ')
           ..write('content: $content, ')
+          ..write('usageJson: $usageJson, ')
           ..write('createdAt: $createdAt, ')
           ..write('updatedAt: $updatedAt, ')
           ..write('rowid: $rowid')
@@ -24529,6 +24578,7 @@ typedef $$ChatMessagesTableProcessedTableManager =
 typedef $$SummariesTableCreateCompanionBuilder = SummariesCompanion Function({
   required String notebookId,
   required String content,
+  Value<String?> usageJson,
   required DateTime createdAt,
   required DateTime updatedAt,
   Value<int> rowid,
@@ -24536,6 +24586,7 @@ typedef $$SummariesTableCreateCompanionBuilder = SummariesCompanion Function({
 typedef $$SummariesTableUpdateCompanionBuilder = SummariesCompanion Function({
   Value<String> notebookId,
   Value<String> content,
+  Value<String?> usageJson,
   Value<DateTime> createdAt,
   Value<DateTime> updatedAt,
   Value<int> rowid,
@@ -24574,6 +24625,11 @@ class $$SummariesTableFilterComposer
   });
   ColumnFilters<String> get content => $composableBuilder(
     column: $table.content,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get usageJson => $composableBuilder(
+    column: $table.usageJson,
     builder: (column) => ColumnFilters(column),
   );
 
@@ -24625,6 +24681,11 @@ class $$SummariesTableOrderingComposer
     builder: (column) => ColumnOrderings(column),
   );
 
+  ColumnOrderings<String> get usageJson => $composableBuilder(
+    column: $table.usageJson,
+    builder: (column) => ColumnOrderings(column),
+  );
+
   ColumnOrderings<DateTime> get createdAt => $composableBuilder(
     column: $table.createdAt,
     builder: (column) => ColumnOrderings(column),
@@ -24670,6 +24731,9 @@ class $$SummariesTableAnnotationComposer
   });
   GeneratedColumn<String> get content =>
       $composableBuilder(column: $table.content, builder: (column) => column);
+
+  GeneratedColumn<String> get usageJson =>
+      $composableBuilder(column: $table.usageJson, builder: (column) => column);
 
   GeneratedColumn<DateTime> get createdAt =>
       $composableBuilder(column: $table.createdAt, builder: (column) => column);
@@ -24731,12 +24795,14 @@ class $$SummariesTableTableManager
               ({
                 Value<String> notebookId = const Value.absent(),
                 Value<String> content = const Value.absent(),
+                Value<String?> usageJson = const Value.absent(),
                 Value<DateTime> createdAt = const Value.absent(),
                 Value<DateTime> updatedAt = const Value.absent(),
                 Value<int> rowid = const Value.absent(),
               }) => SummariesCompanion(
                 notebookId: notebookId,
                 content: content,
+                usageJson: usageJson,
                 createdAt: createdAt,
                 updatedAt: updatedAt,
                 rowid: rowid,
@@ -24745,12 +24811,14 @@ class $$SummariesTableTableManager
               ({
                 required String notebookId,
                 required String content,
+                Value<String?> usageJson = const Value.absent(),
                 required DateTime createdAt,
                 required DateTime updatedAt,
                 Value<int> rowid = const Value.absent(),
               }) => SummariesCompanion.insert(
                 notebookId: notebookId,
                 content: content,
+                usageJson: usageJson,
                 createdAt: createdAt,
                 updatedAt: updatedAt,
                 rowid: rowid,

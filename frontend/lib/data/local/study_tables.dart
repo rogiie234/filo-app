@@ -85,6 +85,7 @@ class Summaries extends Table {
   TextColumn get notebookId =>
       text().references(Notebooks, #id, onDelete: KeyAction.cascade)();
   TextColumn get content => text()();
+  TextColumn get usageJson => text().nullable()();
   DateTimeColumn get createdAt => dateTime()();
   DateTimeColumn get updatedAt => dateTime()();
   @override

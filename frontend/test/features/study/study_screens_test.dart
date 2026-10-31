@@ -115,8 +115,8 @@ void main() {
       expect(find.text('General knowledge'), findsOneWidget);
       for (final entry in {
         'Chat': 'Ask a question to start a chat.',
-        'Summary': 'No summary saved yet.',
-        'Flashcards': 'No decks saved yet.',
+        'Summary': 'Generate a short summary of your sources.',
+        'Flashcards': 'Generate flashcards to review the main ideas.',
         'Practice quiz': 'No practice quizzes saved yet.',
       }.entries) {
         await tester.scrollUntilVisible(
@@ -127,7 +127,7 @@ void main() {
         await tester.tap(find.text(entry.key));
         await settleStudy(tester);
         expect(find.text(entry.value), findsOneWidget);
-        if (entry.key != 'Chat')
+        if (entry.key == 'Practice quiz')
           expect(find.text('Saved content · read only'), findsOneWidget);
         await tester.pageBack();
         await tester.pumpAndSettle();

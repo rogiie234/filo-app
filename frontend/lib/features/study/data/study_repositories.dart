@@ -7,6 +7,7 @@ import '../../../data/local/app_database.dart';
 import '../../assessments/data/file_text_cache.dart';
 import '../../assessments/domain/ai_sources.dart';
 import '../domain/study_inputs.dart';
+import '../domain/study_summary_usage.dart';
 
 const _uuid = Uuid();
 
@@ -313,9 +314,20 @@ class StudySummaryRepository {
   Stream<StudySummary?> watch(String notebookId) => (db.select(
     db.summaries,
   )..where((s) => s.notebookId.equals(notebookId))).watchSingleOrNull();
-  Future<void> save(String notebookId, String content) async {
+  Future<void> save(
+    String notebookId,
+    String content, {
+    StudySummaryUsage? usage,
+    bool Function()? canCommit,
+  }) async {
     requireStudyText(content, 'content', max: 4000);
     await db.transaction(() async {
+      void checkCurrent() {
+        if (canCommit != null && !canCommit())
+          throw StateError('Summary save is no longer current');
+      }
+
+      checkCurrent();
       final old = await (db.select(
         db.summaries,
       )..where((s) => s.notebookId.equals(notebookId))).getSingleOrNull();
@@ -326,10 +338,12 @@ class StudySummaryRepository {
             SummariesCompanion.insert(
               notebookId: notebookId,
               content: content,
+              usageJson: Value(usage?.encode()),
               createdAt: old?.createdAt ?? time,
               updatedAt: time,
             ),
           );
+      checkCurrent();
     });
   }
 
@@ -356,6 +370,8 @@ class StudyDeckRepository {
     required String title,
     required StudyDeckSettings settings,
     required List<StudyCardInput> cards,
+    String? deckId,
+    bool Function()? canCommit,
   }) async {
     requireStudyText(title, 'title');
     settings.validate();
@@ -365,8 +381,38 @@ class StudyDeckRepository {
       card.validate();
     }
     return db.transaction(() async {
+      void checkCurrent() {
+        if (canCommit != null && !canCommit())
+          throw StateError('Deck save is no longer current');
+      }
+
+      checkCurrent();
+      final id = deckId ?? _uuid.v4();
+      final existing = await (db.select(
+        db.flashcardDecks,
+      )..where((d) => d.id.equals(id))).getSingleOrNull();
+      if (existing != null) {
+        final saved =
+            await (db.select(db.flashcards)
+                  ..where((c) => c.deckId.equals(id))
+                  ..orderBy([(c) => OrderingTerm.asc(c.position)]))
+                .get();
+        if (existing.notebookId != notebookId ||
+            existing.title != title.trim() ||
+            existing.settings != jsonEncode(settings.toJson()) ||
+            saved.length != cards.length ||
+            List.generate(
+              cards.length,
+              (i) =>
+                  saved[i].front != cards[i].front ||
+                  saved[i].back != cards[i].back,
+            ).any((different) => different))
+          throw StateError('Deck save does not match existing content');
+        checkCurrent();
+        return id;
+      }
       await _checkLimit(db, 'flashcard_decks', 10, notebookId: notebookId);
-      final id = _uuid.v4(), time = db.now().toUtc();
+      final time = db.now().toUtc();
       await db
           .into(db.flashcardDecks)
           .insert(
@@ -392,17 +438,49 @@ class StudyDeckRepository {
               ),
             );
       }
+      checkCurrent();
       return id;
     });
   }
 
-  Future<int> setCardStatus(String id, String status) {
+  Future<int> setCardStatus(
+    String id,
+    String status, {
+    String? deckId,
+    bool Function()? canCommit,
+  }) {
     if (!{'new', 'learning', 'known'}.contains(status))
       throw ArgumentError.value(status, 'status');
-    return (db.update(db.flashcards)..where((c) => c.id.equals(id))).write(
-      FlashcardsCompanion(status: Value(status)),
-    );
+    return db.transaction(() async {
+      if (canCommit != null && !canCommit())
+        throw StateError('Account changed');
+      final changed =
+          await (db.update(db.flashcards)..where(
+                (c) =>
+                    c.id.equals(id) &
+                    (deckId == null
+                        ? const Constant(true)
+                        : c.deckId.equals(deckId)),
+              ))
+              .write(FlashcardsCompanion(status: Value(status)));
+      if (canCommit != null && !canCommit())
+        throw StateError('Account changed');
+      return changed;
+    });
   }
+
+  Future<int> deleteCard(
+    String deckId,
+    String cardId, {
+    bool Function()? canCommit,
+  }) => db.transaction(() async {
+    if (canCommit != null && !canCommit()) throw StateError('Account changed');
+    final changed = await (db.delete(
+      db.flashcards,
+    )..where((c) => c.id.equals(cardId) & c.deckId.equals(deckId))).go();
+    if (canCommit != null && !canCommit()) throw StateError('Account changed');
+    return changed;
+  });
 
   Future<int> rename(String id, String title) {
     requireStudyText(title, 'title');

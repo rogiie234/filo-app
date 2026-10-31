@@ -585,7 +585,7 @@ void main() {
       (await disk.customSelect('PRAGMA user_version').getSingle()).read<int>(
         'user_version',
       ),
-      11,
+      12,
     );
     for (final name in names) {
       expect(

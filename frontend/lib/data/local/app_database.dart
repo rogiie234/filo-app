@@ -41,7 +41,7 @@ class AppDatabase extends _$AppDatabase {
   final DateTime Function() now;
 
   @override
-  int get schemaVersion => 11;
+  int get schemaVersion => 12;
 
   Future<int> purgeExpiredStudyChats() => (delete(
     chats,
@@ -243,6 +243,13 @@ class AppDatabase extends _$AppDatabase {
             );
           }
         }
+      }
+      if (from < 12) {
+        // Upgrades from older versions can create the current summary table above.
+        final columns = await customSelect('PRAGMA table_info(summaries)')
+            .get();
+        if (!columns.any((row) => row.read<String>('name') == 'usage_json'))
+          await m.addColumn(summaries, summaries.usageJson);
       }
       if (from < 10) await _createAiTextCache();
       if (from < 9) await _createResultsCache();

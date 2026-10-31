@@ -9,6 +9,8 @@ import 'study_privacy.dart';
 import 'study_source_picker.dart';
 import 'study_saved_screen.dart';
 import 'study_chat_screen.dart';
+import 'study_summary_screen.dart';
+import 'study_decks_screen.dart';
 import 'study_widgets.dart';
 
 class StudyNotebookScreen extends ConsumerStatefulWidget {
@@ -184,6 +186,10 @@ class _StudyNotebookScreenState extends ConsumerState<StudyNotebookScreen> {
                               MaterialPageRoute<void>(
                                 builder: (_) => tool == StudyTool.chat
                                     ? StudyChatScreen(notebookId: id)
+                                    : tool == StudyTool.summary
+                                    ? StudySummaryScreen(notebookId: id)
+                                    : tool == StudyTool.decks
+                                    ? StudyDecksScreen(notebookId: id)
                                     : StudySavedScreen(
                                         notebookId: id,
                                         tool: tool,
