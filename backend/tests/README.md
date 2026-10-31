@@ -2667,7 +2667,7 @@ deno test --allow-env --allow-net --config supabase/functions/ai-chat/deno.json 
 node tests/student_ai_security.mjs
 ```
 
-Read [owner setup, environment variables, deploy and recovery](../../qa/M11-BE-03-OWNER-VERIFICATION.md)
+Read [owner setup, environment variables, deploy and recovery](../../../qa/M11-AI-STUDY-MODULE-ACCEPTANCE.md#be-03-details)
 before live execution. This workspace guide is outside the filo-app Git repository;
 the maintained runner/API contracts remain in it. Reserve DEV AI access while testing:
 switches are project-wide. Runner cleanup restores AI_TEST_MODE=off and AI_DEV_TRACE=off;
@@ -2683,7 +2683,7 @@ API sources: [logs](https://supabase.com/docs/reference/api/v1-get-project-logs)
 `student_ai_quota.mjs` is the maintained DEV-only Node 22 runner. It does not change
 settings or retry requests. M11-SA-01 retention and an owner-confirmed Asia/Manila
 off-peak window are mandatory; both are currently unconfirmed. No run is authorized
-by the existence of this script. See the workspace's `qa/M11-BE-04-OWNER-VERIFICATION.md`
+by the existence of this script. See the workspace's `qa/M11-AI-STUDY-MODULE-ACCEPTANCE.md#be-04-details`
 (outside this repository) for the required metadata config and evidence review.
 
 From backend, owner runs local mocked checks first:

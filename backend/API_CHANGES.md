@@ -2154,7 +2154,7 @@ result, deployment, new runtime Pass, waiver or owner acceptance is recorded. Pr
 BE-01 13/13 and BE-02 12/12 mocks apply to the prior revision; changed handlers require
 focused owner reruns. No demonstrated database defect or new migration is introduced.
 Owner setup/execution/review guide is outside this repository:
-[QA owner verification](../../qa/M11-BE-03-OWNER-VERIFICATION.md).
+[QA owner verification](../../qa/M11-AI-STUDY-MODULE-ACCEPTANCE.md#be-03-details).
 
 `backend/tests/student_ai_security.mjs` (run from backend as `node tests/student_ai_security.mjs`)
 uses Node22+ built-ins, explicit DEV targeting, real supplied actor sessions, service
