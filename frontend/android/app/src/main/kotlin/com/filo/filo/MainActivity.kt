@@ -74,7 +74,27 @@ class MainActivity : FlutterActivity() {
             }
         MethodChannel(flutterEngine.dartExecutor.binaryMessenger, "com.filo.filo/notifications")
             .setMethodCallHandler { call, result ->
-                if (call.method == "debugToken" &&
+                if (call.method == "status") {
+                    try {
+                        result.success(getSystemService(android.app.NotificationManager::class.java).areNotificationsEnabled())
+                    } catch (_: Exception) {
+                        result.error("STATUS_UNAVAILABLE", "Could not check notification access", null)
+                    }
+                } else if (call.method == "openSettings") {
+                    try {
+                        startActivity(Intent(Settings.ACTION_APP_NOTIFICATION_SETTINGS)
+                            .putExtra(Settings.EXTRA_APP_PACKAGE, packageName))
+                        result.success(null)
+                    } catch (_: Exception) {
+                        try {
+                            startActivity(Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS,
+                                android.net.Uri.parse("package:$packageName")))
+                            result.success(null)
+                        } catch (_: Exception) {
+                            result.error("SETTINGS_UNAVAILABLE", "Could not open notification settings", null)
+                        }
+                    }
+                } else if (call.method == "debugToken" &&
                     (applicationInfo.flags and android.content.pm.ApplicationInfo.FLAG_DEBUGGABLE) != 0) {
                     com.google.firebase.messaging.FirebaseMessaging.getInstance().token
                         .addOnCompleteListener { task ->

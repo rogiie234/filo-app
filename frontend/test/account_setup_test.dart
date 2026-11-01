@@ -1,13 +1,22 @@
+import 'package:filo/core/widgets/filo_widgets.dart';
+import 'package:filo/features/classes/presentation/classes_screen.dart';
 import 'package:filo/features/classes/application/class_providers.dart';
 import 'package:filo/core/connectivity/connectivity_provider.dart';
 import 'package:filo/features/onboarding/application/notification_permission.dart';
 import 'package:filo/features/onboarding/data/profile_repository.dart';
 import 'package:filo/features/onboarding/domain/profile_photo.dart';
 import 'package:filo/features/onboarding/presentation/account_setup_screen.dart';
+import 'package:filo/core/supabase/supabase_provider.dart';
+import 'package:filo/core/sync/sync_providers.dart';
+import 'package:filo/core/notifications/push_providers.dart';
+import 'package:filo/data/local/database_providers.dart';
+import 'package:filo/features/drive_backup/data/drive_backup_service.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+
+import 'core/notifications/push_registration_test.dart' show Fixture;
 
 AccountProfile profile(AccountRole role) => AccountProfile.fromJson({
   'id': 'user-1',
@@ -90,7 +99,16 @@ void main() {
           classRepositoryProvider.overrideWith((ref) async => null),
           classCardsProvider.overrideWith((ref) => Stream.value([])),
           classSyncLifecycleProvider.overrideWith((ref) {}),
-          connectivityProvider.overrideWith((ref) => Stream.value(true)),
+          syncLifecycleProvider.overrideWith((ref) {}),
+          driveBackupProvider.overrideWith((ref) async => null),
+          accountDatabaseProvider.overrideWith((ref) async => null),
+          supabaseClientProvider.overrideWithValue(repository.client),
+          pushRegistrationProvider.overrideWith((ref) {
+            final service = Fixture().service;
+            ref.onDispose(service.dispose);
+            return service;
+          }),
+          connectivityProvider.overrideWithValue(const AsyncData(true)),
           profileRepositoryProvider.overrideWithValue(repository),
           notificationPermissionProvider.overrideWithValue(notifications),
           onboardingUserProvider.overrideWithValue(
@@ -143,8 +161,11 @@ void main() {
         );
         expect(
           tester
-              .widget<FilledButton>(
-                find.widgetWithText(FilledButton, 'Create account'),
+              .widget<FiloButton>(
+                find.byWidgetPredicate(
+                  (widget) =>
+                      widget is FiloButton && widget.label == 'Create account',
+                ),
               )
               .onPressed,
           isNull,
@@ -173,7 +194,13 @@ void main() {
         expect(repository.inserts, 1);
         await tap(tester, 'Enable notifications');
         expect(find.text('Your classes'), findsOneWidget);
-        expect(find.text(role.label), findsOneWidget);
+        expect(
+          tester
+              .widget<ClassesScreen>(find.byType(ClassesScreen))
+              .profile!
+              .role,
+          role,
+        );
         expect(notifications.done, true);
         expect(notifications.requests, 1);
         expect(find.text('Choose your role'), findsNothing);
@@ -194,7 +221,10 @@ void main() {
       repository.failLookup = false;
       repository.saved = profile(AccountRole.instructor);
       await tap(tester, 'Retry');
-      expect(find.text('Instructor'), findsOneWidget);
+      expect(
+        tester.widget<ClassesScreen>(find.byType(ClassesScreen)).profile!.role,
+        AccountRole.instructor,
+      );
       expect(find.text('Enable notifications'), findsNothing);
     },
   );

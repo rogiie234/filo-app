@@ -91,11 +91,13 @@ class PushRegistration {
       if (token != null) await unregister(token);
     } catch (_) {
       // Offline/revoked sessions cannot remove the server row; invalidate FCM too.
+      onStatus?.call('Sign-out cleanup pending: unregister failed');
     }
     try {
       await deleteToken();
     } catch (_) {
       // Authentication sign-out must remain available when Firebase is offline.
+      onStatus?.call('Sign-out cleanup pending: FCM invalidation failed');
     }
     _token = _registeredAccount = _registeredToken = null;
     try {

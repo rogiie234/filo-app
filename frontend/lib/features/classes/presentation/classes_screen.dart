@@ -15,6 +15,7 @@ import 'class_screen.dart';
 import '../../grading/presentation/work_queue_screen.dart';
 import '../../drive_backup/data/drive_backup_service.dart';
 import '../../drive_backup/presentation/drive_backup_screen.dart';
+import '../../notifications/presentation/notification_settings_screen.dart';
 import '../../files/presentation/my_files_screen.dart';
 import '../../study/presentation/study_home_screen.dart';
 import '../../../core/sync/sync_providers.dart';
@@ -414,6 +415,18 @@ class _ClassesScreenState extends ConsumerState<ClassesScreen> {
                   Navigator.of(context).push(
                     MaterialPageRoute<void>(
                       builder: (_) => const DriveBackupScreen(),
+                    ),
+                  );
+                },
+              ),
+              ListTile(
+                title: const Text('Notification settings'),
+                leading: const FiloIcon(FiloIcons.notifications),
+                onTap: () {
+                  Navigator.pop(sheetContext);
+                  Navigator.of(context).push(
+                    MaterialPageRoute<void>(
+                      builder: (_) => const NotificationSettingsScreen(),
                     ),
                   );
                 },

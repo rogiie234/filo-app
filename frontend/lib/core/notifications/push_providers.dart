@@ -11,6 +11,7 @@ import '../connectivity/connectivity_provider.dart';
 import '../supabase/session_gate.dart';
 import '../supabase/supabase_provider.dart';
 import 'push_registration.dart';
+import '../../features/onboarding/application/notification_permission.dart';
 
 bool get _firebaseReady =>
     !kIsWeb &&
@@ -47,10 +48,7 @@ final pushRegistrationProvider = Provider<PushRegistration>((ref) {
         _pushStatus('Waiting for verified sign-in');
         return false;
       }
-      final settings = await FirebaseMessaging.instance
-          .getNotificationSettings()
-          .timeout(const Duration(seconds: 10));
-      if (settings.authorizationStatus != AuthorizationStatus.authorized) {
+      if (!await ref.read(notificationPermissionProvider).enabled()) {
         _pushStatus('Notification permission is not allowed');
         return false;
       }
@@ -101,12 +99,15 @@ final pushRegistrationProvider = Provider<PushRegistration>((ref) {
     },
     deleteToken: () async {
       if (_firebaseReady) {
-        await FirebaseMessaging.instance
-            .setAutoInitEnabled(false)
-            .timeout(const Duration(seconds: 5));
-        await FirebaseMessaging.instance.deleteToken().timeout(
-          const Duration(seconds: 5),
-        );
+        try {
+          await FirebaseMessaging.instance
+              .setAutoInitEnabled(false)
+              .timeout(const Duration(seconds: 5));
+        } finally {
+          await FirebaseMessaging.instance.deleteToken().timeout(
+            const Duration(seconds: 5),
+          );
+        }
       }
     },
     signOut: () => client.auth.signOut(),
@@ -131,7 +132,10 @@ final pushLifecycleProvider = Provider<void>((ref) {
     );
   }
   final lifecycle = AppLifecycleListener(
-    onResume: () => unawaited(service.sync()),
+    onResume: () {
+      ref.invalidate(notificationAccessProvider);
+      unawaited(service.sync());
+    },
   );
   unawaited(service.sync());
   ref.onDispose(() {

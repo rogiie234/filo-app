@@ -7,6 +7,7 @@ class Fixture {
   String? account = 'account-a:session-a';
   String token = 'synthetic-token-one';
   bool permitted = true, failRegister = false, failUnregister = false;
+  bool failDelete = false, failSignOut = false;
   Future<void>? waitForToken, waitForRegister;
   final events = <String>[];
   final statuses = <String>[];
@@ -30,15 +31,108 @@ class Fixture {
     },
     deleteToken: () async {
       events.add('delete-token');
+      if (failDelete) throw StateError('offline');
     },
     signOut: () async {
       events.add('sign-out');
+      if (failSignOut) throw StateError('offline');
       account = null;
     },
   );
 }
 
 void main() {
+  test('A to B to A registers each new session on the same phone', () async {
+    final f = Fixture();
+    await f.service.sync();
+    await f.service.leave();
+    f.account = 'account-b:session-b';
+    await f.service.sync();
+    await f.service.leave();
+    f.account = 'account-a:session-a2';
+    await f.service.sync();
+    expect(f.events.where((e) => e.startsWith('register:')), [
+      'register:account-a:session-a:synthetic-token-one',
+      'register:account-b:session-b:synthetic-token-one',
+      'register:account-a:session-a2:synthetic-token-one',
+    ]);
+    f.service.dispose();
+  });
+
+  test(
+    'late registration response cannot suppress latest account or token',
+    () async {
+      final gate = Completer<void>();
+      final f = Fixture()..waitForRegister = gate.future;
+      final first = f.service.sync();
+      await Future<void>.delayed(Duration.zero);
+      f.account = 'account-b:session-b';
+      f.token = 'synthetic-token-two';
+      final next = f.service.sync();
+      gate.complete();
+      await Future.wait([first, next]);
+      expect(f.events, [
+        'register:account-a:session-a:synthetic-token-one',
+        'register:account-b:session-b:synthetic-token-two',
+      ]);
+      await f.service.sync();
+      expect(f.events.length, 2);
+      f.service.dispose();
+    },
+  );
+
+  test(
+    'all cleanup failures still permit sign-out and report pending',
+    () async {
+      final f = Fixture()
+        ..failUnregister = true
+        ..failDelete = true;
+      await f.service.sync();
+      await f.service.leave();
+      expect(f.account, isNull);
+      expect(f.events.last, 'sign-out');
+      expect(
+        f.statuses,
+        contains('Sign-out cleanup pending: unregister failed'),
+      );
+      expect(
+        f.statuses,
+        contains('Sign-out cleanup pending: FCM invalidation failed'),
+      );
+      f.service.dispose();
+    },
+  );
+
+  test(
+    'failed auth sign-out permits current session registration retry',
+    () async {
+      final f = Fixture()..failSignOut = true;
+      await f.service.sync();
+      await expectLater(f.service.leave(), throwsStateError);
+      await f.service.sync();
+      expect(f.events.last, 'register:account-a:session-a:synthetic-token-one');
+      f.service.dispose();
+    },
+  );
+
+  test(
+    'rapid refresh signals register the latest token after pending work',
+    () async {
+      final gate = Completer<void>();
+      final f = Fixture()..waitForToken = gate.future;
+      final first = f.service.sync();
+      await Future<void>.delayed(Duration.zero);
+      f.token = 'synthetic-token-two';
+      final second = f.service.sync();
+      f.token = 'synthetic-token-three';
+      final third = f.service.sync();
+      gate.complete();
+      await Future.wait([first, second, third]);
+      expect(f.events, ['register:account-a:session-a:synthetic-token-three']);
+      f.service.dispose();
+    },
+  );
+
   test('permission and verification eligibility gate registration', () async {
     final f = Fixture()..permitted = false;
     await f.service.sync();

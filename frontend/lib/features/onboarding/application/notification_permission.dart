@@ -6,9 +6,25 @@ final notificationPermissionProvider = Provider(
   (ref) => NotificationPermission(),
 );
 
+final notificationAccessProvider = FutureProvider.autoDispose<bool>(
+  (ref) => ref.watch(notificationPermissionProvider).enabled(),
+);
+
 class NotificationPermission {
   static const _channel = MethodChannel('com.filo.filo/notifications');
   static const _storage = FlutterSecureStorage();
+
+  Future<bool> enabled() async {
+    final enabled = await _channel
+        .invokeMethod<bool>('status')
+        .timeout(const Duration(seconds: 10));
+    if (enabled == null) throw StateError('Notification access unavailable');
+    return enabled;
+  }
+
+  Future<void> openSettings() => _channel
+      .invokeMethod<void>('openSettings')
+      .timeout(const Duration(seconds: 10));
 
   Future<bool> handled(String userId) async =>
       await _storage.read(key: 'notifications_prompt_$userId') == 'handled';

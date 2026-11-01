@@ -67,14 +67,15 @@ void main() {
             (ref) => Stream.value(session.user.id),
           ),
           if (now != null) otpClockProvider.overrideWithValue(now),
-          if (client != null) supabaseClientProvider.overrideWithValue(client),
+          if (client != null || profileClient != null)
+            supabaseClientProvider.overrideWithValue(client ?? profileClient!),
           if (verified)
             accountDatabaseProvider.overrideWith((ref) async => null),
           if (verified)
             profileRepositoryProvider.overrideWithValue(
               _NewAccountProfiles(profileClient!),
             ),
-          connectivityProvider.overrideWith((ref) => Stream.value(true)),
+          connectivityProvider.overrideWithValue(const AsyncData(true)),
           deviceHashProvider.overrideWith((ref) async => "device-hash"),
           loginSessionProvider.overrideWith((ref) => Stream.value(session)),
           verifiedUserIdProvider.overrideWith(

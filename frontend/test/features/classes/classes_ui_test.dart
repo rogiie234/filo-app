@@ -12,6 +12,9 @@ import 'package:filo/features/classes/data/class_repository.dart';
 import 'package:filo/features/classes/domain/prototype_models.dart';
 import 'package:filo/features/classes/presentation/classes_screen.dart';
 import 'package:filo/features/onboarding/data/profile_repository.dart';
+import 'package:filo/features/onboarding/application/notification_permission.dart';
+import 'package:filo/core/sync/sync_providers.dart';
+import 'package:filo/features/drive_backup/data/drive_backup_service.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
 import 'package:flutter/services.dart';
@@ -124,6 +127,7 @@ void main() {
     bool online = true,
     bool empty = false,
     double scale = 1,
+    bool? notificationAccess,
   }) async {
     tester.view.physicalSize = const Size(390, 844);
     tester.view.devicePixelRatio = 1;
@@ -153,6 +157,16 @@ void main() {
             yield* network.stream;
           }),
           classSyncLifecycleProvider.overrideWith((ref) {}),
+          if (notificationAccess != null) ...[
+            notificationAccessProvider.overrideWith(
+              (ref) async => notificationAccess,
+            ),
+            syncLifecycleProvider.overrideWith((ref) {}),
+            driveBackupProvider.overrideWith((ref) async => null),
+            pendingClassRequestsProvider.overrideWith(
+              (ref) => Stream.value({}),
+            ),
+          ],
         ],
         child: RepaintBoundary(
           key: capture,
@@ -197,6 +211,29 @@ void main() {
       });
     });
     return Harness(repo, network, cards, rooms, capture);
+  }
+
+  for (final role in AccountRole.values) {
+    testWidgets('${role.name} account menu opens notification access page', (
+      tester,
+    ) async {
+      await launch(tester, role: role, notificationAccess: false, scale: 1.3);
+      await tester.tap(find.byTooltip('Your account'));
+      await tester.pumpAndSettle();
+      await tester.ensureVisible(find.text('Notification settings'));
+      await tester.tap(find.text('Notification settings'));
+      await tester.pumpAndSettle();
+      expect(
+        find.text(
+          'Notifications are off for Filo. Turn them on in your phone settings.',
+        ),
+        findsOneWidget,
+      );
+      expect(find.text('Open settings'), findsOneWidget);
+      expect(tester.takeException(), isNull);
+      await tester.pumpWidget(const SizedBox.shrink());
+      await tester.pump();
+    });
   }
 
   Future<void> capture(WidgetTester tester, Harness h, String name) async {
