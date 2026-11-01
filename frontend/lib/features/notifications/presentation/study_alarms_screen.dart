@@ -10,7 +10,7 @@ import '../../study/presentation/study_widgets.dart';
 import '../../onboarding/application/notification_permission.dart';
 import '../application/notification_providers.dart';
 import '../data/alarm_repository.dart';
-import 'notification_settings_screen.dart';
+import 'phone_limits_guide_screen.dart';
 
 final studyAlarmRepositoryProvider =
     FutureProvider.autoDispose<AlarmRepository>((ref) async {
@@ -139,8 +139,7 @@ class _StudyAlarmsState extends ConsumerState<StudyAlarmsScreen>
             onPressed: () => Navigator.push(
               context,
               MaterialPageRoute<void>(
-                builder: (_) =>
-                    const NotificationSettingsScreen(focusPhoneSetup: true),
+                builder: (_) => const PhoneLimitsGuideScreen(),
               ),
             ),
             icon: const Icon(Icons.settings_outlined),
@@ -382,49 +381,21 @@ class _StudyAlarmEditorState extends ConsumerState<StudyAlarmEditor> {
         schedulingFailed = true;
       }
       if (!mounted || !repo.isCurrent()) return;
-      if (await repo.setting('study_onboarded') != '1') {
-        await repo.setSetting('study_onboarded', '1');
-        Map<String, dynamic> status = {};
-        try {
-          status = await repo.bridge.status();
-        } catch (_) {
-          /* Setup retains status Retry, never invent denial. */
-        }
+      var showGuide = true;
+      try {
+        showGuide = await repo.needsPhoneGuide();
+      } catch (_) {
+        /* A guide-marker failure must not misreport a saved alarm. */
+      }
+      if (showGuide) {
         if (!mounted || !repo.isCurrent()) return;
-        if (status['exact'] == false) {
-          final open = await showDialog<bool>(
-            context: context,
-            builder: (context) => AlertDialog(
-              title: const Text('Help study alarms reach you'),
-              content: const Text(
-                'Allow Alarms & reminders for precise timing. Without access, delivery may be delayed.',
-              ),
-              actions: [
-                TextButton(
-                  onPressed: () => Navigator.pop(context, false),
-                  child: const Text('Not now'),
-                ),
-                TextButton(
-                  onPressed: () => Navigator.pop(context, true),
-                  child: const Text('Open alarm settings'),
-                ),
-              ],
-            ),
-          );
-          if (open == true) {
-            try {
-              await repo.bridge.openSettings('alarm');
-            } catch (_) {}
-          }
-        }
-        if (mounted && repo.isCurrent())
-          await Navigator.push(
-            context,
-            MaterialPageRoute<void>(
-              builder: (_) =>
-                  const NotificationSettingsScreen(focusPhoneSetup: true),
-            ),
-          );
+        FocusScope.of(context).unfocus();
+        await Navigator.push(
+          context,
+          MaterialPageRoute<void>(
+            builder: (_) => PhoneLimitsGuideScreen(expectedUserId: repo.userId),
+          ),
+        );
       }
       if (!mounted || !repo.isCurrent()) return;
       if (schedulingFailed) {

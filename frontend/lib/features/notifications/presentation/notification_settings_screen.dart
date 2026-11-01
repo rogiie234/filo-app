@@ -12,6 +12,7 @@ import '../../../core/connectivity/connectivity_provider.dart';
 import '../../classes/application/class_providers.dart';
 import '../application/notification_providers.dart';
 import '../data/notification_settings_repository.dart';
+import 'phone_limits_guide_screen.dart';
 
 class NotificationSettingsScreen extends ConsumerStatefulWidget {
   const NotificationSettingsScreen({
@@ -175,22 +176,15 @@ class DeadlineReminderSetup extends ConsumerStatefulWidget {
 
 class _DeadlineReminderSetupState extends ConsumerState<DeadlineReminderSetup> {
   bool _busy = false;
-  Future<void> _run(String? section) async {
+  Future<void> _retry() async {
     if (_busy) return;
     setState(() => _busy = true);
     try {
-      if (section != null)
-        await ref.read(deadlineBridgeProvider).openSettings(section);
-      else {
-        ref.invalidate(deadlineSessionProvider);
-        await (await ref.read(deadlineSessionProvider.future))?.reconcile();
-      }
+      ref.invalidate(deadlineSessionProvider);
+      await (await ref.read(deadlineSessionProvider.future))?.reconcile();
     } catch (_) {
       if (mounted)
-        showMessage(
-          context,
-          "Open your phone's Settings and search for Alarms & reminders, Autostart or Filo's battery settings. Select Filo and follow the step above. Then return here.",
-        );
+        showMessage(context, 'Could not update deadline reminders. Retry.');
     } finally {
       if (mounted) {
         ref.invalidate(deadlineStatusProvider);
@@ -225,32 +219,21 @@ class _DeadlineReminderSetupState extends ConsumerState<DeadlineReminderSetup> {
                   : 'Deadline reminders are approximate and may arrive late. Allow Alarms & reminders for more precise timing.',
             ),
           const SizedBox(height: 12),
-          const Text(
-            'Reminders use saved due dates and work offline. Check these phone settings to help Filo deliver reminders. Settings names may vary by phone. These changes may use more battery and do not guarantee delivery.',
-          ),
+          const Text('Reminders use saved due dates and work offline.'),
           TextButton(
-            onPressed: _busy ? null : () => _run(null),
+            onPressed: _busy ? null : _retry,
             child: const Text('Retry reminders'),
           ),
           FiloButton(
-            label: 'Open alarm settings',
-            onPressed: _busy ? null : () => _run('alarm'),
-          ),
-          const SizedBox(height: 12),
-          const Text(
-            'Allow Filo under Alarms & reminders, then return to Filo.',
-          ),
-          const SizedBox(height: 16),
-          const Text(
-            'On Xiaomi, Redmi or POCO: enable Filo under Autostart or Background autostart. Set Filo’s battery setting to No restrictions.',
-          ),
-          TextButton(
-            onPressed: _busy ? null : () => _run('autostart'),
-            child: const Text('Open autostart settings'),
-          ),
-          TextButton(
-            onPressed: _busy ? null : () => _run('battery'),
-            child: const Text('Open battery settings'),
+            label: 'Alarm setup',
+            onPressed: _busy
+                ? null
+                : () => Navigator.push(
+                    context,
+                    MaterialPageRoute<void>(
+                      builder: (_) => const PhoneLimitsGuideScreen(),
+                    ),
+                  ),
           ),
         ],
       ),

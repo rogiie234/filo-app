@@ -59,6 +59,29 @@ void main() {
   });
   tearDown(() async => db.close());
 
+  test('new guide version ignores temporary onboarding and persists only on dismissal', () async {
+    await repo.setSetting('study_onboarded', '1');
+    expect(await repo.needsPhoneGuide(), isTrue);
+    bridge.fail = true;
+    await expectLater(
+      repo.saveStudy(id: alarmId, subject: 'Math', minute: 660, days: 0),
+      throwsA(isA<StudySchedulingFailure>()),
+    );
+    expect(await repo.needsPhoneGuide(), isTrue);
+    await repo.dismissPhoneGuide();
+    final reopened = AlarmRepository(
+      db,
+      () => true,
+      userId: accountId,
+      bridge: bridge,
+    );
+    expect(await reopened.needsPhoneGuide(), isFalse);
+    await expectLater(
+      AlarmRepository(db, () => false).dismissPhoneGuide(),
+      throwsStateError,
+    );
+  });
+
   test('study channel carries the active lease and stays separate from deadline reconcile', () async {
     final calls = <MethodCall>[];
     TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
@@ -253,6 +276,7 @@ void main() {
         enabled: false,
       );
       final meta = await saved.setting('study_alarm:$alarmId');
+      await saved.dismissPhoneGuide();
       await disk.close();
       disk = AppDatabase(NativeDatabase(file));
       saved = AlarmRepository(
@@ -263,6 +287,7 @@ void main() {
       );
       expect((await saved.readAlarms()).single.enabled, isFalse);
       expect(await saved.setting('study_alarm:$alarmId'), meta);
+      expect(await saved.needsPhoneGuide(), isFalse);
       expect(await repo.readAlarms(), isEmpty);
     } finally {
       await disk.close();

@@ -5,14 +5,22 @@ import 'package:filo/features/notifications/presentation/notification_settings_s
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:drift/native.dart';
+import 'package:filo/data/local/app_database.dart';
+import 'package:filo/features/notifications/application/notification_providers.dart';
+import 'package:filo/features/notifications/presentation/phone_limits_guide_screen.dart';
+import 'package:filo/features/onboarding/application/notification_permission.dart';
+
+import 'phone_limits_guide_test.dart' show GuideMarkerRepo;
 
 class SetupBridge extends DeadlineBridge {
   final opened = <String>[];
   @override
   bool get supported => true;
   @override
-  Future<void> openSettings(String section) async {
+  Future<String> guideOpenSettings(String section) async {
     opened.add(section);
+    return 'direct';
   }
 }
 
@@ -22,10 +30,17 @@ void main() {
       'deadline setup $state state and explicit settings actions at enlarged text',
       (tester) async {
         final bridge = SetupBridge();
+        final db = AppDatabase(NativeDatabase.memory());
+        final repo = GuideMarkerRepo(db, () => true);
         await tester.pumpWidget(
           ProviderScope(
             overrides: [
               deadlineBridgeProvider.overrideWithValue(bridge),
+              alarmRepositoryProvider.overrideWith((ref) async => repo),
+              phoneGuideCapabilitiesProvider.overrideWith(
+                (ref) async => const PhoneGuideCapabilities(31, false),
+              ),
+              notificationAccessProvider.overrideWith((ref) async => true),
               deadlineStatusProvider.overrideWith(
                 (ref) async => {
                   'enabled': state != 'blocked',
@@ -60,12 +75,20 @@ void main() {
         };
         expect(find.text(expected), findsOneWidget);
         expect(bridge.opened, isEmpty);
+        expect(find.text('Open autostart settings'), findsNothing);
+        await tester.ensureVisible(find.text('Alarm setup'));
+        await tester.tap(find.text('Alarm setup'));
+        await tester.pumpAndSettle();
+        expect(find.byType(PhoneLimitsGuideScreen), findsOneWidget);
         await tester.ensureVisible(find.text('Open alarm settings'));
+        await tester.pumpAndSettle();
         await tester.tap(find.text('Open alarm settings'));
         await tester.pumpAndSettle();
         expect(bridge.opened, ['alarm']);
         expect(tester.takeException(), isNull);
         await tester.pumpWidget(const SizedBox());
+        await tester.pump();
+        await db.close();
       },
     );
   }

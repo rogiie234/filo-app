@@ -11,6 +11,8 @@ class StudySchedulingFailure implements Exception {}
 
 /// Raw storage methods remain available; study mutations also reconcile Android.
 class AlarmRepository {
+  static const phoneGuideMarker = 'study_phone_guide_version';
+  static const phoneGuideVersion = '1';
   AlarmRepository(
     this.db,
     this.isCurrent, {
@@ -21,6 +23,12 @@ class AlarmRepository {
   final bool Function() isCurrent;
   final String userId;
   final DeadlineBridge bridge;
+
+  Future<bool> needsPhoneGuide() => _account(
+    () async => await setting(phoneGuideMarker) != phoneGuideVersion,
+  );
+  Future<void> dismissPhoneGuide() =>
+      setSetting(phoneGuideMarker, phoneGuideVersion);
 
   Stream<List<StudyAlarm>> watchAlarms() =>
       (db.select(db.studyAlarms)..orderBy([

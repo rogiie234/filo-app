@@ -1,9 +1,7 @@
 package com.filo.reminders;
 
 import android.content.*;
-import android.net.Uri;
 import android.os.*;
-import android.provider.Settings;
 import io.flutter.embedding.engine.plugins.FlutterPlugin;
 import io.flutter.embedding.engine.plugins.activity.*;
 import io.flutter.plugin.common.*;
@@ -37,24 +35,20 @@ public final class DeadlineReminderPlugin implements FlutterPlugin, ActivityAwar
                         case "clear": scheduler.clear(); break;
                         case "status": response = scheduler.status(); break;
                         case "openSettings": openSettings(call.argument("section")); break;
+                        case "guideCapabilities": response=new PhoneSettings(scheduler.context).capabilities(); break;
+                        case "guideOpenSettings": response=new PhoneSettings(scheduler.context).open(call.argument("section")); break;
                         default: main.post(result::notImplemented); return;
                     }
                     Object answer = response; main.post(() -> result.success(answer));
                 } catch (Exception e) {
-                    if (!call.method.equals("studyReconcile")) scheduler.failed();
+                    if (!call.method.equals("studyReconcile") && !call.method.equals("openSettings") && !call.method.startsWith("guide")) scheduler.failed();
                     main.post(() -> result.error("REMINDER_UNAVAILABLE", "Could not update local reminders", null));
                 }
             });
         });
     }
     private void openSettings(String section) {
-        Intent intent;
-        if ("alarm".equals(section) && Build.VERSION.SDK_INT >= 31) intent = new Intent(Settings.ACTION_REQUEST_SCHEDULE_EXACT_ALARM, Uri.parse("package:" + scheduler.context.getPackageName()));
-        else if ("autostart".equals(section)) intent = new Intent().setComponent(new ComponentName("com.miui.securitycenter", "com.miui.permcenter.autostart.AutoStartManagementActivity"));
-        else intent = new Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS, Uri.parse("package:" + scheduler.context.getPackageName()));
-        intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
-        try { scheduler.context.startActivity(intent); }
-        catch (Exception e) { scheduler.context.startActivity(new Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS, Uri.parse("package:" + scheduler.context.getPackageName())).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)); }
+        if ("failed".equals(new PhoneSettings(scheduler.context).open(section))) throw new IllegalStateException("Phone settings unavailable");
     }
     @Override public boolean onNewIntent(Intent intent) { consume(intent); return false; }
     private void consume(Intent intent) {

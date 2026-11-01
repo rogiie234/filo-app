@@ -6,6 +6,13 @@ import 'package:flutter/services.dart';
 
 import '../../data/local/app_database.dart';
 
+class PhoneGuideCapabilities {
+  const PhoneGuideCapabilities(this.sdk, this.xiaomi);
+  final int sdk;
+  final bool xiaomi;
+  bool get exactStep => sdk >= 31;
+}
+
 class DeadlineBridge {
   const DeadlineBridge();
   static const channel = MethodChannel('com.filo.filo/deadline_reminders');
@@ -48,6 +55,27 @@ class DeadlineBridge {
   Future<void> openSettings(String section) async {
     if (supported)
       await channel.invokeMethod<void>('openSettings', {'section': section});
+  }
+
+  Future<PhoneGuideCapabilities> guideCapabilities() async {
+    if (!supported) return const PhoneGuideCapabilities(0, false);
+    final data = await channel.invokeMapMethod<String, dynamic>(
+      'guideCapabilities',
+    );
+    final sdk = data?['sdk'], xiaomi = data?['xiaomi'];
+    if (sdk is! int || sdk < 0 || xiaomi is! bool)
+      throw StateError('Phone capabilities unavailable');
+    return PhoneGuideCapabilities(sdk, xiaomi);
+  }
+
+  Future<String> guideOpenSettings(String section) async {
+    if (!supported) return 'failed';
+    final result = await channel.invokeMethod<String>('guideOpenSettings', {
+      'section': section,
+    });
+    if (!['direct', 'app_details', 'failed'].contains(result))
+      throw StateError('Phone settings unavailable');
+    return result!;
   }
 }
 
