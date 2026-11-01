@@ -469,3 +469,10 @@ verify_jwt = false
 import_map = "./functions/ai-mock-quiz/deno.json"
 entrypoint = "./functions/ai-mock-quiz/index.ts"
 
+
+[functions.send-push]
+enabled = true
+# Only the dedicated database-webhook secret authorizes this handler.
+verify_jwt = false
+import_map = "./functions/send-push/deno.json"
+entrypoint = "./functions/send-push/index.ts"

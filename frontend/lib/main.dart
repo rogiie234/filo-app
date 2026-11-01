@@ -1,11 +1,20 @@
+import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/foundation.dart'
-    show LicenseEntryWithLineBreaks, LicenseRegistry;
+    show
+        LicenseEntryWithLineBreaks,
+        LicenseRegistry,
+        kIsWeb,
+        defaultTargetPlatform,
+        TargetPlatform,
+        kDebugMode,
+        debugPrint;
 import 'package:flutter/services.dart' show rootBundle;
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import 'app.dart';
+import 'firebase_options.dart';
 import 'core/config/app_config.dart';
 import 'core/sync/background_sync.dart';
 
@@ -36,6 +45,16 @@ Future<void> main() async {
       ),
     );
     return;
+  }
+  if (!kIsWeb && defaultTargetPlatform == TargetPlatform.android) {
+    try {
+      await Firebase.initializeApp(
+        options: DefaultFirebaseOptions.currentPlatform,
+      );
+    } catch (_) {
+      if (kDebugMode) debugPrint('[Filo push] Firebase initialization failed');
+      // Inbox and sign-in remain available if push initialization fails.
+    }
   }
   try {
     await initializeBackgroundSync();

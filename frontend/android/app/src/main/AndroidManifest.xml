@@ -11,6 +11,8 @@
         android:label="filo"
         android:name="${applicationName}"
         android:icon="@mipmap/ic_launcher">
+        <!-- Token creation starts only after verified sign-in and permission. -->
+        <meta-data android:name="firebase_messaging_auto_init_enabled" android:value="false" />
         <activity
             android:name=".MainActivity"
             android:exported="true"

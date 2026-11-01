@@ -74,7 +74,14 @@ class MainActivity : FlutterActivity() {
             }
         MethodChannel(flutterEngine.dartExecutor.binaryMessenger, "com.filo.filo/notifications")
             .setMethodCallHandler { call, result ->
-                if (call.method != "request") {
+                if (call.method == "debugToken" &&
+                    (applicationInfo.flags and android.content.pm.ApplicationInfo.FLAG_DEBUGGABLE) != 0) {
+                    com.google.firebase.messaging.FirebaseMessaging.getInstance().token
+                        .addOnCompleteListener { task ->
+                            if (task.isSuccessful) result.success(task.result)
+                            else result.error("FCM_NATIVE_FAILURE", pushFailureSummary(task.exception), null)
+                        }
+                } else if (call.method != "request") {
                     result.notImplemented()
                 } else if (Build.VERSION.SDK_INT < 33 ||
                     checkSelfPermission(Manifest.permission.POST_NOTIFICATIONS) == PackageManager.PERMISSION_GRANTED) {

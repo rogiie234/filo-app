@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:ui' as ui;
 
 import 'package:image_picker/image_picker.dart';
@@ -7,6 +8,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../core/supabase/supabase_provider.dart';
+import '../../../core/notifications/push_providers.dart';
 import '../../../core/connectivity/connectivity_provider.dart';
 import '../../../data/local/database_providers.dart';
 import '../../../core/widgets/filo_widgets.dart';
@@ -242,6 +244,7 @@ class _AccountSetupScreenState extends ConsumerState<AccountSetupScreen> {
     }
     try {
       await ref.read(notificationPermissionProvider).markHandled(_profile!.id);
+      unawaited(ref.read(pushRegistrationProvider).sync());
     } catch (_) {
       /* Home remains available if storage fails. */
     }

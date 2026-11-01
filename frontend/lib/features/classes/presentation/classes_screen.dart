@@ -10,7 +10,7 @@ import '../application/preview_controller.dart';
 import '../application/class_providers.dart';
 import '../../onboarding/data/profile_repository.dart';
 import '../../../core/connectivity/connectivity_provider.dart';
-import '../../../core/supabase/supabase_provider.dart';
+import '../../../core/notifications/push_providers.dart';
 import 'class_screen.dart';
 import '../../grading/presentation/work_queue_screen.dart';
 import '../../drive_backup/data/drive_backup_service.dart';
@@ -403,7 +403,7 @@ class _ClassesScreenState extends ConsumerState<ClassesScreen> {
                   } catch (_) {
                     /* Sign-out must remain available. */
                   }
-                  await ref.read(supabaseClientProvider).auth.signOut();
+                  await ref.read(pushRegistrationProvider).leave();
                 },
               ),
               ListTile(

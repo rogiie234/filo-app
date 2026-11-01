@@ -8,6 +8,7 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../../../core/supabase/session_gate.dart';
 import '../../../core/supabase/supabase_provider.dart';
+import '../../../core/notifications/push_providers.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/widgets/filo_widgets.dart';
 import '../../onboarding/presentation/account_setup_screen.dart';
@@ -219,7 +220,7 @@ class _SessionScreenState extends ConsumerState<SessionScreen> {
             onPressed: _busy
                 ? null
                 : () => _perform(() async {
-                    await ref.read(supabaseClientProvider).auth.signOut();
+                    await ref.read(pushRegistrationProvider).leave();
                   }),
             child: const Text('Sign out'),
           ),
