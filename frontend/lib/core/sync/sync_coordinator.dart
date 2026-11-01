@@ -200,7 +200,11 @@ class SyncCoordinator extends ChangeNotifier {
           return;
         }
         try {
-          await _pull(table, snapshot || _accessChanged);
+          // Inbox hard deletes must reconcile on the next successful sync.
+          await _pull(
+            table,
+            table == 'notifications' || snapshot || _accessChanged,
+          );
           errors.remove(table);
         } catch (_) {
           errors[table] = 'Could not refresh $table. Retry when connected.';
@@ -334,22 +338,32 @@ class SyncCoordinator extends ChangeNotifier {
       maximum = cursorStamp;
     }
     if (snapshot) {
-      final stale = await db
-          .customSelect(
-            'SELECT id FROM sync_payloads WHERE table_name=?',
-            variables: [Variable(table)],
-          )
-          .get();
-      for (final row in stale) {
-        final id = row.read<String>('id');
-        if (!seen.contains(id)) {
-          await _remove(table, id);
-          await db.customStatement(
-            'DELETE FROM sync_payloads WHERE table_name=? AND id=?',
-            [table, id],
-          );
-        }
+      if (!isCurrent() ||
+          currentAccountCheck != null && !await currentAccountCheck!()) {
+        return;
       }
+      await db.transaction(() async {
+        final stale = await db
+            .customSelect(
+              'SELECT id FROM sync_payloads WHERE table_name=?',
+              variables: [Variable(table)],
+            )
+            .get();
+        for (final row in stale) {
+          if (!isCurrent())
+            throw StateError('Account changed during reconciliation');
+          final id = row.read<String>('id');
+          if (!seen.contains(id)) {
+            await _remove(table, id);
+            await db.customStatement(
+              'DELETE FROM sync_payloads WHERE table_name=? AND id=?',
+              [table, id],
+            );
+          }
+        }
+        if (!isCurrent())
+          throw StateError('Account changed during reconciliation');
+      });
     }
     if (maximum != null) {
       await db.customStatement(

@@ -10,6 +10,106 @@ import 'package:filo/core/sync/sync_coordinator.dart';
 import 'package:filo/data/local/app_database.dart';
 
 void main() {
+  for (final scenario in [
+    'deleted',
+    'empty',
+    'failed page',
+    'account changed',
+  ]) {
+    test('notification next-sync reconciliation: $scenario', () async {
+      const user = '56c8a059-a110-45a7-804f-ff1e0d8b2da9';
+      const stamp = '2026-10-18T12:00:00.123456Z';
+      var secondSync = false;
+      var current = true;
+      var secondSnapshotRequested = false;
+      Map<String, Object?> notice(String id) => {
+        'id': id,
+        'recipient_id': user,
+        'class_id': null,
+        'type': 'announcement',
+        'title': id,
+        'created_at': stamp,
+        'updated_at': stamp,
+      };
+      final client = SupabaseClient(
+        'https://example.supabase.co',
+        'test-key',
+        httpClient: MockClient((request) async {
+          http.Response json(Object? value, [int status = 200]) =>
+              http.Response(
+                jsonEncode(value),
+                status,
+                headers: {'content-type': 'application/json'},
+                request: request,
+              );
+          final table = request.url.pathSegments.last;
+          final nextPage = request.url.queryParameters.containsKey('or');
+          if (table == 'finalize_accessible_exams') return json(null);
+          if (table == 'notifications') {
+            if (secondSync) {
+              secondSnapshotRequested |=
+                  request.url.queryParameters['updated_at'] ==
+                  'gte.1970-01-01T00:00:00Z';
+              if (scenario == 'failed page' && nextPage) {
+                return json({
+                  'message': 'temporary failure',
+                  'code': 'XX000',
+                }, 500);
+              }
+              if (scenario == 'account changed') current = false;
+              return json(
+                nextPage || scenario == 'empty' ? [] : [notice('recent')],
+              );
+            }
+            return json(nextPage ? [] : [notice('expired'), notice('recent')]);
+          }
+          if (nextPage ||
+              request.url.queryParameters['id']?.startsWith('gt.') == true)
+            return json([]);
+          if (table == 'profiles')
+            return json([
+              {
+                'id': user,
+                'role': 'student',
+                'display_name': 'Student',
+                'created_at': stamp,
+                'updated_at': stamp,
+              },
+            ]);
+          return json([]);
+        }),
+      );
+      final db = AppDatabase(NativeDatabase.memory());
+      final coordinator = SyncCoordinator(db, client, user, () => current);
+      try {
+        await coordinator.run();
+        expect(coordinator.errors, isEmpty);
+        expect((await db.select(db.cacheNotifications).get()).length, 2);
+        secondSync = true;
+        await coordinator.run();
+        expect(secondSnapshotRequested, isTrue);
+        final ids = (await db.select(db.cacheNotifications).get()).map(
+          (n) => n.id,
+        );
+        expect(
+          ids,
+          unorderedEquals(switch (scenario) {
+            'deleted' => ['recent'],
+            'empty' => <String>[],
+            _ => ['expired', 'recent'],
+          }),
+        );
+        if (scenario == 'failed page') {
+          expect(coordinator.errors, contains('notifications'));
+        }
+      } finally {
+        coordinator.dispose();
+        await db.close();
+        await client.dispose();
+      }
+    });
+  }
+
   test(
     'exam expiry failure does not block pulls and retries on next sync',
     () async {
@@ -26,6 +126,7 @@ void main() {
                 : 'null',
             expiryCalls == 1 ? 500 : 200,
             headers: {'content-type': 'application/json'},
+            request: request,
           );
         }
         if (endpoint == 'notifications') notificationPulls++;
@@ -33,6 +134,7 @@ void main() {
           '[]',
           200,
           headers: {'content-type': 'application/json'},
+          request: request,
         );
       });
       final client = SupabaseClient(
@@ -72,6 +174,7 @@ void main() {
             '[]',
             200,
             headers: {'content-type': 'application/json'},
+            request: request,
           );
         }
         if (table == 'posts') {
@@ -79,6 +182,7 @@ void main() {
             '{"message":"temporary failure","code":"XX000","details":null,"hint":null}',
             500,
             headers: {'content-type': 'application/json'},
+            request: request,
           );
         }
         final rows = table == 'profiles'
@@ -108,6 +212,7 @@ void main() {
           jsonEncode(rows),
           200,
           headers: {'content-type': 'application/json'},
+          request: request,
         );
       });
       final client = SupabaseClient(
