@@ -476,3 +476,17 @@ enabled = true
 verify_jwt = false
 import_map = "./functions/send-push/deno.json"
 entrypoint = "./functions/send-push/index.ts"
+
+[functions.delete-account]
+enabled = true
+# Handler validates Auth JWT and database-bound OTP/session proof.
+verify_jwt = false
+import_map = "./functions/delete-account/deno.json"
+entrypoint = "./functions/delete-account/index.ts"
+
+[functions.process-account-deletions]
+enabled = true
+# Dedicated scheduler secret only; user tokens do not authorize recovery.
+verify_jwt = false
+import_map = "./functions/process-account-deletions/deno.json"
+entrypoint = "./functions/process-account-deletions/index.ts"

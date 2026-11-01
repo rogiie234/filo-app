@@ -2709,3 +2709,23 @@ Results are metadata-only; exit0 is not task acceptance. Record provider-attribu
 gaps, cumulative shared quota and owner-reviewed recommendation before accepting.
 Restore trace off after evidence review; runner never changes test/auth/quota settings.
 Tests and live workload were NOT RUN during implementation.
+
+
+## M13-BE-02 student account deletion
+
+After migration 20261102110000, owner runs the WHOLE
+`student_account_deletion.sql` in DEV SQL Editor as postgres. All fixtures roll back;
+any FAIL/uncaught error fails. On interruption run ROLLBACK separately. SQL tests database
+anonymization/retention/RLS/recovery, not actual Auth Admin/Storage bytes/Google OAuth.
+
+From backend, owner runs the local mocked Edge suites:
+
+```powershell
+deno test --config supabase/functions/delete-account/deno.json supabase/functions/delete-account/deletion_test.ts supabase/functions/delete-account/store_test.ts
+```
+
+Run `profile_edit_photo_rules.sql` once as a justified regression of the shared access
+gate/Storage guards. BE-01 historical 163/0 remains accepted only for its original scope.
+Setup/deployment/scheduler instructions are in backend API_CHANGES.md M13-BE-02;
+full runtime/gradebook/Google checks remain in the single workspace
+`qa/M13-SETTINGS-AND-ACCOUNT-ACCEPTANCE.md`. All new tests are NOT RUN by assistant.

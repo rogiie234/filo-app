@@ -14,13 +14,14 @@ export function requiredEnv(name: string): string {
   if (!value) throw new Error(`Missing configuration: ${name}`);
   return value;
 }
-export function adminClient() {
+export function adminClient(fetcher?: typeof fetch) {
   const secrets = Deno.env.get("SUPABASE_SECRET_KEYS");
   const key = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ??
     (secrets ? JSON.parse(secrets).default : undefined);
   if (!key) throw new Error("Missing backend database key");
   return createClient(requiredEnv("SUPABASE_URL"), key, {
     auth: { persistSession: false, autoRefreshToken: false },
+    ...(fetcher ? { global: { fetch: fetcher } } : {}),
   });
 }
 export function isUuid(value: string): boolean {

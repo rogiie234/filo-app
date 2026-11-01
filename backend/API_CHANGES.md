@@ -2267,3 +2267,126 @@ application-role immutability. Actual Storage uploads/limits/MIME/overwrite, fre
 photo reads, real OTP and retry acceptance remain pending in the canonical workspace
 qa/M13-SETTINGS-AND-ACCOUNT-ACCEPTANCE.md. SQL-result/Git handoff acceptance does not
 waive those runtime checks. No new API or source changes for this evidence update.
+
+
+## M13-BE-02 student account deletion - 2026-11-02
+
+Implemented locally; NOT deployed or tested. Migration:
+`supabase/migrations/20261102110000_student_account_deletion.sql` (after BE-01).
+Requires standard Supabase Storage `owner`/`owner_id` fields on objects and buckets;
+preflight refuses a different schema atomically. Instructor deletion, frontend DELETE
+confirmation/navigation and local-device download cleanup are outside this backend task.
+
+### Public Edge contract
+
+- `POST /functions/v1/delete-account`: validated Bearer JWT plus database-matched live
+  Auth session/OTP proof, existing student profile, no owned classes. Body must be `{}`
+  (max 256 bytes, 5s body-read deadline); no query parameters, target IDs or session IDs.
+  Account/session are derived from the verified token, never from client input.
+- `200 {"status":"deleted"}` only after avatar, Auth and database completion checks.
+  `202 {"status":"pending"}` means permanent deletion was accepted and external cleanup
+  is still pending or another worker owns it. It does NOT mean the account is intact.
+- Sanitized errors: 400 INVALID_REQUEST, 401 NOT_AUTHENTICATED, 403 NOT_ALLOWED,
+  405 METHOD_NOT_ALLOWED, 503 UNAVAILABLE. OPTIONS is CORS preflight only.
+  A failure/lost response during acceptance can have an unknown outcome: reconcile the
+  server-only job; do not claim rollback based solely on an HTTP/network failure.
+- Valid existing session proof can resume the same pending deletion. It grants no
+  ordinary app access. After Auth deletion the old JWT fails validation; completed jobs
+  cannot be claimed again. Signing in again only after completion creates a new Auth
+  identity with role selection; no email-based restoration or work transfer exists.
+- `POST /functions/v1/process-account-deletions`: only header
+  `x-account-deletion-secret` matching Edge `ACCOUNT_DELETION_SECRET`. A user JWT/service
+  key alone is insufficient. Returns counts `{completed,pending}` for the selected batch,
+  not a global queue count or personal identifiers. Missing secret=503, wrong secret=401.
+
+### State, cleanup and recovery
+
+Server-only `account_deletions` stores user UUID, request/attempt/completion timestamps,
+lease UUID/expiry and allowlisted error marker only (storage/auth/database/deferred).
+All new helpers deny PUBLIC/anon/authenticated execution. Only trusted Edge service
+code may call begin_student_account_deletion(user,session), claim_account_deletion(user),
+list_account_avatars(user,lease), prepare_account_auth_deletion(user,lease),
+finish_account_deletion(user,lease), release_account_deletion(user,lease,error).
+No existing RPC signature changes. Shared adminClient accepts an optional fetch transport;
+existing callers preserve their transport, deletion supplies a 10s request deadline.
+
+Acceptance is one DB transaction: create/reuse job; anonymize profile to Deleted User;
+clear email/school/both photo refs/privacy consent; set deleted_at; set memberships left;
+remove device tokens/trusted devices/OTP codes/settings/inbox. Keep only the requesting
+verified-session proof for recovery until Auth deletion. current_user_ok denies every
+account with a deletion record, including completed records, while preserving onboarding
+without a profile. Triggers prevent profile restoration, membership reactivation,
+security-record recreation and new in-flight authenticated Storage writes. Late inbox
+production is suppressed so instructor grade/result publication is not broken.
+
+The worker leases one job for 180s; one loop uses up to 80s and eight first-page reads
+of at most 500 avatar metadata rows. It deletes actual bytes via Storage API, not SQL,
+including nested/stale uploads under the user's prefix or owned by that user. It then
+detaches Auth ownership (owner/owner_id) from retained non-avatar objects/buckets,
+preserving bytes/paths/class permissions; hard-deletes the login through Auth Admin;
+confirms no Auth row/avatar metadata remains, then marks completion. Submissions/items,
+grades, exam sessions/answers and leave-event history are retained under the original
+profile ID. Scores/content are not rewritten. Files remain subject to existing class
+retention/purge rules. No original account can be restored by this flow.
+
+Storage/Auth/database failures retain pending state, not a false success. Recovery
+repeats safe cleanup, treats Auth user_not_found as a possibly lost prior response,
+and confirms completion in SQL. A failed lease release recovers after expiry. Ten jobs
+are selected per scheduler request, never holding a SQL lock across external requests;
+oldest-attempt ordering prevents repeatedly failing jobs from starving untouched jobs.
+Set up the scheduler before offering account deletion to users.
+
+### Owner setup and verification (NOT RUN)
+
+1. Apply the full migration on DEV after the existing migration chain. No migrations
+   were run by the assistant. Review the standard Storage ownership preflight failure
+   rather than bypassing it if the project has a different schema.
+2. From backend, run the new mocked suites (no live API requests):
+
+```powershell
+deno test --config supabase/functions/delete-account/deno.json supabase/functions/delete-account/deletion_test.ts supabase/functions/delete-account/store_test.ts
+```
+
+3. Run the WHOLE `tests/student_account_deletion.sql` as postgres in DEV SQL Editor.
+   Expected overall PASS, zero failures; fixtures/helpers roll back. After interruption,
+   run ROLLBACK separately first. It simulates Auth deletion and Storage metadata only.
+4. Because current_user_ok and Storage-write guards changed, run the maintained
+   `tests/profile_edit_photo_rules.sql` regression once on this migration. Historical
+   BE-01 163/0 is retained as prior evidence, not a current-build test result.
+5. Owner deploys (backend directory, confirm DEV project selection):
+
+```powershell
+supabase functions deploy delete-account
+supabase functions deploy process-account-deletions
+```
+
+6. Configure a dedicated ACCOUNT_DELETION_SECRET in Edge settings, the same value as
+   Vault account_deletion_secret, plus existing Vault project_url. Keep all values out
+   of Git/chat. Run the full `setup/enable_account_deletion_recovery.sql` as postgres;
+   it schedules filo-account-deletions every 5 minutes using existing pg_cron/pg_net/Vault.
+   No remote secrets/schedule/deployment were changed by the assistant.
+7. Use a disposable OTP-verified student with assignment/grade/exam/file fixtures, owner
+   instructor and outsider. POST `{}` through the Edge API. Confirm DB anonymization,
+   devices/settings/inbox/session/login removal, all avatar bytes gone, retained file
+   access by instructor and gradebook/results refreshed as Deleted User. Try forged
+   target parameters, pre-OTP and instructor calls; all must be refused without side effects.
+8. Check interrupted/partial cleanup using mocked failure tests first; any real pending
+   request must complete via scheduler after recovery, without restoration. Re-sign in
+   with the same disposable Google account after completion: new UUID, role selection,
+   no inherited membership/work access. Real Google/Auth/Storage/UI evidence is required.
+
+Canonical Done when, evidence, recovery and owner acceptance:
+workspace `qa/M13-SETTINGS-AND-ACCOUNT-ACCEPTANCE.md` (outside app Git). No SQL, mocks,
+live deletion, deployment, scheduler or real Google re-sign-in Pass is claimed.
+
+
+M13-BE-02 authorized assistant verification (2026-11-02): sole pending migration
+20261102110000 applied to DEV fiobwfzmqcffbpixzvbq via CLI 2.121.0, exit0; migration
+ledger confirms both M13 versions. Rollback deletion SQL **73 passed/0 failed**;
+profile regression **163 passed/0 failed**. Local mocked Edge/adapter suites final
+**23 passed/0 failed**, exit0, 279ms. Initial 22/1 failure was a non-UUID Auth test
+fixture rejected before mock fetch; corrected fixture only, no production fix. These
+supersede NOT RUN/deployment notes above for the migration and named tests only.
+Edge Functions not deployed; scheduler/secrets unchanged; no real account/avatar deletion,
+Google re-sign-in or gradebook-screen acceptance. Remaining runtime checks and historical
+failures persist in canonical workspace M13 QA; explicit owner acceptance pending.
