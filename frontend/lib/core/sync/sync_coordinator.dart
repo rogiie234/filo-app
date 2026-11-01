@@ -18,6 +18,7 @@ import '../../features/results/data/results_failure.dart';
 import '../../features/results/data/student_results_repository.dart';
 import 'outbox_processor.dart';
 import 'sqlite_outbox.dart';
+import '../../features/notifications/data/inbox_repository.dart';
 
 class SyncCoordinator extends ChangeNotifier {
   SyncCoordinator(
@@ -59,17 +60,8 @@ class SyncCoordinator extends ChangeNotifier {
     }
   }
 
-  Future<void> queueNotificationRead(String notificationId) async {
-    final stamp = DateTime.now().toUtc();
-    await SqliteOutbox(db).enqueue(
-      'read:$notificationId',
-      'notification_read',
-      {'notification_id': notificationId, 'read_at': stamp.toIso8601String()},
-    );
-    await (db.update(db.cacheNotifications)
-          ..where((n) => n.id.equals(notificationId)))
-        .write(CacheNotificationsCompanion(readAt: Value(stamp)));
-  }
+  Future<void> queueNotificationRead(String notificationId) =>
+      InboxRepository(db, userId, isCurrent).markRead(notificationId);
 
   Future<void> queueLeaveEvent(
     String eventId,
@@ -203,8 +195,9 @@ class SyncCoordinator extends ChangeNotifier {
           // Inbox hard deletes must reconcile on the next successful sync.
           await _pull(
             table,
-            table == 'notifications' || snapshot || _accessChanged,
+            table != 'notifications' && (snapshot || _accessChanged),
           );
+          if (table == 'notifications') await _reconcileNotifications();
           errors.remove(table);
         } catch (_) {
           errors[table] = 'Could not refresh $table. Retry when connected.';
@@ -267,6 +260,63 @@ class SyncCoordinator extends ChangeNotifier {
     }
   }
 
+  Future<void> _reconcileNotifications() async {
+    final seen = <String>{};
+    String? after;
+    while (true) {
+      if (!isCurrent() ||
+          currentAccountCheck != null && !await currentAccountCheck!())
+        return;
+      var query = client
+          .from('notifications')
+          .select('id')
+          .eq('recipient_id', userId);
+      if (after != null) query = query.gt('id', after);
+      final page = await query
+          .order('id')
+          .limit(200)
+          .timeout(const Duration(seconds: 20));
+      if (!isCurrent()) return;
+      if (page.isEmpty) break;
+      final next = page.last['id'] as String;
+      if (after != null && next.compareTo(after) <= 0) {
+        throw StateError('Non-progressing inbox reconciliation');
+      }
+      seen.addAll(page.map((row) => row['id'] as String));
+      after = next;
+    }
+    if (!isCurrent() ||
+        currentAccountCheck != null && !await currentAccountCheck!())
+      return;
+    await db.transaction(() async {
+      final local = await (db.select(
+        db.cacheNotifications,
+      )..where((n) => n.recipientId.equals(userId))).get();
+      final payloads = await db
+          .customSelect(
+            "SELECT id FROM sync_payloads WHERE table_name='notifications'",
+          )
+          .get();
+      final ids = {
+        ...local.map((n) => n.id),
+        ...payloads.map((r) => r.read<String>('id')),
+      };
+      for (final id in ids.difference(seen)) {
+        if (!isCurrent())
+          throw StateError('Account changed during reconciliation');
+        await _remove('notifications', id);
+        await db.customStatement(
+          "DELETE FROM sync_payloads WHERE table_name='notifications' AND id=?",
+          [id],
+        );
+      }
+      if (!isCurrent() ||
+          currentAccountCheck != null && !await currentAccountCheck!()) {
+        throw StateError('Account changed during reconciliation');
+      }
+    });
+  }
+
   Future<void> _pull(String table, bool snapshot) async {
     final saved = await db
         .customSelect(
@@ -285,6 +335,7 @@ class SyncCoordinator extends ChangeNotifier {
         return;
       }
       var query = client.from(table).select().gte('updated_at', lower);
+      if (table == 'notifications') query = query.eq('recipient_id', userId);
       if (cursorStamp != null) {
         query = query.or(
           'updated_at.gt.$cursorStamp,and(updated_at.eq.$cursorStamp,$key.gt.$cursorId)',
@@ -511,6 +562,20 @@ class SyncCoordinator extends ChangeNotifier {
               );
         }
       case 'notifications':
+        if (row['recipient_id'] != userId) return;
+        // A failed/deferred upload must not undo the account's local read mark.
+        final pending =
+            await (db.select(db.outbox)..where(
+                  (o) =>
+                      o.id.equals('read:${row['id']}') &
+                      o.status.equals('complete').not(),
+                ))
+                .getSingleOrNull();
+        if (pending != null) {
+          final payload = jsonDecode(pending.payload) as Map<String, dynamic>;
+          data['readAt'] = DateTime.parse(payload['read_at'] as String)
+              .millisecondsSinceEpoch;
+        }
         if (await _exists('cache_profiles', 'id', row['recipient_id'])) {
           if (!await _exists('cache_classes', 'id', row['class_id'])) {
             data['classId'] = null;

@@ -2,6 +2,7 @@ import 'package:drift/drift.dart';
 
 import 'tables.dart';
 import 'study_tables.dart';
+import 'notification_tables.dart';
 
 part 'app_database.g.dart';
 
@@ -18,6 +19,9 @@ part 'app_database.g.dart';
     CacheQuizzes,
     CacheResults,
     CacheNotifications,
+    DeadlineReminders,
+    StudyAlarms,
+    AlarmSlots,
     SyncState,
     Outbox,
     LocalFolders,
@@ -41,7 +45,7 @@ class AppDatabase extends _$AppDatabase {
   final DateTime Function() now;
 
   @override
-  int get schemaVersion => 12;
+  int get schemaVersion => 13;
 
   Future<int> purgeExpiredStudyChats() => (delete(
     chats,
@@ -213,6 +217,19 @@ class AppDatabase extends _$AppDatabase {
       await _createFileSyncState();
     },
     onUpgrade: (m, from, to) async {
+      if (from < 13) {
+        final existing = (await customSelect(
+          "SELECT name FROM sqlite_master WHERE type='table'",
+        ).get()).map((row) => row.read<String>('name')).toSet();
+        for (final table in <TableInfo<Table, dynamic>>[
+          deadlineReminders,
+          studyAlarms,
+          alarmSlots,
+        ]) {
+          if (!existing.contains(table.actualTableName))
+            await m.createTable(table);
+        }
+      }
       if (from < 11) {
         // Some legacy fixtures already contain newer tables at an older version.
         final existing = (await customSelect(

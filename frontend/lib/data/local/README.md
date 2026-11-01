@@ -137,3 +137,42 @@ M9 results owner compile correction (2026-10-25): owner suite reported 30 passed
 ## M9 results owner acceptance - 2026-10-25
 
 Owner reported `flutter test test/features/results`: 36 passed, All tests passed, then explicitly approved all runtime checks. M9-FE-02 through M9-FE-06 runtime acceptance is recorded on owner evidence, including the requested results, grading, release/second-chance, offline and mixed-grade flows. This supersedes earlier pending labels for these tasks; no independent assistant verification is claimed. M9-FE-07 quiz-specific CSV and dark mode remain deferred. No production changes or new testing materials in this acceptance task.
+
+
+## M12-FE-01 offline notification data (2026-11-01)
+
+Schema 13 adds deadline_reminders, study_alarms and alarm_slots without clearing
+existing tables. Account files remain databases/<user-id>.sqlite. Reminder keys
+are (post_id, fire_at), supporting both 24h and 1h rows. System IDs must be positive
+signed 32-bit integers and are unique within each scheduling table. The future
+Android scheduler must allocate IDs across both tables without collisions.
+Study time is minute_of_day 0..1439; repeat_days is a 7-bit ISO-weekday mask
+(Monday bit 0); zero is one-time. Slot weekday 0 is one-time and 1..7 is ISO weekday.
+Alarm deletion cascades slots. Optional class/deck references are plain IDs so
+cache eviction does not destroy the user's alarm. These APIs do not schedule,
+reschedule, cancel or allocate Android notifications.
+
+InboxRepository reads only SQLite, sorted by created_at/id descending; its count
+is reactive and account-scoped. Single/all read marks commit the local timestamp
+and stable read:<notification-id> notification_read action together. Repeated
+marks retain the first timestamp. Mark-all covers only the cached unread snapshot.
+Providers reject missing account storage instead of returning a false empty inbox.
+AlarmRepository supplies account-guarded save/read operations and alarm deletion.
+
+SyncCoordinator delegates read writes to InboxRepository. Notifications now use
+the saved changed-since timestamp/ID cursor, followed by a paginated ID-only
+reconciliation every successful sync. Only a complete, current-account scan can
+prune inbox rows and payloads. Pending/processing/failed read actions overlay server
+rows until upload completes. Existing reconnect/resume/background/retry paths and
+server recipient filtering are reused. Failed scans retain cache for retry.
+
+Owner checks from frontend:
+flutter test test/features/notifications test/core/sync/sync_coordinator_test.dart test/core/sync/outbox_processor_test.dart test/data/local/app_database_test.dart test/data/local/auth_database_test.dart --reporter expanded
+Tests written, NOT RUN. Inbox UI and native scheduling remain later tasks.
+
+
+Owner-requested assistant verification (2026-11-01): the focused command above
+passed23tests/0failures,exit0 (reporter00:04), using SQLite fixtures and mocked HTTP.
+Initial test import collision and UTC/local readback assertion were corrected;
+production behavior unchanged. Supersedes NOT RUN for this selected suite only.
+Real phone/offline/reconnect acceptance remains pending in canonical M12 QA.

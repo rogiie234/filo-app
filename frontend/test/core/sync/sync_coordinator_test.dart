@@ -43,7 +43,9 @@ void main() {
                 request: request,
               );
           final table = request.url.pathSegments.last;
-          final nextPage = request.url.queryParameters.containsKey('or');
+          final nextPage =
+              request.url.queryParameters.containsKey('or') ||
+              request.url.queryParameters['id']?.startsWith('gt.') == true;
           if (table == 'finalize_accessible_exams') return json(null);
           if (table == 'notifications') {
             if (secondSync) {
@@ -87,7 +89,7 @@ void main() {
         expect((await db.select(db.cacheNotifications).get()).length, 2);
         secondSync = true;
         await coordinator.run();
-        expect(secondSnapshotRequested, isTrue);
+        expect(secondSnapshotRequested, isFalse);
         final ids = (await db.select(db.cacheNotifications).get()).map(
           (n) => n.id,
         );

@@ -7756,6 +7756,1047 @@ class CacheNotificationsCompanion extends UpdateCompanion<CacheNotification> {
   }
 }
 
+class $DeadlineRemindersTable extends DeadlineReminders
+    with TableInfo<$DeadlineRemindersTable, DeadlineReminder> {
+  @override
+  final GeneratedDatabase attachedDatabase;
+  final String? _alias;
+  $DeadlineRemindersTable(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _postIdMeta = const VerificationMeta('postId');
+  @override
+  late final GeneratedColumn<String> postId = GeneratedColumn<String>(
+    'post_id',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _fireAtMeta = const VerificationMeta('fireAt');
+  @override
+  late final GeneratedColumn<DateTime> fireAt = GeneratedColumn<DateTime>(
+    'fire_at',
+    aliasedName,
+    false,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _systemAlarmIdMeta = const VerificationMeta(
+    'systemAlarmId',
+  );
+  @override
+  late final GeneratedColumn<int> systemAlarmId = GeneratedColumn<int>(
+    'system_alarm_id',
+    aliasedName,
+    false,
+    check: () => ComparableExpr(systemAlarmId).isBetweenValues(1, 2147483647),
+    type: DriftSqlType.int,
+    requiredDuringInsert: true,
+    defaultConstraints: GeneratedColumn.constraintIsAlways('UNIQUE'),
+  );
+  @override
+  List<GeneratedColumn> get $columns => [postId, fireAt, systemAlarmId];
+  @override
+  String get aliasedName => _alias ?? actualTableName;
+  @override
+  String get actualTableName => $name;
+  static const String $name = 'deadline_reminders';
+  @override
+  VerificationContext validateIntegrity(
+    Insertable<DeadlineReminder> instance, {
+    bool isInserting = false,
+  }) {
+    final context = VerificationContext();
+    final data = instance.toColumns(true);
+    if (data.containsKey('post_id')) {
+      context.handle(
+        _postIdMeta,
+        postId.isAcceptableOrUnknown(data['post_id']!, _postIdMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_postIdMeta);
+    }
+    if (data.containsKey('fire_at')) {
+      context.handle(
+        _fireAtMeta,
+        fireAt.isAcceptableOrUnknown(data['fire_at']!, _fireAtMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_fireAtMeta);
+    }
+    if (data.containsKey('system_alarm_id')) {
+      context.handle(
+        _systemAlarmIdMeta,
+        systemAlarmId.isAcceptableOrUnknown(
+          data['system_alarm_id']!,
+          _systemAlarmIdMeta,
+        ),
+      );
+    } else if (isInserting) {
+      context.missing(_systemAlarmIdMeta);
+    }
+    return context;
+  }
+
+  @override
+  Set<GeneratedColumn> get $primaryKey => {postId, fireAt};
+  @override
+  DeadlineReminder map(Map<String, dynamic> data, {String? tablePrefix}) {
+    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
+    return DeadlineReminder(
+      postId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}post_id'],
+      )!,
+      fireAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}fire_at'],
+      )!,
+      systemAlarmId: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}system_alarm_id'],
+      )!,
+    );
+  }
+
+  @override
+  $DeadlineRemindersTable createAlias(String alias) {
+    return $DeadlineRemindersTable(attachedDatabase, alias);
+  }
+}
+
+class DeadlineReminder extends DataClass
+    implements Insertable<DeadlineReminder> {
+  final String postId;
+  final DateTime fireAt;
+  final int systemAlarmId;
+  const DeadlineReminder({
+    required this.postId,
+    required this.fireAt,
+    required this.systemAlarmId,
+  });
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    map['post_id'] = Variable<String>(postId);
+    map['fire_at'] = Variable<DateTime>(fireAt);
+    map['system_alarm_id'] = Variable<int>(systemAlarmId);
+    return map;
+  }
+
+  DeadlineRemindersCompanion toCompanion(bool nullToAbsent) {
+    return DeadlineRemindersCompanion(
+      postId: Value(postId),
+      fireAt: Value(fireAt),
+      systemAlarmId: Value(systemAlarmId),
+    );
+  }
+
+  factory DeadlineReminder.fromJson(
+    Map<String, dynamic> json, {
+    ValueSerializer? serializer,
+  }) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return DeadlineReminder(
+      postId: serializer.fromJson<String>(json['postId']),
+      fireAt: serializer.fromJson<DateTime>(json['fireAt']),
+      systemAlarmId: serializer.fromJson<int>(json['systemAlarmId']),
+    );
+  }
+  @override
+  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return <String, dynamic>{
+      'postId': serializer.toJson<String>(postId),
+      'fireAt': serializer.toJson<DateTime>(fireAt),
+      'systemAlarmId': serializer.toJson<int>(systemAlarmId),
+    };
+  }
+
+  DeadlineReminder copyWith({
+    String? postId,
+    DateTime? fireAt,
+    int? systemAlarmId,
+  }) => DeadlineReminder(
+    postId: postId ?? this.postId,
+    fireAt: fireAt ?? this.fireAt,
+    systemAlarmId: systemAlarmId ?? this.systemAlarmId,
+  );
+  DeadlineReminder copyWithCompanion(DeadlineRemindersCompanion data) {
+    return DeadlineReminder(
+      postId: data.postId.present ? data.postId.value : this.postId,
+      fireAt: data.fireAt.present ? data.fireAt.value : this.fireAt,
+      systemAlarmId: data.systemAlarmId.present
+          ? data.systemAlarmId.value
+          : this.systemAlarmId,
+    );
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('DeadlineReminder(')
+          ..write('postId: $postId, ')
+          ..write('fireAt: $fireAt, ')
+          ..write('systemAlarmId: $systemAlarmId')
+          ..write(')'))
+        .toString();
+  }
+
+  @override
+  int get hashCode => Object.hash(postId, fireAt, systemAlarmId);
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is DeadlineReminder &&
+          other.postId == this.postId &&
+          other.fireAt == this.fireAt &&
+          other.systemAlarmId == this.systemAlarmId);
+}
+
+class DeadlineRemindersCompanion extends UpdateCompanion<DeadlineReminder> {
+  final Value<String> postId;
+  final Value<DateTime> fireAt;
+  final Value<int> systemAlarmId;
+  final Value<int> rowid;
+  const DeadlineRemindersCompanion({
+    this.postId = const Value.absent(),
+    this.fireAt = const Value.absent(),
+    this.systemAlarmId = const Value.absent(),
+    this.rowid = const Value.absent(),
+  });
+  DeadlineRemindersCompanion.insert({
+    required String postId,
+    required DateTime fireAt,
+    required int systemAlarmId,
+    this.rowid = const Value.absent(),
+  }) : postId = Value(postId),
+       fireAt = Value(fireAt),
+       systemAlarmId = Value(systemAlarmId);
+  static Insertable<DeadlineReminder> custom({
+    Expression<String>? postId,
+    Expression<DateTime>? fireAt,
+    Expression<int>? systemAlarmId,
+    Expression<int>? rowid,
+  }) {
+    return RawValuesInsertable({
+      if (postId != null) 'post_id': postId,
+      if (fireAt != null) 'fire_at': fireAt,
+      if (systemAlarmId != null) 'system_alarm_id': systemAlarmId,
+      if (rowid != null) 'rowid': rowid,
+    });
+  }
+
+  DeadlineRemindersCompanion copyWith({
+    Value<String>? postId,
+    Value<DateTime>? fireAt,
+    Value<int>? systemAlarmId,
+    Value<int>? rowid,
+  }) {
+    return DeadlineRemindersCompanion(
+      postId: postId ?? this.postId,
+      fireAt: fireAt ?? this.fireAt,
+      systemAlarmId: systemAlarmId ?? this.systemAlarmId,
+      rowid: rowid ?? this.rowid,
+    );
+  }
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (postId.present) {
+      map['post_id'] = Variable<String>(postId.value);
+    }
+    if (fireAt.present) {
+      map['fire_at'] = Variable<DateTime>(fireAt.value);
+    }
+    if (systemAlarmId.present) {
+      map['system_alarm_id'] = Variable<int>(systemAlarmId.value);
+    }
+    if (rowid.present) {
+      map['rowid'] = Variable<int>(rowid.value);
+    }
+    return map;
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('DeadlineRemindersCompanion(')
+          ..write('postId: $postId, ')
+          ..write('fireAt: $fireAt, ')
+          ..write('systemAlarmId: $systemAlarmId, ')
+          ..write('rowid: $rowid')
+          ..write(')'))
+        .toString();
+  }
+}
+
+class $StudyAlarmsTable extends StudyAlarms
+    with TableInfo<$StudyAlarmsTable, StudyAlarm> {
+  @override
+  final GeneratedDatabase attachedDatabase;
+  final String? _alias;
+  $StudyAlarmsTable(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _idMeta = const VerificationMeta('id');
+  @override
+  late final GeneratedColumn<String> id = GeneratedColumn<String>(
+    'id',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _subjectMeta = const VerificationMeta(
+    'subject',
+  );
+  @override
+  late final GeneratedColumn<String> subject = GeneratedColumn<String>(
+    'subject',
+    aliasedName,
+    false,
+    check: () =>
+        ComparableExpr(StringExpressionOperators(subject).trim().length)
+            .isBiggerThanValue(0),
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _minuteOfDayMeta = const VerificationMeta(
+    'minuteOfDay',
+  );
+  @override
+  late final GeneratedColumn<int> minuteOfDay = GeneratedColumn<int>(
+    'minute_of_day',
+    aliasedName,
+    false,
+    check: () => ComparableExpr(minuteOfDay).isBetweenValues(0, 1439),
+    type: DriftSqlType.int,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _repeatDaysMeta = const VerificationMeta(
+    'repeatDays',
+  );
+  @override
+  late final GeneratedColumn<int> repeatDays = GeneratedColumn<int>(
+    'repeat_days',
+    aliasedName,
+    false,
+    check: () => ComparableExpr(repeatDays).isBetweenValues(0, 127),
+    type: DriftSqlType.int,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _enabledMeta = const VerificationMeta(
+    'enabled',
+  );
+  @override
+  late final GeneratedColumn<bool> enabled = GeneratedColumn<bool>(
+    'enabled',
+    aliasedName,
+    false,
+    type: DriftSqlType.bool,
+    requiredDuringInsert: false,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'CHECK ("enabled" IN (0, 1))',
+    ),
+    defaultValue: const Constant(true),
+  );
+  static const VerificationMeta _linkedClassIdMeta = const VerificationMeta(
+    'linkedClassId',
+  );
+  @override
+  late final GeneratedColumn<String> linkedClassId = GeneratedColumn<String>(
+    'linked_class_id',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _linkedDeckIdMeta = const VerificationMeta(
+    'linkedDeckId',
+  );
+  @override
+  late final GeneratedColumn<String> linkedDeckId = GeneratedColumn<String>(
+    'linked_deck_id',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  @override
+  List<GeneratedColumn> get $columns => [
+    id,
+    subject,
+    minuteOfDay,
+    repeatDays,
+    enabled,
+    linkedClassId,
+    linkedDeckId,
+  ];
+  @override
+  String get aliasedName => _alias ?? actualTableName;
+  @override
+  String get actualTableName => $name;
+  static const String $name = 'study_alarms';
+  @override
+  VerificationContext validateIntegrity(
+    Insertable<StudyAlarm> instance, {
+    bool isInserting = false,
+  }) {
+    final context = VerificationContext();
+    final data = instance.toColumns(true);
+    if (data.containsKey('id')) {
+      context.handle(_idMeta, id.isAcceptableOrUnknown(data['id']!, _idMeta));
+    } else if (isInserting) {
+      context.missing(_idMeta);
+    }
+    if (data.containsKey('subject')) {
+      context.handle(
+        _subjectMeta,
+        subject.isAcceptableOrUnknown(data['subject']!, _subjectMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_subjectMeta);
+    }
+    if (data.containsKey('minute_of_day')) {
+      context.handle(
+        _minuteOfDayMeta,
+        minuteOfDay.isAcceptableOrUnknown(
+          data['minute_of_day']!,
+          _minuteOfDayMeta,
+        ),
+      );
+    } else if (isInserting) {
+      context.missing(_minuteOfDayMeta);
+    }
+    if (data.containsKey('repeat_days')) {
+      context.handle(
+        _repeatDaysMeta,
+        repeatDays.isAcceptableOrUnknown(data['repeat_days']!, _repeatDaysMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_repeatDaysMeta);
+    }
+    if (data.containsKey('enabled')) {
+      context.handle(
+        _enabledMeta,
+        enabled.isAcceptableOrUnknown(data['enabled']!, _enabledMeta),
+      );
+    }
+    if (data.containsKey('linked_class_id')) {
+      context.handle(
+        _linkedClassIdMeta,
+        linkedClassId.isAcceptableOrUnknown(
+          data['linked_class_id']!,
+          _linkedClassIdMeta,
+        ),
+      );
+    }
+    if (data.containsKey('linked_deck_id')) {
+      context.handle(
+        _linkedDeckIdMeta,
+        linkedDeckId.isAcceptableOrUnknown(
+          data['linked_deck_id']!,
+          _linkedDeckIdMeta,
+        ),
+      );
+    }
+    return context;
+  }
+
+  @override
+  Set<GeneratedColumn> get $primaryKey => {id};
+  @override
+  StudyAlarm map(Map<String, dynamic> data, {String? tablePrefix}) {
+    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
+    return StudyAlarm(
+      id: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}id'],
+      )!,
+      subject: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}subject'],
+      )!,
+      minuteOfDay: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}minute_of_day'],
+      )!,
+      repeatDays: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}repeat_days'],
+      )!,
+      enabled: attachedDatabase.typeMapping.read(
+        DriftSqlType.bool,
+        data['${effectivePrefix}enabled'],
+      )!,
+      linkedClassId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}linked_class_id'],
+      ),
+      linkedDeckId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}linked_deck_id'],
+      ),
+    );
+  }
+
+  @override
+  $StudyAlarmsTable createAlias(String alias) {
+    return $StudyAlarmsTable(attachedDatabase, alias);
+  }
+}
+
+class StudyAlarm extends DataClass implements Insertable<StudyAlarm> {
+  final String id;
+  final String subject;
+  final int minuteOfDay;
+  final int repeatDays;
+  final bool enabled;
+  final String? linkedClassId;
+  final String? linkedDeckId;
+  const StudyAlarm({
+    required this.id,
+    required this.subject,
+    required this.minuteOfDay,
+    required this.repeatDays,
+    required this.enabled,
+    this.linkedClassId,
+    this.linkedDeckId,
+  });
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    map['id'] = Variable<String>(id);
+    map['subject'] = Variable<String>(subject);
+    map['minute_of_day'] = Variable<int>(minuteOfDay);
+    map['repeat_days'] = Variable<int>(repeatDays);
+    map['enabled'] = Variable<bool>(enabled);
+    if (!nullToAbsent || linkedClassId != null) {
+      map['linked_class_id'] = Variable<String>(linkedClassId);
+    }
+    if (!nullToAbsent || linkedDeckId != null) {
+      map['linked_deck_id'] = Variable<String>(linkedDeckId);
+    }
+    return map;
+  }
+
+  StudyAlarmsCompanion toCompanion(bool nullToAbsent) {
+    return StudyAlarmsCompanion(
+      id: Value(id),
+      subject: Value(subject),
+      minuteOfDay: Value(minuteOfDay),
+      repeatDays: Value(repeatDays),
+      enabled: Value(enabled),
+      linkedClassId: linkedClassId == null && nullToAbsent
+          ? const Value.absent()
+          : Value(linkedClassId),
+      linkedDeckId: linkedDeckId == null && nullToAbsent
+          ? const Value.absent()
+          : Value(linkedDeckId),
+    );
+  }
+
+  factory StudyAlarm.fromJson(
+    Map<String, dynamic> json, {
+    ValueSerializer? serializer,
+  }) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return StudyAlarm(
+      id: serializer.fromJson<String>(json['id']),
+      subject: serializer.fromJson<String>(json['subject']),
+      minuteOfDay: serializer.fromJson<int>(json['minuteOfDay']),
+      repeatDays: serializer.fromJson<int>(json['repeatDays']),
+      enabled: serializer.fromJson<bool>(json['enabled']),
+      linkedClassId: serializer.fromJson<String?>(json['linkedClassId']),
+      linkedDeckId: serializer.fromJson<String?>(json['linkedDeckId']),
+    );
+  }
+  @override
+  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return <String, dynamic>{
+      'id': serializer.toJson<String>(id),
+      'subject': serializer.toJson<String>(subject),
+      'minuteOfDay': serializer.toJson<int>(minuteOfDay),
+      'repeatDays': serializer.toJson<int>(repeatDays),
+      'enabled': serializer.toJson<bool>(enabled),
+      'linkedClassId': serializer.toJson<String?>(linkedClassId),
+      'linkedDeckId': serializer.toJson<String?>(linkedDeckId),
+    };
+  }
+
+  StudyAlarm copyWith({
+    String? id,
+    String? subject,
+    int? minuteOfDay,
+    int? repeatDays,
+    bool? enabled,
+    Value<String?> linkedClassId = const Value.absent(),
+    Value<String?> linkedDeckId = const Value.absent(),
+  }) => StudyAlarm(
+    id: id ?? this.id,
+    subject: subject ?? this.subject,
+    minuteOfDay: minuteOfDay ?? this.minuteOfDay,
+    repeatDays: repeatDays ?? this.repeatDays,
+    enabled: enabled ?? this.enabled,
+    linkedClassId: linkedClassId.present
+        ? linkedClassId.value
+        : this.linkedClassId,
+    linkedDeckId: linkedDeckId.present ? linkedDeckId.value : this.linkedDeckId,
+  );
+  StudyAlarm copyWithCompanion(StudyAlarmsCompanion data) {
+    return StudyAlarm(
+      id: data.id.present ? data.id.value : this.id,
+      subject: data.subject.present ? data.subject.value : this.subject,
+      minuteOfDay: data.minuteOfDay.present
+          ? data.minuteOfDay.value
+          : this.minuteOfDay,
+      repeatDays: data.repeatDays.present
+          ? data.repeatDays.value
+          : this.repeatDays,
+      enabled: data.enabled.present ? data.enabled.value : this.enabled,
+      linkedClassId: data.linkedClassId.present
+          ? data.linkedClassId.value
+          : this.linkedClassId,
+      linkedDeckId: data.linkedDeckId.present
+          ? data.linkedDeckId.value
+          : this.linkedDeckId,
+    );
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('StudyAlarm(')
+          ..write('id: $id, ')
+          ..write('subject: $subject, ')
+          ..write('minuteOfDay: $minuteOfDay, ')
+          ..write('repeatDays: $repeatDays, ')
+          ..write('enabled: $enabled, ')
+          ..write('linkedClassId: $linkedClassId, ')
+          ..write('linkedDeckId: $linkedDeckId')
+          ..write(')'))
+        .toString();
+  }
+
+  @override
+  int get hashCode => Object.hash(
+    id,
+    subject,
+    minuteOfDay,
+    repeatDays,
+    enabled,
+    linkedClassId,
+    linkedDeckId,
+  );
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is StudyAlarm &&
+          other.id == this.id &&
+          other.subject == this.subject &&
+          other.minuteOfDay == this.minuteOfDay &&
+          other.repeatDays == this.repeatDays &&
+          other.enabled == this.enabled &&
+          other.linkedClassId == this.linkedClassId &&
+          other.linkedDeckId == this.linkedDeckId);
+}
+
+class StudyAlarmsCompanion extends UpdateCompanion<StudyAlarm> {
+  final Value<String> id;
+  final Value<String> subject;
+  final Value<int> minuteOfDay;
+  final Value<int> repeatDays;
+  final Value<bool> enabled;
+  final Value<String?> linkedClassId;
+  final Value<String?> linkedDeckId;
+  final Value<int> rowid;
+  const StudyAlarmsCompanion({
+    this.id = const Value.absent(),
+    this.subject = const Value.absent(),
+    this.minuteOfDay = const Value.absent(),
+    this.repeatDays = const Value.absent(),
+    this.enabled = const Value.absent(),
+    this.linkedClassId = const Value.absent(),
+    this.linkedDeckId = const Value.absent(),
+    this.rowid = const Value.absent(),
+  });
+  StudyAlarmsCompanion.insert({
+    required String id,
+    required String subject,
+    required int minuteOfDay,
+    required int repeatDays,
+    this.enabled = const Value.absent(),
+    this.linkedClassId = const Value.absent(),
+    this.linkedDeckId = const Value.absent(),
+    this.rowid = const Value.absent(),
+  }) : id = Value(id),
+       subject = Value(subject),
+       minuteOfDay = Value(minuteOfDay),
+       repeatDays = Value(repeatDays);
+  static Insertable<StudyAlarm> custom({
+    Expression<String>? id,
+    Expression<String>? subject,
+    Expression<int>? minuteOfDay,
+    Expression<int>? repeatDays,
+    Expression<bool>? enabled,
+    Expression<String>? linkedClassId,
+    Expression<String>? linkedDeckId,
+    Expression<int>? rowid,
+  }) {
+    return RawValuesInsertable({
+      if (id != null) 'id': id,
+      if (subject != null) 'subject': subject,
+      if (minuteOfDay != null) 'minute_of_day': minuteOfDay,
+      if (repeatDays != null) 'repeat_days': repeatDays,
+      if (enabled != null) 'enabled': enabled,
+      if (linkedClassId != null) 'linked_class_id': linkedClassId,
+      if (linkedDeckId != null) 'linked_deck_id': linkedDeckId,
+      if (rowid != null) 'rowid': rowid,
+    });
+  }
+
+  StudyAlarmsCompanion copyWith({
+    Value<String>? id,
+    Value<String>? subject,
+    Value<int>? minuteOfDay,
+    Value<int>? repeatDays,
+    Value<bool>? enabled,
+    Value<String?>? linkedClassId,
+    Value<String?>? linkedDeckId,
+    Value<int>? rowid,
+  }) {
+    return StudyAlarmsCompanion(
+      id: id ?? this.id,
+      subject: subject ?? this.subject,
+      minuteOfDay: minuteOfDay ?? this.minuteOfDay,
+      repeatDays: repeatDays ?? this.repeatDays,
+      enabled: enabled ?? this.enabled,
+      linkedClassId: linkedClassId ?? this.linkedClassId,
+      linkedDeckId: linkedDeckId ?? this.linkedDeckId,
+      rowid: rowid ?? this.rowid,
+    );
+  }
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (id.present) {
+      map['id'] = Variable<String>(id.value);
+    }
+    if (subject.present) {
+      map['subject'] = Variable<String>(subject.value);
+    }
+    if (minuteOfDay.present) {
+      map['minute_of_day'] = Variable<int>(minuteOfDay.value);
+    }
+    if (repeatDays.present) {
+      map['repeat_days'] = Variable<int>(repeatDays.value);
+    }
+    if (enabled.present) {
+      map['enabled'] = Variable<bool>(enabled.value);
+    }
+    if (linkedClassId.present) {
+      map['linked_class_id'] = Variable<String>(linkedClassId.value);
+    }
+    if (linkedDeckId.present) {
+      map['linked_deck_id'] = Variable<String>(linkedDeckId.value);
+    }
+    if (rowid.present) {
+      map['rowid'] = Variable<int>(rowid.value);
+    }
+    return map;
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('StudyAlarmsCompanion(')
+          ..write('id: $id, ')
+          ..write('subject: $subject, ')
+          ..write('minuteOfDay: $minuteOfDay, ')
+          ..write('repeatDays: $repeatDays, ')
+          ..write('enabled: $enabled, ')
+          ..write('linkedClassId: $linkedClassId, ')
+          ..write('linkedDeckId: $linkedDeckId, ')
+          ..write('rowid: $rowid')
+          ..write(')'))
+        .toString();
+  }
+}
+
+class $AlarmSlotsTable extends AlarmSlots
+    with TableInfo<$AlarmSlotsTable, AlarmSlot> {
+  @override
+  final GeneratedDatabase attachedDatabase;
+  final String? _alias;
+  $AlarmSlotsTable(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _alarmIdMeta = const VerificationMeta(
+    'alarmId',
+  );
+  @override
+  late final GeneratedColumn<String> alarmId = GeneratedColumn<String>(
+    'alarm_id',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'REFERENCES study_alarms (id) ON DELETE CASCADE',
+    ),
+  );
+  static const VerificationMeta _weekdayMeta = const VerificationMeta(
+    'weekday',
+  );
+  @override
+  late final GeneratedColumn<int> weekday = GeneratedColumn<int>(
+    'weekday',
+    aliasedName,
+    false,
+    check: () => ComparableExpr(weekday).isBetweenValues(0, 7),
+    type: DriftSqlType.int,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _systemAlarmIdMeta = const VerificationMeta(
+    'systemAlarmId',
+  );
+  @override
+  late final GeneratedColumn<int> systemAlarmId = GeneratedColumn<int>(
+    'system_alarm_id',
+    aliasedName,
+    false,
+    check: () => ComparableExpr(systemAlarmId).isBetweenValues(1, 2147483647),
+    type: DriftSqlType.int,
+    requiredDuringInsert: true,
+    defaultConstraints: GeneratedColumn.constraintIsAlways('UNIQUE'),
+  );
+  @override
+  List<GeneratedColumn> get $columns => [alarmId, weekday, systemAlarmId];
+  @override
+  String get aliasedName => _alias ?? actualTableName;
+  @override
+  String get actualTableName => $name;
+  static const String $name = 'alarm_slots';
+  @override
+  VerificationContext validateIntegrity(
+    Insertable<AlarmSlot> instance, {
+    bool isInserting = false,
+  }) {
+    final context = VerificationContext();
+    final data = instance.toColumns(true);
+    if (data.containsKey('alarm_id')) {
+      context.handle(
+        _alarmIdMeta,
+        alarmId.isAcceptableOrUnknown(data['alarm_id']!, _alarmIdMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_alarmIdMeta);
+    }
+    if (data.containsKey('weekday')) {
+      context.handle(
+        _weekdayMeta,
+        weekday.isAcceptableOrUnknown(data['weekday']!, _weekdayMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_weekdayMeta);
+    }
+    if (data.containsKey('system_alarm_id')) {
+      context.handle(
+        _systemAlarmIdMeta,
+        systemAlarmId.isAcceptableOrUnknown(
+          data['system_alarm_id']!,
+          _systemAlarmIdMeta,
+        ),
+      );
+    } else if (isInserting) {
+      context.missing(_systemAlarmIdMeta);
+    }
+    return context;
+  }
+
+  @override
+  Set<GeneratedColumn> get $primaryKey => {alarmId, weekday};
+  @override
+  AlarmSlot map(Map<String, dynamic> data, {String? tablePrefix}) {
+    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
+    return AlarmSlot(
+      alarmId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}alarm_id'],
+      )!,
+      weekday: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}weekday'],
+      )!,
+      systemAlarmId: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}system_alarm_id'],
+      )!,
+    );
+  }
+
+  @override
+  $AlarmSlotsTable createAlias(String alias) {
+    return $AlarmSlotsTable(attachedDatabase, alias);
+  }
+}
+
+class AlarmSlot extends DataClass implements Insertable<AlarmSlot> {
+  final String alarmId;
+  final int weekday;
+  final int systemAlarmId;
+  const AlarmSlot({
+    required this.alarmId,
+    required this.weekday,
+    required this.systemAlarmId,
+  });
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    map['alarm_id'] = Variable<String>(alarmId);
+    map['weekday'] = Variable<int>(weekday);
+    map['system_alarm_id'] = Variable<int>(systemAlarmId);
+    return map;
+  }
+
+  AlarmSlotsCompanion toCompanion(bool nullToAbsent) {
+    return AlarmSlotsCompanion(
+      alarmId: Value(alarmId),
+      weekday: Value(weekday),
+      systemAlarmId: Value(systemAlarmId),
+    );
+  }
+
+  factory AlarmSlot.fromJson(
+    Map<String, dynamic> json, {
+    ValueSerializer? serializer,
+  }) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return AlarmSlot(
+      alarmId: serializer.fromJson<String>(json['alarmId']),
+      weekday: serializer.fromJson<int>(json['weekday']),
+      systemAlarmId: serializer.fromJson<int>(json['systemAlarmId']),
+    );
+  }
+  @override
+  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return <String, dynamic>{
+      'alarmId': serializer.toJson<String>(alarmId),
+      'weekday': serializer.toJson<int>(weekday),
+      'systemAlarmId': serializer.toJson<int>(systemAlarmId),
+    };
+  }
+
+  AlarmSlot copyWith({String? alarmId, int? weekday, int? systemAlarmId}) =>
+      AlarmSlot(
+        alarmId: alarmId ?? this.alarmId,
+        weekday: weekday ?? this.weekday,
+        systemAlarmId: systemAlarmId ?? this.systemAlarmId,
+      );
+  AlarmSlot copyWithCompanion(AlarmSlotsCompanion data) {
+    return AlarmSlot(
+      alarmId: data.alarmId.present ? data.alarmId.value : this.alarmId,
+      weekday: data.weekday.present ? data.weekday.value : this.weekday,
+      systemAlarmId: data.systemAlarmId.present
+          ? data.systemAlarmId.value
+          : this.systemAlarmId,
+    );
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('AlarmSlot(')
+          ..write('alarmId: $alarmId, ')
+          ..write('weekday: $weekday, ')
+          ..write('systemAlarmId: $systemAlarmId')
+          ..write(')'))
+        .toString();
+  }
+
+  @override
+  int get hashCode => Object.hash(alarmId, weekday, systemAlarmId);
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is AlarmSlot &&
+          other.alarmId == this.alarmId &&
+          other.weekday == this.weekday &&
+          other.systemAlarmId == this.systemAlarmId);
+}
+
+class AlarmSlotsCompanion extends UpdateCompanion<AlarmSlot> {
+  final Value<String> alarmId;
+  final Value<int> weekday;
+  final Value<int> systemAlarmId;
+  final Value<int> rowid;
+  const AlarmSlotsCompanion({
+    this.alarmId = const Value.absent(),
+    this.weekday = const Value.absent(),
+    this.systemAlarmId = const Value.absent(),
+    this.rowid = const Value.absent(),
+  });
+  AlarmSlotsCompanion.insert({
+    required String alarmId,
+    required int weekday,
+    required int systemAlarmId,
+    this.rowid = const Value.absent(),
+  }) : alarmId = Value(alarmId),
+       weekday = Value(weekday),
+       systemAlarmId = Value(systemAlarmId);
+  static Insertable<AlarmSlot> custom({
+    Expression<String>? alarmId,
+    Expression<int>? weekday,
+    Expression<int>? systemAlarmId,
+    Expression<int>? rowid,
+  }) {
+    return RawValuesInsertable({
+      if (alarmId != null) 'alarm_id': alarmId,
+      if (weekday != null) 'weekday': weekday,
+      if (systemAlarmId != null) 'system_alarm_id': systemAlarmId,
+      if (rowid != null) 'rowid': rowid,
+    });
+  }
+
+  AlarmSlotsCompanion copyWith({
+    Value<String>? alarmId,
+    Value<int>? weekday,
+    Value<int>? systemAlarmId,
+    Value<int>? rowid,
+  }) {
+    return AlarmSlotsCompanion(
+      alarmId: alarmId ?? this.alarmId,
+      weekday: weekday ?? this.weekday,
+      systemAlarmId: systemAlarmId ?? this.systemAlarmId,
+      rowid: rowid ?? this.rowid,
+    );
+  }
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (alarmId.present) {
+      map['alarm_id'] = Variable<String>(alarmId.value);
+    }
+    if (weekday.present) {
+      map['weekday'] = Variable<int>(weekday.value);
+    }
+    if (systemAlarmId.present) {
+      map['system_alarm_id'] = Variable<int>(systemAlarmId.value);
+    }
+    if (rowid.present) {
+      map['rowid'] = Variable<int>(rowid.value);
+    }
+    return map;
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('AlarmSlotsCompanion(')
+          ..write('alarmId: $alarmId, ')
+          ..write('weekday: $weekday, ')
+          ..write('systemAlarmId: $systemAlarmId, ')
+          ..write('rowid: $rowid')
+          ..write(')'))
+        .toString();
+  }
+}
+
 class $SyncStateTable extends SyncState
     with TableInfo<$SyncStateTable, SyncStateData> {
   @override
@@ -14143,6 +15184,10 @@ abstract class _$AppDatabase extends GeneratedDatabase {
   late final $CacheResultsTable cacheResults = $CacheResultsTable(this);
   late final $CacheNotificationsTable cacheNotifications =
       $CacheNotificationsTable(this);
+  late final $DeadlineRemindersTable deadlineReminders =
+      $DeadlineRemindersTable(this);
+  late final $StudyAlarmsTable studyAlarms = $StudyAlarmsTable(this);
+  late final $AlarmSlotsTable alarmSlots = $AlarmSlotsTable(this);
   late final $SyncStateTable syncState = $SyncStateTable(this);
   late final $OutboxTable outbox = $OutboxTable(this);
   late final $LocalFoldersTable localFolders = $LocalFoldersTable(this);
@@ -14280,6 +15325,9 @@ abstract class _$AppDatabase extends GeneratedDatabase {
     cacheQuizzes,
     cacheResults,
     cacheNotifications,
+    deadlineReminders,
+    studyAlarms,
+    alarmSlots,
     syncState,
     outbox,
     localFolders,
@@ -14384,6 +15432,13 @@ abstract class _$AppDatabase extends GeneratedDatabase {
         limitUpdateKind: UpdateKind.delete,
       ),
       result: [TableUpdate('cache_notifications', kind: UpdateKind.delete)],
+    ),
+    WritePropagation(
+      on: TableUpdateQuery.onTableName(
+        'study_alarms',
+        limitUpdateKind: UpdateKind.delete,
+      ),
+      result: [TableUpdate('alarm_slots', kind: UpdateKind.delete)],
     ),
     WritePropagation(
       on: TableUpdateQuery.onTableName(
@@ -21413,6 +22468,816 @@ typedef $$CacheNotificationsTableProcessedTableManager =
       CacheNotification,
       PrefetchHooks Function({bool recipientId, bool classId})
     >;
+typedef $$DeadlineRemindersTableCreateCompanionBuilder =
+    DeadlineRemindersCompanion Function({
+      required String postId,
+      required DateTime fireAt,
+      required int systemAlarmId,
+      Value<int> rowid,
+    });
+typedef $$DeadlineRemindersTableUpdateCompanionBuilder =
+    DeadlineRemindersCompanion Function({
+      Value<String> postId,
+      Value<DateTime> fireAt,
+      Value<int> systemAlarmId,
+      Value<int> rowid,
+    });
+
+class $$DeadlineRemindersTableFilterComposer
+    extends Composer<_$AppDatabase, $DeadlineRemindersTable> {
+  $$DeadlineRemindersTableFilterComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnFilters<String> get postId => $composableBuilder(
+    column: $table.postId,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get fireAt => $composableBuilder(
+    column: $table.fireAt,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get systemAlarmId => $composableBuilder(
+    column: $table.systemAlarmId,
+    builder: (column) => ColumnFilters(column),
+  );
+}
+
+class $$DeadlineRemindersTableOrderingComposer
+    extends Composer<_$AppDatabase, $DeadlineRemindersTable> {
+  $$DeadlineRemindersTableOrderingComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnOrderings<String> get postId => $composableBuilder(
+    column: $table.postId,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get fireAt => $composableBuilder(
+    column: $table.fireAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get systemAlarmId => $composableBuilder(
+    column: $table.systemAlarmId,
+    builder: (column) => ColumnOrderings(column),
+  );
+}
+
+class $$DeadlineRemindersTableAnnotationComposer
+    extends Composer<_$AppDatabase, $DeadlineRemindersTable> {
+  $$DeadlineRemindersTableAnnotationComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  GeneratedColumn<String> get postId =>
+      $composableBuilder(column: $table.postId, builder: (column) => column);
+
+  GeneratedColumn<DateTime> get fireAt =>
+      $composableBuilder(column: $table.fireAt, builder: (column) => column);
+
+  GeneratedColumn<int> get systemAlarmId => $composableBuilder(
+    column: $table.systemAlarmId,
+    builder: (column) => column,
+  );
+}
+
+class $$DeadlineRemindersTableTableManager
+    extends
+        RootTableManager<
+          _$AppDatabase,
+          $DeadlineRemindersTable,
+          DeadlineReminder,
+          $$DeadlineRemindersTableFilterComposer,
+          $$DeadlineRemindersTableOrderingComposer,
+          $$DeadlineRemindersTableAnnotationComposer,
+          $$DeadlineRemindersTableCreateCompanionBuilder,
+          $$DeadlineRemindersTableUpdateCompanionBuilder,
+          (
+            DeadlineReminder,
+            BaseReferences<
+              _$AppDatabase,
+              $DeadlineRemindersTable,
+              DeadlineReminder
+            >,
+          ),
+          DeadlineReminder,
+          PrefetchHooks Function()
+        > {
+  $$DeadlineRemindersTableTableManager(
+    _$AppDatabase db,
+    $DeadlineRemindersTable table,
+  ) : super(
+        TableManagerState(
+          db: db,
+          table: table,
+          createFilteringComposer: () =>
+              $$DeadlineRemindersTableFilterComposer($db: db, $table: table),
+          createOrderingComposer: () =>
+              $$DeadlineRemindersTableOrderingComposer($db: db, $table: table),
+          createComputedFieldComposer: () =>
+              $$DeadlineRemindersTableAnnotationComposer(
+                $db: db,
+                $table: table,
+              ),
+          updateCompanionCallback:
+              ({
+                Value<String> postId = const Value.absent(),
+                Value<DateTime> fireAt = const Value.absent(),
+                Value<int> systemAlarmId = const Value.absent(),
+                Value<int> rowid = const Value.absent(),
+              }) => DeadlineRemindersCompanion(
+                postId: postId,
+                fireAt: fireAt,
+                systemAlarmId: systemAlarmId,
+                rowid: rowid,
+              ),
+          createCompanionCallback:
+              ({
+                required String postId,
+                required DateTime fireAt,
+                required int systemAlarmId,
+                Value<int> rowid = const Value.absent(),
+              }) => DeadlineRemindersCompanion.insert(
+                postId: postId,
+                fireAt: fireAt,
+                systemAlarmId: systemAlarmId,
+                rowid: rowid,
+              ),
+          withReferenceMapper: (p0) => p0
+              .map(
+                (e) => (
+                  e.readTable<$DeadlineRemindersTable, DeadlineReminder>(table),
+                  BaseReferences<
+                    _$AppDatabase,
+                    $DeadlineRemindersTable,
+                    DeadlineReminder
+                  >(db, table, e),
+                ),
+              )
+              .toList(),
+          prefetchHooksCallback: null,
+        ),
+      );
+}
+
+typedef $$DeadlineRemindersTableProcessedTableManager =
+    ProcessedTableManager<
+      _$AppDatabase,
+      $DeadlineRemindersTable,
+      DeadlineReminder,
+      $$DeadlineRemindersTableFilterComposer,
+      $$DeadlineRemindersTableOrderingComposer,
+      $$DeadlineRemindersTableAnnotationComposer,
+      $$DeadlineRemindersTableCreateCompanionBuilder,
+      $$DeadlineRemindersTableUpdateCompanionBuilder,
+      (
+        DeadlineReminder,
+        BaseReferences<
+          _$AppDatabase,
+          $DeadlineRemindersTable,
+          DeadlineReminder
+        >,
+      ),
+      DeadlineReminder,
+      PrefetchHooks Function()
+    >;
+typedef $$StudyAlarmsTableCreateCompanionBuilder =
+    StudyAlarmsCompanion Function({
+      required String id,
+      required String subject,
+      required int minuteOfDay,
+      required int repeatDays,
+      Value<bool> enabled,
+      Value<String?> linkedClassId,
+      Value<String?> linkedDeckId,
+      Value<int> rowid,
+    });
+typedef $$StudyAlarmsTableUpdateCompanionBuilder =
+    StudyAlarmsCompanion Function({
+      Value<String> id,
+      Value<String> subject,
+      Value<int> minuteOfDay,
+      Value<int> repeatDays,
+      Value<bool> enabled,
+      Value<String?> linkedClassId,
+      Value<String?> linkedDeckId,
+      Value<int> rowid,
+    });
+
+final class $$StudyAlarmsTableReferences
+    extends BaseReferences<_$AppDatabase, $StudyAlarmsTable, StudyAlarm> {
+  $$StudyAlarmsTableReferences(super.$_db, super.$_table, super.$_typedResult);
+
+  static MultiTypedResultKey<$AlarmSlotsTable, List<AlarmSlot>>
+  _alarmSlotsRefsTable(_$AppDatabase db) => MultiTypedResultKey.fromTable(
+    db.alarmSlots,
+    aliasName: 'study_alarms__id__alarm_slots__alarm_id',
+  );
+
+  $$AlarmSlotsTableProcessedTableManager get alarmSlotsRefs {
+    final manager = $$AlarmSlotsTableTableManager(
+      $_db,
+      $_db.alarmSlots,
+    ).filter((f) => f.alarmId.id.sqlEquals($_itemColumn<String>('id')!));
+
+    final cache = $_typedResult.readTableOrNull(_alarmSlotsRefsTable($_db));
+    return ProcessedTableManager(
+      manager.$state.copyWith(prefetchedData: cache),
+    );
+  }
+}
+
+class $$StudyAlarmsTableFilterComposer
+    extends Composer<_$AppDatabase, $StudyAlarmsTable> {
+  $$StudyAlarmsTableFilterComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnFilters<String> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get subject => $composableBuilder(
+    column: $table.subject,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get minuteOfDay => $composableBuilder(
+    column: $table.minuteOfDay,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get repeatDays => $composableBuilder(
+    column: $table.repeatDays,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<bool> get enabled => $composableBuilder(
+    column: $table.enabled,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get linkedClassId => $composableBuilder(
+    column: $table.linkedClassId,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get linkedDeckId => $composableBuilder(
+    column: $table.linkedDeckId,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  Expression<bool> alarmSlotsRefs(
+    Expression<bool> Function($$AlarmSlotsTableFilterComposer f) f,
+  ) {
+    final $$AlarmSlotsTableFilterComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.id,
+      referencedTable: $db.alarmSlots,
+      getReferencedColumn: (t) => t.alarmId,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$AlarmSlotsTableFilterComposer(
+            $db: $db,
+            $table: $db.alarmSlots,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return f(composer);
+  }
+}
+
+class $$StudyAlarmsTableOrderingComposer
+    extends Composer<_$AppDatabase, $StudyAlarmsTable> {
+  $$StudyAlarmsTableOrderingComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnOrderings<String> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get subject => $composableBuilder(
+    column: $table.subject,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get minuteOfDay => $composableBuilder(
+    column: $table.minuteOfDay,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get repeatDays => $composableBuilder(
+    column: $table.repeatDays,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<bool> get enabled => $composableBuilder(
+    column: $table.enabled,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get linkedClassId => $composableBuilder(
+    column: $table.linkedClassId,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get linkedDeckId => $composableBuilder(
+    column: $table.linkedDeckId,
+    builder: (column) => ColumnOrderings(column),
+  );
+}
+
+class $$StudyAlarmsTableAnnotationComposer
+    extends Composer<_$AppDatabase, $StudyAlarmsTable> {
+  $$StudyAlarmsTableAnnotationComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  GeneratedColumn<String> get id =>
+      $composableBuilder(column: $table.id, builder: (column) => column);
+
+  GeneratedColumn<String> get subject =>
+      $composableBuilder(column: $table.subject, builder: (column) => column);
+
+  GeneratedColumn<int> get minuteOfDay => $composableBuilder(
+    column: $table.minuteOfDay,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<int> get repeatDays => $composableBuilder(
+    column: $table.repeatDays,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<bool> get enabled =>
+      $composableBuilder(column: $table.enabled, builder: (column) => column);
+
+  GeneratedColumn<String> get linkedClassId => $composableBuilder(
+    column: $table.linkedClassId,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get linkedDeckId => $composableBuilder(
+    column: $table.linkedDeckId,
+    builder: (column) => column,
+  );
+
+  Expression<T> alarmSlotsRefs<T extends Object>(
+    Expression<T> Function($$AlarmSlotsTableAnnotationComposer a) f,
+  ) {
+    final $$AlarmSlotsTableAnnotationComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.id,
+      referencedTable: $db.alarmSlots,
+      getReferencedColumn: (t) => t.alarmId,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$AlarmSlotsTableAnnotationComposer(
+            $db: $db,
+            $table: $db.alarmSlots,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return f(composer);
+  }
+}
+
+class $$StudyAlarmsTableTableManager
+    extends
+        RootTableManager<
+          _$AppDatabase,
+          $StudyAlarmsTable,
+          StudyAlarm,
+          $$StudyAlarmsTableFilterComposer,
+          $$StudyAlarmsTableOrderingComposer,
+          $$StudyAlarmsTableAnnotationComposer,
+          $$StudyAlarmsTableCreateCompanionBuilder,
+          $$StudyAlarmsTableUpdateCompanionBuilder,
+          (StudyAlarm, $$StudyAlarmsTableReferences),
+          StudyAlarm,
+          PrefetchHooks Function({bool alarmSlotsRefs})
+        > {
+  $$StudyAlarmsTableTableManager(_$AppDatabase db, $StudyAlarmsTable table)
+    : super(
+        TableManagerState(
+          db: db,
+          table: table,
+          createFilteringComposer: () =>
+              $$StudyAlarmsTableFilterComposer($db: db, $table: table),
+          createOrderingComposer: () =>
+              $$StudyAlarmsTableOrderingComposer($db: db, $table: table),
+          createComputedFieldComposer: () =>
+              $$StudyAlarmsTableAnnotationComposer($db: db, $table: table),
+          updateCompanionCallback:
+              ({
+                Value<String> id = const Value.absent(),
+                Value<String> subject = const Value.absent(),
+                Value<int> minuteOfDay = const Value.absent(),
+                Value<int> repeatDays = const Value.absent(),
+                Value<bool> enabled = const Value.absent(),
+                Value<String?> linkedClassId = const Value.absent(),
+                Value<String?> linkedDeckId = const Value.absent(),
+                Value<int> rowid = const Value.absent(),
+              }) => StudyAlarmsCompanion(
+                id: id,
+                subject: subject,
+                minuteOfDay: minuteOfDay,
+                repeatDays: repeatDays,
+                enabled: enabled,
+                linkedClassId: linkedClassId,
+                linkedDeckId: linkedDeckId,
+                rowid: rowid,
+              ),
+          createCompanionCallback:
+              ({
+                required String id,
+                required String subject,
+                required int minuteOfDay,
+                required int repeatDays,
+                Value<bool> enabled = const Value.absent(),
+                Value<String?> linkedClassId = const Value.absent(),
+                Value<String?> linkedDeckId = const Value.absent(),
+                Value<int> rowid = const Value.absent(),
+              }) => StudyAlarmsCompanion.insert(
+                id: id,
+                subject: subject,
+                minuteOfDay: minuteOfDay,
+                repeatDays: repeatDays,
+                enabled: enabled,
+                linkedClassId: linkedClassId,
+                linkedDeckId: linkedDeckId,
+                rowid: rowid,
+              ),
+          withReferenceMapper: (p0) => p0
+              .map(
+                (e) => (
+                  e.readTable<$StudyAlarmsTable, StudyAlarm>(table),
+                  $$StudyAlarmsTableReferences(db, table, e),
+                ),
+              )
+              .toList(),
+          prefetchHooksCallback: ({alarmSlotsRefs = false}) {
+            return PrefetchHooks(
+              db: db,
+              explicitlyWatchedTables: [if (alarmSlotsRefs) db.alarmSlots],
+              addJoins: null,
+              getPrefetchedDataCallback: (items) async {
+                return [
+                  if (alarmSlotsRefs)
+                    await $_getPrefetchedData<
+                      StudyAlarm,
+                      $StudyAlarmsTable,
+                      AlarmSlot
+                    >(
+                      currentTable: table,
+                      referencedTable: $$StudyAlarmsTableReferences
+                          ._alarmSlotsRefsTable(db),
+                      managerFromTypedResult: (p0) =>
+                          $$StudyAlarmsTableReferences(
+                            db,
+                            table,
+                            p0,
+                          ).alarmSlotsRefs,
+                      referencedItemsForCurrentItem: (item, referencedItems) =>
+                          referencedItems.where((e) => e.alarmId == item.id),
+                      typedResults: items,
+                    ),
+                ];
+              },
+            );
+          },
+        ),
+      );
+}
+
+typedef $$StudyAlarmsTableProcessedTableManager =
+    ProcessedTableManager<
+      _$AppDatabase,
+      $StudyAlarmsTable,
+      StudyAlarm,
+      $$StudyAlarmsTableFilterComposer,
+      $$StudyAlarmsTableOrderingComposer,
+      $$StudyAlarmsTableAnnotationComposer,
+      $$StudyAlarmsTableCreateCompanionBuilder,
+      $$StudyAlarmsTableUpdateCompanionBuilder,
+      (StudyAlarm, $$StudyAlarmsTableReferences),
+      StudyAlarm,
+      PrefetchHooks Function({bool alarmSlotsRefs})
+    >;
+typedef $$AlarmSlotsTableCreateCompanionBuilder = AlarmSlotsCompanion Function({
+  required String alarmId,
+  required int weekday,
+  required int systemAlarmId,
+  Value<int> rowid,
+});
+typedef $$AlarmSlotsTableUpdateCompanionBuilder = AlarmSlotsCompanion Function({
+  Value<String> alarmId,
+  Value<int> weekday,
+  Value<int> systemAlarmId,
+  Value<int> rowid,
+});
+
+final class $$AlarmSlotsTableReferences
+    extends BaseReferences<_$AppDatabase, $AlarmSlotsTable, AlarmSlot> {
+  $$AlarmSlotsTableReferences(super.$_db, super.$_table, super.$_typedResult);
+
+  static $StudyAlarmsTable _alarmIdTable(_$AppDatabase db) =>
+      db.studyAlarms.createAlias('alarm_slots__alarm_id__study_alarms__id');
+
+  $$StudyAlarmsTableProcessedTableManager get alarmId {
+    final $_column = $_itemColumn<String>('alarm_id')!;
+
+    final manager = $$StudyAlarmsTableTableManager(
+      $_db,
+      $_db.studyAlarms,
+    ).filter((f) => f.id.sqlEquals($_column));
+    final item = $_typedResult.readTableOrNull(_alarmIdTable($_db));
+    if (item == null) return manager;
+    return ProcessedTableManager(
+      manager.$state.copyWith(prefetchedData: [item]),
+    );
+  }
+}
+
+class $$AlarmSlotsTableFilterComposer
+    extends Composer<_$AppDatabase, $AlarmSlotsTable> {
+  $$AlarmSlotsTableFilterComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnFilters<int> get weekday => $composableBuilder(
+    column: $table.weekday,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get systemAlarmId => $composableBuilder(
+    column: $table.systemAlarmId,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  $$StudyAlarmsTableFilterComposer get alarmId {
+    final $$StudyAlarmsTableFilterComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.alarmId,
+      referencedTable: $db.studyAlarms,
+      getReferencedColumn: (t) => t.id,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$StudyAlarmsTableFilterComposer(
+            $db: $db,
+            $table: $db.studyAlarms,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return composer;
+  }
+}
+
+class $$AlarmSlotsTableOrderingComposer
+    extends Composer<_$AppDatabase, $AlarmSlotsTable> {
+  $$AlarmSlotsTableOrderingComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnOrderings<int> get weekday => $composableBuilder(
+    column: $table.weekday,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get systemAlarmId => $composableBuilder(
+    column: $table.systemAlarmId,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  $$StudyAlarmsTableOrderingComposer get alarmId {
+    final $$StudyAlarmsTableOrderingComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.alarmId,
+      referencedTable: $db.studyAlarms,
+      getReferencedColumn: (t) => t.id,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$StudyAlarmsTableOrderingComposer(
+            $db: $db,
+            $table: $db.studyAlarms,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return composer;
+  }
+}
+
+class $$AlarmSlotsTableAnnotationComposer
+    extends Composer<_$AppDatabase, $AlarmSlotsTable> {
+  $$AlarmSlotsTableAnnotationComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  GeneratedColumn<int> get weekday =>
+      $composableBuilder(column: $table.weekday, builder: (column) => column);
+
+  GeneratedColumn<int> get systemAlarmId => $composableBuilder(
+    column: $table.systemAlarmId,
+    builder: (column) => column,
+  );
+
+  $$StudyAlarmsTableAnnotationComposer get alarmId {
+    final $$StudyAlarmsTableAnnotationComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.alarmId,
+      referencedTable: $db.studyAlarms,
+      getReferencedColumn: (t) => t.id,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$StudyAlarmsTableAnnotationComposer(
+            $db: $db,
+            $table: $db.studyAlarms,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return composer;
+  }
+}
+
+class $$AlarmSlotsTableTableManager
+    extends
+        RootTableManager<
+          _$AppDatabase,
+          $AlarmSlotsTable,
+          AlarmSlot,
+          $$AlarmSlotsTableFilterComposer,
+          $$AlarmSlotsTableOrderingComposer,
+          $$AlarmSlotsTableAnnotationComposer,
+          $$AlarmSlotsTableCreateCompanionBuilder,
+          $$AlarmSlotsTableUpdateCompanionBuilder,
+          (AlarmSlot, $$AlarmSlotsTableReferences),
+          AlarmSlot,
+          PrefetchHooks Function({bool alarmId})
+        > {
+  $$AlarmSlotsTableTableManager(_$AppDatabase db, $AlarmSlotsTable table)
+    : super(
+        TableManagerState(
+          db: db,
+          table: table,
+          createFilteringComposer: () =>
+              $$AlarmSlotsTableFilterComposer($db: db, $table: table),
+          createOrderingComposer: () =>
+              $$AlarmSlotsTableOrderingComposer($db: db, $table: table),
+          createComputedFieldComposer: () =>
+              $$AlarmSlotsTableAnnotationComposer($db: db, $table: table),
+          updateCompanionCallback:
+              ({
+                Value<String> alarmId = const Value.absent(),
+                Value<int> weekday = const Value.absent(),
+                Value<int> systemAlarmId = const Value.absent(),
+                Value<int> rowid = const Value.absent(),
+              }) => AlarmSlotsCompanion(
+                alarmId: alarmId,
+                weekday: weekday,
+                systemAlarmId: systemAlarmId,
+                rowid: rowid,
+              ),
+          createCompanionCallback:
+              ({
+                required String alarmId,
+                required int weekday,
+                required int systemAlarmId,
+                Value<int> rowid = const Value.absent(),
+              }) => AlarmSlotsCompanion.insert(
+                alarmId: alarmId,
+                weekday: weekday,
+                systemAlarmId: systemAlarmId,
+                rowid: rowid,
+              ),
+          withReferenceMapper: (p0) => p0
+              .map(
+                (e) => (
+                  e.readTable<$AlarmSlotsTable, AlarmSlot>(table),
+                  $$AlarmSlotsTableReferences(db, table, e),
+                ),
+              )
+              .toList(),
+          prefetchHooksCallback: ({alarmId = false}) {
+            return PrefetchHooks(
+              db: db,
+              explicitlyWatchedTables: [],
+              addJoins:
+                  <
+                    T extends TableManagerState<
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic
+                    >
+                  >(state) {
+                    if (alarmId) {
+                      state = state.withJoin(
+                        currentTable: table,
+                        currentColumn: table.alarmId,
+                        referencedTable: $$AlarmSlotsTableReferences
+                            ._alarmIdTable(db),
+                        referencedColumn: $$AlarmSlotsTableReferences
+                            ._alarmIdTable(db)
+                            .id,
+                      ) as T;
+                    }
+
+                    return state;
+                  },
+              getPrefetchedDataCallback: (items) async {
+                return [];
+              },
+            );
+          },
+        ),
+      );
+}
+
+typedef $$AlarmSlotsTableProcessedTableManager =
+    ProcessedTableManager<
+      _$AppDatabase,
+      $AlarmSlotsTable,
+      AlarmSlot,
+      $$AlarmSlotsTableFilterComposer,
+      $$AlarmSlotsTableOrderingComposer,
+      $$AlarmSlotsTableAnnotationComposer,
+      $$AlarmSlotsTableCreateCompanionBuilder,
+      $$AlarmSlotsTableUpdateCompanionBuilder,
+      (AlarmSlot, $$AlarmSlotsTableReferences),
+      AlarmSlot,
+      PrefetchHooks Function({bool alarmId})
+    >;
 typedef $$SyncStateTableCreateCompanionBuilder = SyncStateCompanion Function({
   required String syncedTableName,
   Value<DateTime?> lastSyncedAt,
@@ -26991,6 +28856,12 @@ class $AppDatabaseManager {
       $$CacheResultsTableTableManager(_db, _db.cacheResults);
   $$CacheNotificationsTableTableManager get cacheNotifications =>
       $$CacheNotificationsTableTableManager(_db, _db.cacheNotifications);
+  $$DeadlineRemindersTableTableManager get deadlineReminders =>
+      $$DeadlineRemindersTableTableManager(_db, _db.deadlineReminders);
+  $$StudyAlarmsTableTableManager get studyAlarms =>
+      $$StudyAlarmsTableTableManager(_db, _db.studyAlarms);
+  $$AlarmSlotsTableTableManager get alarmSlots =>
+      $$AlarmSlotsTableTableManager(_db, _db.alarmSlots);
   $$SyncStateTableTableManager get syncState =>
       $$SyncStateTableTableManager(_db, _db.syncState);
   $$OutboxTableTableManager get outbox =>
