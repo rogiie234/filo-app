@@ -8,6 +8,7 @@ import '../application/study_providers.dart';
 import '../domain/study_inputs.dart';
 import 'study_notebook_screen.dart';
 import 'study_widgets.dart';
+import '../../notifications/presentation/study_alarms_screen.dart';
 
 class StudyHomeScreen extends ConsumerStatefulWidget {
   const StudyHomeScreen({super.key});
@@ -65,7 +66,26 @@ class _StudyHomeScreenState extends ConsumerState<StudyHomeScreen> {
       padding: const EdgeInsets.all(24),
       children: [
         const StudyOfflineBanner(),
-        Text('AI Study', style: Theme.of(context).textTheme.headlineMedium),
+        Row(
+          children: [
+            Expanded(
+              child: Text(
+                'AI Study',
+                style: Theme.of(context).textTheme.headlineMedium,
+              ),
+            ),
+            IconButton(
+              tooltip: 'Study alarms',
+              onPressed: () => Navigator.push(
+                context,
+                MaterialPageRoute<void>(
+                  builder: (_) => const StudyAlarmsScreen(),
+                ),
+              ),
+              icon: const Icon(Icons.alarm),
+            ),
+          ],
+        ),
         const SizedBox(height: 16),
         FiloButton(
           label: 'New notebook',

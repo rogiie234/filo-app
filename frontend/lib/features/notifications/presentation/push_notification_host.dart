@@ -15,6 +15,8 @@ import '../../exams/presentation/student_exam_screen.dart';
 import '../../onboarding/data/profile_repository.dart';
 import '../../posts/presentation/post_detail_screen.dart';
 import '../../results/presentation/student_results_screen.dart';
+import '../../study/presentation/study_home_screen.dart';
+import '../../study/presentation/study_flashcard_study_screen.dart';
 import '../../submissions/presentation/assignment_detail_screen.dart';
 import '../application/notification_providers.dart';
 import '../data/inbox_repository.dart';
@@ -139,7 +141,9 @@ class _PushNotificationHostState extends ConsumerState<PushNotificationHost> {
         if (event.open) {
           _activeOpen = event;
           try {
-            final destination = event.assignmentId != null
+            final destination = event.alarmId != null
+                ? await repository.resolveStudyAlarm(event.alarmId!)
+                : event.assignmentId != null
                 ? await repository.resolveAssignment(event.assignmentId!)
                 : await repository.resolve(
                     event.id,
@@ -155,7 +159,7 @@ class _PushNotificationHostState extends ConsumerState<PushNotificationHost> {
             }
             _open(destination);
             try {
-              if (event.assignmentId == null)
+              if (event.assignmentId == null && event.alarmId == null)
                 await InboxRepository(
                   repository.db,
                   widget.userId,
@@ -252,6 +256,16 @@ class _PushNotificationHostState extends ConsumerState<PushNotificationHost> {
   void _open(NotificationDestination destination) {
     final Widget page;
     switch (destination.screen) {
+      case NotificationScreen.study:
+        page = Scaffold(
+          appBar: AppBar(title: const Text('AI Study')),
+          body: const SafeArea(child: StudyHomeScreen()),
+        );
+      case NotificationScreen.deck:
+        page = StudyFlashcardStudyScreen(
+          notebookId: destination.notebookId!,
+          deckId: destination.targetId,
+        );
       case NotificationScreen.post:
         page = PostDetailScreen(
           classId: destination.classId,

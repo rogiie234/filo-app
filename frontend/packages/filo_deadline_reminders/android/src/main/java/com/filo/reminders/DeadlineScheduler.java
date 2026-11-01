@@ -31,19 +31,22 @@ final class DeadlineScheduler {
         result.put("enabled", notifications().areNotificationsEnabled() && (channel == null || channel.getImportance() != 0));
         result.put("exact", exact());
         result.put("error", store.getBoolean("error", false));
+        NotificationChannel study = notifications().getNotificationChannel(StudyScheduler.CHANNEL);
+        result.put("studyEnabled", notifications().areNotificationsEnabled() && (study == null || study.getImportance()!=0));
+        result.put("studyError", store.getBoolean("study_error",false));
         return result;
     }
-    private void commit(SharedPreferences.Editor editor) {
+    void commit(SharedPreferences.Editor editor) {
         if (!editor.commit()) throw new IllegalStateException("Could not persist reminder state");
     }
     private JSONArray registry() { try { return new JSONArray(store.getString("registry", "[]")); } catch (JSONException e) { throw new IllegalStateException(e); } }
-    private SQLiteDatabase database() throws Exception {
+    SQLiteDatabase database() throws Exception {
         File file = new File(store.getString("database", "")).getCanonicalFile();
         File root = new File(context.getApplicationInfo().dataDir).getCanonicalFile();
         if (!file.getPath().startsWith(root.getPath() + File.separator)) throw new SecurityException("Invalid account path");
         return SQLiteDatabase.openDatabase(file.getPath(), null, SQLiteDatabase.OPEN_READONLY | SQLiteDatabase.NO_LOCALIZED_COLLATORS);
     }
-    private String value(SQLiteDatabase db, String key) {
+    String value(SQLiteDatabase db, String key) {
         try (Cursor c = db.rawQuery("SELECT value FROM file_settings WHERE key=?", new String[]{key})) { return c.moveToFirst() ? c.getString(0) : ""; }
     }
     private JSONArray desired() throws Exception {
@@ -78,6 +81,7 @@ final class DeadlineScheduler {
             String account = store.getString("account", "");
             // Invalidate receivers before cancellation, even if Android cleanup fails.
             commit(store.edit().remove("lease"));
+            new StudyScheduler(this).clear();
             for (int i = 0; i < old.length(); i++) cancel(old.getJSONObject(i));
             for (android.service.notification.StatusBarNotification n : notifications().getActiveNotifications()) {
                 if (("deadline:" + account).equals(n.getTag())) notifications().cancel(n.getTag(), n.getId());

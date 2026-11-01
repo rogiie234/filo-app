@@ -75,7 +75,11 @@ final alarmRepositoryProvider = FutureProvider.autoDispose<AlarmRepository>((
   ref,
 ) async {
   final inbox = await ref.watch(inboxRepositoryProvider.future);
-  return AlarmRepository(inbox.db, () => ref.mounted && inbox.isCurrent());
+  return AlarmRepository(
+    inbox.db,
+    () => ref.mounted && inbox.isCurrent(),
+    userId: inbox.userId,
+  );
 });
 
 final inboxProvider = StreamProvider.autoDispose<List<CacheNotification>>((

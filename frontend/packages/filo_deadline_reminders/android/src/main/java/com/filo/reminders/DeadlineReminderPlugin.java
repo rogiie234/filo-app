@@ -29,6 +29,11 @@ public final class DeadlineReminderPlugin implements FlutterPlugin, ActivityAwar
                     switch (call.method) {
                         case "activate": scheduler.activate(call.argument("accountId"), call.argument("lease"), call.argument("database")); break;
                         case "reconcile": scheduler.reconcile(call.argument("accountId"), call.argument("lease")); break;
+                        case "studyReconcile":
+                            if (!DeadlinePolicy.current(scheduler.store.getString("account",""), scheduler.store.getString("lease",""),call.argument("accountId"),call.argument("lease"))) throw new IllegalStateException("Alarm account changed");
+                            try { response = new StudyScheduler(scheduler).restore(); }
+                            catch(Exception e) { new StudyScheduler(scheduler).failed(); throw e; }
+                            break;
                         case "clear": scheduler.clear(); break;
                         case "status": response = scheduler.status(); break;
                         case "openSettings": openSettings(call.argument("section")); break;
@@ -36,7 +41,8 @@ public final class DeadlineReminderPlugin implements FlutterPlugin, ActivityAwar
                     }
                     Object answer = response; main.post(() -> result.success(answer));
                 } catch (Exception e) {
-                    scheduler.failed(); main.post(() -> result.error("REMINDER_UNAVAILABLE", "Could not update deadline reminders", null));
+                    if (!call.method.equals("studyReconcile")) scheduler.failed();
+                    main.post(() -> result.error("REMINDER_UNAVAILABLE", "Could not update local reminders", null));
                 }
             });
         });
@@ -58,7 +64,9 @@ public final class DeadlineReminderPlugin implements FlutterPlugin, ActivityAwar
         try {
             JSONObject data = new JSONObject(raw);
             tap = new HashMap<>();
-            for (String key : Arrays.asList("accountId", "postId", "nonce")) tap.put(key, data.getString(key));
+            boolean study = "study".equals(data.optString("kind"));
+            tap.put("kind", study ? "study" : "deadline");
+            for (String key : Arrays.asList("accountId", study ? "alarmId" : "postId", "nonce")) tap.put(key, data.getString(key));
             channel.invokeMethod("tap", tap);
         } catch (Exception ignored) { tap = null; }
     }

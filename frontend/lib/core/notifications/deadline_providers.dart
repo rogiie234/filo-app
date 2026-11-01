@@ -11,6 +11,7 @@ import '../../features/notifications/application/notification_providers.dart';
 import '../../data/local/user_database_manager.dart';
 import 'deadline_reminders.dart';
 import 'push_events.dart';
+import '../../features/notifications/data/alarm_repository.dart';
 
 final deadlineBridgeProvider = Provider<DeadlineBridge>(
   (ref) => const DeadlineBridge(),
@@ -44,7 +45,21 @@ final deadlineSessionProvider = FutureProvider.autoDispose<DeadlineReminders?>((
     () => ref.mounted && account.isCurrent(),
     bridge: bridge,
   );
-  await service.reconcile();
+  try {
+    await service.reconcile();
+  } catch (_) {
+    /* Durable deadline error remains visible. */
+  }
+  try {
+    await AlarmRepository(
+      account.db,
+      service.isCurrent,
+      userId: id,
+      bridge: bridge,
+    ).reconcileStudy();
+  } catch (_) {
+    /* Study failures remain separate from deadline status. */
+  }
   return ref.mounted ? service : null;
 });
 
@@ -72,7 +87,18 @@ final deadlineLifecycleProvider = Provider<void>((ref) {
   Future<void> reconcile() async {
     try {
       final service = await ref.read(deadlineSessionProvider.future);
-      await service?.reconcile();
+      try {
+        await service?.reconcile();
+      } catch (_) {
+        /* Study scheduling is independent. */
+      }
+      if (service != null)
+        await AlarmRepository(
+          service.db,
+          service.isCurrent,
+          userId: service.userId,
+          bridge: bridge,
+        ).reconcileStudy();
     } catch (_) {
       /* Persisted status offers Retry; confirmed work is unaffected. */
     }

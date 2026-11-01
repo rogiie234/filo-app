@@ -16,12 +16,27 @@ class NotificationNeedsConnection implements Exception {
   const NotificationNeedsConnection();
 }
 
-enum NotificationScreen { post, assignment, quiz, result, classroom, requests }
+enum NotificationScreen {
+  post,
+  assignment,
+  quiz,
+  result,
+  classroom,
+  requests,
+  study,
+  deck,
+}
 
 class NotificationDestination {
-  const NotificationDestination(this.screen, this.classId, this.targetId);
+  const NotificationDestination(
+    this.screen,
+    this.classId,
+    this.targetId, {
+    this.notebookId,
+  });
   final NotificationScreen screen;
   final String classId, targetId;
+  final String? notebookId;
 }
 
 NotificationDestination notificationDestination(
@@ -166,6 +181,76 @@ class NotificationDestinationRepository {
 
   Future<NotificationDestination> resolveAssignment(String postId) =>
       _resolve(Future.value(null), postId, false);
+
+  Future<NotificationDestination> resolveStudyAlarm(String id) async {
+    checkAccount();
+    final profile = await db.readProfile(userId);
+    final alarm = await (db.select(
+      db.studyAlarms,
+    )..where((a) => a.id.equals(id))).getSingleOrNull();
+    checkAccount();
+    if (profile?.role != 'student' ||
+        profile?.deletedAt != null ||
+        alarm == null)
+      throw const NotificationUnavailable();
+    if (alarm.linkedDeckId != null) {
+      final deck = await (db.select(
+        db.flashcardDecks,
+      )..where((d) => d.id.equals(alarm.linkedDeckId!))).getSingleOrNull();
+      checkAccount();
+      if (deck == null) throw const NotificationUnavailable();
+      return NotificationDestination(
+        NotificationScreen.deck,
+        '',
+        deck.id,
+        notebookId: deck.notebookId,
+      );
+    }
+    if (alarm.linkedClassId != null) {
+      try {
+        final room = await _item('classes', alarm.linkedClassId!);
+        final List members;
+        if (online()) {
+          members = await client
+              .from('class_members')
+              .select('id')
+              .eq('class_id', alarm.linkedClassId!)
+              .eq('student_id', userId)
+              .eq('status', 'active')
+              .limit(1)
+              .timeout(const Duration(seconds: 20));
+        } else {
+          final member =
+              await (db.select(db.cacheClassMembers)..where(
+                    (m) =>
+                        m.classId.equals(alarm.linkedClassId!) &
+                        m.studentId.equals(userId),
+                  ))
+                  .getSingleOrNull();
+          if (member != null && member.status != 'active')
+            throw const NotificationUnavailable();
+          members = member == null ? [] : [member];
+        }
+        checkAccount();
+        if (members.isEmpty) {
+          if (!online()) throw const NotificationNeedsConnection();
+          throw const NotificationUnavailable();
+        }
+        final destination = NotificationDestination(
+          NotificationScreen.classroom,
+          room['id'] as String,
+          room['id'] as String,
+        );
+        if (online()) await prepare(destination);
+        checkAccount();
+        return destination;
+      } on PostgrestException catch (e) {
+        if (e.code == '42501') throw const NotificationUnavailable();
+        rethrow;
+      }
+    }
+    return const NotificationDestination(NotificationScreen.study, '', '');
+  }
 
   Future<NotificationDestination> _resolve(
     Future<CacheNotification?> notification,

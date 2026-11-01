@@ -32,6 +32,14 @@ class DeadlineBridge {
     if (supported) await channel.invokeMethod<void>('clear');
   }
 
+  Future<List<dynamic>> reconcileStudy(String account, String lease) async =>
+      supported
+      ? (await channel.invokeListMethod<dynamic>('studyReconcile', {
+          'accountId': account,
+          'lease': lease,
+        }))!
+      : [];
+
   Future<Map<String, dynamic>> status() async => supported
       ? Map<String, dynamic>.from(
           (await channel.invokeMapMethod<String, dynamic>('status'))!,

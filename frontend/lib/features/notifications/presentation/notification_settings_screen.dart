@@ -14,8 +14,13 @@ import '../application/notification_providers.dart';
 import '../data/notification_settings_repository.dart';
 
 class NotificationSettingsScreen extends ConsumerStatefulWidget {
-  const NotificationSettingsScreen({super.key, this.initialClassId});
+  const NotificationSettingsScreen({
+    super.key,
+    this.initialClassId,
+    this.focusPhoneSetup = false,
+  });
   final String? initialClassId;
+  final bool focusPhoneSetup;
 
   @override
   ConsumerState<NotificationSettingsScreen> createState() =>
@@ -26,6 +31,8 @@ class _NotificationSettingsScreenState
     extends ConsumerState<NotificationSettingsScreen> {
   late final AppLifecycleListener _lifecycle;
   bool _opening = false;
+  final _phoneSetup = GlobalKey();
+  bool _phoneFocused = false;
 
   @override
   void initState() {
@@ -64,6 +71,17 @@ class _NotificationSettingsScreenState
 
   @override
   Widget build(BuildContext context) {
+    if (widget.focusPhoneSetup && !_phoneFocused)
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted && _phoneSetup.currentContext != null) {
+          _phoneFocused = true;
+          Scrollable.ensureVisible(
+            _phoneSetup.currentContext!,
+            alignment: 0.1,
+            duration: Duration.zero,
+          );
+        }
+      });
     final access = ref.watch(notificationAccessProvider);
     ref.listen(notificationAccessProvider, (_, next) {
       if (next.asData?.value == true) {
@@ -135,7 +153,10 @@ class _NotificationSettingsScreenState
               ),
               if (ref.watch(deadlineBridgeProvider).supported) ...[
                 const SizedBox(height: 24),
-                const DeadlineReminderSetup(),
+                KeyedSubtree(
+                  key: _phoneSetup,
+                  child: const DeadlineReminderSetup(),
+                ),
               ],
             ],
           ),
