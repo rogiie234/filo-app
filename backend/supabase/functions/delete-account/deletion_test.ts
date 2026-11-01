@@ -1,4 +1,4 @@
-import { createHandler, createRecoveryHandler, Denied, processDeletion } from "./deletion.ts";
+import { createHandler, createRecoveryHandler, Denied, OwnedClasses, processDeletion } from "./deletion.ts";
 import type { Failure, Store } from "./deletion.ts";
 
 function assert(ok: unknown, message = "Assertion failed"): asserts ok {
@@ -32,13 +32,17 @@ function fixture() {
       busy = true;
       return "lease";
     },
+    async nextClass() { calls.push("next-class"); return null; },
+    async classFiles() { throw new Error("No class expected"); },
+    async purgeClass() { throw new Error("No class expected"); },
     async avatars() {
       calls.push("list");
       if (failure === "list") throw new Error("private path");
       return pages[0] ?? [];
     },
-    async remove(paths) {
+    async remove(bucket, paths) {
       calls.push("remove");
+      equal(bucket, "avatars");
       if (failure === "remove") throw new Error("private path");
       equal(paths, pages[0]);
       pages.shift();
@@ -77,7 +81,7 @@ Deno.test("self deletion binds to validated identity and completes after all pag
   const response = await createHandler(f.store, async () => identity)(request());
   equal(response.status, 200);
   equal(await response.json(), { status: "deleted" });
-  equal(f.calls, ["begin:student:verified-session", "claim:student", "list", "remove", "list", "remove",
+  equal(f.calls, ["begin:student:verified-session", "claim:student", "next-class", "list", "remove", "list", "remove",
     "list", "prepare", "auth", "finish"]);
   assert(f.complete);
 });
@@ -89,7 +93,7 @@ Deno.test("anonymous/invalid/revoked tokens cannot nominate a deletion", async (
   equal(f.calls, []);
 });
 
-Deno.test("unverified, mismatched session and instructor database denials stop all cleanup", async () => {
+Deno.test("unverified and mismatched session denials stop all cleanup", async () => {
   const f = fixture();
   f.fail("denied");
   const response = await createHandler(f.store, async () => identity)(request());
@@ -196,3 +200,78 @@ Deno.test("scheduler resumes cleanup without user credentials and returns counts
   equal(await response.json(), { completed: 1, pending: 0 });
   assert(f.complete && !f.calls.some((call) => call.startsWith("begin:")));
 });
+
+Deno.test("owned classes returns exact 409/count without cleanup or accepted deletion", async () => {
+  for (const count of [1, 2, 5]) {
+    const f = fixture();
+    const store = { ...f.store, async begin() { throw new OwnedClasses(count); } };
+    const response = await createHandler(store, async () => ({ userId: "instructor", sessionId: "verified" }))(request());
+    equal(response.status, 409);
+    equal(await response.json(), { error: { code: "OWNED_CLASSES_EXIST", count } });
+    equal(f.calls, []);
+    assert(f.login && !f.complete);
+  }
+});
+
+Deno.test("instructor without classes follows the same confirmed account cleanup", async () => {
+  const f = fixture();
+  const response = await createHandler(f.store, async () => ({ userId: "instructor", sessionId: "verified" }))(request());
+  equal(response.status, 200);
+  equal(await response.json(), { status: "deleted" });
+  assert(f.complete && !f.login);
+  equal(f.calls[0], "begin:instructor:verified");
+});
+
+function classFixture() {
+  const f = fixture(); f.pages([]);
+  const remaining = ["recent-class", "old-class"];
+  const files = new Map(remaining.map((id) => [id, [
+    { bucket_id: "banners", name: `${id}/banner.png` },
+    { bucket_id: "materials", name: `${id}/nested/file.pdf` },
+    { bucket_id: "submissions", name: `${id}/post/student/work.png` },
+  ]]));
+  let fail: string | null = null;
+  const store: Store = { ...f.store,
+    async nextClass() { return remaining[0] ?? null; },
+    async classFiles(_user, _lease, id) {
+      if (fail === "list") throw new Error();
+      return files.get(id) ?? [];
+    },
+    async remove(bucket, paths) {
+      if (bucket === "avatars") return f.store.remove(bucket, paths);
+      f.calls.push(`class-remove:${bucket}`);
+      if (fail === bucket) throw new Error();
+      const id = remaining[0];
+      files.set(id, (files.get(id) ?? []).filter((file) => !paths.includes(file.name)));
+    },
+    async purgeClass(_user, _lease, id) {
+      if (fail === "purge") throw new Error();
+      equal(files.get(id), []);
+      equal(remaining.shift(), id);
+      f.calls.push(`purge:${id}`);
+    },
+    async prepare(user, lease) { equal(remaining, []); await f.store.prepare(user, lease); },
+  };
+  return { f, store, fail(value: string | null) { fail = value; } };
+}
+
+Deno.test("instructor classes purge all three buckets before Auth deletion", async () => {
+  const { f, store } = classFixture();
+  assert(await processDeletion(store, "instructor"));
+  equal(f.calls.filter((call) => call.startsWith("class-remove:") || call.startsWith("purge:")), [
+    "class-remove:banners", "class-remove:materials", "class-remove:submissions", "purge:recent-class",
+    "class-remove:banners", "class-remove:materials", "class-remove:submissions", "purge:old-class",
+  ]);
+  assert(f.calls.indexOf("auth") > f.calls.indexOf("purge:old-class"));
+});
+
+for (const failure of ["list", "banners", "materials", "submissions", "purge"]) {
+  Deno.test(`class ${failure} failure preserves login and resumes remaining cleanup`, async () => {
+    const { f, store, fail } = classFixture(); fail(failure);
+    assert(!await processDeletion(store, "instructor"));
+    assert(f.login && !f.complete && !f.calls.includes("auth"));
+    fail(null);
+    assert(await processDeletion(store, "instructor"));
+    assert(f.complete);
+  });
+}

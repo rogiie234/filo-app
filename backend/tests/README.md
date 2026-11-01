@@ -2729,3 +2729,17 @@ gate/Storage guards. BE-01 historical 163/0 remains accepted only for its origin
 Setup/deployment/scheduler instructions are in backend API_CHANGES.md M13-BE-02;
 full runtime/gradebook/Google checks remain in the single workspace
 `qa/M13-SETTINGS-AND-ACCOUNT-ACCEPTANCE.md`. All new tests are NOT RUN by assistant.
+
+
+## M13-BE-03 instructor deletion
+
+After migration 20261102120000, owner runs WHOLE instructor_account_deletion.sql in DEV
+as postgres, then updated student_account_deletion.sql and profile_edit_photo_rules.sql.
+Any FAIL/uncaught error fails; all fixtures roll back. Interrupted runs require ROLLBACK.
+The student script now calls the renamed private begin_account_deletion helper; a live-class
+instructor expects P1303 instead of unconditional instructor denial. Run the two existing
+mocked deletion test files with the command above. No BE-03 tests were run by assistant.
+
+Actual Storage/Auth, count/error and two-session creation/restoration checks live in
+workspace qa/M13-SETTINGS-AND-ACCOUNT-ACCEPTANCE.md, not separate guide files. Ordinary
+14-day class recovery stays unchanged unless instructor account deletion is accepted.

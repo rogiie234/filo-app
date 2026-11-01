@@ -2390,3 +2390,90 @@ supersede NOT RUN/deployment notes above for the migration and named tests only.
 Edge Functions not deployed; scheduler/secrets unchanged; no real account/avatar deletion,
 Google re-sign-in or gradebook-screen acceptance. Remaining runtime checks and historical
 failures persist in canonical workspace M13 QA; explicit owner acceptance pending.
+
+
+## M13-BE-03 instructor deletion protection - 2026-11-02
+
+Local implementation only; NOT tested/applied/deployed for BE-03. Apply forward migration
+`20261102120000_instructor_account_deletion.sql` after BE-02, then deploy both existing
+account-deletion functions from this revision. The old private student-only RPC is renamed
+to `begin_account_deletion(uuid,uuid)`; its Edge adapter and maintained SQL tests move
+with it. No compatibility wrapper or authenticated grant is added. Deploy migration and
+functions together: an old handler calling the removed name fails closed until redeployed.
+The count RPC stays `owned_class_count()` (no arguments), OTP-gated and caller-only.
+It counts deleted_at IS NULL, including archived classes, excluding every soft-deleted class.
+
+### Error contract
+
+A verified instructor with positive count receives HTTP 409, exactly:
+
+```json
+{"error":{"code":"OWNED_CLASSES_EXIST","count":2}}
+```
+
+The count is recomputed under the owner profile lock before accepting deletion. SQLSTATE
+P1303 carries JSON DETAIL {"count":N}; the adapter accepts only a positive safe integer,
+otherwise returns the existing sanitized unavailable error. It never forwards raw DB
+messages/details. Authentication/OTP proof is validated before counting, so another
+caller cannot request a victim count. The refused transaction creates no deletion job,
+anonymization, login or Storage changes. Existing 400/401/403/405/503 and 200/202 semantics
+remain. Students still cannot own classes; valid no-class instructors use the same cleanup.
+
+### Class purge and race protection
+
+Creation/updates/ownership changes/restoration lock the owner profile; updates involving
+two owners lock UUIDs in stable order. Any deleting old/new owner refuses class mutation.
+The accepting transaction therefore cannot race a new/restored class past its count check.
+Authenticated class Storage writes also lock uploader/class-owner profiles and reject a
+pending deletion, preventing an in-flight student upload from replenishing purged files.
+
+Only an accepted instructor deletion job with a current lease can enumerate/purge its
+owned soft-deleted classes, including the 14-day recovery window and older classes.
+New service-only RPCs: next_account_deletion_class(user,lease),
+list_account_deletion_class_files(user,lease,class), purge_account_deletion_class(user,lease,class).
+Files are prefix-isolated, bounded at 500 rows/page across banners/materials/submissions;
+the Edge worker removes actual bytes through Storage API, then purges empty classes.
+Class cascade removes that class's work/grades/exams; unrelated classes/records stay.
+A surviving reference to the anonymized instructor still resolves to Deleted User under
+existing RLS. This is the explicit end of class recovery after permanent account deletion.
+Ordinary list_deleted_class_files/finish_deleted_class_purge and their 14-day gate are unchanged.
+
+Class cleanup runs before avatars/ownership detachment/Auth removal. Both Auth preparation
+and job completion reject ANY remaining owned class. File/DB failures and bounded work
+remain pending and retry through the existing scheduler/lease, not a second deletion.
+The unchanged account recovery secret/scheduler setup is reused; no new secrets/dependencies.
+
+### Owner verification (NOT RUN)
+
+1. Apply 20261102120000 on DEV after BE-02. Redeploy delete-account and
+   process-account-deletions before offering this version to callers; do not apply only
+   one half of the private RPC rename. No remote changes were performed in this task.
+2. From backend, run the existing two mocked suites; they now include exact 409/count,
+   invalid count-details, no-class instructor and class Storage/DB recovery cases:
+
+```powershell
+deno test --config supabase/functions/delete-account/deno.json supabase/functions/delete-account/deletion_test.ts supabase/functions/delete-account/store_test.ts
+```
+
+3. Run WHOLE tests/instructor_account_deletion.sql, updated tests/student_account_deletion.sql,
+   then tests/profile_edit_photo_rules.sql in DEV SQL Editor as postgres. Each must report
+   zero failures/overall PASS and roll back. On interruption issue ROLLBACK separately.
+   These are SQL/mocks, not actual Storage byte/Auth deletion or race evidence.
+4. Perform the two-session creation/restoration checks and real instructor count/block,
+   early purge/file removal, no-class deletion and surviving-owner checks in canonical
+   workspace qa/M13-SETTINGS-AND-ACCOUNT-ACCEPTANCE.md. Preserve prior BE-01 163/0 and
+   BE-02 73/0 + mocked23/0 within original scope; changed code requires these regressions.
+
+No tests/builds/live checks/migration/deployment/scheduler execution in BE-03 implementation.
+Acceptance pending; see the single canonical M13 record for Done when and runtime checks.
+
+
+M13-BE-03 authorized assistant verification (2026-11-02): migration20261102120000
+applied to DEV fiobwfzmqcffbpixzvbq with CLI2.121.0, exit0, ledger confirmed. DEV rollback
+instructor SQL **52 passed/0 failed**, student regression **73/0**, profile regression
+**163/0**, all overall PASS/exit0. Local mocked Edge/adapter **33/0**, exit0, reporter323ms.
+Initial instructor CLI attempt stalled/interrupted without results; sequential retry
+passed; no code/test correction was needed. Supersedes NOT RUN for migration/named tests
+only. Read-only list confirms delete-account/process-account-deletions are not deployed.
+Real Auth/Storage cleanup, scheduler, instructor runtime display and two-session races
+remain pending in canonical M13 QA; no full runtime acceptance or waiver inferred.

@@ -1,5 +1,5 @@
 import { adminClient } from "../_shared/otp.ts";
-import { Denied } from "./deletion.ts";
+import { Denied, OwnedClasses } from "./deletion.ts";
 import type { Store } from "./deletion.ts";
 
 export function createStore(db = adminClient((input, init) => fetch(input, {
@@ -11,20 +11,34 @@ export function createStore(db = adminClient((input, init) => fetch(input, {
   async function rpc(name: string, args: Record<string, unknown>) {
     const { data, error } = await db.rpc(name, args).abortSignal(AbortSignal.timeout(10000));
     if (error) {
+      if (error.code === "P1303") {
+        let count: unknown;
+        try { count = JSON.parse(error.details).count; } catch { /* Invalid details fail closed. */ }
+        if (typeof count === "number" && Number.isSafeInteger(count) && count > 0) throw new OwnedClasses(count);
+      }
       if (error.code === "42501") throw new Denied();
       throw new Error("Deletion database unavailable");
     }
     return data;
   }
   return {
-    async begin(user, session) { await rpc("begin_student_account_deletion", { p_user: user, p_session: session }); },
+    async begin(user, session) { await rpc("begin_account_deletion", { p_user: user, p_session: session }); },
     async claim(user) { return await rpc("claim_account_deletion", { p_user: user }); },
+    async nextClass(user, lease) {
+      return await rpc("next_account_deletion_class", { p_user: user, p_lease: lease });
+    },
+    async classFiles(user, lease, classId) {
+      return await rpc("list_account_deletion_class_files", { p_user: user, p_lease: lease, p_class: classId });
+    },
+    async purgeClass(user, lease, classId) {
+      await rpc("purge_account_deletion_class", { p_user: user, p_lease: lease, p_class: classId });
+    },
     async avatars(user, lease) {
       const rows = await rpc("list_account_avatars", { p_user: user, p_lease: lease });
       return rows.map((row: { name: string }) => row.name);
     },
-    async remove(paths) {
-      const { error } = await db.storage.from("avatars").remove(paths);
+    async remove(bucket, paths) {
+      const { error } = await db.storage.from(bucket).remove(paths);
       if (error) throw new Error("Deletion storage unavailable");
     },
     async prepare(user, lease) { await rpc("prepare_account_auth_deletion", { p_user: user, p_lease: lease }); },

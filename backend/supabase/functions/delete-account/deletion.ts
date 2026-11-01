@@ -4,8 +4,11 @@ export type Failure = "storage" | "auth" | "database" | "deferred";
 export interface Store {
   begin(user: string, session: string): Promise<void>;
   claim(user: string): Promise<string | null>;
+  nextClass(user: string, lease: string): Promise<string | null>;
+  classFiles(user: string, lease: string, classId: string): Promise<{ bucket_id: string; name: string }[]>;
+  purgeClass(user: string, lease: string, classId: string): Promise<void>;
   avatars(user: string, lease: string): Promise<string[]>;
-  remove(paths: string[]): Promise<void>;
+  remove(bucket: string, paths: string[]): Promise<void>;
   prepare(user: string, lease: string): Promise<void>;
   deleteLogin(user: string): Promise<void>;
   finish(user: string, lease: string): Promise<void>;
@@ -13,6 +16,9 @@ export interface Store {
   pending(): Promise<string[]>;
 }
 export class Denied extends Error {}
+export class OwnedClasses extends Error {
+  constructor(readonly count: number) { super("Owned classes exist"); }
+}
 export type Identity = { userId: string; sessionId: string };
 
 // Shared by self-deletion and scheduled recovery; only a live lease can finish a job.
@@ -26,10 +32,28 @@ export async function processDeletion(store: Store, user: string,
     for (let page = 0; ; page++) {
       if (Date.now() >= deadline || page >= 8) { stage = "deferred"; throw new Error(); }
       stage = "database";
+      const classId = await store.nextClass(user, lease);
+      if (!classId) break;
+      const files = await store.classFiles(user, lease, classId);
+      if (!files.length) {
+        await store.purgeClass(user, lease, classId);
+        continue;
+      }
+      stage = "storage";
+      for (const bucket of ["banners", "materials", "submissions"]) {
+        const paths = files.filter((file) => file.bucket_id === bucket).map((file) => file.name);
+        if (!paths.length) continue;
+        if (Date.now() >= deadline) { stage = "deferred"; throw new Error(); }
+        await store.remove(bucket, paths);
+      }
+    }
+    for (let page = 0; ; page++) {
+      if (Date.now() >= deadline || page >= 8) { stage = "deferred"; throw new Error(); }
+      stage = "database";
       const paths = await store.avatars(user, lease);
       if (!paths.length) break;
       stage = "storage";
-      await store.remove(paths);
+      await store.remove("avatars", paths);
     }
     stage = "database";
     await store.prepare(user, lease);
@@ -90,6 +114,9 @@ export function createHandler(store: Store, authenticate: (req: Request) => Prom
       const done = await processDeletion(store, identity.userId);
       return json({ status: done ? "deleted" : "pending" }, done ? 200 : 202);
     } catch (error) {
+      if (error instanceof OwnedClasses) {
+        return json({ error: { code: "OWNED_CLASSES_EXIST", count: error.count } }, 409);
+      }
       return json({ error: { code: error instanceof Denied ? "NOT_ALLOWED" : "UNAVAILABLE" } },
         error instanceof Denied ? 403 : 503);
     }

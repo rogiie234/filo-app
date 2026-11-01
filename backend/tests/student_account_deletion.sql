@@ -1,4 +1,4 @@
--- DEV ONLY, postgres SQL Editor. Run WHOLE file after 20261102110000.
+-- DEV ONLY, postgres SQL Editor. Run WHOLE file after 20261102120000.
 -- Synthetic SQL fixtures prove database behavior, NOT Storage bytes or Auth Admin API.
 -- No real accounts are deleted. Everything rolls back. Any FAIL/uncaught error fails.
 -- On interruption run ROLLBACK separately before retrying.
@@ -118,7 +118,7 @@ insert into m13d_before select 'outsider',id,to_jsonb(p) from public.profiles p 
 do $$
 declare sig text; lease uuid; old_lease uuid; t text; page_size integer; isolated boolean; blocked boolean:=false;
 begin
-  foreach sig in array array['begin_student_account_deletion(uuid,uuid)','claim_account_deletion(uuid)',
+  foreach sig in array array['begin_account_deletion(uuid,uuid)','claim_account_deletion(uuid)',
     'list_account_avatars(uuid,uuid)','prepare_account_auth_deletion(uuid,uuid)',
     'finish_account_deletion(uuid,uuid)','release_account_deletion(uuid,uuid,text)'] loop
     perform pg_temp.m13d_assert(not has_function_privilege('authenticated','public.'||sig,'EXECUTE')
@@ -127,22 +127,22 @@ begin
   perform pg_temp.m13d_assert(not has_table_privilege('authenticated','public.account_deletions','SELECT')
     and not has_table_privilege('authenticated','public.account_deletions','INSERT'),'deletion ledger hidden');
   perform pg_temp.m13d_actor(3);
-  perform pg_temp.m13d_check('select public.begin_student_account_deletion(pg_temp.m13d_id(''u2''),pg_temp.m13d_id(''s2''))',
+  perform pg_temp.m13d_check('select public.begin_account_deletion(pg_temp.m13d_id(''u2''),pg_temp.m13d_id(''s2''))',
     'outsider cannot nominate victim','authenticated','42501');
-  perform pg_temp.m13d_check('select public.begin_student_account_deletion(pg_temp.m13d_id(''u2''),pg_temp.m13d_id(''s3''))',
+  perform pg_temp.m13d_check('select public.begin_account_deletion(pg_temp.m13d_id(''u2''),pg_temp.m13d_id(''s3''))',
     'server rejects mismatched session','service_role','42501');
-  perform pg_temp.m13d_check('select public.begin_student_account_deletion(pg_temp.m13d_id(''u4''),pg_temp.m13d_id(''s4''))',
+  perform pg_temp.m13d_check('select public.begin_account_deletion(pg_temp.m13d_id(''u4''),pg_temp.m13d_id(''s4''))',
     'unverified student refused','service_role','42501');
-  perform pg_temp.m13d_check('select public.begin_student_account_deletion(pg_temp.m13d_id(''u1''),pg_temp.m13d_id(''s1''))',
-    'instructor outside student endpoint','service_role','42501');
-  perform pg_temp.m13d_check('select public.begin_student_account_deletion(pg_temp.m13d_id(''u2''),gen_random_uuid())',
+  perform pg_temp.m13d_check('select public.begin_account_deletion(pg_temp.m13d_id(''u1''),pg_temp.m13d_id(''s1''))',
+    'instructor with live classes refused','service_role','P1303');
+  perform pg_temp.m13d_check('select public.begin_account_deletion(pg_temp.m13d_id(''u2''),gen_random_uuid())',
     'unknown/revoked session refused','service_role','42501');
   perform pg_temp.m13d_assert(not exists(select 1 from public.account_deletions), 'denials made no deletion job');
 
   perform pg_temp.m13d_actor(2);
-  perform pg_temp.m13d_check('select public.begin_student_account_deletion(pg_temp.m13d_id(''u2''),pg_temp.m13d_id(''s2''))',
+  perform pg_temp.m13d_check('select public.begin_account_deletion(pg_temp.m13d_id(''u2''),pg_temp.m13d_id(''s2''))',
     'accept student deletion','service_role','00000');
-  perform pg_temp.m13d_check('select public.begin_student_account_deletion(pg_temp.m13d_id(''u2''),pg_temp.m13d_id(''s2''))',
+  perform pg_temp.m13d_check('select public.begin_account_deletion(pg_temp.m13d_id(''u2''),pg_temp.m13d_id(''s2''))',
     'accepted deletion resumes same request','service_role','00000');
   perform pg_temp.m13d_assert((select count(*)=1 from public.account_deletions where user_id=pg_temp.m13d_id('u2')),'one permanent request');
   perform pg_temp.m13d_assert((select display_name='Deleted User' and deleted_at is not null
@@ -221,7 +221,7 @@ begin
   perform pg_temp.m13d_assert(not exists(select 1 from public.verified_sessions where user_id=pg_temp.m13d_id('u2')),'OTP session proofs removed');
   perform pg_temp.m13d_assert((select completed_at is not null from public.account_deletions where user_id=pg_temp.m13d_id('u2')),'job complete');
   perform pg_temp.m13d_assert(public.claim_account_deletion(pg_temp.m13d_id('u2')) is null,'completed deletion cannot repeat');
-  perform pg_temp.m13d_check('select public.begin_student_account_deletion(pg_temp.m13d_id(''u2''),pg_temp.m13d_id(''s2''))',
+  perform pg_temp.m13d_check('select public.begin_account_deletion(pg_temp.m13d_id(''u2''),pg_temp.m13d_id(''s2''))',
     'old session cannot restart deletion','service_role','42501');
 end $$;
 

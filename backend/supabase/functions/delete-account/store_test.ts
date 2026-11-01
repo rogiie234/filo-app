@@ -1,6 +1,6 @@
 import { createClient } from "@supabase/supabase-js";
 import { createStore } from "./store.ts";
-import { Denied } from "./deletion.ts";
+import { Denied, OwnedClasses } from "./deletion.ts";
 
 function assert(ok: unknown, message = "Assertion failed"): asserts ok {
   if (!ok) throw new Error(message);
@@ -14,7 +14,7 @@ function db(fetcher: typeof fetch) {
 Deno.test("adapter forwards only token-derived account/session to the server-only begin RPC", async () => {
   const store = createStore(db(async (input, init) => {
     const req = new Request(input, init);
-    assert(req.url.endsWith("/rest/v1/rpc/begin_student_account_deletion"));
+    assert(req.url.endsWith("/rest/v1/rpc/begin_account_deletion"));
     const body = await req.json();
     assert(body.p_user === "student" && body.p_session === "session" && Object.keys(body).length === 2);
     return Response.json(null);
@@ -40,7 +40,7 @@ Deno.test("adapter deletes avatar bytes via Storage API, never direct metadata D
     assert(JSON.stringify(body.prefixes) === JSON.stringify(["student/old.png", "student/nested/new.png"]));
     return Response.json([]);
   }));
-  await store.remove(["student/old.png", "student/nested/new.png"]);
+  await store.remove("avatars", ["student/old.png", "student/nested/new.png"]);
 });
 
 Deno.test("adapter tolerates already-missing Auth only, other deletion failures remain failures", async () => {
@@ -69,4 +69,34 @@ Deno.test("recovery selection filters completed/leased jobs and bounds work", as
     return Response.json([{ user_id: "student" }]);
   }));
   assert(JSON.stringify(await store.pending()) === '["student"]');
+});
+
+Deno.test("owned-class database error exposes only a valid positive integer count", async () => {
+  for (const details of ['{"count":2}', '{"count":0}', '{"count":-1}', '{"count":1.5}',
+    '{"count":"2"}', '{"count":null}', 'private invalid details']) {
+    const store = createStore(db(async () => Response.json({ code: "P1303", details, message: "private database detail" }, { status: 400 })));
+    let caught: unknown;
+    try { await store.begin("instructor", "session"); } catch (error) { caught = error; }
+    assert(caught instanceof Error);
+    if (details === '{"count":2}') assert(caught instanceof OwnedClasses && caught.count === 2);
+    else assert(!(caught instanceof OwnedClasses));
+    assert(!caught.message.includes("private"));
+  }
+});
+
+Deno.test("class cleanup adapter binds account, lease and class to server-only RPCs", async () => {
+  const calls: string[] = [];
+  const store = createStore(db(async (input, init) => {
+    const req = new Request(input, init);
+    const name = new URL(req.url).pathname.split("/").at(-1)!;
+    calls.push(name);
+    const body = await req.json();
+    assert(body.p_user === "instructor" && body.p_lease === "lease");
+    if (name !== "next_account_deletion_class") assert(body.p_class === "class");
+    return Response.json(name === "next_account_deletion_class" ? "class" : name === "list_account_deletion_class_files" ? [] : null);
+  }));
+  assert(await store.nextClass("instructor", "lease") === "class");
+  await store.classFiles("instructor", "lease", "class");
+  await store.purgeClass("instructor", "lease", "class");
+  assert(calls.length === 3);
 });
