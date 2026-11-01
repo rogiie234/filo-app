@@ -2220,3 +2220,50 @@ cleanup assertion passed; it was not a live project failure. Deno chat and study
 supersedes the earlier NOT RUN statement only for these local mocked suites. No source
 fix, live DEV/Gemini call, deployment, real log review or owner acceptance occurred.
 [QA register](../../qa/TEST_ACCEPTANCE.md) retains scope and remaining evidence.
+
+## M13-BE-01 profile edits and photo security — 2026-11-02
+
+Migration `20261102100000_profile_photo_security.sql` restricts authenticated profile
+UPDATE privileges to display_name, school, and avatar_path. Initial onboarding INSERT
+permissions (including role and privacy consent) remain unchanged. Role/email/privacy
+changes after creation are refused for both application roles; trusted administrative
+roles retain administrative privileges. No RPC signatures or response shapes change.
+
+Avatars remain private, limited to 524288 bytes, with allowed MIME types image/jpeg,
+image/png, image/webp, matching ProfilePhotoDraft. Other buckets are unchanged. This
+is MIME enforcement, not file-content inspection; real Storage uploads must verify
+size/type rejection. SQL object metadata insertion is not an upload test.
+
+The existing shares_class_with(uuid) helper now excludes deleted classes in every
+relationship branch. This also fixes profile reads through deleted classes. Self
+access remains; archived classes remain readable; instructor reads of former members
+and pending students' reads of their instructor remain supported. Existing signed
+URLs may remain usable until expiry: verify denial using fresh requests/links.
+
+Maintained DEV regression script: `tests/profile_edit_photo_rules.sql`; execute the
+whole file as postgres after the migration. It simulates authenticated claims and
+rolls all fixtures/helpers back. Any FAIL or uncaught error means failure; after an
+interruption issue ROLLBACK before retrying. Covers protected columns, atomic mixed
+updates, role upserts, cross-account isolation, avatar RLS, class lifecycle and missing,
+malformed, mismatched, revoked and unverified sessions. Bucket assertions check
+configuration only. NOT RUN; no migration deployed. Owner SQL and actual Storage
+boundary/type/read checks plus explicit acceptance remain pending. Canonical evidence:
+workspace `qa/M13-SETTINGS-AND-ACCOUNT-ACCEPTANCE.md` (outside this app repository).
+
+
+M13-BE-01 owner SQL follow-up (2026-11-02): screenshot reports 161 pass / 1 fail
+(classmate DELETE denial assertion); exact SQLSTATE not supplied. Test now accepts
+zero-row refusal or 42501 and independently confirms the avatar remains. Summary adds
+failure_details for diagnosis; unrelated errors/successful deletion still fail. No API,
+policy or migration change. Updated rollback script NOT RUN; owner rerun and real
+Storage checks/acceptance remain pending. Historical failure retained in canonical QA.
+
+
+M13-BE-01 final owner SQL result (2026-11-02): **163 passed, 0 failed, overall PASS**,
+failures=[] and failure_details=[] (owner-supplied CSV aggregate). Supersedes the SQL
+NOT RUN/pending-rerun status above; preserves historical 161/1. No assistant execution.
+Actual project/build/ledger not supplied. All script SQL checks passed, including
+application-role immutability. Actual Storage uploads/limits/MIME/overwrite, fresh
+photo reads, real OTP and retry acceptance remain pending in the canonical workspace
+qa/M13-SETTINGS-AND-ACCOUNT-ACCEPTANCE.md. SQL-result/Git handoff acceptance does not
+waive those runtime checks. No new API or source changes for this evidence update.
