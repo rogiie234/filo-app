@@ -1,5 +1,7 @@
 import 'dart:async';
 
+import 'package:filo/core/notifications/deadline_providers.dart';
+
 import 'package:filo/core/notifications/push_providers.dart';
 import 'package:filo/core/theme/app_theme.dart';
 import 'package:filo/core/connectivity/connectivity_provider.dart';
@@ -47,6 +49,7 @@ void main() {
     await tester.pumpWidget(
       ProviderScope(
         overrides: [
+          deadlineBridgeProvider.overrideWithValue(const NoDeadlineBridge()),
           notificationPermissionProvider.overrideWithValue(permission),
           pushRegistrationProvider.overrideWithValue(push.service),
           connectivityProvider.overrideWithValue(const AsyncData(true)),

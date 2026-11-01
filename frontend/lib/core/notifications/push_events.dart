@@ -23,10 +23,12 @@ class PushEvent {
     required this.open,
     this.accountId,
     this.completion,
+    this.assignmentId,
   });
   final String? id, accountId;
   final bool open;
   final Completer<void>? completion;
+  final String? assignmentId;
 }
 
 /// Contains identifiers only; display content comes from authorized inbox rows.
@@ -88,6 +90,25 @@ class PushEvents extends ChangeNotifier {
     final key = '$id:$open';
     if (!_seen.add(key)) return;
     _pending.add(PushEvent(id, open: open, accountId: accountId));
+    notifyListeners();
+  }
+
+  void receiveReminder(Map<dynamic, dynamic> data) {
+    if (!validId(data['accountId']) ||
+        !validId(data['postId']) ||
+        data['nonce'] is! String)
+      return;
+    final key =
+        'reminder:${data['accountId']}:${data['postId']}:${data['nonce']}';
+    if (!_seen.add(key)) return;
+    _pending.add(
+      PushEvent(
+        null,
+        open: true,
+        accountId: data['accountId'] as String,
+        assignmentId: data['postId'] as String,
+      ),
+    );
     notifyListeners();
   }
 

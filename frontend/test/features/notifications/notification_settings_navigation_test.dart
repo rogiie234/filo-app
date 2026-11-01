@@ -1,4 +1,5 @@
 import 'package:filo/core/connectivity/connectivity_provider.dart';
+import 'package:filo/core/notifications/deadline_providers.dart';
 import 'package:filo/features/onboarding/application/notification_permission.dart';
 import 'package:filo/core/theme/app_theme.dart';
 import 'package:filo/features/assessments/application/instructor_quiz_providers.dart';
@@ -29,6 +30,7 @@ void main() {
       await tester.pumpWidget(
         ProviderScope(
           overrides: [
+            deadlineBridgeProvider.overrideWithValue(const NoDeadlineBridge()),
             connectivityProvider.overrideWithValue(const AsyncData(false)),
             notificationAccessProvider.overrideWith((ref) async => false),
             classCardsProvider.overrideWith((ref) => Stream.value([room])),

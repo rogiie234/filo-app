@@ -417,6 +417,13 @@ packages:
       url: "https://pub.dev"
     source: hosted
     version: "0.9.3+4"
+  filo_deadline_reminders:
+    dependency: "direct main"
+    description:
+      path: "packages/filo_deadline_reminders"
+      relative: true
+    source: path
+    version: "0.1.0"
   firebase_core:
     dependency: "direct main"
     description:

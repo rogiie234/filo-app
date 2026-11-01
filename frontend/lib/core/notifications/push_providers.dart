@@ -1,5 +1,7 @@
 import 'dart:async';
 
+import 'deadline_reminders.dart';
+
 import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter/foundation.dart';
@@ -111,7 +113,14 @@ final pushRegistrationProvider = Provider<PushRegistration>((ref) {
         }
       }
     },
-    signOut: () => client.auth.signOut(),
+    signOut: () async {
+      try {
+        await const DeadlineBridge().clear();
+      } catch (_) {
+        _pushStatus('Sign-out cleanup pending: deadline reminders');
+      }
+      await client.auth.signOut();
+    },
     onStatus: _pushStatus,
   );
   ref.onDispose(service.dispose);

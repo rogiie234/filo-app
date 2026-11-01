@@ -162,23 +162,42 @@ class NotificationDestinationRepository {
   Future<NotificationDestination> resolve(
     String? id, {
     required bool instructor,
-  }) async {
+  }) => _resolve(notice(id), null, instructor);
+
+  Future<NotificationDestination> resolveAssignment(String postId) =>
+      _resolve(Future.value(null), postId, false);
+
+  Future<NotificationDestination> _resolve(
+    Future<CacheNotification?> notification,
+    String? assignmentId,
+    bool instructor,
+  ) async {
     try {
-      final n = await notice(id);
-      if (!PushEvents.validId(n.targetId))
+      final n = await notification;
+      final targetId = assignmentId ?? n?.targetId;
+      if (!PushEvents.validId(targetId)) throw const NotificationUnavailable();
+      final table = assignmentId != null
+          ? 'posts'
+          : switch (n!.targetType) {
+              'post' => 'posts',
+              'quiz' => 'quizzes',
+              'class' || 'class_members' => 'classes',
+              _ => throw const NotificationUnavailable(),
+            };
+      final item = await _item(table, targetId!);
+      if (assignmentId != null &&
+          (item['kind'] != 'assignment' ||
+              !PushEvents.validId(item['class_id']) ||
+              item['id'] != assignmentId ||
+              item['deleted_at'] != null))
         throw const NotificationUnavailable();
-      final table = switch (n.targetType) {
-        'post' => 'posts',
-        'quiz' => 'quizzes',
-        'class' || 'class_members' => 'classes',
-        _ => throw const NotificationUnavailable(),
-      };
-      final item = await _item(table, n.targetId!);
-      final destination = notificationDestination(
-        n,
-        item,
-        instructor: instructor,
-      );
+      final destination = assignmentId != null
+          ? NotificationDestination(
+              NotificationScreen.assignment,
+              item['class_id'] as String,
+              assignmentId,
+            )
+          : notificationDestination(n!, item, instructor: instructor);
       final room = table == 'classes'
           ? item
           : await _item('classes', destination.classId);

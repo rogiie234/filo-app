@@ -139,10 +139,12 @@ class _PushNotificationHostState extends ConsumerState<PushNotificationHost> {
         if (event.open) {
           _activeOpen = event;
           try {
-            final destination = await repository.resolve(
-              event.id,
-              instructor: _profile!.role == AccountRole.instructor,
-            );
+            final destination = event.assignmentId != null
+                ? await repository.resolveAssignment(event.assignmentId!)
+                : await repository.resolve(
+                    event.id,
+                    instructor: _profile!.role == AccountRole.instructor,
+                  );
             if (!_ready || !repository.isCurrent()) {
               _retainForCurrentAccount(event);
               return;
@@ -153,11 +155,12 @@ class _PushNotificationHostState extends ConsumerState<PushNotificationHost> {
             }
             _open(destination);
             try {
-              await InboxRepository(
-                repository.db,
-                widget.userId,
-                repository.isCurrent,
-              ).markRead(event.id!);
+              if (event.assignmentId == null)
+                await InboxRepository(
+                  repository.db,
+                  widget.userId,
+                  repository.isCurrent,
+                ).markRead(event.id!);
             } catch (_) {
               if (_ready && repository.isCurrent()) {
                 _message(

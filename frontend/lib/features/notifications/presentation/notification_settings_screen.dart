@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/notifications/push_providers.dart';
+import '../../../core/notifications/deadline_providers.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/widgets/filo_widgets.dart';
 import '../../onboarding/application/notification_permission.dart';
@@ -36,6 +37,7 @@ class _NotificationSettingsScreenState
     if (mounted) {
       ref.invalidate(notificationAccessProvider);
       ref.invalidate(notificationPreferencesRefreshProvider);
+      ref.invalidate(deadlineStatusProvider);
     }
   }
 
@@ -131,9 +133,105 @@ class _NotificationSettingsScreenState
               NotificationPreferenceControls(
                 initialClassId: widget.initialClassId,
               ),
+              if (ref.watch(deadlineBridgeProvider).supported) ...[
+                const SizedBox(height: 24),
+                const DeadlineReminderSetup(),
+              ],
             ],
           ),
         ),
+      ),
+    );
+  }
+}
+
+class DeadlineReminderSetup extends ConsumerStatefulWidget {
+  const DeadlineReminderSetup({super.key});
+  @override
+  ConsumerState<DeadlineReminderSetup> createState() =>
+      _DeadlineReminderSetupState();
+}
+
+class _DeadlineReminderSetupState extends ConsumerState<DeadlineReminderSetup> {
+  bool _busy = false;
+  Future<void> _run(String? section) async {
+    if (_busy) return;
+    setState(() => _busy = true);
+    try {
+      if (section != null)
+        await ref.read(deadlineBridgeProvider).openSettings(section);
+      else {
+        ref.invalidate(deadlineSessionProvider);
+        await (await ref.read(deadlineSessionProvider.future))?.reconcile();
+      }
+    } catch (_) {
+      if (mounted)
+        showMessage(
+          context,
+          "Open your phone's Settings and search for Alarms & reminders, Autostart or Filo's battery settings. Select Filo and follow the step above. Then return here.",
+        );
+    } finally {
+      if (mounted) {
+        ref.invalidate(deadlineStatusProvider);
+        setState(() => _busy = false);
+      }
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final status = ref.watch(deadlineStatusProvider);
+    final data = status.asData?.value;
+    return FiloPanel(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Text(
+            'Deadline reminders',
+            style: Theme.of(context).textTheme.titleLarge,
+          ),
+          const SizedBox(height: 12),
+          if (status.isLoading)
+            const Text('Checking deadline reminders…')
+          else
+            Text(
+              status.hasError || data?['error'] == true
+                  ? 'Could not update deadline reminders. Retry.'
+                  : data?['enabled'] != true
+                  ? 'Notifications are off. Enable notifications in your phone settings to see deadline reminders.'
+                  : data?['exact'] == true
+                  ? 'Deadline reminders are ready.'
+                  : 'Deadline reminders are approximate and may arrive late. Allow Alarms & reminders for more precise timing.',
+            ),
+          const SizedBox(height: 12),
+          const Text(
+            'Reminders use saved due dates and work offline. Check these phone settings to help Filo deliver reminders. Settings names may vary by phone. These changes may use more battery and do not guarantee delivery.',
+          ),
+          TextButton(
+            onPressed: _busy ? null : () => _run(null),
+            child: const Text('Retry reminders'),
+          ),
+          FiloButton(
+            label: 'Open alarm settings',
+            onPressed: _busy ? null : () => _run('alarm'),
+          ),
+          const SizedBox(height: 12),
+          const Text(
+            'Allow Filo under Alarms & reminders, then return to Filo.',
+          ),
+          const SizedBox(height: 16),
+          const Text(
+            'On Xiaomi, Redmi or POCO: enable Filo under Autostart or Background autostart. Set Filo’s battery setting to No restrictions.',
+          ),
+          TextButton(
+            onPressed: _busy ? null : () => _run('autostart'),
+            child: const Text('Open autostart settings'),
+          ),
+          TextButton(
+            onPressed: _busy ? null : () => _run('battery'),
+            child: const Text('Open battery settings'),
+          ),
+        ],
       ),
     );
   }

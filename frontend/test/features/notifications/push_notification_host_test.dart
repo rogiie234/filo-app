@@ -69,6 +69,10 @@ class FakeDestinationRepository extends NotificationDestinationRepository {
     if (failOpen) throw const NotificationNeedsConnection();
     throw const NotificationUnavailable();
   }
+
+  @override
+  Future<NotificationDestination> resolveAssignment(String postId) =>
+      resolve(postId, instructor: false);
 }
 
 class ReadyPage extends StatelessWidget {
@@ -191,6 +195,31 @@ void main() {
     expect(h.repository.opened, [fixtures.noticeId, fixtures.noticeId]);
     expect(find.text('This item is no longer available.'), findsOneWidget);
   });
+
+  testWidgets(
+    'local reminder waits for Home and resolves assignment without an inbox read mark',
+    (tester) async {
+      final h = await launch(tester);
+      h.events.receiveReminder({
+        'accountId': fixtures.userId,
+        'postId': fixtures.targetId,
+        'nonce': 'reminder',
+      });
+      await tester.pumpAndSettle();
+      expect(h.repository.opened, isEmpty);
+      await tester.tap(find.text('Finish setup'));
+      await tester.pumpAndSettle();
+      expect(h.repository.opened, [fixtures.targetId]);
+      expect(h.repository.received, isEmpty);
+      expect(find.text('This item is no longer available.'), findsOneWidget);
+      expect(
+        await tester.runAsync(
+          () => h.repository.db.select(h.repository.db.outbox).get(),
+        ),
+        isEmpty,
+      );
+    },
+  );
 
   testWidgets(
     'explicit inbox opens use the same resolver and can reopen after a callback',

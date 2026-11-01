@@ -450,6 +450,20 @@ void main() {
         (await repository.resolve(noticeId, instructor: false)).screen,
         NotificationScreen.post,
       );
+      await db
+          .update(db.cachePosts)
+          .write(
+            CachePostsCompanion(
+              kind: const Value('assignment'),
+              points: const Value(10),
+              dueAt: Value(DateTime.utc(2026, 11, 2)),
+            ),
+          );
+      expect(
+        (await repository.resolveAssignment(targetId)).screen,
+        NotificationScreen.assignment,
+      );
+      expect((await db.select(db.cacheNotifications).get()).length, 1);
       await db.delete(db.cacheClassMembers).go();
       await expectLater(
         repository.resolve(noticeId, instructor: false),

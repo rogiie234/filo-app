@@ -1,6 +1,13 @@
 import 'dart:async';
 
+import 'package:filo/core/notifications/deadline_reminders.dart';
 import 'package:filo/features/notifications/data/notification_settings_repository.dart';
+
+class NoDeadlineBridge extends DeadlineBridge {
+  const NoDeadlineBridge();
+  @override
+  bool get supported => false;
+}
 
 class FakeSettingsRepository implements NotificationSettingsRepository {
   bool current = true;

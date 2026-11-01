@@ -19,6 +19,7 @@ import '../../features/results/data/student_results_repository.dart';
 import 'outbox_processor.dart';
 import 'sqlite_outbox.dart';
 import '../../features/notifications/data/inbox_repository.dart';
+import '../notifications/deadline_reminders.dart';
 import '../../features/notifications/data/notification_settings_repository.dart';
 
 class SyncCoordinator extends ChangeNotifier {
@@ -215,6 +216,11 @@ class SyncCoordinator extends ChangeNotifier {
         _lastSnapshot == null ||
         DateTime.now().difference(_lastSnapshot!) > const Duration(minutes: 15);
     try {
+      if (const DeadlineBridge().supported) {
+        await db.customStatement(
+          "INSERT OR REPLACE INTO file_settings(key,value) VALUES('deadline_trusted','0')",
+        );
+      }
       final store = SqliteOutbox(
         db,
         includeLeaveEvents: canSendLeaveEvents?.call() ?? true,
@@ -324,6 +330,25 @@ class SyncCoordinator extends ChangeNotifier {
       }
       if (isCurrent()) {
         await _evictRevoked();
+        try {
+          final trusted = [
+            'profiles',
+            'classes',
+            'class_members',
+            'posts',
+            'submissions',
+            'class_access',
+          ].every((key) => !errors.containsKey(key));
+          await DeadlineReminders(
+            db,
+            userId,
+            () => !_disposed && isCurrent(),
+          ).reconcile(trusted: trusted);
+          errors.remove('deadline_reminders');
+        } catch (_) {
+          errors['deadline_reminders'] =
+              'Could not update deadline reminders. Retry.';
+        }
         final failed = await db
             .customSelect(
               "SELECT count(*) AS n FROM outbox WHERE status='failed'",

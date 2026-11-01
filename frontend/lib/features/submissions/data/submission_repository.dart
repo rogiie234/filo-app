@@ -4,6 +4,7 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import '../../../data/local/app_database.dart';
 import '../../posts/data/post_repository.dart';
 import '../domain/assignment_file_rules.dart';
+import '../../../core/notifications/deadline_reminders.dart';
 
 Map<String, dynamic> _cacheJson(Map<String, dynamic> row) => {
   for (final entry in row.entries)
@@ -432,6 +433,17 @@ class SubmissionRepository {
         await db
             .into(db.cacheSubmissions)
             .insertOnConflictUpdate(row.toCompanion(false));
+        if (function == 'turn_in' || function == 'unsubmit') {
+          try {
+            await DeadlineReminders(
+              db,
+              userId,
+              () => client.auth.currentUser?.id == userId,
+            ).reconcile(confirmedPostId: row.postId);
+          } catch (_) {
+            /* Confirmed submission remains successful; reminder status retains Retry. */
+          }
+        }
       }
       return row;
     } finally {

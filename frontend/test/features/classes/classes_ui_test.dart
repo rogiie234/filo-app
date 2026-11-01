@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:io';
 import 'dart:ui' as ui;
 
+import 'package:filo/core/notifications/deadline_providers.dart';
 import 'package:drift/native.dart';
 import 'package:filo/core/connectivity/connectivity_provider.dart';
 import 'package:filo/core/theme/app_theme.dart';
@@ -154,6 +155,7 @@ void main() {
     await tester.pumpWidget(
       ProviderScope(
         overrides: [
+          deadlineBridgeProvider.overrideWithValue(const NoDeadlineBridge()),
           classRepositoryProvider.overrideWith((ref) async => repo),
           classCardsProvider.overrideWith((ref) async* {
             yield List.of(rooms);
