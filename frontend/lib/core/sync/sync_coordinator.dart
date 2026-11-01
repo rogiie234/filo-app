@@ -63,6 +63,87 @@ class SyncCoordinator extends ChangeNotifier {
   Future<void> queueNotificationRead(String notificationId) =>
       InboxRepository(db, userId, isCurrent).markRead(notificationId);
 
+  Future<void>? _notificationRefresh;
+  Future<void> _notificationWork = Future.value();
+  Future<T> _serializeNotifications<T>(Future<T> Function() action) {
+    final result = _notificationWork.then((_) => action());
+    _notificationWork = result.then<void>(
+      (_) {},
+      onError: (Object _, StackTrace _) {},
+    );
+    return result;
+  }
+
+  Future<void> refreshNotifications() =>
+      _notificationRefresh ??= _serializeNotifications(_refreshNotifications)
+          .whenComplete(() => _notificationRefresh = null);
+
+  Future<void> _refreshNotifications() async {
+    if (!isCurrent() || _disposed) return;
+    await _pull('notifications', false);
+    await _reconcileNotifications();
+  }
+
+  /// Fetches only this account's canonical row; never trusts push display fields.
+  Future<CacheNotification?> refreshNotification(String id) =>
+      _serializeNotifications(() => _refreshNotification(id));
+
+  Future<CacheNotification?> _refreshNotification(String id) async {
+    if (!isCurrent() || _disposed) throw StateError('Account changed');
+    final row = await client
+        .from('notifications')
+        .select()
+        .eq('id', id)
+        .eq('recipient_id', userId)
+        .maybeSingle()
+        .timeout(const Duration(seconds: 20));
+    if (!isCurrent() || _disposed) throw StateError('Account changed');
+    if (row == null) {
+      await db.transaction(() async {
+        if (!isCurrent() || _disposed) throw StateError('Account changed');
+        await _remove('notifications', id);
+        await db.customStatement(
+          "DELETE FROM sync_payloads WHERE table_name='notifications' AND id=?",
+          [id],
+        );
+        if (!isCurrent() || _disposed) throw StateError('Account changed');
+      });
+      return null;
+    }
+    if (await db.readProfile(userId) == null) {
+      final profile = await client
+          .from('profiles')
+          .select()
+          .eq('id', userId)
+          .single()
+          .timeout(const Duration(seconds: 20));
+      if (!isCurrent() || _disposed) throw StateError('Account changed');
+      await _apply('profiles', profile);
+    }
+    await db.transaction(() async {
+      if (!isCurrent() || _disposed) throw StateError('Account changed');
+      final previous = await db
+          .customSelect(
+            "SELECT updated_at FROM sync_payloads WHERE table_name='notifications' AND id=?",
+            variables: [Variable(id)],
+          )
+          .get();
+      if (previous.isEmpty ||
+          !DateTime.parse(previous.single.read<String>('updated_at'))
+              .isAfter(DateTime.parse(row['updated_at'] as String))) {
+        await _apply('notifications', row);
+        await db.customStatement(
+          "INSERT OR REPLACE INTO sync_payloads(table_name,id,payload,updated_at) VALUES('notifications',?,?,?)",
+          [id, jsonEncode(row), row['updated_at']],
+        );
+      }
+      if (!isCurrent() || _disposed) throw StateError('Account changed');
+    });
+    return (db.select(db.cacheNotifications)
+          ..where((n) => n.id.equals(id) & n.recipientId.equals(userId)))
+        .getSingleOrNull();
+  }
+
   Future<void> queueLeaveEvent(
     String eventId,
     String sessionId,
@@ -193,11 +274,11 @@ class SyncCoordinator extends ChangeNotifier {
         }
         try {
           // Inbox hard deletes must reconcile on the next successful sync.
-          await _pull(
-            table,
-            table != 'notifications' && (snapshot || _accessChanged),
-          );
-          if (table == 'notifications') await _reconcileNotifications();
+          if (table == 'notifications') {
+            await refreshNotifications();
+          } else {
+            await _pull(table, snapshot || _accessChanged);
+          }
           errors.remove(table);
         } catch (_) {
           errors[table] = 'Could not refresh $table. Retry when connected.';

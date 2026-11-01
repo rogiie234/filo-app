@@ -9,8 +9,13 @@ import '../application/class_providers.dart';
 import '../data/class_member_repository.dart';
 
 class ClassStudentsScreen extends ConsumerStatefulWidget {
-  const ClassStudentsScreen({super.key, required this.classId});
+  const ClassStudentsScreen({
+    super.key,
+    required this.classId,
+    this.focusRequests = false,
+  });
   final String classId;
+  final bool focusRequests;
 
   @override
   ConsumerState<ClassStudentsScreen> createState() =>
@@ -20,6 +25,8 @@ class ClassStudentsScreen extends ConsumerStatefulWidget {
 class _ClassStudentsScreenState extends ConsumerState<ClassStudentsScreen> {
   bool _busy = false;
   String? _message;
+  final _requestsKey = GlobalKey();
+  bool _focused = false;
 
   @override
   void initState() {
@@ -135,6 +142,13 @@ class _ClassStudentsScreenState extends ConsumerState<ClassStudentsScreen> {
     final sync = ref.watch(classSyncProvider);
     final canDecide = online && !_busy && room != null && !room.archived;
     final rows = students.asData?.value ?? <ClassStudent>[];
+    if (widget.focusRequests && !_focused && students.hasValue) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (!mounted || _focused || _requestsKey.currentContext == null) return;
+        _focused = true;
+        Scrollable.ensureVisible(_requestsKey.currentContext!, alignment: 0);
+      });
+    }
     final pending = rows
         .where((s) => s.membership.status == 'pending')
         .toList();
@@ -196,6 +210,7 @@ class _ClassStudentsScreenState extends ConsumerState<ClassStudentsScreen> {
             const SizedBox(height: 24),
             Text(
               'Requests (${pending.length})',
+              key: _requestsKey,
               style: Theme.of(context).textTheme.headlineSmall,
             ),
             const SizedBox(height: 12),

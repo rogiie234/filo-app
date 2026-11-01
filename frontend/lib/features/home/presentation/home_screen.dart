@@ -8,6 +8,7 @@ import '../../exams/presentation/student_exam_screen.dart';
 
 import '../../classes/presentation/classes_screen.dart';
 import '../../onboarding/data/profile_repository.dart';
+import '../../../core/notifications/push_events.dart';
 
 class HomeScreen extends ConsumerStatefulWidget {
   const HomeScreen({required this.profile, super.key});
@@ -18,6 +19,14 @@ class HomeScreen extends ConsumerStatefulWidget {
 }
 
 class _HomeScreenState extends ConsumerState<HomeScreen> {
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) NotificationHomeReady(widget.profile).dispatch(context);
+    });
+  }
+
   bool _scheduled = false;
   void _resumeExam() {
     if (_scheduled || ref.read(examNavigationProvider).open) return;

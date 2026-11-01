@@ -8,6 +8,7 @@ import 'core/supabase/auth_providers.dart';
 import 'core/supabase/session_gate.dart';
 import 'features/auth/presentation/session_screen.dart';
 import 'data/local/database_providers.dart';
+import 'features/notifications/presentation/push_notification_host.dart';
 
 class App extends ConsumerWidget {
   const App({super.key});
@@ -15,6 +16,7 @@ class App extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     ref.watch(pushLifecycleProvider);
+    ref.watch(pushMessagesLifecycleProvider);
     return MaterialApp.router(
       title: 'Filo',
       debugShowCheckedModeBanner: false,
@@ -30,11 +32,10 @@ class App extends ConsumerWidget {
               // Replacing the router child here also removes its Navigator/Overlay.
               // Keep authentication screens inside a route so text editing and
               // selection can find the overlay required by EditableText.
-              return Navigator(
+              return PushNotificationHost(
                 key: ValueKey(login.asData!.value!.user.id),
-                onGenerateRoute: (_) => MaterialPageRoute<void>(
-                  builder: (_) => const SessionScreen(),
-                ),
+                userId: login.asData!.value!.user.id,
+                child: const SessionScreen(),
               );
             }
             // Public screens must not wait for the previous account's SQLite cleanup.

@@ -16,6 +16,7 @@ import '../../grading/presentation/work_queue_screen.dart';
 import '../../drive_backup/data/drive_backup_service.dart';
 import '../../drive_backup/presentation/drive_backup_screen.dart';
 import '../../notifications/presentation/notification_settings_screen.dart';
+import '../../notifications/application/notification_providers.dart';
 import '../../files/presentation/my_files_screen.dart';
 import '../../study/presentation/study_home_screen.dart';
 import '../../../core/sync/sync_providers.dart';
@@ -48,6 +49,9 @@ class _ClassesScreenState extends ConsumerState<ClassesScreen> {
   Widget build(BuildContext context) {
     final state = ref.watch(previewProvider);
     final live = widget.profile != null;
+    final unread = live
+        ? ref.watch(unreadNotificationCountProvider).asData?.value ?? 0
+        : 0;
     if (live) {
       ref.watch(classSyncLifecycleProvider);
       ref.watch(driveBackupProvider);
@@ -93,9 +97,12 @@ class _ClassesScreenState extends ConsumerState<ClassesScreen> {
             ),
           IconButton(
             tooltip: 'Notifications',
-            icon: const RedDotBadge(
-              visible: false,
-              child: FiloIcon(FiloIcons.notifications),
+            icon: RedDotBadge(
+              visible: unread > 0,
+              child: Semantics(
+                label: unread > 0 ? '$unread unread notifications' : null,
+                child: const FiloIcon(FiloIcons.notifications),
+              ),
             ),
             onPressed: () =>
                 showMessage(context, 'Notifications will be available here.'),

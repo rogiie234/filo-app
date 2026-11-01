@@ -11,10 +11,13 @@ import 'package:filo/features/classes/data/class_remote.dart';
 import 'package:filo/features/classes/data/class_repository.dart';
 import 'package:filo/features/classes/domain/prototype_models.dart';
 import 'package:filo/features/classes/presentation/classes_screen.dart';
+import 'package:filo/features/classes/presentation/classes_widgets.dart'
+    show RedDotBadge;
 import 'package:filo/features/onboarding/data/profile_repository.dart';
 import 'package:filo/features/onboarding/application/notification_permission.dart';
 import 'package:filo/core/sync/sync_providers.dart';
 import 'package:filo/features/drive_backup/data/drive_backup_service.dart';
+import 'package:filo/features/notifications/application/notification_providers.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
 import 'package:flutter/services.dart';
@@ -128,6 +131,7 @@ void main() {
     bool empty = false,
     double scale = 1,
     bool? notificationAccess,
+    Stream<int>? unread,
   }) async {
     tester.view.physicalSize = const Size(390, 844);
     tester.view.devicePixelRatio = 1;
@@ -136,8 +140,8 @@ void main() {
     tester.platformDispatcher.textScaleFactorTestValue = scale;
     addTearDown(tester.platformDispatcher.clearTextScaleFactorTestValue);
     final db = AppDatabase(NativeDatabase.memory());
-    final network = StreamController<bool>();
-    final cards = StreamController<List<ClassRoom>>();
+    final network = StreamController<bool>.broadcast();
+    final cards = StreamController<List<ClassRoom>>.broadcast();
     final rooms = <ClassRoom>[if (!empty) cachedRoom];
     final repo = UiRepository(db, (room) {
       rooms.add(room);
@@ -157,6 +161,9 @@ void main() {
             yield* network.stream;
           }),
           classSyncLifecycleProvider.overrideWith((ref) {}),
+          unreadNotificationCountProvider.overrideWith(
+            (ref) => unread ?? Stream.value(0),
+          ),
           if (notificationAccess != null) ...[
             notificationAccessProvider.overrideWith(
               (ref) async => notificationAccess,
@@ -204,14 +211,38 @@ void main() {
     await tester.pumpAndSettle();
     addTearDown(() async {
       await tester.pumpWidget(const SizedBox());
-      await tester.runAsync(() async {
-        await network.close();
-        await cards.close();
-        await db.close();
-      });
+      await tester.pump();
+      await network.close();
+      await cards.close();
+      await db.close();
     });
     return Harness(repo, network, cards, rooms, capture);
   }
+
+  testWidgets('notification bell follows the local unread count', (
+    tester,
+  ) async {
+    final unread = StreamController<int>.broadcast();
+    await launch(tester, notificationAccess: false, unread: unread.stream);
+    bool visible() => tester
+        .widget<RedDotBadge>(
+          find.descendant(
+            of: find.byTooltip('Notifications'),
+            matching: find.byType(RedDotBadge),
+          ),
+        )
+        .visible;
+    expect(visible(), isFalse);
+    unread.add(2);
+    await tester.pumpAndSettle();
+    expect(visible(), isTrue);
+    unread.add(0);
+    await tester.pumpAndSettle();
+    expect(visible(), isFalse);
+    await tester.pumpWidget(const SizedBox.shrink());
+    await tester.pump();
+    await unread.close();
+  });
 
   for (final role in AccountRole.values) {
     testWidgets('${role.name} account menu opens notification access page', (

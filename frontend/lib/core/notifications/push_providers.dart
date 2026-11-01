@@ -11,6 +11,7 @@ import '../connectivity/connectivity_provider.dart';
 import '../supabase/session_gate.dart';
 import '../supabase/supabase_provider.dart';
 import 'push_registration.dart';
+import 'push_events.dart';
 import '../../features/onboarding/application/notification_permission.dart';
 
 bool get _firebaseReady =>
@@ -141,5 +142,48 @@ final pushLifecycleProvider = Provider<void>((ref) {
   ref.onDispose(() {
     lifecycle.dispose();
     unawaited(refresh?.cancel());
+  });
+});
+
+final pushMessagesLifecycleProvider = Provider<void>((ref) {
+  final events = ref.watch(pushEventsProvider);
+  ref.listen(loginSessionProvider, (previous, next) {
+    final before = previous?.asData?.value?.user.id;
+    if (before != null &&
+        next.asData != null &&
+        before != next.asData?.value?.user.id) {
+      events.clear();
+    }
+  });
+  if (!_firebaseReady) return;
+  final client = ref.read(supabaseClientProvider);
+  void receive(RemoteMessage message, bool open) {
+    if (!ref.mounted) return;
+    events.receive(
+      message.data,
+      open: open,
+      accountId: client.auth.currentUser?.id,
+    );
+  }
+
+  final foreground = FirebaseMessaging.onMessage.listen(
+    (m) => receive(m, false),
+    onError: (Object _) {},
+  );
+  final opened = FirebaseMessaging.onMessageOpenedApp.listen(
+    (m) => receive(m, true),
+    onError: (Object _) {},
+  );
+  unawaited(
+    FirebaseMessaging.instance
+        .getInitialMessage()
+        .then((message) {
+          if (message != null) receive(message, true);
+        })
+        .catchError((Object _) {}),
+  );
+  ref.onDispose(() {
+    unawaited(foreground.cancel());
+    unawaited(opened.cancel());
   });
 });
