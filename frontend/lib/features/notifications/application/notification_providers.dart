@@ -6,6 +6,7 @@ import '../../../data/local/app_database.dart';
 import '../../../data/local/database_providers.dart';
 import '../data/inbox_repository.dart';
 import '../data/alarm_repository.dart';
+import '../data/notification_settings_repository.dart';
 import '../data/notification_destination_repository.dart';
 import '../../../core/connectivity/connectivity_provider.dart';
 import '../../../core/supabase/session_gate.dart';
@@ -40,6 +41,35 @@ final inboxRefreshProvider = FutureProvider.autoDispose<void>((ref) async {
   if (sync == null) throw StateError('No account sync');
   await sync.refreshNotifications();
 });
+
+final notificationSettingsRepositoryProvider =
+    FutureProvider.autoDispose<NotificationSettingsRepository>((ref) async {
+      final account = await ref.watch(inboxRepositoryProvider.future);
+      return NotificationSettingsRepository(
+        account.db,
+        ref.watch(supabaseClientProvider),
+        account.userId,
+        () => ref.mounted && account.isCurrent(),
+        online: () =>
+            ref.mounted && ref.read(connectivityProvider).asData?.value == true,
+      );
+    });
+final notificationPreferencesProvider =
+    StreamProvider.autoDispose<NotificationPreferences?>((ref) async* {
+      final repository = await ref.watch(
+        notificationSettingsRepositoryProvider.future,
+      );
+      if (ref.mounted) yield* repository.watch();
+    });
+final notificationPreferencesRefreshProvider = FutureProvider.autoDispose<void>(
+  (ref) async {
+    if (ref.watch(connectivityProvider).asData?.value != true) return;
+    final repository = await ref.watch(
+      notificationSettingsRepositoryProvider.future,
+    );
+    if (ref.mounted) await repository.refresh();
+  },
+);
 
 final alarmRepositoryProvider = FutureProvider.autoDispose<AlarmRepository>((
   ref,

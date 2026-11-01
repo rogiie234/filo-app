@@ -19,6 +19,7 @@ import '../../features/results/data/student_results_repository.dart';
 import 'outbox_processor.dart';
 import 'sqlite_outbox.dart';
 import '../../features/notifications/data/inbox_repository.dart';
+import '../../features/notifications/data/notification_settings_repository.dart';
 
 class SyncCoordinator extends ChangeNotifier {
   SyncCoordinator(
@@ -276,6 +277,14 @@ class SyncCoordinator extends ChangeNotifier {
           // Inbox hard deletes must reconcile on the next successful sync.
           if (table == 'notifications') {
             await refreshNotifications();
+          } else if (table == 'notification_settings') {
+            await NotificationSettingsRepository(
+              db,
+              client,
+              userId,
+              () => !_disposed && isCurrent(),
+              online: () => true,
+            ).refresh();
           } else {
             await _pull(table, snapshot || _accessChanged);
           }

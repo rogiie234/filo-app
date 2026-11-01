@@ -24,6 +24,7 @@ import 'class_classmates_screen.dart';
 import 'class_banner_screen.dart';
 import '../../../core/supabase/supabase_provider.dart';
 import '../../../core/connectivity/connectivity_provider.dart';
+import '../../notifications/presentation/notification_settings_screen.dart';
 
 class ClassScreen extends ConsumerStatefulWidget {
   const ClassScreen({super.key, required this.classId, this.profile});
@@ -294,6 +295,20 @@ class _ClassScreenState extends ConsumerState<ClassScreen> {
                 _details(room, live, instructor);
               },
             ),
+            if (live)
+              ListTile(
+                leading: const FiloIcon(FiloIcons.notifications),
+                title: const Text('Notification settings'),
+                onTap: () {
+                  Navigator.pop(sheet);
+                  Navigator.of(context).push(
+                    MaterialPageRoute<void>(
+                      builder: (_) =>
+                          NotificationSettingsScreen(initialClassId: room.id),
+                    ),
+                  );
+                },
+              ),
             if (live)
               ListTile(
                 leading: Badge(

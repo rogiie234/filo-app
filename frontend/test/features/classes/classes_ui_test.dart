@@ -26,6 +26,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 import 'class_repository_test.dart' show FakeRemote;
+import '../notifications/notification_settings_test_support.dart';
 
 const cachedRoom = ClassRoom(
   id: 'real-class',
@@ -141,6 +142,7 @@ void main() {
     tester.platformDispatcher.textScaleFactorTestValue = scale;
     addTearDown(tester.platformDispatcher.clearTextScaleFactorTestValue);
     final db = AppDatabase(NativeDatabase.memory());
+    final settings = FakeSettingsRepository();
     final network = StreamController<bool>.broadcast();
     final cards = StreamController<List<ClassRoom>>.broadcast();
     final rooms = <ClassRoom>[if (!empty) cachedRoom];
@@ -170,6 +172,13 @@ void main() {
           ),
           inboxProvider.overrideWith((ref) => Stream.value([])),
           inboxRefreshProvider.overrideWith((ref) async {}),
+          notificationSettingsRepositoryProvider.overrideWith(
+            (ref) async => settings,
+          ),
+          notificationPreferencesProvider.overrideWith(
+            (ref) => settings.watch(),
+          ),
+          notificationPreferencesRefreshProvider.overrideWith((ref) async {}),
           if (notificationAccess != null) ...[
             notificationAccessProvider.overrideWith(
               (ref) async => notificationAccess,
@@ -218,6 +227,7 @@ void main() {
     addTearDown(() async {
       await tester.pumpWidget(const SizedBox());
       await tester.pump();
+      await settings.changes.close();
       await network.close();
       await cards.close();
       await db.close();
