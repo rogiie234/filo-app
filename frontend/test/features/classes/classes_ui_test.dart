@@ -7,6 +7,8 @@ import 'package:drift/native.dart';
 import 'package:filo/core/connectivity/connectivity_provider.dart';
 import 'package:filo/core/theme/app_theme.dart';
 import 'package:filo/data/local/app_database.dart';
+import 'package:filo/data/local/database_providers.dart';
+import 'package:filo/core/supabase/auth_providers.dart';
 import 'package:filo/features/classes/application/class_providers.dart';
 import 'package:filo/features/classes/data/class_remote.dart';
 import 'package:filo/features/classes/data/class_repository.dart';
@@ -135,6 +137,7 @@ void main() {
     double scale = 1,
     bool? notificationAccess,
     Stream<int>? unread,
+    ThemeData? theme,
   }) async {
     tester.view.physicalSize = const Size(390, 844);
     tester.view.devicePixelRatio = 1;
@@ -155,6 +158,8 @@ void main() {
     await tester.pumpWidget(
       ProviderScope(
         overrides: [
+          authUserIdProvider.overrideWith((ref) => Stream.value('teacher')),
+          accountDatabaseProvider.overrideWith((ref) async => db),
           deadlineBridgeProvider.overrideWithValue(const NoDeadlineBridge()),
           classRepositoryProvider.overrideWith((ref) async => repo),
           classCardsProvider.overrideWith((ref) async* {
@@ -196,12 +201,13 @@ void main() {
           key: capture,
           child: MaterialApp(
             debugShowCheckedModeBanner: false,
-            theme: AppTheme.light,
+            theme: theme ?? AppTheme.light,
             home: ClassesScreen(
               profile: AccountProfile.fromJson({
                 'id': 'teacher',
                 'role': role.name,
                 'display_name': 'Alex',
+                'email': 'alex@example.invalid',
               }),
             ),
           ),
@@ -277,7 +283,7 @@ void main() {
       await tester.pumpAndSettle();
       expect(find.byType(ClassesScreen), findsOneWidget);
     });
-    testWidgets('${role.name} account menu opens notification access page', (
+    testWidgets('${role.name} settings hub opens notification access page', (
       tester,
     ) async {
       await launch(tester, role: role, notificationAccess: false, scale: 1.3);
@@ -296,6 +302,41 @@ void main() {
       expect(tester.takeException(), isNull);
       await tester.pumpWidget(const SizedBox.shrink());
       await tester.pump();
+    });
+    testWidgets('${role.name} dark settings hub wraps at 130 percent text', (
+      tester,
+    ) async {
+      await launch(
+        tester,
+        role: role,
+        notificationAccess: false,
+        scale: 1.3,
+        theme: AppTheme.dark,
+      );
+      await tester.tap(find.byTooltip('Your account'));
+      await tester.pumpAndSettle();
+      expect(find.text('Profile and settings'), findsOneWidget);
+      expect(find.text('Alex'), findsOneWidget);
+      expect(find.text('alex@example.invalid'), findsOneWidget);
+      expect(find.text(role.label), findsOneWidget);
+      expect(find.text('Theme'), findsOneWidget);
+      await tester.scrollUntilVisible(
+        find.text('Delete account'),
+        250,
+        scrollable: find.byType(Scrollable).last,
+      );
+      expect(
+        tester
+            .widget<ListTile>(
+              find.ancestor(
+                of: find.text('Delete account'),
+                matching: find.byType(ListTile),
+              ),
+            )
+            .enabled,
+        isFalse,
+      );
+      expect(tester.takeException(), isNull);
     });
   }
 

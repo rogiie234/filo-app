@@ -9,6 +9,7 @@ import '../../exams/presentation/student_exam_screen.dart';
 import '../../classes/presentation/classes_screen.dart';
 import '../../onboarding/data/profile_repository.dart';
 import '../../../core/notifications/push_events.dart';
+import '../../settings/application/theme_settings.dart';
 
 class HomeScreen extends ConsumerStatefulWidget {
   const HomeScreen({required this.profile, super.key});
@@ -19,13 +20,7 @@ class HomeScreen extends ConsumerStatefulWidget {
 }
 
 class _HomeScreenState extends ConsumerState<HomeScreen> {
-  @override
-  void initState() {
-    super.initState();
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (mounted) NotificationHomeReady(widget.profile).dispatch(context);
-    });
-  }
+  bool _announced = false;
 
   bool _scheduled = false;
   void _resumeExam() {
@@ -61,6 +56,37 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final appearance = ref.watch(themeSettingsProvider);
+    if (appearance.isLoading) {
+      return const Scaffold(body: Center(child: CircularProgressIndicator()));
+    }
+    if (appearance.hasError) {
+      return Scaffold(
+        body: SafeArea(
+          child: Center(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                const Text('Could not load your theme setting.'),
+                TextButton(
+                  onPressed: () {
+                    ref.invalidate(themeSettingsRepositoryProvider);
+                    ref.invalidate(themeSettingsProvider);
+                  },
+                  child: const Text('Retry'),
+                ),
+              ],
+            ),
+          ),
+        ),
+      );
+    }
+    if (!_announced) {
+      _announced = true;
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) NotificationHomeReady(widget.profile).dispatch(context);
+      });
+    }
     if (widget.profile.role == AccountRole.student) {
       ref.watch(examLifecycleProvider);
       ref.listen(examUpdatesProvider, (_, _) => _resumeExam());

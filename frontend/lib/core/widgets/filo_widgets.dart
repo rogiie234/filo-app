@@ -58,18 +58,26 @@ class FiloPanel extends StatelessWidget {
   const FiloPanel({
     super.key,
     required this.child,
-    this.color = Colors.white,
+    this.color,
     this.padding = const EdgeInsets.all(20),
   });
   final Widget child;
-  final Color color;
+  final Color? color;
   final EdgeInsetsGeometry padding;
   @override
   Widget build(BuildContext context) => Material(
-    color: color,
+    color:
+        color ??
+        (Theme.of(context).brightness == Brightness.dark
+            ? Theme.of(context).colorScheme.surface
+            : Colors.white),
     shape: RoundedRectangleBorder(
       borderRadius: BorderRadius.circular(28),
-      side: const BorderSide(color: FiloColors.border),
+      side: BorderSide(
+        color: Theme.of(context).brightness == Brightness.dark
+            ? Theme.of(context).colorScheme.outline
+            : FiloColors.border,
+      ),
     ),
     child: Padding(padding: padding, child: child),
   );

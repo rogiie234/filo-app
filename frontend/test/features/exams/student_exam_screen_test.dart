@@ -7,6 +7,11 @@ import 'package:filo/core/theme/app_theme.dart';
 import 'package:filo/core/sync/sync_providers.dart';
 import 'package:filo/core/widgets/filo_widgets.dart';
 import 'package:filo/data/local/app_database.dart';
+import 'package:filo/data/local/database_providers.dart';
+import 'package:filo/core/supabase/auth_providers.dart';
+import 'package:filo/core/supabase/session_gate.dart';
+import 'package:filo/features/results/application/results_providers.dart';
+import 'package:filo/features/results/domain/results.dart';
 import 'package:filo/features/classes/application/class_providers.dart';
 import 'package:filo/features/classes/domain/prototype_models.dart';
 import 'package:filo/features/drive_backup/data/drive_backup_service.dart';
@@ -97,6 +102,14 @@ void main() {
     await tester.pumpWidget(
       ProviderScope(
         overrides: [
+          studentResultProvider.overrideWith(
+            (ref, quizId) =>
+                Stream.value(const ResultsState<StudentResultData>()),
+          ),
+          loginSessionProvider.overrideWith((ref) => Stream.value(null)),
+          if (home)
+            authUserIdProvider.overrideWith((ref) => Stream.value('student')),
+          if (home) accountDatabaseProvider.overrideWith((ref) async => db),
           if (countdown != null)
             examCountdownProvider.overrideWith((ref) => countdown),
           studentExamRepositoryProvider.overrideWith((ref) async {
@@ -369,9 +382,10 @@ void main() {
       await tester.tap(find.text('Submit anyway'));
       await tester.pumpAndSettle();
       expect(remote.calls.where((c) => c == 'submit:session'), hasLength(1));
+      expect(find.text('Your answers were submitted.'), findsOneWidget);
       expect(
-        find.textContaining(
-          'Your answers were submitted. Results will be available',
+        find.text(
+          'Results will be available once everyone has finished or the quiz closes.',
         ),
         findsOneWidget,
       );

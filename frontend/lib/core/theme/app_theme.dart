@@ -27,6 +27,61 @@ class FiloColors {
 class AppTheme {
   AppTheme._();
 
+  static final dark = ThemeData(
+    useMaterial3: true,
+    brightness: Brightness.dark,
+    fontFamily: 'Nunito',
+    scaffoldBackgroundColor: const Color(0xFF0F1A17),
+    colorScheme: const ColorScheme.dark(
+      primary: Color(0xFF5CBF9B),
+      onPrimary: Color(0xFF06201A),
+      surface: Color(0xFF16231F),
+      onSurface: Color(0xFFE8F1EB),
+      onSurfaceVariant: Color(0xFFA9BDB3),
+      surfaceContainerHighest: Color(0xFF1B2B26),
+      primaryContainer: Color(0xFF28483D),
+      onPrimaryContainer: Color(0xFFE8F1EB),
+      outline: Color(0xFF2B3F38),
+      error: Color(0xFFF0A096),
+      errorContainer: Color(0xFF3D1E1A),
+      onErrorContainer: Color(0xFFF0A096),
+    ),
+    textTheme: light.textTheme.apply(
+      bodyColor: const Color(0xFFE8F1EB),
+      displayColor: const Color(0xFFE8F1EB),
+    ),
+    appBarTheme: const AppBarTheme(
+      backgroundColor: Color(0xFF0F1A17),
+      foregroundColor: Color(0xFFE8F1EB),
+      surfaceTintColor: Colors.transparent,
+      centerTitle: false,
+    ),
+    navigationBarTheme: const NavigationBarThemeData(
+      backgroundColor: Color(0xFF16231F),
+      indicatorColor: Color(0xFF28483D),
+      elevation: 0,
+    ),
+    inputDecorationTheme: light.inputDecorationTheme.copyWith(
+      fillColor: const Color(0xFF16231F),
+      enabledBorder: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(24),
+        borderSide: const BorderSide(color: Color(0xFF2B3F38), width: 1.5),
+      ),
+      focusedBorder: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(24),
+        borderSide: const BorderSide(color: Color(0xFF5CBF9B), width: 2),
+      ),
+    ),
+    dividerTheme: const DividerThemeData(color: Color(0xFF2B3F38)),
+    snackBarTheme: light.snackBarTheme.copyWith(
+      backgroundColor: const Color(0xFF28483D),
+      contentTextStyle: const TextStyle(
+        fontFamily: 'Nunito',
+        color: Color(0xFFE8F1EB),
+      ),
+    ),
+  );
+
   static final light = ThemeData(
     useMaterial3: true,
     fontFamily: 'Nunito',

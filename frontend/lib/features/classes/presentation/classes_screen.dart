@@ -10,18 +10,15 @@ import '../application/preview_controller.dart';
 import '../application/class_providers.dart';
 import '../../onboarding/data/profile_repository.dart';
 import '../../../core/connectivity/connectivity_provider.dart';
-import '../../../core/notifications/push_providers.dart';
 import 'class_screen.dart';
+import '../../settings/presentation/settings_screen.dart';
 import '../../grading/presentation/work_queue_screen.dart';
 import '../../drive_backup/data/drive_backup_service.dart';
-import '../../drive_backup/presentation/drive_backup_screen.dart';
-import '../../notifications/presentation/notification_settings_screen.dart';
 import '../../notifications/presentation/inbox_screen.dart';
 import '../../notifications/application/notification_providers.dart';
 import '../../files/presentation/my_files_screen.dart';
 import '../../study/presentation/study_home_screen.dart';
 import '../../../core/sync/sync_providers.dart';
-import '../../../core/sync/background_sync.dart';
 import 'classes_widgets.dart';
 import 'classes_empty_state.dart';
 import 'create_class_screen.dart';
@@ -181,18 +178,20 @@ class _ClassesScreenState extends ConsumerState<ClassesScreen> {
                           children: [
                             Text(
                               'Your classes',
-                              style: const TextStyle(
+                              style: TextStyle(
                                 fontSize: 28,
                                 fontWeight: FontWeight.w800,
                                 height: 1.2,
-                                color: FiloColors.ink,
+                                color: Theme.of(context).colorScheme.onSurface,
                               ),
                             ),
                             const SizedBox(height: 8),
-                            const Text(
+                            Text(
                               'A good place to grow.',
                               style: TextStyle(
-                                color: FiloColors.secondary,
+                                color: Theme.of(context)
+                                    .colorScheme
+                                    .onSurfaceVariant,
                                 fontSize: 15,
                                 fontWeight: FontWeight.w500,
                                 height: 1.5,
@@ -217,7 +216,7 @@ class _ClassesScreenState extends ConsumerState<ClassesScreen> {
                       labelText: 'Find a class',
                       floatingLabelBehavior: FloatingLabelBehavior.never,
                       prefixIcon: const FiloIcon(FiloIcons.search),
-                      prefixIconColor: FiloColors.primary,
+                      prefixIconColor: Theme.of(context).colorScheme.primary,
                       suffixIcon: _query.isEmpty
                           ? null
                           : IconButton(
@@ -231,9 +230,13 @@ class _ClassesScreenState extends ConsumerState<ClassesScreen> {
                       border: const OutlineInputBorder(
                         borderRadius: BorderRadius.all(Radius.circular(999)),
                       ),
-                      enabledBorder: const OutlineInputBorder(
+                      enabledBorder: OutlineInputBorder(
                         borderRadius: BorderRadius.all(Radius.circular(999)),
-                        borderSide: BorderSide(color: FiloColors.border),
+                        borderSide: BorderSide(
+                          color: Theme.of(context).brightness == Brightness.dark
+                              ? Theme.of(context).colorScheme.outline
+                              : FiloColors.border,
+                        ),
                       ),
                     ),
                     onChanged: (value) => setState(() => _query = value),
@@ -395,57 +398,9 @@ class _ClassesScreenState extends ConsumerState<ClassesScreen> {
 
   Future<void> _roleMenu() async {
     if (widget.profile != null) {
-      await showFiloBottomSheet<void>(
-        title: 'Your account',
-        context: context,
-        showDragHandle: true,
-        builder: (sheetContext) => SafeArea(
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              ListTile(
-                title: Text(widget.profile!.name),
-                subtitle: Text('${widget.profile!.role.label} account'),
-              ),
-              ListTile(
-                title: const Text('Sign out'),
-                leading: const FiloIcon(FiloIcons.logout),
-                onTap: () async {
-                  Navigator.pop(sheetContext);
-                  try {
-                    await stopBackgroundSync();
-                  } catch (_) {
-                    /* Sign-out must remain available. */
-                  }
-                  await ref.read(pushRegistrationProvider).leave();
-                },
-              ),
-              ListTile(
-                title: const Text('Drive backup'),
-                leading: const FiloIcon(FiloIcons.cloudUpload),
-                onTap: () {
-                  Navigator.pop(sheetContext);
-                  Navigator.of(context).push(
-                    MaterialPageRoute<void>(
-                      builder: (_) => const DriveBackupScreen(),
-                    ),
-                  );
-                },
-              ),
-              ListTile(
-                title: const Text('Notification settings'),
-                leading: const FiloIcon(FiloIcons.notifications),
-                onTap: () {
-                  Navigator.pop(sheetContext);
-                  Navigator.of(context).push(
-                    MaterialPageRoute<void>(
-                      builder: (_) => const NotificationSettingsScreen(),
-                    ),
-                  );
-                },
-              ),
-            ],
-          ),
+      await Navigator.of(context).push<void>(
+        MaterialPageRoute(
+          builder: (_) => SettingsScreen(profile: widget.profile!),
         ),
       );
       return;
@@ -648,11 +603,11 @@ class _SyncErrorStatus extends ConsumerWidget {
           padding: const EdgeInsets.symmetric(horizontal: 24),
           child: Row(
             children: [
-              const ExcludeSemantics(
+              ExcludeSemantics(
                 child: FiloIcon(
                   FiloIcons.info,
                   size: 18,
-                  color: FiloColors.secondary,
+                  color: Theme.of(context).colorScheme.onSurfaceVariant,
                 ),
               ),
               const SizedBox(width: 8),

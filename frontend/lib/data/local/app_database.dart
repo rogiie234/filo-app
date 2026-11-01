@@ -45,7 +45,11 @@ class AppDatabase extends _$AppDatabase {
   final DateTime Function() now;
 
   @override
-  int get schemaVersion => 13;
+  int get schemaVersion => 14;
+
+  Future<void> _createAppSettings() => customStatement(
+    'CREATE TABLE IF NOT EXISTS app_settings (key TEXT PRIMARY KEY, value TEXT NOT NULL)',
+  );
 
   Future<int> purgeExpiredStudyChats() => (delete(
     chats,
@@ -206,6 +210,7 @@ class AppDatabase extends _$AppDatabase {
   MigrationStrategy get migration => MigrationStrategy(
     onCreate: (m) async {
       await m.createAll();
+      await _createAppSettings();
       await _createAiTextCache();
       await _createResultsCache();
       await _createStudentQuizCache();
@@ -217,6 +222,7 @@ class AppDatabase extends _$AppDatabase {
       await _createFileSyncState();
     },
     onUpgrade: (m, from, to) async {
+      if (from < 14) await _createAppSettings();
       if (from < 13) {
         final existing = (await customSelect(
           "SELECT name FROM sqlite_master WHERE type='table'",

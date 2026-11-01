@@ -75,14 +75,16 @@ class FiloAvatar extends StatelessWidget {
           path: path,
           bucket: 'avatars',
           fallback: ColoredBox(
-            color: FiloColors.mint,
+            color: Theme.of(context).brightness == Brightness.dark
+                ? Theme.of(context).colorScheme.primaryContainer
+                : FiloColors.mint,
             child: Center(
               child: Text(
                 name.trim().isEmpty
                     ? '?'
                     : name.trim().characters.first.toUpperCase(),
-                style: const TextStyle(
-                  color: FiloColors.ink,
+                style: TextStyle(
+                  color: Theme.of(context).colorScheme.onSurface,
                   fontWeight: FontWeight.w800,
                 ),
               ),
@@ -146,12 +148,17 @@ class OfflineBanner extends StatelessWidget {
     margin: const EdgeInsets.only(bottom: 16),
     padding: const EdgeInsets.all(16),
     decoration: BoxDecoration(
-      color: FiloColors.selected,
+      color: Theme.of(context).brightness == Brightness.dark
+          ? Theme.of(context).colorScheme.primaryContainer
+          : FiloColors.selected,
       borderRadius: BorderRadius.circular(20),
     ),
-    child: const Row(
+    child: Row(
       children: [
-        FiloIcon(FiloIcons.offline, color: FiloColors.ink),
+        FiloIcon(
+          FiloIcons.offline,
+          color: Theme.of(context).colorScheme.onSurface,
+        ),
         SizedBox(width: 12),
         Expanded(child: Text("You're offline. Showing saved content.")),
       ],

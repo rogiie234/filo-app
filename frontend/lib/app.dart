@@ -10,6 +10,7 @@ import 'core/supabase/session_gate.dart';
 import 'features/auth/presentation/session_screen.dart';
 import 'data/local/database_providers.dart';
 import 'features/notifications/presentation/push_notification_host.dart';
+import 'features/settings/application/theme_settings.dart';
 
 class App extends ConsumerWidget {
   const App({super.key});
@@ -19,11 +20,14 @@ class App extends ConsumerWidget {
     ref.watch(pushLifecycleProvider);
     ref.watch(pushMessagesLifecycleProvider);
     ref.watch(deadlineLifecycleProvider);
+    final appearance = ref.watch(themeSettingsProvider);
     return MaterialApp.router(
       title: 'Filo',
       debugShowCheckedModeBanner: false,
       theme: AppTheme.light,
-      themeMode: ThemeMode.light,
+      darkTheme: AppTheme.dark,
+      themeMode: appearance.asData?.value ?? ThemeMode.system,
+      themeAnimationDuration: Duration.zero,
       routerConfig: ref.watch(appRouterProvider),
       builder: (context, child) => _ForegroundTickers(
         child: Consumer(
