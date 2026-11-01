@@ -119,6 +119,50 @@ Deno.test("claim/config/storage and cleanup failures retain inbox and suppress u
   const g = fixture(); g.sender.prepare = async () => { throw new Error("config"); };
   equal((await g.handle(request())).status, 503); equal(g.state.claims.size, 0); equal(g.state.notice, notice);
 });
+for (const mixedFailure of [false, true]) {
+  Deno.test(`40 recipient burst: ${mixedFailure ? "one isolated failure" : "all accepted"}`, async () => {
+    const notices = Array.from({ length: 40 }, (_, i): Notice => ({ ...notice,
+      id: `00000000-0000-4000-8000-${String(i + 1).padStart(12, "0")}`,
+      recipient_id: `test-recipient-${i}` }));
+    const phones = notices.map((n, i) => token(`phone-${i}`, n.recipient_id));
+    const claims = new Set<string>();
+    const results = new Map<string, Outcome>();
+    const attempts: string[] = [];
+    const store: Store = {
+      async notice(id) { return notices.find((n) => n.id === id) ?? null; },
+      async muted() { return false; },
+      async tokens(user) { return phones.filter((t) => t.user_id === user); },
+      async claim(n, t) {
+        assert(n.recipient_id === t.user_id, "cross-account delivery");
+        const key = `${n.id}:${t.id}`;
+        if (claims.has(key)) return "duplicate";
+        claims.add(key); return "claimed";
+      },
+      async finish(n, _t, result) { results.set(n.id, result); },
+      async remove() { throw new Error("unexpected token cleanup"); },
+    };
+    const sender: Sender = {
+      async prepare() {},
+      async send(n, t) {
+        assert(n.recipient_id === t.user_id);
+        attempts.push(n.id);
+        if (mixedFailure && n.id === notices[0].id) throw new Error("synthetic transport failure");
+        return { status: "sent" };
+      },
+    };
+    const handle = createHandler(secret, store, sender);
+    const burst = () => Promise.all(notices.map((n) => handle(request(event({ record: { id: n.id } })))));
+    const replies = await burst();
+    assert(replies.every((r) => r.status === 200));
+    equal(attempts.length, 40); equal(new Set(attempts).size, 40);
+    equal(results.size, 40);
+    equal([...results.values()].filter((r) => r.status === "sent").length, mixedFailure ? 39 : 40);
+    equal([...results.values()].filter((r) => r.status === "failed").length, mixedFailure ? 1 : 0);
+    await burst();
+    equal(attempts.length, 40); // Duplicate webhooks do not retry uncertain sends.
+    equal(notices.length, 40); equal(phones.length, 40);
+  });
+}
 const fcmError = (code: string, message = "", extra: unknown[] = []) => ({ error: { message, details: [
   { "@type": "type.googleapis.com/google.firebase.fcm.v1.FcmError", errorCode: code }, ...extra] } });
 Deno.test("FCM cleanup classification requires definitive token evidence", () => {
