@@ -193,6 +193,34 @@ void main() {
   });
 
   testWidgets(
+    'explicit inbox opens use the same resolver and can reopen after a callback',
+    (tester) async {
+      final h = await launch(tester);
+      await tester.tap(find.text('Finish setup'));
+      await tester.pumpAndSettle();
+      h.events.receive(
+        {'notification_id': fixtures.noticeId},
+        open: true,
+        accountId: fixtures.userId,
+      );
+      await tester.pumpAndSettle();
+      for (var i = 0; i < 2; i++) {
+        final opening = h.events.openInbox(fixtures.noticeId, fixtures.userId);
+        await tester.pumpAndSettle();
+        await opening;
+      }
+      expect(h.repository.opened, List.filled(3, fixtures.noticeId));
+      expect(find.text('This item is no longer available.'), findsOneWidget);
+      expect(
+        await tester.runAsync(
+          () => h.repository.db.select(h.repository.db.outbox).get(),
+        ),
+        isEmpty,
+      );
+    },
+  );
+
+  testWidgets(
     'cold tap waits for Home readiness and unavailable target uses exact message',
     (tester) async {
       final h = await launch(tester);

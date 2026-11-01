@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/widgets.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -16,9 +18,15 @@ class NotificationHomeReady extends Notification {
 }
 
 class PushEvent {
-  const PushEvent(this.id, {required this.open, this.accountId});
+  const PushEvent(
+    this.id, {
+    required this.open,
+    this.accountId,
+    this.completion,
+  });
   final String? id, accountId;
   final bool open;
+  final Completer<void>? completion;
 }
 
 /// Contains identifiers only; display content comes from authorized inbox rows.
@@ -26,6 +34,41 @@ class PushEvents extends ChangeNotifier {
   // shortcut: pending taps live in memory, persist intents if a second process death must resume them.
   final _pending = <PushEvent>[];
   final _seen = <String>{};
+  PushEvent? _inboxOpen;
+
+  Future<void> openInbox(String id, String accountId) {
+    if (!validId(id))
+      return Future.error(ArgumentError('Invalid notification'));
+    if (_inboxOpen != null) return _inboxOpen!.completion!.future;
+    final event = PushEvent(
+      id.toLowerCase(),
+      open: true,
+      accountId: accountId,
+      completion: Completer<void>(),
+    );
+    _inboxOpen = event;
+    _pending.add(event);
+    notifyListeners();
+    return event.completion!.future;
+  }
+
+  void finishOpen(PushEvent event) {
+    final completion = event.completion;
+    if (completion != null && !completion.isCompleted) completion.complete();
+    if (identical(_inboxOpen, event)) _inboxOpen = null;
+  }
+
+  void failInboxOpen() {
+    final event = _inboxOpen;
+    if (event == null) return;
+    _pending.remove(event);
+    if (!event.completion!.isCompleted) {
+      event.completion!.completeError(
+        StateError('Notification storage unavailable'),
+      );
+    }
+    _inboxOpen = null;
+  }
 
   static bool validId(Object? id) =>
       id is String &&
@@ -49,9 +92,11 @@ class PushEvents extends ChangeNotifier {
   }
 
   PushEvent? take(String accountId, {required bool allowOpen}) {
-    _pending.removeWhere(
-      (e) => e.accountId != null && e.accountId != accountId,
-    );
+    _pending.removeWhere((e) {
+      final foreign = e.accountId != null && e.accountId != accountId;
+      if (foreign) finishOpen(e);
+      return foreign;
+    });
     final index = _pending.indexWhere((e) => allowOpen || !e.open);
     return index < 0 ? null : _pending.removeAt(index);
   }
@@ -62,6 +107,7 @@ class PushEvents extends ChangeNotifier {
   }
 
   void clear() {
+    if (_inboxOpen != null) finishOpen(_inboxOpen!);
     _pending.clear();
     _seen.clear();
     notifyListeners();

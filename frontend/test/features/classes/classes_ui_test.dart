@@ -18,6 +18,7 @@ import 'package:filo/features/onboarding/application/notification_permission.dar
 import 'package:filo/core/sync/sync_providers.dart';
 import 'package:filo/features/drive_backup/data/drive_backup_service.dart';
 import 'package:filo/features/notifications/application/notification_providers.dart';
+import 'package:filo/features/notifications/presentation/inbox_screen.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
 import 'package:flutter/services.dart';
@@ -164,6 +165,11 @@ void main() {
           unreadNotificationCountProvider.overrideWith(
             (ref) => unread ?? Stream.value(0),
           ),
+          inboxRepositoryProvider.overrideWith(
+            (ref) async => throw StateError('Fixture storage unavailable'),
+          ),
+          inboxProvider.overrideWith((ref) => Stream.value([])),
+          inboxRefreshProvider.overrideWith((ref) async {}),
           if (notificationAccess != null) ...[
             notificationAccessProvider.overrideWith(
               (ref) async => notificationAccess,
@@ -245,6 +251,20 @@ void main() {
   });
 
   for (final role in AccountRole.values) {
+    testWidgets('${role.name} bell opens the local inbox', (tester) async {
+      await launch(tester, role: role, notificationAccess: false);
+      await tester.tap(find.byTooltip('Notifications'));
+      await tester.pumpAndSettle();
+      expect(find.byType(InboxScreen), findsOneWidget);
+      expect(
+        find.text('Could not load saved notifications. Try again.'),
+        findsOneWidget,
+      );
+      expect(find.text("You're all caught up."), findsNothing);
+      await tester.pageBack();
+      await tester.pumpAndSettle();
+      expect(find.byType(ClassesScreen), findsOneWidget);
+    });
     testWidgets('${role.name} account menu opens notification access page', (
       tester,
     ) async {

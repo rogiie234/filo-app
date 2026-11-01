@@ -16,6 +16,7 @@ import '../../grading/presentation/work_queue_screen.dart';
 import '../../drive_backup/data/drive_backup_service.dart';
 import '../../drive_backup/presentation/drive_backup_screen.dart';
 import '../../notifications/presentation/notification_settings_screen.dart';
+import '../../notifications/presentation/inbox_screen.dart';
 import '../../notifications/application/notification_providers.dart';
 import '../../files/presentation/my_files_screen.dart';
 import '../../study/presentation/study_home_screen.dart';
@@ -104,8 +105,13 @@ class _ClassesScreenState extends ConsumerState<ClassesScreen> {
                 child: const FiloIcon(FiloIcons.notifications),
               ),
             ),
-            onPressed: () =>
-                showMessage(context, 'Notifications will be available here.'),
+            onPressed: live
+                ? () => Navigator.of(context).push(
+                    MaterialPageRoute<void>(
+                      builder: (_) => InboxScreen(userId: widget.profile!.id),
+                    ),
+                  )
+                : null,
           ),
           Padding(
             padding: const EdgeInsets.only(right: 16),

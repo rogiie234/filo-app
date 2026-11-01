@@ -42,6 +42,7 @@ class _PushNotificationHostState extends ConsumerState<PushNotificationHost> {
   AccountProfile? _profile;
   Timer? _timer;
   PushEvent? _timedEvent;
+  PushEvent? _activeOpen;
   bool _scheduled = false, _working = false, _needsRefresh = false;
   bool _foreground = true;
 
@@ -108,9 +109,9 @@ class _PushNotificationHostState extends ConsumerState<PushNotificationHost> {
     if (mounted &&
         ref.read(loginSessionProvider).asData?.value?.user.id ==
             widget.userId) {
-      _events.retry(
-        PushEvent(event.id, open: event.open, accountId: widget.userId),
-      );
+      _events.retry(event);
+    } else {
+      _events.finishOpen(event);
     }
   }
 
@@ -136,6 +137,7 @@ class _PushNotificationHostState extends ConsumerState<PushNotificationHost> {
         final event = _events.take(widget.userId, allowOpen: !_protected);
         if (event == null) break;
         if (event.open) {
+          _activeOpen = event;
           try {
             final destination = await repository.resolve(
               event.id,
@@ -185,6 +187,8 @@ class _PushNotificationHostState extends ConsumerState<PushNotificationHost> {
               );
             }
           }
+          _events.finishOpen(event);
+          _activeOpen = null;
         } else {
           try {
             final n = await repository.notice(event.id);
@@ -216,6 +220,7 @@ class _PushNotificationHostState extends ConsumerState<PushNotificationHost> {
     } catch (_) {
       // Readiness can change while the account database/provider is opening.
       _needsRefresh = true;
+      _events.failInboxOpen();
     } finally {
       _working = false;
     }
@@ -296,6 +301,7 @@ class _PushNotificationHostState extends ConsumerState<PushNotificationHost> {
 
   @override
   void dispose() {
+    if (_activeOpen != null) _events.finishOpen(_activeOpen!);
     _events.removeListener(_schedule);
     _lifecycle.dispose();
     _timer?.cancel();

@@ -18,15 +18,27 @@ final inboxRepositoryProvider = FutureProvider.autoDispose<InboxRepository>((
 ) async {
   final db = await ref.watch(accountDatabaseProvider.future);
   final client = ref.watch(supabaseClientProvider);
-  final id = client.auth.currentUser?.id;
+  final id = await ref.watch(verifiedUserIdProvider.future);
   if (db == null || id == null || !ref.mounted) {
     throw StateError('No account database');
   }
   return InboxRepository(
     db,
     id,
-    () => ref.mounted && client.auth.currentUser?.id == id,
+    () =>
+        ref.mounted &&
+        client.auth.currentUser?.id == id &&
+        ref.read(verifiedUserIdProvider).asData?.value == id &&
+        ref.read(accountDatabaseProvider).asData?.value == db,
   );
+});
+
+final inboxRefreshProvider = FutureProvider.autoDispose<void>((ref) async {
+  if (ref.watch(connectivityProvider).asData?.value != true) return;
+  final sync = await ref.watch(syncCoordinatorProvider.future);
+  if (!ref.mounted) return;
+  if (sync == null) throw StateError('No account sync');
+  await sync.refreshNotifications();
 });
 
 final alarmRepositoryProvider = FutureProvider.autoDispose<AlarmRepository>((

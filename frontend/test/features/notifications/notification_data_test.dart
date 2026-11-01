@@ -33,6 +33,33 @@ Future<void> seed(AppDatabase db, String user) async {
 
 void main() {
   test(
+    'inbox orders by creation time before its stable ID tie-breaker',
+    () async {
+      final db = AppDatabase(NativeDatabase.memory());
+      addTearDown(db.close);
+      await seed(db, 'user');
+      await db
+          .into(db.cacheNotifications)
+          .insert(
+            CacheNotificationsCompanion.insert(
+              id: '0-newest',
+              recipientId: 'user',
+              type: 'announcement',
+              title: 'Newest',
+              createdAt: Value(DateTime.utc(2027)),
+            ),
+          );
+      expect(
+        (await InboxRepository(
+          db,
+          'user',
+          () => true,
+        ).watchInbox().first).map((n) => n.id),
+        ['0-newest', 'b', 'a'],
+      );
+    },
+  );
+  test(
     'alarm constraints reject invalid values and duplicate system IDs',
     () async {
       final db = AppDatabase(NativeDatabase.memory());
