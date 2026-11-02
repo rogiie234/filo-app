@@ -62,6 +62,14 @@ final _quizJson = <String, dynamic>{
 };
 
 void main() {
+  final binding = TestWidgetsFlutterBinding.ensureInitialized();
+  setUp(() {
+    binding.platformDispatcher.accessibilityFeaturesTestValue =
+        const FakeAccessibilityFeatures(disableAnimations: true);
+  });
+  tearDown(() {
+    binding.platformDispatcher.clearAccessibilityFeaturesTestValue();
+  });
   for (final student in [true, false]) {
     testWidgets(
       '${student ? 'student' : 'instructor'} combined list waits for quizzes and retains rows across reload/error',

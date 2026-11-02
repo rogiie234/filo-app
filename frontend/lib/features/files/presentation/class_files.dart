@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import '../../../core/widgets/filo_icon.dart';
+import '../../../core/widgets/filo_widgets.dart';
 import '../../../core/connectivity/connectivity_provider.dart';
 import '../../posts/application/post_providers.dart';
 import '../application/files_providers.dart';
@@ -80,7 +80,7 @@ class _ClassFilesState extends ConsumerState<ClassFiles> {
                 child: Center(child: LinearProgressIndicator()),
               ),
             ),
-        ] else if (data.hasError || sync.hasError)
+        ] else if ((data.hasError || sync.hasError) && rows.isNotEmpty)
           TextButton(
             onPressed: () {
               ref.invalidate(classFilesProvider(id));
@@ -89,17 +89,37 @@ class _ClassFilesState extends ConsumerState<ClassFiles> {
             child: const Text("Couldn't load files. Try again."),
           ),
         if (rows.isEmpty && !data.isLoading && !sync.isLoading)
-          Text(
-            !online && (data.asData?.value.isEmpty ?? true)
+          EmptyState(
+            pose: data.hasError || sync.hasError
+                ? 'confused'
+                : !online
+                ? 'sleepy'
+                : filter != 'All'
+                ? 'curious'
+                : 'folder',
+            bob: online && !data.hasError && !sync.hasError,
+            action: data.hasError || sync.hasError
+                ? TextButton(
+                    onPressed: () {
+                      ref.invalidate(classFilesProvider(id));
+                      ref.invalidate(postSyncProvider(id));
+                    },
+                    child: const Text('Retry'),
+                  )
+                : null,
+            title: data.hasError
+                ? "Couldn't load files. Try again."
+                : sync.hasError
+                ? 'Could not refresh class files.'
+                : !online && (data.asData?.value.isEmpty ?? true)
                 ? "You're offline. Connect to load class files."
                 : filter != 'All'
                 ? 'No matching files.'
-                : sync.hasError
-                ? 'Could not refresh class files.'
                 : 'No files yet.',
           ),
         for (final row in rows)
           DownloadFileCard(
+            showMascot: true,
             key: ValueKey(row.attachment.id),
             classId: id,
             postId: row.post.id,

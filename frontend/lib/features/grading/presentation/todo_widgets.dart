@@ -192,40 +192,14 @@ class TodoEmptyState extends StatelessWidget {
     super.key,
     required this.title,
     required this.message,
-    this.mascotPose = 'cheerful_note',
+    this.mascotPose = 'clock',
+    this.bob = true,
   });
   final String title, message, mascotPose;
+  final bool bob;
   @override
-  Widget build(BuildContext context) => FiloPanel(
-    color: FiloColors.tint,
-    padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 32),
-    child: Column(
-      children: [
-        Mascot(pose: mascotPose, size: 144),
-        const SizedBox(height: 24),
-        Text(
-          title,
-          textAlign: TextAlign.center,
-          style: const TextStyle(
-            fontSize: 20,
-            fontWeight: FontWeight.w800,
-            color: FiloColors.ink,
-            height: 1.3,
-          ),
-        ),
-        const SizedBox(height: 10),
-        Text(
-          message,
-          textAlign: TextAlign.center,
-          style: const TextStyle(
-            fontSize: 15,
-            height: 1.5,
-            color: FiloColors.secondary,
-          ),
-        ),
-      ],
-    ),
-  );
+  Widget build(BuildContext context) =>
+      EmptyState(title: title, message: message, pose: mascotPose, bob: bob);
 }
 
 /// Static placeholders avoid suggesting progress or animating a long list.

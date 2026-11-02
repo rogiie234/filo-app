@@ -19,6 +19,7 @@ Widget studyAsync<T>(
   AsyncValue<T> value,
   Widget Function(T) builder, {
   VoidCallback? retry,
+  bool showMascot = false,
 }) {
   // Never render stale account data while its replacement is loading or failing.
   if (value.isLoading)
@@ -28,6 +29,17 @@ Widget studyAsync<T>(
         child: CircularProgressIndicator(
           semanticsLabel: 'Loading saved study content',
         ),
+      ),
+    );
+  if (value.hasError && showMascot)
+    return SingleChildScrollView(
+      child: EmptyState(
+        title: 'Could not read saved study content. Try again.',
+        pose: 'confused',
+        bob: false,
+        action: retry == null
+            ? null
+            : TextButton(onPressed: retry, child: const Text('Retry')),
       ),
     );
   if (value.hasError)

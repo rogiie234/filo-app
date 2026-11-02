@@ -29,6 +29,14 @@ class ScreenStudyBridge extends StudyBridgeFixture {
 }
 
 void main() {
+  final binding = TestWidgetsFlutterBinding.ensureInitialized();
+  setUp(() {
+    binding.platformDispatcher.accessibilityFeaturesTestValue =
+        const FakeAccessibilityFeatures(disableAnimations: true);
+  });
+  tearDown(() {
+    binding.platformDispatcher.clearAccessibilityFeaturesTestValue();
+  });
   for (final previousSetup in [false, true]) {
     testWidgets(
       'first save opens new guide after temporary setup=$previousSetup, including scheduling failure',

@@ -12,6 +12,14 @@ import 'package:filo/core/supabase/native_google_sign_in.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 void main() {
+  final binding = TestWidgetsFlutterBinding.ensureInitialized();
+  setUp(() {
+    binding.platformDispatcher.accessibilityFeaturesTestValue =
+        const FakeAccessibilityFeatures(disableAnimations: true);
+  });
+  tearDown(() {
+    binding.platformDispatcher.clearAccessibilityFeaturesTestValue();
+  });
   final server = DateTime.utc(2026, 10, 23, 8);
   test('clock diagnosis accepts accurate time in any timezone and tolerates small skew', () {
     final date = HttpDate.format(server);

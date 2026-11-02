@@ -659,14 +659,20 @@ class _ClassScreenState extends ConsumerState<ClassScreen> {
       if (live && ref.watch(connectivityProvider).asData?.value == false)
         const OfflineBanner(),
       if (live && (cached!.hasError || sync!.hasError))
-        TextButton(
-          onPressed: online
-              ? () {
-                  ref.invalidate(streamPostsProvider(room.id));
-                  ref.invalidate(postSyncProvider(room.id));
-                }
-              : null,
-          child: const Text('Could not refresh posts. Retry'),
+        EmptyState(
+          title: 'Could not refresh posts. Retry',
+          pose: 'confused',
+          showMascot: posts.isEmpty,
+          bob: false,
+          action: TextButton(
+            onPressed: online
+                ? () {
+                    ref.invalidate(streamPostsProvider(room.id));
+                    ref.invalidate(postSyncProvider(room.id));
+                  }
+                : null,
+            child: const Text('Retry'),
+          ),
         ),
       if (live &&
           posts.isEmpty &&
@@ -674,8 +680,16 @@ class _ClassScreenState extends ConsumerState<ClassScreen> {
           !sync!.hasError &&
           (cached.isLoading || sync.isLoading))
         const StreamPostSkeleton(),
-      if (live && posts.isEmpty && !online)
-        const Text('Connect to the internet to load posts for this class.'),
+      if (live &&
+          posts.isEmpty &&
+          !online &&
+          !cached!.hasError &&
+          !sync!.hasError)
+        const EmptyState(
+          title: 'Connect to the internet to load posts for this class.',
+          pose: 'sleepy',
+          bob: false,
+        ),
       if (live &&
           posts.isEmpty &&
           online &&
@@ -684,17 +698,16 @@ class _ClassScreenState extends ConsumerState<ClassScreen> {
           sync!.hasValue &&
           !sync.isLoading &&
           !sync.hasError)
-        FiloPanel(
-          color: FiloColors.tint,
-          child: EmptyState(
-            title: 'No posts yet',
-            message: state.role == PreviewRole.instructor
-                ? 'Share an announcement, material, or assignment with your class.'
-                : 'Announcements, materials, and assignments from your instructor will appear here.',
-          ),
+        EmptyState(
+          title: 'No posts yet',
+          pose: 'waving',
+          message: state.role == PreviewRole.instructor
+              ? 'Share an announcement, material, or assignment with your class.'
+              : 'Announcements, materials, and assignments from your instructor will appear here.',
         ),
       if (!live && posts.isEmpty)
         const EmptyState(
+          pose: 'waving',
           title: 'Nothing posted yet.',
           message: 'New ideas and class updates will appear here.',
         ),

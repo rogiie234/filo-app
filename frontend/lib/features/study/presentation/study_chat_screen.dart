@@ -362,10 +362,15 @@ class _ChatBodyState extends ConsumerState<_ChatBody> {
                                 );
                               return _session.messages.isEmpty &&
                                       _session.pendingAnswer == null
-                                  ? const Padding(
-                                      padding: EdgeInsets.all(16),
-                                      child: Text(
-                                        'Ask a question to start a chat.',
+                                  ? Padding(
+                                      padding: const EdgeInsets.all(16),
+                                      child: EmptyState(
+                                        title:
+                                            'Ask a question to start a chat.',
+                                        pose: _session.error == null
+                                            ? 'reading'
+                                            : 'confused',
+                                        bob: _session.error == null,
                                       ),
                                     )
                                   : const SizedBox.shrink();

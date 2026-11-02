@@ -9,7 +9,7 @@ import 'package:path/path.dart' as p;
 import 'package:pdfrx/pdfrx.dart';
 import 'package:share_plus/share_plus.dart';
 
-import '../../../core/widgets/filo_icon.dart';
+import '../../../core/widgets/filo_widgets.dart';
 import '../../../data/local/app_database.dart';
 import '../application/files_providers.dart';
 import '../data/files_repository.dart';
@@ -75,7 +75,9 @@ class FileViewerScreen extends ConsumerStatefulWidget {
     super.key,
     required this.file,
     required this.repository,
+    this.showMascot = false,
   });
+  final bool showMascot;
   final LocalFileRecord file;
   final FilesRepository repository;
   @override
@@ -206,19 +208,31 @@ class _FileViewerScreenState extends ConsumerState<FileViewerScreen> {
         future: _exists,
         builder: (context, snapshot) {
           if (snapshot.hasError) {
-            return const Center(
-              child: Text('This file is no longer on your device.'),
+            return SingleChildScrollView(
+              padding: const EdgeInsets.all(24),
+              child: EmptyState(
+                title: 'This file is no longer on your device.',
+                pose: 'confused',
+                bob: false,
+                showMascot: widget.showMascot,
+              ),
             );
           }
           if (!snapshot.hasData) {
             return const Center(child: CircularProgressIndicator());
           }
           if (snapshot.data != true) {
-            return Center(
+            return SingleChildScrollView(
+              padding: const EdgeInsets.all(24),
               child: Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  const Text('This file is no longer on your device.'),
+                  EmptyState(
+                    title: 'This file is no longer on your device.',
+                    pose: 'confused',
+                    bob: false,
+                    showMascot: widget.showMascot,
+                  ),
                   if (_row.sourceAttachmentId != null &&
                       _row.classId != null &&
                       _row.sourcePostId != null)
@@ -272,8 +286,12 @@ class _FileViewerScreenState extends ConsumerState<FileViewerScreen> {
                 child: Center(
                   child: Image.file(
                     _local,
-                    errorBuilder: (_, _, _) =>
-                        const Text('Could not open this image.'),
+                    errorBuilder: (_, _, _) => EmptyState(
+                      title: 'Could not open this image.',
+                      pose: 'confused',
+                      bob: false,
+                      showMascot: widget.showMascot,
+                    ),
                   ),
                 ),
               ),
@@ -304,7 +322,14 @@ class _FileViewerScreenState extends ConsumerState<FileViewerScreen> {
                   child: FutureBuilder<String>(
                     future: _text(),
                     builder: (context, data) => data.hasError
-                        ? const Center(child: Text('Could not read this file.'))
+                        ? Center(
+                            child: EmptyState(
+                              title: 'Could not read this file.',
+                              pose: 'confused',
+                              bob: false,
+                              showMascot: widget.showMascot,
+                            ),
+                          )
                         : !data.hasData
                         ? const Center(child: CircularProgressIndicator())
                         : SingleChildScrollView(

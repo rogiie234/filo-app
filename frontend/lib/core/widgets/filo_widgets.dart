@@ -3,6 +3,8 @@ import 'package:flutter/material.dart';
 import '../theme/app_theme.dart';
 import 'filo_confirmation_dialog.dart';
 import 'filo_components.dart';
+import 'mascot_idle.dart';
+export 'mascot_idle.dart';
 export 'filo_components.dart';
 
 export 'filo_button.dart';
@@ -41,21 +43,47 @@ class Brand extends StatelessWidget {
 }
 
 class Mascot extends StatelessWidget {
-  const Mascot({super.key, this.pose = 'waving', this.size = 220});
+  const Mascot({
+    super.key,
+    this.pose = 'waving',
+    this.size = 220,
+    this.bob = false,
+  });
   final String pose;
   final double size;
+  final bool bob;
+  static const poses = [
+    'waving',
+    'curious',
+    'cheerful',
+    'sleepy',
+    'thinking',
+    'confused',
+    'confused_notepad',
+    'cheerful_note',
+    'waiting',
+    'clock',
+    'folder',
+    'reading',
+  ];
   @override
-  Widget build(BuildContext context) => ExcludeSemantics(
-    child: ClipOval(
-      child: Image.asset(
-        'assets/mascots/$pose.png',
-        width: size,
-        height: size,
-        fit: BoxFit.cover,
-        cacheWidth: (size * MediaQuery.devicePixelRatioOf(context)).round(),
+  Widget build(BuildContext context) {
+    final image = ExcludeSemantics(
+      child: ClipOval(
+        child: ColoredBox(
+          color: FiloThemeTokens.of(context).mint,
+          child: Image.asset(
+            'assets/mascots/${size <= 120 ? 'empty/' : ''}$pose.png',
+            width: size,
+            height: size,
+            fit: BoxFit.contain,
+            cacheWidth: (size * MediaQuery.devicePixelRatioOf(context)).ceil(),
+          ),
+        ),
       ),
-    ),
-  );
+    );
+    return bob ? MascotIdle(child: image) : image;
+  }
 }
 
 class FiloPanel extends StatelessWidget {
@@ -83,36 +111,46 @@ class EmptyState extends StatelessWidget {
   const EmptyState({
     super.key,
     required this.title,
-    required this.message,
+    this.message = '',
+    this.pose = 'curious',
+    this.bob = true,
     this.showMascot = true,
     this.action,
   });
   final String title;
   final String message;
+  final String pose;
+  final bool bob;
   final bool showMascot;
   final Widget? action;
   @override
   Widget build(BuildContext context) => FiloPanel(
     color: FiloThemeTokens.of(context).mint,
     child: Column(
+      mainAxisSize: MainAxisSize.min,
       children: [
         if (showMascot) ...[
-          const Mascot(pose: 'curious', size: 120),
+          Mascot(pose: pose, size: 120, bob: bob),
           const SizedBox(height: 20),
         ],
-        Text(
-          title,
-          style: Theme.of(context).textTheme.titleLarge,
-          textAlign: TextAlign.center,
-        ),
-        const SizedBox(height: 8),
-        Text(
-          message,
-          textAlign: TextAlign.center,
-          style: TextStyle(
-            color: Theme.of(context).colorScheme.onSurfaceVariant,
+        Semantics(
+          header: true,
+          child: Text(
+            title,
+            style: Theme.of(context).textTheme.titleLarge,
+            textAlign: TextAlign.center,
           ),
         ),
+        if (message.isNotEmpty) ...[
+          const SizedBox(height: 8),
+          Text(
+            message,
+            textAlign: TextAlign.center,
+            style: TextStyle(
+              color: Theme.of(context).colorScheme.onSurfaceVariant,
+            ),
+          ),
+        ],
         if (action != null) ...[const SizedBox(height: 20), action!],
       ],
     ),

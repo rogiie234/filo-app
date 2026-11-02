@@ -379,8 +379,11 @@ class _InstructorClassworkListState
                       ),
                     ),
                   if (failed || _refreshMessage != null)
-                    Text(
-                      _refreshMessage ?? 'Could not refresh classwork. Saved work is shown when available.',
+                    EmptyState(
+                      title: _refreshMessage ?? 'Could not refresh classwork. Saved work is shown when available.',
+                      pose: 'confused',
+                      bob: false,
+                      showMascot: entries.isEmpty,
                     ),
                   if (failed ||
                       _refreshMessage != null ||
@@ -401,9 +404,13 @@ class _InstructorClassworkListState
                     filteredEmpty
                         ? const Padding(
                             padding: EdgeInsets.symmetric(vertical: 24),
-                            child: Text('No classwork matches this filter.'),
+                            child: EmptyState(
+                              title: 'No classwork matches this filter.',
+                              pose: 'curious',
+                            ),
                           )
                         : EmptyState(
+                            pose: 'thinking',
                             title: _filter == 'Assignments'
                                 ? 'No assignments yet'
                                 : _filter == 'All'

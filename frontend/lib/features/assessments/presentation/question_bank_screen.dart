@@ -160,22 +160,24 @@ class _QuestionBankScreenState extends ConsumerState<QuestionBankScreen> {
                     ),
                     if (!online)
                       const Padding(
-                        padding: EdgeInsets.all(24),
-                        child: Text(
-                          "You're offline. Connect, then refresh to use the question bank.",
+                        padding: const EdgeInsets.all(24),
+                        child: EmptyState(
+                          title: "You're offline. Connect, then refresh to use the question bank.",
+                          pose: 'sleepy',
+                          bob: false,
                         ),
                       ),
                     if (_error != null)
                       Padding(
                         padding: const EdgeInsets.all(24),
-                        child: Column(
-                          children: [
-                            Text(_error!),
-                            TextButton(
-                              onPressed: online && !_busy ? _load : null,
-                              child: const Text('Retry'),
-                            ),
-                          ],
+                        child: EmptyState(
+                          title: _error!,
+                          pose: 'confused',
+                          bob: false,
+                          action: TextButton(
+                            onPressed: online && !_busy ? _load : null,
+                            child: const Text('Retry'),
+                          ),
                         ),
                       ),
                     if (_loading || _busy) const LinearProgressIndicator(),
@@ -185,8 +187,10 @@ class _QuestionBankScreenState extends ConsumerState<QuestionBankScreen> {
               if (filtered.isEmpty) {
                 return Padding(
                   padding: const EdgeInsets.all(24),
-                  child: Text(
-                    _rows!.isEmpty
+                  child: EmptyState(
+                    pose: _rows!.isEmpty ? 'thinking' : 'curious',
+                    bob: !widget.picking,
+                    title: _rows!.isEmpty
                         ? 'No saved questions yet. Use Save to bank on a question in an assessment.'
                         : 'No matching questions. Try another search or question type.',
                   ),

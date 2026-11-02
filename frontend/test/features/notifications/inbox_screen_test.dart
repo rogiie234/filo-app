@@ -45,6 +45,14 @@ class FakeInbox extends InboxRepository {
 }
 
 void main() {
+  final binding = TestWidgetsFlutterBinding.ensureInitialized();
+  setUp(() {
+    binding.platformDispatcher.accessibilityFeaturesTestValue =
+        const FakeAccessibilityFeatures(disableAnimations: true);
+  });
+  tearDown(() {
+    binding.platformDispatcher.clearAccessibilityFeaturesTestValue();
+  });
   test('failed inbox dispatch releases the caller and permits Retry', () async {
     final events = PushEvents();
     addTearDown(events.dispose);

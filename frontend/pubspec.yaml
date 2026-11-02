@@ -60,6 +60,10 @@ flutter:
     - assets/mascots/confused_notepad.png
     - assets/mascots/cheerful_note.png
     - assets/mascots/waiting.png
+    - assets/mascots/clock.png
+    - assets/mascots/folder.png
+    - assets/mascots/reading.png
+    - assets/mascots/empty/
     - assets/fonts/phosphor/LICENSE
     - assets/fonts/OFL.txt
   fonts:

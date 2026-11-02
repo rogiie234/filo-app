@@ -137,7 +137,7 @@ class _SignInScreenState extends ConsumerState<SignInScreen> {
                 child: Column(
                   children: [
                     const SizedBox(height: 36),
-                    Mascot(size: entryMascotSize(context)),
+                    Mascot(size: entryMascotSize(context), bob: true),
                     const SizedBox(height: 32),
                     _entrance(
                       Text(

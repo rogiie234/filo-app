@@ -139,6 +139,7 @@ class _IntroScreenState extends State<IntroScreen> {
                                 ),
                                 Mascot(
                                   pose: slide.$3,
+                                  bob: index == _index,
                                   size: entryMascotSize(context),
                                 ),
                                 const SizedBox(height: 20),
@@ -215,7 +216,7 @@ class _IntroScreenState extends State<IntroScreen> {
                 child: FiloButton(
                   label: _index == 2 ? 'Get started' : 'Next',
                   labelVariants: const ['Next', 'Get started'],
-                  idlePulse: _index == 2,
+                  idlePulse: false,
                   icon: FiloIcons.forward,
                   animateArrow: true,
                   busy: _advancing,

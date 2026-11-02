@@ -59,7 +59,10 @@ class StudyQuizzesScreen extends StatelessWidget {
                     if (quizzes.length >= 10) const Text(studyQuizLimitMessage),
                     const SizedBox(height: 24),
                     if (quizzes.isEmpty)
-                      const Text('No practice quizzes saved yet.'),
+                      const EmptyState(
+                        title: 'No practice quizzes saved yet.',
+                        pose: 'reading',
+                      ),
                     for (final quiz in quizzes)
                       Padding(
                         padding: const EdgeInsets.only(bottom: 12),
@@ -144,6 +147,7 @@ class StudyQuizzesScreen extends StatelessWidget {
                   ],
                 ),
                 retry: () => ref.invalidate(studyQuizzesProvider(notebookId)),
+                showMascot: true,
               ),
               const SizedBox(height: 16),
               const Text('AI can make mistakes. Check important answers.'),

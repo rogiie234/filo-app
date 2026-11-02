@@ -5,6 +5,14 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {
+  final binding = TestWidgetsFlutterBinding.ensureInitialized();
+  setUp(() {
+    binding.platformDispatcher.accessibilityFeaturesTestValue =
+        const FakeAccessibilityFeatures(disableAnimations: true);
+  });
+  tearDown(() {
+    binding.platformDispatcher.clearAccessibilityFeaturesTestValue();
+  });
   test(
     'brief palettes, distinct destructive colors and extension interpolation',
     () {
@@ -189,7 +197,11 @@ void main() {
         expect(find.byType(FiloPageIndicator), findsOneWidget);
         expect(find.byType(FiloSkeleton), findsNWidgets(2));
         expect(find.byType(FiloStatusChip), findsNWidgets(13));
-        expect(find.byType(EmptyState), findsNWidgets(2));
+        expect(find.byType(EmptyState), findsNWidgets(5));
+        expect(find.byType(MascotIdle), findsOneWidget);
+        for (final pose in Mascot.poses) {
+          expect(find.text(pose), findsOneWidget);
+        }
         await tester.ensureVisible(find.text('Open confirmation'));
         await tester.pump();
         await tester.tap(find.text('Open confirmation'));

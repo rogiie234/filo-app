@@ -326,8 +326,11 @@ class _ClassworkListState extends ConsumerState<ClassworkList> {
           const SizedBox(height: 20),
         ],
         if (failed) ...[
-          const Text(
-            'Could not refresh classwork. Saved work is shown when available.',
+          EmptyState(
+            title: 'Could not refresh classwork. Saved work is shown when available.',
+            pose: 'confused',
+            bob: false,
+            showMascot: empty,
           ),
           TextButton(
             onPressed: () {
@@ -361,12 +364,15 @@ class _ClassworkListState extends ConsumerState<ClassworkList> {
         else if (empty && !failed)
           if (confirmedLoad && (!needQuizzes || catalog?.value?.loaded == true))
             const EmptyState(
+              pose: 'thinking',
               title: 'No classwork yet.',
               message: 'Your next learning adventure will appear here.',
             )
           else if (!online)
-            const Text(
-              'No saved classwork on this device. Connect to the internet and refresh.',
+            const EmptyState(
+              title: 'No saved classwork on this device. Connect to the internet and refresh.',
+              pose: 'sleepy',
+              bob: false,
             )
           else
             TextButton(
@@ -374,8 +380,10 @@ class _ClassworkListState extends ConsumerState<ClassworkList> {
               child: const Text('Refresh classwork'),
             )
         else if (work.isEmpty && !empty)
-          Text(
-            statusKnown
+          EmptyState(
+            pose: statusKnown ? 'curious' : 'thinking',
+            bob: statusKnown,
+            title: statusKnown
                 ? 'No classwork matches this filter.'
                 : 'Refresh to load your submission statuses.',
           )

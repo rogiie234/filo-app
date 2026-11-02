@@ -22,6 +22,14 @@ import 'notification_preferences_widget_test.dart' show room;
 import 'notification_settings_test_support.dart';
 
 void main() {
+  final binding = TestWidgetsFlutterBinding.ensureInitialized();
+  setUp(() {
+    binding.platformDispatcher.accessibilityFeaturesTestValue =
+        const FakeAccessibilityFeatures(disableAnimations: true);
+  });
+  tearDown(() {
+    binding.platformDispatcher.clearAccessibilityFeaturesTestValue();
+  });
   for (final role in AccountRole.values) {
     testWidgets('${role.name} class menu opens T3 focused on its class', (
       tester,

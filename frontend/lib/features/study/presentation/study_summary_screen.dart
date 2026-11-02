@@ -191,9 +191,13 @@ class _SummaryBodyState extends ConsumerState<_SummaryBody> {
                       ),
                     ),
                   ] else
-                    const Padding(
-                      padding: EdgeInsets.symmetric(vertical: 24),
-                      child: Text('Generate a short summary of your sources.'),
+                    Padding(
+                      padding: const EdgeInsets.symmetric(vertical: 24),
+                      child: EmptyState(
+                        title: 'Generate a short summary of your sources.',
+                        pose: _session.error == null ? 'reading' : 'confused',
+                        bob: !_session.working && _session.error == null,
+                      ),
                     ),
                   if (pending != null) ...[
                     const SizedBox(height: 16),

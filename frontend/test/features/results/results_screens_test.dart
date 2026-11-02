@@ -1,3 +1,4 @@
+import 'package:filo/core/widgets/filo_widgets.dart' show Mascot;
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -82,6 +83,7 @@ void main() {
     expect(find.text('Not graded yet'), findsNothing);
     expect(find.text('Explain the last step.'), findsOneWidget);
     expect(tester.takeException(), isNull);
+    expect(find.byType(Mascot), findsNothing);
   });
 
   test(
@@ -254,6 +256,7 @@ void main() {
     expect(find.text(resultsScoreOnly), findsOneWidget);
     expect(find.text('Correct answer'), findsNothing);
     expect(tester.takeException(), isNull);
+    expect(find.byType(Mascot), findsNothing);
     await tester.pumpWidget(const SizedBox());
   });
   testWidgets(
@@ -303,6 +306,7 @@ void main() {
       );
       expect(find.text('Cam'), findsOneWidget);
       expect(tester.takeException(), isNull);
+      expect(find.byType(Mascot), findsNothing);
       await tester.pumpWidget(const SizedBox());
     },
   );

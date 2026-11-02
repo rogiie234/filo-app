@@ -73,6 +73,14 @@ class FakeNotifications extends NotificationPermission {
 }
 
 void main() {
+  final binding = TestWidgetsFlutterBinding.ensureInitialized();
+  setUp(() {
+    binding.platformDispatcher.accessibilityFeaturesTestValue =
+        const FakeAccessibilityFeatures(disableAnimations: true);
+  });
+  tearDown(() {
+    binding.platformDispatcher.clearAccessibilityFeaturesTestValue();
+  });
   Future<FakeProfiles> makeRepository(WidgetTester tester) async =>
       FakeProfiles(
         (await tester.runAsync(

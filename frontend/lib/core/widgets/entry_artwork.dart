@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 
 /// Use viewport width rather than the space left by each page's footer.
-/// The artwork stays static, and navigation never changes its authored scale.
+/// Navigation never changes the artwork scale; idle motion is an opt-in wrapper.
 double entryMascotSize(BuildContext context) =>
-    (MediaQuery.sizeOf(context).width - 48).clamp(180.0, 290.0).toDouble();
+    (MediaQuery.sizeOf(context).width - 48).clamp(200.0, 240.0).toDouble();

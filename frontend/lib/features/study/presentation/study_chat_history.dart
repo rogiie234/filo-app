@@ -31,29 +31,38 @@ class _ChatHistory extends ConsumerWidget {
           child: StudyOfflineBanner(),
         ),
         Expanded(
-          child: studyAsync(ref.watch(studyChatsProvider(notebookId)), (chats) {
-            final now = DateTime.now().toUtc();
-            final active = chats
-                .where((chat) => chat.expiresAt.isAfter(now))
-                .toList();
-            if (active.isEmpty)
-              return const Center(child: Text('No chats yet.'));
-            return ListView.builder(
-              itemCount: active.length,
-              itemBuilder: (_, index) {
-                final chat = active[index];
-                final days = chatDaysLeft(chat.expiresAt, now);
-                return ListTile(
-                  title: Text(chat.title),
-                  subtitle: Text(
-                    '${MaterialLocalizations.of(context).formatMediumDate(chat.lastMessageAt.toLocal())} · $days ${days == 1 ? 'day' : 'days'} left',
-                  ),
-                  trailing: const Icon(Icons.chevron_right),
-                  onTap: () => Navigator.pop(context, chat.id),
+          child: studyAsync(
+            ref.watch(studyChatsProvider(notebookId)),
+            (chats) {
+              final now = DateTime.now().toUtc();
+              final active = chats
+                  .where((chat) => chat.expiresAt.isAfter(now))
+                  .toList();
+              if (active.isEmpty)
+                return const EmptyState(
+                  title: 'No chats yet.',
+                  pose: 'reading',
+                  bob: false,
                 );
-              },
-            );
-          }, retry: () => ref.invalidate(studyChatsProvider(notebookId))),
+              return ListView.builder(
+                itemCount: active.length,
+                itemBuilder: (_, index) {
+                  final chat = active[index];
+                  final days = chatDaysLeft(chat.expiresAt, now);
+                  return ListTile(
+                    title: Text(chat.title),
+                    subtitle: Text(
+                      '${MaterialLocalizations.of(context).formatMediumDate(chat.lastMessageAt.toLocal())} · $days ${days == 1 ? 'day' : 'days'} left',
+                    ),
+                    trailing: const Icon(Icons.chevron_right),
+                    onTap: () => Navigator.pop(context, chat.id),
+                  );
+                },
+              );
+            },
+            retry: () => ref.invalidate(studyChatsProvider(notebookId)),
+            showMascot: true,
+          ),
         ),
       ],
     ),

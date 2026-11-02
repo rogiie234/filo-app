@@ -1,3 +1,4 @@
+import 'package:filo/core/widgets/filo_widgets.dart' show Mascot;
 import 'package:drift/native.dart';
 import 'package:filo/core/connectivity/connectivity_provider.dart';
 import 'package:filo/core/theme/app_theme.dart';
@@ -144,6 +145,7 @@ void main() {
     await tester.pumpAndSettle();
     await tester.tap(find.text('Open quiz'));
     await tester.pumpAndSettle();
+    expect(find.byType(Mascot), findsNothing);
   }
 
   Future<void> unmount(WidgetTester tester) async {

@@ -61,6 +61,14 @@ Future<void> _reveal(WidgetTester tester, Finder target) =>
     );
 
 void main() {
+  final binding = TestWidgetsFlutterBinding.ensureInitialized();
+  setUp(() {
+    binding.platformDispatcher.accessibilityFeaturesTestValue =
+        const FakeAccessibilityFeatures(disableAnimations: true);
+  });
+  tearDown(() {
+    binding.platformDispatcher.clearAccessibilityFeaturesTestValue();
+  });
   late AppDatabase db;
   late FakeExamRemote remote;
   late StudentExamRepository repository;
@@ -165,6 +173,7 @@ void main() {
       ),
     );
     await tester.pumpAndSettle();
+    if (!home) expect(find.byType(Mascot), findsNothing);
   }
 
   Future<void> unmount(WidgetTester tester) async {

@@ -285,7 +285,11 @@ class _MyFilesScreenState extends ConsumerState<MyFilesScreen> {
     if (action == 'Open') {
       await Navigator.of(context).push(
         MaterialPageRoute<void>(
-          builder: (_) => FileViewerScreen(file: file, repository: repository),
+          builder: (_) => FileViewerScreen(
+            showMascot: true,
+            file: file,
+            repository: repository,
+          ),
         ),
       );
     } else if (action == 'Open in another app') {
@@ -496,13 +500,21 @@ class _MyFilesScreenState extends ConsumerState<MyFilesScreen> {
             ? const Center(child: CircularProgressIndicator())
             : repo == null || fileData.hasError || folderData.hasError
             ? Center(
-                child: TextButton(
-                  onPressed: () {
-                    ref.invalidate(filesRepositoryProvider);
-                    ref.invalidate(localFilesProvider);
-                    ref.invalidate(localFoldersProvider);
-                  },
-                  child: const Text("Couldn't load files. Try again."),
+                child: SingleChildScrollView(
+                  padding: const EdgeInsets.all(24),
+                  child: EmptyState(
+                    title: "Couldn't load files. Try again.",
+                    pose: 'confused',
+                    bob: false,
+                    action: TextButton(
+                      onPressed: () {
+                        ref.invalidate(filesRepositoryProvider);
+                        ref.invalidate(localFilesProvider);
+                        ref.invalidate(localFoldersProvider);
+                      },
+                      child: const Text('Retry'),
+                    ),
+                  ),
                 ),
               )
             : ListView(
@@ -531,46 +543,14 @@ class _MyFilesScreenState extends ConsumerState<MyFilesScreen> {
                   ),
                   if (_busy) const LinearProgressIndicator(),
                   if (visibleFolders.isEmpty && visibleFiles.isEmpty)
-                    FiloPanel(
-                      color: FiloColors.tint,
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 24,
-                        vertical: 28,
-                      ),
-                      child: Column(
-                        children: [
-                          const Mascot(pose: 'confused_notepad', size: 144),
-                          const SizedBox(height: 24),
-                          Semantics(
-                            header: true,
-                            child: Text(
-                              query.isNotEmpty
-                                  ? 'No matching files.'
-                                  : 'No files yet.',
-                              textAlign: TextAlign.center,
-                              style: const TextStyle(
-                                fontSize: 22,
-                                fontWeight: FontWeight.w800,
-                                height: 1.25,
-                                color: FiloColors.ink,
-                              ),
-                            ),
-                          ),
-                          const SizedBox(height: 10),
-                          Text(
-                            query.isNotEmpty
-                                ? 'Try another file or folder name.'
-                                : 'Download class materials or add your own.',
-                            textAlign: TextAlign.center,
-                            style: const TextStyle(
-                              fontSize: 15,
-                              fontWeight: FontWeight.w500,
-                              height: 1.5,
-                              color: FiloColors.secondary,
-                            ),
-                          ),
-                        ],
-                      ),
+                    EmptyState(
+                      pose: query.isNotEmpty ? 'curious' : 'folder',
+                      title: query.isNotEmpty
+                          ? 'No matching files.'
+                          : 'No files yet.',
+                      message: query.isNotEmpty
+                          ? 'Try another file or folder name.'
+                          : 'Download class materials or add your own.',
                     ),
                   for (final folder in visibleFolders)
                     ListTile(
@@ -602,8 +582,11 @@ class _MyFilesScreenState extends ConsumerState<MyFilesScreen> {
                       ),
                       onTap: () => Navigator.of(context).push(
                         MaterialPageRoute<void>(
-                          builder: (_) =>
-                              FileViewerScreen(file: file, repository: repo),
+                          builder: (_) => FileViewerScreen(
+                            showMascot: true,
+                            file: file,
+                            repository: repo,
+                          ),
                         ),
                       ),
                       trailing: IconButton(

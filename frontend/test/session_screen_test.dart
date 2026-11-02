@@ -25,6 +25,14 @@ class _NewAccountProfiles extends ProfileRepository {
 }
 
 void main() {
+  final binding = TestWidgetsFlutterBinding.ensureInitialized();
+  setUp(() {
+    binding.platformDispatcher.accessibilityFeaturesTestValue =
+        const FakeAccessibilityFeatures(disableAnimations: true);
+  });
+  tearDown(() {
+    binding.platformDispatcher.clearAccessibilityFeaturesTestValue();
+  });
   final session = Session(
     accessToken: 'not-a-real-token',
     tokenType: 'bearer',

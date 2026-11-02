@@ -10,7 +10,11 @@ class ComponentGallery extends StatefulWidget {
     required this.scale,
     required this.onMode,
     required this.onScale,
+    required this.reduced,
+    required this.onReduced,
   });
+  final bool reduced;
+  final ValueChanged<bool> onReduced;
   final ThemeMode mode;
   final double? scale;
   final ValueChanged<ThemeMode> onMode;
@@ -55,6 +59,11 @@ class _ComponentGalleryState extends State<ComponentGallery> {
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
               _section('Preview', [
+                SwitchListTile(
+                  title: const Text('Reduced motion preview'),
+                  value: widget.reduced,
+                  onChanged: widget.onReduced,
+                ),
                 DropdownButtonFormField<ThemeMode>(
                   initialValue: widget.mode,
                   decoration: const InputDecoration(labelText: 'Theme'),
@@ -328,6 +337,7 @@ class _ComponentGalleryState extends State<ComponentGallery> {
                 ),
                 const FiloPanel(child: Text('Surface panel')),
                 EmptyState(
+                  pose: 'waving',
                   title: 'No classes yet.',
                   message: 'Join one with a code.',
                   action: FiloButton(
@@ -341,6 +351,41 @@ class _ComponentGalleryState extends State<ComponentGallery> {
                   message: 'Results will appear here.',
                   showMascot: false,
                 ),
+              ]),
+              _section('Mascot poses', [
+                Wrap(
+                  spacing: 16,
+                  runSpacing: 16,
+                  children: [
+                    for (final pose in Mascot.poses)
+                      SizedBox(
+                        width: 140,
+                        child: Column(
+                          children: [
+                            Mascot(pose: pose, size: 96),
+                            Text(pose),
+                          ],
+                        ),
+                      ),
+                  ],
+                ),
+                const EmptyState(
+                  title: 'No saved content on this device.',
+                  pose: 'sleepy',
+                  bob: false,
+                ),
+                EmptyState(
+                  title: 'Could not load this example. Try again.',
+                  pose: 'confused',
+                  bob: false,
+                  action: FiloButton(
+                    label: 'Retry mascot example',
+                    onPressed: () => setState(
+                      () => _result = 'Example retry completed locally.',
+                    ),
+                  ),
+                ),
+                const EmptyState(title: 'No results yet.', showMascot: false),
               ]),
               _section('Progress and loading', [
                 FiloProgressBar(

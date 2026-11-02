@@ -105,6 +105,7 @@ class _StudyHomeScreenState extends ConsumerState<StudyHomeScreen> {
             children: [
               if (items.isEmpty)
                 const EmptyState(
+                  pose: 'reading',
                   title: 'Start your first notebook.',
                   message: 'Keep your files and study tools together.',
                 ),
@@ -112,6 +113,7 @@ class _StudyHomeScreenState extends ConsumerState<StudyHomeScreen> {
             ],
           ),
           retry: () => ref.invalidate(studyNotebooksProvider),
+          showMascot: true,
         ),
       ],
     );

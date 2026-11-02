@@ -57,7 +57,10 @@ class _PreviewClassFilesState extends State<PreviewClassFiles> {
         ),
         const SizedBox(height: 24),
         if (files.isEmpty)
-          const EmptyState(
+          EmptyState(
+            pose: _query.trim().isNotEmpty || _filter != 'All'
+                ? 'curious'
+                : 'folder',
             title: 'No files here yet.',
             message: 'Class materials will have a home right here.',
           ),

@@ -40,10 +40,12 @@ class DownloadFileCard extends ConsumerStatefulWidget {
   const DownloadFileCard({
     super.key,
     required this.classId,
+    this.showMascot = false,
     required this.postId,
     required this.attachment,
     this.postTitle,
   });
+  final bool showMascot;
   final String classId, postId;
   final String? postTitle;
   final CachePostAttachment attachment;
@@ -244,6 +246,7 @@ class _DownloadFileCardState extends ConsumerState<DownloadFileCard> {
                   onPressed: () => Navigator.of(context).push(
                     MaterialPageRoute<void>(
                       builder: (_) => FileViewerScreen(
+                        showMascot: widget.showMascot,
                         file: local,
                         repository: manager!.files,
                       ),

@@ -57,8 +57,9 @@ class StudyDecksScreen extends StatelessWidget {
                       ),
                     const SizedBox(height: 24),
                     if (decks.isEmpty)
-                      const Text(
-                        'Generate flashcards to review the main ideas.',
+                      const EmptyState(
+                        title: 'Generate flashcards to review the main ideas.',
+                        pose: 'reading',
                       ),
                     for (final deck in decks)
                       Padding(
@@ -153,6 +154,7 @@ class StudyDecksScreen extends StatelessWidget {
                   ],
                 ),
                 retry: () => ref.invalidate(studyDecksProvider(notebookId)),
+                showMascot: true,
               ),
             ],
           ),

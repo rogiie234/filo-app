@@ -103,10 +103,10 @@ class _StorageScreenState extends ConsumerState<StorageScreen> {
           controller: _scroll,
           padding: const EdgeInsets.all(24),
           children: [
-            FiloPanel(
-              child: usage.when(
-                skipLoadingOnRefresh: false,
-                data: (value) => Column(
+            usage.when(
+              skipLoadingOnRefresh: false,
+              data: (value) => FiloPanel(
+                child: Column(
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
                     _size('Downloads and personal files', value.filesBytes),
@@ -114,7 +114,9 @@ class _StorageScreenState extends ConsumerState<StorageScreen> {
                     _size('Temporary cache', value.cacheBytes),
                   ],
                 ),
-                loading: () => Padding(
+              ),
+              loading: () => FiloPanel(
+                child: Padding(
                   padding: const EdgeInsets.all(24),
                   child: Column(
                     children: [
@@ -128,26 +130,22 @@ class _StorageScreenState extends ConsumerState<StorageScreen> {
                     ],
                   ),
                 ),
-                error: (error, _) => Column(
-                  crossAxisAlignment: CrossAxisAlignment.stretch,
-                  children: [
-                    Semantics(
-                      liveRegion: true,
-                      child: Text(
+              ),
+              error: (error, _) => Semantics(
+                liveRegion: true,
+                child: EmptyState(
+                  title: error is FileProblem && error.kind == 'cache-clear'
+                      ? error.message
+                      : "Couldn't read storage usage. Try again.",
+                  pose: 'confused',
+                  bob: false,
+                  action: FiloButton(
+                    label: 'Retry',
+                    onPressed:
                         error is FileProblem && error.kind == 'cache-clear'
-                            ? error.message
-                            : "Couldn't read storage usage. Try again.",
-                      ),
-                    ),
-                    const SizedBox(height: 16),
-                    FiloButton(
-                      label: 'Retry',
-                      onPressed:
-                          error is FileProblem && error.kind == 'cache-clear'
-                          ? _clear
-                          : _refresh,
-                    ),
-                  ],
+                        ? _clear
+                        : _refresh,
+                  ),
                 ),
               ),
             ),

@@ -173,8 +173,10 @@ class _StudySourcePickerState extends ConsumerState<StudySourcePicker> {
             if (reader.hasError)
               const Padding(
                 padding: EdgeInsets.all(16),
-                child: Text(
-                  'Could not open your saved files. Try reopening the picker.',
+                child: EmptyState(
+                  title: 'Could not open your saved files. Try reopening the picker.',
+                  pose: 'confused',
+                  bob: false,
                 ),
               ),
             Padding(
@@ -209,8 +211,10 @@ class _StudySourcePickerState extends ConsumerState<StudySourcePicker> {
       return const Center(
         child: Padding(
           padding: EdgeInsets.all(24),
-          child: Text(
-            'No saved files here. Add files in Files or download class files first.',
+          child: EmptyState(
+            title: 'No saved files here. Add files in Files or download class files first.',
+            pose: 'folder',
+            bob: false,
           ),
         ),
       );

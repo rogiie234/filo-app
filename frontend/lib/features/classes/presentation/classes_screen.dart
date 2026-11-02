@@ -145,29 +145,25 @@ class _ClassesScreenState extends ConsumerState<ClassesScreen> {
                     SizedBox(height: 16),
                   ],
                   if (live && sync.hasError)
-                    FiloPanel(
-                      child: Column(
-                        children: [
-                          const Text(
-                            'Could not refresh your classes. Showing saved content.',
-                          ),
-                          TextButton(
-                            onPressed: online
-                                ? () => ref
-                                      .read(classSyncProvider.notifier)
-                                      .refresh()
-                                : null,
-                            child: const Text('Retry'),
-                          ),
-                        ],
+                    EmptyState(
+                      title: 'Could not refresh your classes. Showing saved content.',
+                      pose: 'confused',
+                      showMascot: (cards.asData?.value.isEmpty ?? true),
+                      bob: false,
+                      action: TextButton(
+                        onPressed: online
+                            ? () =>
+                                  ref.read(classSyncProvider.notifier).refresh()
+                            : null,
+                        child: const Text('Retry'),
                       ),
                     ),
 
                   if (cards.hasError)
-                    const FiloPanel(
-                      child: Text(
-                        'Could not read saved classes. Try reopening the app.',
-                      ),
+                    const EmptyState(
+                      title: 'Could not read saved classes. Try reopening the app.',
+                      pose: 'confused',
+                      bob: false,
                     ),
                   if ((live && sync.hasError) || cards.hasError)
                     const SizedBox(height: 16),
@@ -248,6 +244,12 @@ class _ClassesScreenState extends ConsumerState<ClassesScreen> {
                       !cards.hasError &&
                       !sync.hasError)
                     ClassesEmptyState(
+                      pose: _query.trim().isNotEmpty
+                          ? 'curious'
+                          : !online
+                          ? 'sleepy'
+                          : 'waving',
+                      bob: online,
                       title: _query.trim().isNotEmpty
                           ? 'No classes found.'
                           : !online

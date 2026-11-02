@@ -53,6 +53,14 @@ class FakeBank extends QuestionBankRepository {
 }
 
 void main() {
+  final binding = TestWidgetsFlutterBinding.ensureInitialized();
+  setUp(() {
+    binding.platformDispatcher.accessibilityFeaturesTestValue =
+        const FakeAccessibilityFeatures(disableAnimations: true);
+  });
+  tearDown(() {
+    binding.platformDispatcher.clearAccessibilityFeaturesTestValue();
+  });
   test('all bank shapes round trip into independent quiz copies', () {
     for (final type in [
       'multiple_choice',

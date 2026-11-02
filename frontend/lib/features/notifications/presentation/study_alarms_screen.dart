@@ -203,7 +203,11 @@ class _StudyAlarmsState extends ConsumerState<StudyAlarmsScreen>
                 ),
               )
             else if (alarms.hasError || repo.hasError) ...[
-              const Text('Could not load study alarms. Sign in or retry.'),
+              const EmptyState(
+                title: 'Could not load study alarms. Sign in or retry.',
+                pose: 'confused',
+                bob: false,
+              ),
               TextButton(
                 onPressed: () {
                   ref.invalidate(studyAlarmRepositoryProvider);
@@ -213,12 +217,7 @@ class _StudyAlarmsState extends ConsumerState<StudyAlarmsScreen>
                 child: const Text('Retry'),
               ),
             ] else if (alarms.requireValue.isEmpty)
-              const Column(
-                children: [
-                  Mascot(pose: 'cheerful_note', size: 120),
-                  Text('No study alarms yet.'),
-                ],
-              )
+              const EmptyState(title: 'No study alarms yet.', pose: 'clock')
             else
               for (final alarm in alarms.requireValue)
                 Padding(
@@ -226,6 +225,8 @@ class _StudyAlarmsState extends ConsumerState<StudyAlarmsScreen>
                   child: FiloPanel(
                     child: Row(
                       children: [
+                        const Mascot(pose: 'clock', size: 48),
+                        const SizedBox(width: 12),
                         Expanded(
                           child: InkWell(
                             onTap: _busy ? null : () => _edit(alarm),

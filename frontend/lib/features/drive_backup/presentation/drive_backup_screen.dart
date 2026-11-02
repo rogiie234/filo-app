@@ -439,26 +439,13 @@ class _BackupUnavailable extends StatelessWidget {
       padding: const EdgeInsets.all(24),
       child: ConstrainedBox(
         constraints: const BoxConstraints(maxWidth: 480),
-        child: FiloPanel(
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              const _BackupIcon(icon: FiloIcons.drive, size: 64),
-              const SizedBox(height: 20),
-              Text(
-                message,
-                textAlign: TextAlign.center,
-                style: const TextStyle(
-                  fontSize: 18,
-                  fontWeight: FontWeight.w700,
-                ),
-              ),
-              if (onRetry != null) ...[
-                const SizedBox(height: 20),
-                FiloButton(label: 'Retry', onPressed: onRetry),
-              ],
-            ],
-          ),
+        child: EmptyState(
+          title: message,
+          pose: 'confused',
+          bob: false,
+          action: onRetry == null
+              ? null
+              : FiloButton(label: 'Retry', onPressed: onRetry),
         ),
       ),
     ),

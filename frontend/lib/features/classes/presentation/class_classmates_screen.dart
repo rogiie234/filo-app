@@ -46,19 +46,15 @@ class ClassClassmatesScreen extends ConsumerWidget {
           children: classmates.when(
             loading: () => [const Center(child: CircularProgressIndicator())],
             error: (_, _) => [
-              FiloPanel(
-                child: Column(
-                  children: [
-                    Text(
-                      online
-                          ? 'Could not load classmates. The class may no longer be available.'
-                          : 'Connect to the internet to view classmates.',
-                    ),
-                    TextButton(
-                      onPressed: online ? refresh : null,
-                      child: const Text('Retry'),
-                    ),
-                  ],
+              EmptyState(
+                title: online
+                    ? 'Could not load classmates. The class may no longer be available.'
+                    : 'Connect to the internet to view classmates.',
+                pose: online ? 'confused' : 'sleepy',
+                bob: false,
+                action: TextButton(
+                  onPressed: online ? refresh : null,
+                  child: const Text('Retry'),
                 ),
               ),
             ],
@@ -66,6 +62,7 @@ class ClassClassmatesScreen extends ConsumerWidget {
                 ? [
                     const EmptyState(
                       title: 'No classmates yet',
+                      pose: 'waving',
                       message: "Other students will appear here once they're approved to join.",
                     ),
                   ]

@@ -46,6 +46,8 @@ class StudySavedScreen extends ConsumerWidget {
   final String notebookId;
   final StudyTool tool;
   final String? childId, title;
+  // Saved practice-question details also contain attempt results.
+  bool get _showMascot => tool != StudyTool.quizzes || childId == null;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -58,27 +60,37 @@ class StudySavedScreen extends ConsumerWidget {
     return Scaffold(
       appBar: AppBar(title: Text(available ? title ?? tool.label : tool.label)),
       body: SafeArea(
-        child: studyAsync(notebooks, (items) {
-          if (!items.any((n) => n.id == notebookId)) {
-            return const Padding(
-              padding: EdgeInsets.all(24),
-              child: Text('This notebook is no longer available.'),
+        child: studyAsync(
+          notebooks,
+          (items) {
+            if (!items.any((n) => n.id == notebookId)) {
+              return Padding(
+                padding: const EdgeInsets.all(24),
+                child: EmptyState(
+                  showMascot: _showMascot,
+                  title: 'This notebook is no longer available.',
+                  pose: 'confused',
+                  bob: false,
+                ),
+              );
+            }
+            return ListView(
+              padding: const EdgeInsets.all(24),
+              children: [
+                const StudyOfflineBanner(),
+                const Padding(
+                  padding: EdgeInsets.only(bottom: 16),
+                  child: Text('Saved content · read only'),
+                ),
+                _content(context, ref),
+                const SizedBox(height: 24),
+                const Text('AI can make mistakes. Check important answers.'),
+              ],
             );
-          }
-          return ListView(
-            padding: const EdgeInsets.all(24),
-            children: [
-              const StudyOfflineBanner(),
-              const Padding(
-                padding: EdgeInsets.only(bottom: 16),
-                child: Text('Saved content · read only'),
-              ),
-              _content(context, ref),
-              const SizedBox(height: 24),
-              const Text('AI can make mistakes. Check important answers.'),
-            ],
-          );
-        }, retry: () => ref.invalidate(studyNotebooksProvider)),
+          },
+          showMascot: _showMascot,
+          retry: () => ref.invalidate(studyNotebooksProvider),
+        ),
       ),
     );
   }
@@ -89,8 +101,9 @@ class StudySavedScreen extends ConsumerWidget {
       return studyAsync(
         ref.watch(studySummaryProvider(notebookId)),
         (summary) => summary == null
-            ? const Text('No summary saved yet.')
+            ? const EmptyState(title: 'No summary saved yet.', pose: 'reading')
             : SelectableText(summary.content),
+        showMascot: _showMascot,
         retry: () => ref.invalidate(studySummaryProvider(notebookId)),
       );
     if (id != null)
@@ -100,7 +113,11 @@ class StudySavedScreen extends ConsumerWidget {
           (messages) => Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              if (messages.isEmpty) const Text('No messages saved yet.'),
+              if (messages.isEmpty)
+                const EmptyState(
+                  title: 'No messages saved yet.',
+                  pose: 'reading',
+                ),
               for (final message in messages)
                 Padding(
                   padding: const EdgeInsets.only(bottom: 12),
@@ -120,13 +137,15 @@ class StudySavedScreen extends ConsumerWidget {
                 ),
             ],
           ),
+          showMascot: _showMascot,
           retry: () => ref.invalidate(studyMessagesProvider(id)),
         ),
         StudyTool.decks => studyAsync(
           ref.watch(studyCardsProvider(id)),
           (cards) => Column(
             children: [
-              if (cards.isEmpty) const Text('No cards saved yet.'),
+              if (cards.isEmpty)
+                const EmptyState(title: 'No cards saved yet.', pose: 'reading'),
               for (final card in cards)
                 Padding(
                   padding: const EdgeInsets.only(bottom: 12),
@@ -148,6 +167,7 @@ class StudySavedScreen extends ConsumerWidget {
                 ),
             ],
           ),
+          showMascot: _showMascot,
           retry: () => ref.invalidate(studyCardsProvider(id)),
         ),
         StudyTool.quizzes => studyAsync(
@@ -155,7 +175,11 @@ class StudySavedScreen extends ConsumerWidget {
           (questions) => Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              if (questions.isEmpty) const Text('No questions saved yet.'),
+              if (questions.isEmpty)
+                const EmptyState(
+                  title: 'No questions saved yet.',
+                  showMascot: false,
+                ),
               for (final question in questions)
                 Padding(
                   padding: const EdgeInsets.only(bottom: 12),
@@ -204,6 +228,7 @@ class StudySavedScreen extends ConsumerWidget {
               ),
             ],
           ),
+          showMascot: _showMascot,
           retry: () => ref.invalidate(studyQuestionsProvider(id)),
         ),
         _ => const SizedBox.shrink(),
@@ -223,7 +248,8 @@ class StudySavedScreen extends ConsumerWidget {
         ref.watch(studyChatsProvider(notebookId)),
         (items) => Column(
           children: [
-            if (items.isEmpty) const Text('No chats yet.'),
+            if (items.isEmpty)
+              const EmptyState(title: 'No chats yet.', pose: 'reading'),
             for (final item in items)
               ListTile(
                 title: Text(item.title),
@@ -232,13 +258,15 @@ class StudySavedScreen extends ConsumerWidget {
               ),
           ],
         ),
+        showMascot: _showMascot,
         retry: () => ref.invalidate(studyChatsProvider(notebookId)),
       ),
       StudyTool.decks => studyAsync(
         ref.watch(studyDecksProvider(notebookId)),
         (items) => Column(
           children: [
-            if (items.isEmpty) const Text('No decks saved yet.'),
+            if (items.isEmpty)
+              const EmptyState(title: 'No decks saved yet.', pose: 'reading'),
             for (final item in items)
               ListTile(
                 title: Text(item.title),
@@ -247,13 +275,18 @@ class StudySavedScreen extends ConsumerWidget {
               ),
           ],
         ),
+        showMascot: _showMascot,
         retry: () => ref.invalidate(studyDecksProvider(notebookId)),
       ),
       StudyTool.quizzes => studyAsync(
         ref.watch(studyQuizzesProvider(notebookId)),
         (items) => Column(
           children: [
-            if (items.isEmpty) const Text('No practice quizzes saved yet.'),
+            if (items.isEmpty)
+              const EmptyState(
+                title: 'No practice quizzes saved yet.',
+                pose: 'reading',
+              ),
             for (final item in items)
               ListTile(
                 title: Text(item.title),
@@ -262,6 +295,7 @@ class StudySavedScreen extends ConsumerWidget {
               ),
           ],
         ),
+        showMascot: _showMascot,
         retry: () => ref.invalidate(studyQuizzesProvider(notebookId)),
       ),
       _ => const SizedBox.shrink(),

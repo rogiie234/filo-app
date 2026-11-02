@@ -143,14 +143,26 @@ class _InboxScreenState extends ConsumerState<InboxScreen> {
     final theme = Theme.of(context);
     Widget content;
     if (repository.hasError || (current && inbox.hasError)) {
-      content = _notice('Could not load saved notifications. Try again.', () {
-        ref.invalidate(inboxRepositoryProvider);
-        ref.invalidate(inboxProvider);
-      });
+      content = EmptyState(
+        title: 'Could not load saved notifications. Try again.',
+        pose: 'confused',
+        bob: false,
+        action: TextButton(
+          child: const Text('Retry'),
+          onPressed: () {
+            ref.invalidate(inboxRepositoryProvider);
+            ref.invalidate(inboxProvider);
+          },
+        ),
+      );
     } else if (repo != null && !current) {
       content = const Padding(
         padding: EdgeInsets.all(24),
-        child: Text('Notifications are unavailable for this account.'),
+        child: EmptyState(
+          title: 'Notifications are unavailable for this account.',
+          pose: 'confused',
+          bob: false,
+        ),
       );
     } else if (rows == null) {
       content = const Padding(
@@ -162,20 +174,7 @@ class _InboxScreenState extends ConsumerState<InboxScreen> {
         ),
       );
     } else if (rows.isEmpty) {
-      content = Padding(
-        padding: const EdgeInsets.symmetric(vertical: 48),
-        child: Column(
-          children: [
-            const Mascot(pose: 'curious', size: 120),
-            const SizedBox(height: 24),
-            Text(
-              "You're all caught up.",
-              textAlign: TextAlign.center,
-              style: theme.textTheme.titleLarge,
-            ),
-          ],
-        ),
-      );
+      content = EmptyState(title: "You're all caught up.", pose: 'waving');
     } else {
       content = const SizedBox.shrink();
     }

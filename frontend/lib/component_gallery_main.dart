@@ -29,6 +29,7 @@ class ComponentGalleryApp extends StatefulWidget {
 class _ComponentGalleryAppState extends State<ComponentGalleryApp> {
   ThemeMode _mode = ThemeMode.system;
   double? _scale;
+  bool _reduced = false;
   @override
   Widget build(BuildContext context) => MaterialApp(
     debugShowCheckedModeBanner: false,
@@ -38,6 +39,7 @@ class _ComponentGalleryAppState extends State<ComponentGalleryApp> {
     themeAnimationDuration: Duration.zero,
     builder: (context, child) => MediaQuery(
       data: MediaQuery.of(context).copyWith(
+        disableAnimations: _reduced || MediaQuery.disableAnimationsOf(context),
         textScaler: _scale == null
             ? MediaQuery.textScalerOf(context)
             : TextScaler.linear(_scale!),
@@ -48,6 +50,8 @@ class _ComponentGalleryAppState extends State<ComponentGalleryApp> {
       mode: _mode,
       scale: _scale,
       onMode: (mode) => setState(() => _mode = mode),
+      reduced: _reduced,
+      onReduced: (value) => setState(() => _reduced = value),
       onScale: (scale) => setState(() => _scale = scale),
     ),
   );

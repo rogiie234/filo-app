@@ -383,25 +383,15 @@ class _WorkQueueScreenState extends ConsumerState<WorkQueueScreen> {
           const SizedBox(height: 20),
           if (!online) ...const [OfflineBanner(), SizedBox(height: 16)],
           if (queue.failed) ...[
-            FiloPanel(
-              color: FiloColors.tint,
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  const Text(
-                    'Could not refresh work.',
-                    style: TextStyle(color: FiloColors.ink, height: 1.4),
-                  ),
-                  const SizedBox(height: 8),
-                  Align(
-                    alignment: Alignment.centerLeft,
-                    child: TextButton.icon(
-                      onPressed: online ? _refresh : null,
-                      icon: const FiloIcon(FiloIcons.refresh, size: 18),
-                      label: const Text('Retry'),
-                    ),
-                  ),
-                ],
+            EmptyState(
+              title: 'Could not refresh work.',
+              showMascot: empty,
+              pose: 'confused',
+              bob: false,
+              action: TextButton.icon(
+                onPressed: online ? _refresh : null,
+                icon: const FiloIcon(FiloIcons.refresh, size: 18),
+                label: const Text('Retry'),
               ),
             ),
             const SizedBox(height: 16),
@@ -414,7 +404,12 @@ class _WorkQueueScreenState extends ConsumerState<WorkQueueScreen> {
               ),
           if (!queue.loading && !queue.failed && visible.isEmpty)
             TodoEmptyState(
-              mascotPose: _taskFilter == 'Done' ? 'waiting' : 'cheerful_note',
+              mascotPose: !queue.loaded
+                  ? 'sleepy'
+                  : _taskFilter == 'Done'
+                  ? 'waiting'
+                  : 'clock',
+              bob: queue.loaded,
               title: !queue.loaded
                   ? 'No saved work.'
                   : _taskFilter == 'Done'
@@ -535,9 +530,15 @@ class _WorkQueueScreenState extends ConsumerState<WorkQueueScreen> {
           const SizedBox(height: 16),
           if (!online) const OfflineBanner(),
           if (queue.failed)
-            TextButton(
-              onPressed: online ? _refresh : null,
-              child: const Text('Could not refresh work. Retry'),
+            EmptyState(
+              title: 'Could not refresh work.',
+              pose: 'confused',
+              bob: false,
+              showMascot: queue.entries.isEmpty,
+              action: TextButton(
+                onPressed: online ? _refresh : null,
+                child: const Text('Retry'),
+              ),
             ),
           if (queue.loading && queue.entries.isEmpty) ...const [
             StreamPostSkeleton(),
@@ -545,8 +546,10 @@ class _WorkQueueScreenState extends ConsumerState<WorkQueueScreen> {
             StreamPostSkeleton(),
           ],
           if (!queue.loading && !queue.failed && queue.entries.isEmpty)
-            Text(
-              !queue.loaded
+            EmptyState(
+              pose: queue.loaded ? 'clock' : 'sleepy',
+              bob: queue.loaded,
+              title: !queue.loaded
                   ? 'No saved work. Connect to the internet and refresh.'
                   : widget.student
                   ? "You're all caught up."

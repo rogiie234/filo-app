@@ -953,6 +953,15 @@ class _AssignmentDetailScreenState
                                 style: Theme.of(context).textTheme.titleLarge,
                               ),
                               if (loading) const LinearProgressIndicator(),
+                              if (_turnedIn &&
+                                  _submission?.submittedAt != null &&
+                                  _grade == null)
+                                const Center(
+                                  child: Mascot(
+                                    pose: 'cheerful_note',
+                                    size: 96,
+                                  ),
+                                ),
                               if (_turnedIn && _submission?.submittedAt != null)
                                 Text(
                                   'Turned in ${_date(_submission!.submittedAt!)}',
