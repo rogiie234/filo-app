@@ -9,6 +9,7 @@ import '../../../core/connectivity/connectivity_provider.dart';
 import '../../../core/supabase/supabase_provider.dart';
 import '../../../core/supabase/session_gate.dart';
 import '../domain/prototype_models.dart';
+import '../../settings/application/profile_settings.dart';
 
 // Private Storage URLs are scoped to the current account and renewed on reconnect.
 final classImageProvider = FutureProvider.autoDispose
@@ -54,46 +55,61 @@ class ClassImage extends ConsumerWidget {
   }
 }
 
-class FiloAvatar extends StatelessWidget {
+class FiloAvatar extends ConsumerWidget {
   const FiloAvatar({
     super.key,
     required this.name,
     this.url,
     this.path,
     this.size = 40,
+    this.userId,
   });
   final String name;
   final String? url, path;
   final double size;
+  final String? userId;
   @override
-  Widget build(BuildContext context) => ExcludeSemantics(
-    child: SizedBox.square(
-      dimension: size,
-      child: ClipOval(
-        child: ClassImage(
-          url: url,
-          path: path,
-          bucket: 'avatars',
-          fallback: ColoredBox(
-            color: Theme.of(context).brightness == Brightness.dark
-                ? Theme.of(context).colorScheme.primaryContainer
-                : FiloColors.mint,
-            child: Center(
-              child: Text(
-                name.trim().isEmpty
-                    ? '?'
-                    : name.trim().characters.first.toUpperCase(),
-                style: TextStyle(
-                  color: Theme.of(context).colorScheme.onSurface,
-                  fontWeight: FontWeight.w800,
+  Widget build(BuildContext context, WidgetRef ref) {
+    final saved = userId == null ? null : ref.watch(confirmedProfileProvider);
+    final photo =
+        saved?.profile.id == userId && saved?.profile.avatarPath == path
+        ? saved?.photo
+        : null;
+    return ExcludeSemantics(
+      child: SizedBox.square(
+        dimension: size,
+        child: ClipOval(
+          child: photo != null
+              ? Image.memory(
+                  photo.bytes,
+                  fit: BoxFit.cover,
+                  excludeFromSemantics: true,
+                )
+              : ClassImage(
+                  url: url,
+                  path: path,
+                  bucket: 'avatars',
+                  fallback: ColoredBox(
+                    color: Theme.of(context).brightness == Brightness.dark
+                        ? Theme.of(context).colorScheme.primaryContainer
+                        : FiloColors.mint,
+                    child: Center(
+                      child: Text(
+                        name.trim().isEmpty
+                            ? '?'
+                            : name.trim().characters.first.toUpperCase(),
+                        style: TextStyle(
+                          color: Theme.of(context).colorScheme.onSurface,
+                          fontWeight: FontWeight.w800,
+                        ),
+                      ),
+                    ),
+                  ),
                 ),
-              ),
-            ),
-          ),
         ),
       ),
-    ),
-  );
+    );
+  }
 }
 
 class RedDotBadge extends StatelessWidget {

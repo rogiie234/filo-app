@@ -169,7 +169,7 @@ void main() {
 
   Future<void> unmount(WidgetTester tester) async {
     await tester.pumpWidget(const SizedBox.shrink());
-    await tester.pump();
+    await tester.pumpAndSettle();
   }
 
   testWidgets(

@@ -29,12 +29,19 @@ class AccountProfile {
       email = json['email'] as String?,
       school = json['school'] as String?,
       photoUrl = json['google_photo_url'] as String?,
-      avatarPath = json['avatar_path'] as String?;
+      avatarPath = json['avatar_path'] as String?,
+      row = Map.unmodifiable(json);
 
   final String id;
   final AccountRole role;
   final String name;
   final String? email, school, photoUrl, avatarPath;
+  final Map<String, dynamic> row;
+}
+
+class ProfileEditException implements Exception {
+  const ProfileEditException({this.uncertain = false});
+  final bool uncertain;
 }
 
 final profileRepositoryProvider = Provider<ProfileRepository>(
@@ -44,6 +51,98 @@ final profileRepositoryProvider = Provider<ProfileRepository>(
 class ProfileRepository {
   ProfileRepository(this.client);
   final SupabaseClient client;
+
+  void _requireUser(String userId) {
+    if (client.auth.currentUser?.id != userId)
+      throw StateError('Account changed');
+  }
+
+  Future<AccountProfile> edit({
+    required String userId,
+    required String name,
+    required String school,
+    ProfilePhotoDraft? photo,
+  }) async {
+    name = name.trim();
+    school = school.trim();
+    if (name.isEmpty || name.length > 80 || school.length > 120) {
+      throw ArgumentError('Valid name and school are required');
+    }
+    final path = photo == null
+        ? null
+        : '$userId/${photo.id}.${photo.extension}';
+    bool matches(AccountProfile? profile) =>
+        profile != null &&
+        profile.id == userId &&
+        profile.name == name &&
+        profile.school == (school.isEmpty ? null : school) &&
+        (photo == null || profile.avatarPath == path);
+    var changedAccount = false;
+    final authChanges = client.auth.onAuthStateChange.listen((event) {
+      if (event.session?.user.id != userId) changedAccount = true;
+    });
+    void requireCurrent() {
+      if (changedAccount) throw StateError('Account changed');
+      _requireUser(userId);
+    }
+
+    try {
+      requireCurrent();
+      AccountProfile? current;
+      try {
+        current = await fetch();
+      } catch (_) {
+        throw const ProfileEditException(uncertain: true);
+      }
+      requireCurrent();
+      if (current == null) throw const ProfileEditException();
+      // A previous update may have committed even when its response was lost.
+      if (matches(current)) return current;
+      if (photo != null && current.avatarPath != path) {
+        try {
+          await client.storage
+              .from('avatars')
+              .uploadBinary(
+                path!,
+                photo.bytes,
+                fileOptions: FileOptions(
+                  upsert: true,
+                  contentType: photo.contentType,
+                ),
+              );
+        } catch (_) {
+          throw const ProfileEditException();
+        }
+      }
+      requireCurrent();
+      try {
+        final row = await client
+            .from('profiles')
+            .update({
+              'display_name': name,
+              'school': school.isEmpty ? null : school,
+              if (photo != null) 'avatar_path': path,
+            })
+            .eq('id', userId)
+            .select()
+            .single();
+        requireCurrent();
+        return AccountProfile.fromJson(row);
+      } catch (_) {
+        requireCurrent();
+        try {
+          final saved = await fetch();
+          requireCurrent();
+          if (matches(saved)) return saved!;
+        } catch (_) {
+          throw const ProfileEditException(uncertain: true);
+        }
+        throw const ProfileEditException();
+      }
+    } finally {
+      await authChanges.cancel();
+    }
+  }
 
   Future<AccountProfile?> fetch() async {
     final user = client.auth.currentUser;

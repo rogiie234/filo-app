@@ -2,6 +2,7 @@ import 'package:drift/native.dart';
 import 'package:filo/core/supabase/auth_providers.dart';
 import 'package:filo/core/theme/app_theme.dart';
 import 'package:filo/data/local/app_database.dart';
+import 'package:filo/data/local/database_providers.dart';
 import 'package:filo/features/onboarding/data/profile_repository.dart';
 import 'package:filo/features/settings/application/theme_settings.dart';
 import 'package:filo/features/settings/presentation/settings_screen.dart';
@@ -34,6 +35,7 @@ void main() {
   Widget app(Widget page) => ProviderScope(
     overrides: [
       authUserIdProvider.overrideWith((ref) => Stream.value('account-a')),
+      accountDatabaseProvider.overrideWith((ref) async => database),
       themeSettingsRepositoryProvider.overrideWith((ref) async => repository),
     ],
     child: Consumer(
@@ -92,6 +94,7 @@ void main() {
       expect(brightness(), Brightness.dark);
       expect(tester.takeException(), isNull);
       await tester.pumpWidget(const SizedBox.shrink());
+      await tester.pumpAndSettle();
     },
   );
 
@@ -127,6 +130,7 @@ void main() {
       expect(find.byType(SettingsScreen), findsOneWidget);
       expect(tester.takeException(), isNull);
       await tester.pumpWidget(const SizedBox.shrink());
+      await tester.pumpAndSettle();
     },
   );
 }

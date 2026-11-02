@@ -1,6 +1,8 @@
+import 'dart:typed_data';
 import 'dart:convert';
 
 import 'package:filo/features/onboarding/data/profile_repository.dart';
+import 'package:filo/features/onboarding/domain/profile_photo.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:http/http.dart' as http;
 import 'package:http/testing.dart';
@@ -122,6 +124,191 @@ void main() {
         consent: false,
       ),
       throwsArgumentError,
+    );
+    expect(requests, 0);
+  });
+
+  Map<String, dynamic> rowFor(String role) => {
+    'id': 'user-1',
+    'role': role,
+    'display_name': 'Alex',
+    'email': 'alex@example.com',
+    'school': 'School',
+    'avatar_path': 'user-1/old.png',
+    'google_photo_url': 'https://example.invalid/google.png',
+    'privacy_accepted_at': '2026-10-15T00:00:00Z',
+    'privacy_version': 'original',
+    'deleted_at': null,
+    'created_at': '2026-10-15T00:00:00Z',
+    'updated_at': '2026-11-02T01:00:00Z',
+  };
+  http.Response response(Object row, http.Request request) => http.Response(
+    jsonEncode(row),
+    200,
+    headers: {'content-type': 'application/json'},
+    request: request,
+  );
+
+  for (final role in ['student', 'instructor']) {
+    test(
+      'edit $role sends only allowed fields and preserves photo/identity/consent',
+      () async {
+        var row = rowFor(role);
+        Map<String, dynamic>? patch;
+        final client = await signedIn(
+          MockClient((request) async {
+            if (request.method == 'PATCH') {
+              patch = jsonDecode(request.body) as Map<String, dynamic>;
+              row = {...row, ...patch!};
+              return response(row, request);
+            }
+            return response([row], request);
+          }),
+        );
+        final saved = await ProfileRepository(client)
+            .edit(userId: 'user-1', name: ' Changed ', school: '  ');
+        expect(patch, {'display_name': 'Changed', 'school': null});
+        expect(saved.row['privacy_version'], 'original');
+        expect(saved.row['privacy_accepted_at'], '2026-10-15T00:00:00Z');
+        expect(saved.role.name, role);
+        expect(saved.email, 'alex@example.com');
+        expect(saved.avatarPath, 'user-1/old.png');
+        expect(saved.photoUrl, 'https://example.invalid/google.png');
+      },
+    );
+  }
+
+  test(
+    'failed photo upload preserves row; retry reuses the same owner path',
+    () async {
+      var row = rowFor('student');
+      var fail = true;
+      var patches = 0;
+      final paths = <String>[];
+      final photo = ProfilePhotoDraft.fromBytes(
+        Uint8List.fromList([255, 216, 255, 0]),
+      );
+      final client = await signedIn(
+        MockClient((request) async {
+          if (request.url.path.contains('/storage/v1/object/avatars/')) {
+            paths.add(request.url.path);
+            if (fail) throw http.ClientException('upload failed');
+            return response({'Key': 'avatars/user-1/${photo.id}.jpg'}, request);
+          }
+          if (request.method == 'PATCH') {
+            patches++;
+            final patch = jsonDecode(request.body) as Map<String, dynamic>;
+            expect(patch.keys.toSet(), {
+              'display_name',
+              'school',
+              'avatar_path',
+            });
+            row = {...row, ...patch};
+            return response(row, request);
+          }
+          return response([row], request);
+        }),
+      );
+      final repository = ProfileRepository(client);
+      await expectLater(
+        repository.edit(
+          userId: 'user-1',
+          name: 'Changed',
+          school: 'School',
+          photo: photo,
+        ),
+        throwsA(
+          isA<ProfileEditException>().having(
+            (e) => e.uncertain,
+            'uncertain',
+            false,
+          ),
+        ),
+      );
+      expect(patches, 0);
+      expect(row['avatar_path'], 'user-1/old.png');
+      fail = false;
+      final saved = await repository.edit(
+        userId: 'user-1',
+        name: 'Changed',
+        school: 'School',
+        photo: photo,
+      );
+      expect(saved.avatarPath, 'user-1/${photo.id}.jpg');
+      expect(paths.toSet(), hasLength(1));
+      expect(patches, 1);
+    },
+  );
+
+  test('lost PATCH response and failed reconciliation are resolved before retry mutations', () async {
+    var row = rowFor('student');
+    var readsUnavailable = false;
+    var patches = 0;
+    final client = await signedIn(
+      MockClient((request) async {
+        if (request.method == 'PATCH') {
+          patches++;
+          row = {...row, ...jsonDecode(request.body) as Map<String, dynamic>};
+          readsUnavailable = true;
+          throw http.ClientException('response lost');
+        }
+        if (readsUnavailable) throw http.ClientException('read unavailable');
+        return response([row], request);
+      }),
+    );
+    final repository = ProfileRepository(client);
+    await expectLater(
+      repository.edit(userId: 'user-1', name: 'Changed', school: 'School'),
+      throwsA(
+        isA<ProfileEditException>().having(
+          (e) => e.uncertain,
+          'uncertain',
+          true,
+        ),
+      ),
+    );
+    readsUnavailable = false;
+    final saved = await repository.edit(
+      userId: 'user-1',
+      name: 'Changed',
+      school: 'School',
+    );
+    expect(saved.name, 'Changed');
+    expect(patches, 1);
+  });
+
+  test('invalid edit and foreign user are refused before requests', () async {
+    var requests = 0;
+    final client = await signedIn(
+      MockClient((request) async {
+        requests++;
+        return response([], request);
+      }),
+    );
+    final repository = ProfileRepository(client);
+    await expectLater(
+      repository.edit(userId: 'user-1', name: ' ', school: ''),
+      throwsArgumentError,
+    );
+    await expectLater(
+      repository.edit(
+        userId: 'user-1',
+        name: List.filled(81, 'a').join(),
+        school: '',
+      ),
+      throwsArgumentError,
+    );
+    await expectLater(
+      repository.edit(
+        userId: 'user-1',
+        name: 'Valid',
+        school: List.filled(121, 'a').join(),
+      ),
+      throwsArgumentError,
+    );
+    await expectLater(
+      repository.edit(userId: 'foreign', name: 'Valid', school: ''),
+      throwsStateError,
     );
     expect(requests, 0);
   });

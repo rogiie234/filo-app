@@ -301,7 +301,7 @@ void main() {
       expect(find.text('Open settings'), findsOneWidget);
       expect(tester.takeException(), isNull);
       await tester.pumpWidget(const SizedBox.shrink());
-      await tester.pump();
+      await tester.pumpAndSettle();
     });
     testWidgets('${role.name} dark settings hub wraps at 130 percent text', (
       tester,
@@ -337,6 +337,8 @@ void main() {
         isFalse,
       );
       expect(tester.takeException(), isNull);
+      await tester.pumpWidget(const SizedBox.shrink());
+      await tester.pumpAndSettle();
     });
   }
 

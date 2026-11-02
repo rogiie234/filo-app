@@ -116,6 +116,7 @@ class _ClassesScreenState extends ConsumerState<ClassesScreen> {
               tooltip: live ? 'Your account' : 'Change preview role',
               onPressed: _roleMenu,
               icon: FiloAvatar(
+                userId: widget.profile?.id,
                 name:
                     widget.profile?.name ??
                     (student ? 'Student' : 'Instructor'),

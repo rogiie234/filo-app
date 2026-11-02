@@ -10,6 +10,8 @@ import '../../drive_backup/presentation/drive_backup_screen.dart';
 import '../../notifications/presentation/notification_settings_screen.dart';
 import '../../onboarding/data/profile_repository.dart';
 import '../application/theme_settings.dart';
+import '../application/profile_settings.dart';
+import 'edit_profile_screen.dart';
 
 class SettingsScreen extends ConsumerStatefulWidget {
   const SettingsScreen({required this.profile, super.key});
@@ -102,7 +104,8 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final profile = widget.profile;
+    final profile =
+        ref.watch(accountProfileProvider(widget.profile.id)) ?? widget.profile;
     final account = ref.watch(authUserIdProvider);
     if (account.asData?.value != profile.id) {
       if (!account.isLoading) {
@@ -129,6 +132,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                 child: Column(
                   children: [
                     FiloAvatar(
+                      userId: profile.id,
                       name: profile.name,
                       url: profile.photoUrl,
                       path: profile.avatarPath,
@@ -140,6 +144,10 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                       textAlign: TextAlign.center,
                       style: Theme.of(context).textTheme.titleLarge,
                     ),
+                    if (profile.school?.isNotEmpty == true) ...[
+                      const SizedBox(height: 8),
+                      Text(profile.school!, textAlign: TextAlign.center),
+                    ],
                     if (profile.email != null) ...[
                       const SizedBox(height: 8),
                       Text(profile.email!, textAlign: TextAlign.center),
@@ -157,7 +165,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                 _entry(
                   'Edit profile',
                   FiloIcons.person,
-                  subtitle: 'Profile editing is not available yet.',
+                  onTap: () => _open(EditProfileScreen(profile: profile)),
                 ),
                 _entry(
                   'Theme',

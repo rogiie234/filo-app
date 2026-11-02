@@ -10,6 +10,7 @@ import '../../classes/presentation/classes_screen.dart';
 import '../../onboarding/data/profile_repository.dart';
 import '../../../core/notifications/push_events.dart';
 import '../../settings/application/theme_settings.dart';
+import '../../settings/application/profile_settings.dart';
 
 class HomeScreen extends ConsumerStatefulWidget {
   const HomeScreen({required this.profile, super.key});
@@ -56,6 +57,8 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final profile =
+        ref.watch(accountProfileProvider(widget.profile.id)) ?? widget.profile;
     final appearance = ref.watch(themeSettingsProvider);
     if (appearance.isLoading) {
       return const Scaffold(body: Center(child: CircularProgressIndicator()));
@@ -84,18 +87,15 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     if (!_announced) {
       _announced = true;
       WidgetsBinding.instance.addPostFrameCallback((_) {
-        if (mounted) NotificationHomeReady(widget.profile).dispatch(context);
+        if (mounted) NotificationHomeReady(profile).dispatch(context);
       });
     }
-    if (widget.profile.role == AccountRole.student) {
+    if (profile.role == AccountRole.student) {
       ref.watch(examLifecycleProvider);
       ref.listen(examUpdatesProvider, (_, _) => _resumeExam());
       ref.watch(studentExamRepositoryProvider);
       _resumeExam();
     }
-    return PopScope(
-      canPop: false,
-      child: ClassesScreen(profile: widget.profile),
-    );
+    return PopScope(canPop: false, child: ClassesScreen(profile: profile));
   }
 }

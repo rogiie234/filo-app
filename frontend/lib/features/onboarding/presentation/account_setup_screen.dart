@@ -1,7 +1,5 @@
 import 'dart:async';
-import 'dart:ui' as ui;
 
-import 'package:image_picker/image_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -18,6 +16,7 @@ import 'account_details_view.dart';
 import 'notification_prompt_view.dart';
 import '../../home/presentation/home_screen.dart';
 import '../application/notification_permission.dart';
+import '../application/profile_photo_picker.dart';
 import '../data/profile_repository.dart';
 import '../domain/profile_photo.dart';
 
@@ -142,31 +141,13 @@ class _AccountSetupScreenState extends ConsumerState<AccountSetupScreen> {
       _photoError = null;
     });
     try {
-      final image = await ImagePicker().pickImage(
-        source: ImageSource.gallery,
-        maxWidth: 512,
-        maxHeight: 512,
-        imageQuality: 80,
-        requestFullMetadata: false,
-      );
-      if (image == null) return;
-      if (await image.length() > ProfilePhotoDraft.maxBytes) {
-        throw const FormatException(
-          'Choose a profile photo smaller than 512 KB.',
-        );
-      }
-      final draft = ProfilePhotoDraft.fromBytes(await image.readAsBytes());
-      // Reject unreadable image data before replacing the existing preview.
-      final codec = await ui.instantiateImageCodec(
-        draft.bytes,
-        targetWidth: 256,
-      );
-      try {
-        final frame = await codec.getNextFrame();
-        frame.image.dispose();
-      } finally {
-        codec.dispose();
-      }
+      final userId = ref.read(supabaseClientProvider).auth.currentUser?.id;
+      if (userId == null) return;
+      final draft = await ref.read(profilePhotoPickerProvider)();
+      if (draft == null ||
+          !mounted ||
+          ref.read(supabaseClientProvider).auth.currentUser?.id != userId)
+        return;
       if (mounted) {
         setState(() {
           _photo = draft;
