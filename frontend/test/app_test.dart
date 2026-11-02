@@ -1,3 +1,4 @@
+import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:filo/app.dart';
 import 'package:filo/core/notifications/push_providers.dart';
 import 'package:filo/core/notifications/deadline_providers.dart';
@@ -8,6 +9,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {
+  setUp(() => FlutterSecureStorage.setMockInitialValues({}));
   testWidgets('root route opens the Filo intro', (tester) async {
     tester.platformDispatcher.accessibilityFeaturesTestValue =
         const FakeAccessibilityFeatures(disableAnimations: true);

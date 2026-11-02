@@ -55,6 +55,32 @@ class UserDatabaseManager {
     return database;
   });
 
+  Future<void> removeForUser(String id) => _serialize(() async {
+    if (_userId == id) await _closeCurrent();
+    final support = await _directoryProvider();
+    final parent = Directory(p.join(support.path, 'databases'));
+    if (!await parent.exists()) return;
+    if (FileSystemEntity.typeSync(parent.path, followLinks: false) !=
+            FileSystemEntityType.directory ||
+        !p.equals(
+          p.normalize(await parent.resolveSymbolicLinks()),
+          p.normalize(parent.absolute.path),
+        )) {
+      throw StateError('Unsafe database directory');
+    }
+    for (final suffix in ['', '-wal', '-shm', '-journal']) {
+      final file = File(p.join(parent.path, '${filenameForUser(id)}$suffix'));
+      final type = await FileSystemEntity.type(file.path, followLinks: false);
+      if (type == FileSystemEntityType.link) {
+        await Link(file.path).delete();
+      } else if (type == FileSystemEntityType.file) {
+        await file.delete();
+      } else if (type != FileSystemEntityType.notFound) {
+        throw StateError('Invalid database path');
+      }
+    }
+  });
+
   Future<void> _closeCurrent() async {
     final database = _database;
     _database = null;

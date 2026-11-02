@@ -141,6 +141,7 @@ class FilesRepository {
     String? folderId,
     String? mimeType,
   }) => serialize(() async {
+    storage.ensureAvailable();
     if (attachmentId != null) {
       final cached = await this.source(attachmentId);
       if (cached != null && await storage.file(cached.relativePath).exists()) {

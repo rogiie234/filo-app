@@ -14,6 +14,7 @@ import '../application/profile_settings.dart';
 import 'edit_profile_screen.dart';
 import 'storage_screen.dart';
 import 'privacy_notice_screen.dart';
+import 'delete_account_screen.dart';
 
 class SettingsScreen extends ConsumerStatefulWidget {
   const SettingsScreen({required this.profile, super.key});
@@ -230,7 +231,12 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                   'Delete account',
                   FiloIcons.delete,
                   destructive: true,
-                  subtitle: 'Account deletion is not available here yet.',
+                  subtitle: profile.role == AccountRole.instructor
+                      ? 'Instructor account deletion is not available here yet.'
+                      : null,
+                  onTap: profile.role == AccountRole.student
+                      ? () => _open(DeleteAccountScreen(userId: profile.id))
+                      : null,
                 ),
               ]),
             ],

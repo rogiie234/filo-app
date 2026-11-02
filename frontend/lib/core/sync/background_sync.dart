@@ -1,5 +1,8 @@
 import 'dart:ui';
 
+import '../account_deletion_journal.dart';
+import '../account_file_lock.dart';
+
 import 'package:flutter/widgets.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:google_sign_in/google_sign_in.dart';
@@ -23,10 +26,12 @@ void filoBackgroundDispatcher() {
     if (id == null || await storage.read(key: 'filo.sync.active') != id) {
       return true;
     }
+    final lock = await lockAccountFiles(id);
     final manager = UserDatabaseManager();
     DriveBackupService? backup;
     SyncCoordinator? coordinator;
     try {
+      if ((await DeletionJournalStore().read()).containsKey(id)) return true;
       await Supabase.initialize(
         url: AppConfig.supabaseUrl,
         publishableKey: AppConfig.supabaseAnonKey,
@@ -81,7 +86,11 @@ void filoBackgroundDispatcher() {
     } finally {
       coordinator?.dispose();
       backup?.dispose();
-      await manager.close();
+      try {
+        await manager.close();
+      } finally {
+        await lock.close();
+      }
     }
   });
 }

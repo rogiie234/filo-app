@@ -9,6 +9,7 @@ import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import 'supabase_provider.dart';
+import '../account_deletion_journal.dart';
 import '../connectivity/connectivity_provider.dart';
 
 final deviceHashProvider = FutureProvider<String>((ref) async {
@@ -59,7 +60,10 @@ bool offlineSessionMatches(String saved, String sessionId, String deviceHash) {
 /// This unlocks the local account cache only; backend RLS remains authoritative.
 final verifiedUserIdProvider = FutureProvider<String?>((ref) async {
   final session = await ref.watch(loginSessionProvider.future);
-  if (session == null) return null;
+  if (!ref.mounted || session == null) return null;
+  ref.watch(deletionJournalProvider);
+  final deletions = await ref.watch(deletionJournalProvider.future);
+  if (!ref.mounted || deletions.containsKey(session.user.id)) return null;
   final sessionId = sessionIdFromToken(session.accessToken);
   final hash = await ref.watch(deviceHashProvider.future);
   final online = await ref.watch(connectivityProvider.future);

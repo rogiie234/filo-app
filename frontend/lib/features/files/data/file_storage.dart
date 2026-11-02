@@ -18,7 +18,33 @@ class FileStorage {
   // shortcut: leases share a foreground isolate; extend before background sync creates temporary files.
   static final _activeTemporary = <String>{};
 
+  static final _blocked = <String>{};
+  static void setBlocked(Directory root, bool blocked) {
+    final key = p.normalize(p.absolute(root.path));
+    if (blocked) {
+      _blocked.add(key);
+    } else {
+      _blocked.remove(key);
+    }
+  }
+
+  void ensureAvailable() {
+    if (_blocked.contains(p.normalize(p.absolute(root.path))))
+      throw const FileProblem('Account unavailable.');
+  }
+
+  Future<void> waitForIdle() async {
+    final end = DateTime.now().add(const Duration(seconds: 15));
+    while (_activeTemporary.any(
+      (file) => p.isWithin(p.absolute(root.path), file),
+    )) {
+      if (DateTime.now().isAfter(end)) throw StateError('Files still in use');
+      await Future<void>.delayed(const Duration(milliseconds: 50));
+    }
+  }
+
   File reserveTemporary(String name) {
+    ensureAvailable();
     if (name.isEmpty ||
         p.basename(name) != name ||
         name == '.' ||

@@ -5,9 +5,11 @@ import 'package:filo/core/supabase/session_gate.dart';
 import 'package:filo/data/local/database_providers.dart';
 import 'package:filo/data/local/user_database_manager.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {
+  setUp(() => FlutterSecureStorage.setMockInitialValues({}));
   test(
     'offline cache authorization stays bound to verified session and device',
     () {

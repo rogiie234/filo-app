@@ -12,6 +12,7 @@ class FiloButton extends StatefulWidget {
     required this.onPressed,
     this.idlePulse = false,
     this.secondary = false,
+    this.destructive = false,
     this.icon,
     this.leading,
     this.animateArrow = false,
@@ -20,6 +21,7 @@ class FiloButton extends StatefulWidget {
   });
   final bool idlePulse;
   final bool secondary;
+  final bool destructive;
   final IconData? icon;
   final Widget? leading;
   final bool animateArrow;
@@ -99,7 +101,9 @@ class _FiloButtonState extends State<FiloButton>
     final disabled = widget.onPressed == null && !widget.busy;
     final dark = Theme.of(context).brightness == Brightness.dark;
     final colors = Theme.of(context).colorScheme;
-    final foreground = dark
+    final foreground = widget.destructive && !disabled
+        ? colors.onError
+        : dark
         ? disabled
               ? colors.onSurfaceVariant
               : widget.secondary
@@ -110,7 +114,9 @@ class _FiloButtonState extends State<FiloButton>
         : widget.secondary
         ? FiloAnimation.secondaryLabel
         : FiloAnimation.primaryLabel;
-    final fill = dark
+    final fill = widget.destructive && !disabled
+        ? colors.error
+        : dark
         ? disabled
               ? colors.surfaceContainerHighest
               : widget.secondary
@@ -134,7 +140,9 @@ class _FiloButtonState extends State<FiloButton>
             duration: reduced ? Duration.zero : FiloAnimation.pressDuration,
             curve: FiloAnimation.uiCurve,
             decoration: BoxDecoration(
-              color: dark
+              color: widget.destructive && !disabled
+                  ? colors.error.withValues(alpha: 0.8)
+                  : dark
                   ? colors.outline
                   : disabled
                   ? FiloColors.disabledButtonFill

@@ -7,9 +7,11 @@ import 'package:filo/data/local/app_database.dart';
 import 'package:filo/data/local/database_providers.dart';
 import 'package:filo/data/local/user_database_manager.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {
+  setUp(() => FlutterSecureStorage.setMockInitialValues({}));
   test(
     'restored session, account switch and logout drive the database',
     () async {
