@@ -197,7 +197,7 @@ class FilesRepository {
       throw const FileProblem('Choose a file no larger than 25 MB.');
     }
     await storage.ensureSpace(size);
-    final copy = storage.file('temporary/${const Uuid().v4()}');
+    final copy = storage.reserveTemporary(const Uuid().v4());
     try {
       await file.copy(copy.path);
       return await commit(
@@ -207,8 +207,10 @@ class FilesRepository {
         folderId: folder,
       );
     } finally {
-      if (await copy.exists()) {
-        await copy.delete();
+      try {
+        if (await copy.exists()) await copy.delete();
+      } finally {
+        storage.releaseTemporary(copy);
       }
     }
   }

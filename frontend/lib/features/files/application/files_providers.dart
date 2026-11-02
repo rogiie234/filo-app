@@ -15,7 +15,12 @@ final filesRepositoryProvider = FutureProvider<FilesRepository?>((ref) async {
   if (db == null || id == null || !ref.mounted) {
     return null;
   }
-  final storage = await FileStorage.forAccount(id);
+  final storage = await FileStorage.forAccount(
+    id,
+    isCurrent: () =>
+        ref.mounted &&
+        ref.read(supabaseClientProvider).auth.currentUser?.id == id,
+  );
   if (!ref.mounted) {
     return null;
   }

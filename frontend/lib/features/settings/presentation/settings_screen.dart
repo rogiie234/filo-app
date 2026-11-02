@@ -12,6 +12,7 @@ import '../../onboarding/data/profile_repository.dart';
 import '../application/theme_settings.dart';
 import '../application/profile_settings.dart';
 import 'edit_profile_screen.dart';
+import 'storage_screen.dart';
 
 class SettingsScreen extends ConsumerStatefulWidget {
   const SettingsScreen({required this.profile, super.key});
@@ -192,7 +193,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                 _entry(
                   'Storage',
                   FiloIcons.folder,
-                  subtitle: 'Storage settings are not available yet.',
+                  onTap: () => _open(StorageScreen(userId: profile.id)),
                 ),
                 _entry(
                   'Privacy notice',

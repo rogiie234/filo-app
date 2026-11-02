@@ -115,6 +115,9 @@ void main() {
         250,
         scrollable: find.byType(Scrollable).last,
       );
+      await tester.pumpAndSettle();
+      await tester.ensureVisible(find.text('Sign out'));
+      await tester.pumpAndSettle();
       await tester.tap(find.text('Sign out'));
       await tester.pumpAndSettle();
       expect(find.text('Sign out?'), findsOneWidget);

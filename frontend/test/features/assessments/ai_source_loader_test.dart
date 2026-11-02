@@ -109,6 +109,16 @@ void main() {
         () => true,
         createDio: () => Dio()
           ..httpClientAdapter = SourceAdapter(() async* {
+            final stale = await files.storage
+                .file('temporary/stale')
+                .writeAsString('old');
+            expect(await files.storage.clearTemporary(), 3);
+            expect(await stale.exists(), isFalse);
+            final active = await Directory('${dir.path}/temporary')
+                .list()
+                .toList();
+            expect(active, hasLength(1));
+            expect((await files.storage.usage()).cacheBytes, 0);
             if (oversized) {
               for (var i = 0; i < 11; i++) {
                 yield Uint8List(1024 * 1024);

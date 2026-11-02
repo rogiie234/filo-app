@@ -99,7 +99,7 @@ class AiSourceLoader {
           .from('materials')
           .createSignedUrl(metadata['storage_path'] as String, 120);
       cancel.check();
-      temporary = files.storage.file('temporary/ai-${const Uuid().v4()}');
+      temporary = files.storage.reserveTemporary('ai-${const Uuid().v4()}');
       final response = await dio.get<ResponseBody>(
         address,
         options: Options(responseType: ResponseType.stream),
@@ -150,9 +150,17 @@ class AiSourceLoader {
       dio.close(force: true);
       if (temporary != null) {
         if (extractionStarted && (cancel.isCancelled || deferCleanup)) {
-          unawaited(_removeTemporaryAfterDrain(temporary));
+          final held = temporary;
+          unawaited(
+            _removeTemporaryAfterDrain(held)
+                .whenComplete(() => files.storage.releaseTemporary(held)),
+          );
         } else {
-          await _removeTemporary(temporary);
+          try {
+            await _removeTemporary(temporary);
+          } finally {
+            files.storage.releaseTemporary(temporary);
+          }
         }
       }
     }

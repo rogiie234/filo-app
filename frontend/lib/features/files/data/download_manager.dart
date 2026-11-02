@@ -142,7 +142,7 @@ class DownloadManager extends ChangeNotifier {
       final expected =
           (source['size_bytes'] as num?)?.toInt() ?? maxLocalFileBytes;
       await files.storage.ensureSpace(expected);
-      temporary = files.storage.file('temporary/${const Uuid().v4()}');
+      temporary = files.storage.reserveTemporary(const Uuid().v4());
       String? mime;
       for (var attempt = 0; attempt < 2; attempt++) {
         if (token.isCancelled || !isCurrent()) {
@@ -356,8 +356,12 @@ class DownloadManager extends ChangeNotifier {
     } finally {
       token.cancel();
       _tokens.remove(id);
-      if (temporary != null && await temporary.exists()) {
-        await temporary.delete();
+      if (temporary != null) {
+        try {
+          if (await temporary.exists()) await temporary.delete();
+        } finally {
+          files.storage.releaseTemporary(temporary);
+        }
       }
     }
   }
