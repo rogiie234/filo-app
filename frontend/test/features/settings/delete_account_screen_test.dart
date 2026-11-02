@@ -6,6 +6,7 @@ import 'package:filo/core/supabase/session_gate.dart';
 import 'package:filo/core/theme/app_theme.dart';
 import 'package:filo/core/widgets/filo_widgets.dart';
 import 'package:filo/features/settings/application/account_deletion.dart';
+import 'package:filo/features/settings/data/account_deletion_repository.dart';
 import 'package:filo/features/settings/presentation/delete_account_screen.dart';
 import 'package:filo/features/settings/presentation/deletion_recovery_gate.dart';
 import 'package:flutter/material.dart';
@@ -37,12 +38,20 @@ void main() {
     WidgetTester tester, {
     bool online = true,
     bool dark = false,
+    bool instructor = false,
+    Future<InstructorDeletionEligibility> Function()? eligibility,
     DeletionStage? stage,
     bool recovery = false,
     FakeDeletion? remote,
   }) async {
     final store = MemoryJournal();
-    if (stage != null) store.saved['a'] = DeletionRecord('a', 's', stage);
+    if (stage != null)
+      store.saved['a'] = DeletionRecord(
+        'a',
+        's',
+        stage,
+        instructor: instructor,
+      );
     final repo = remote ?? (await tester.runAsync(() async => FakeDeletion()))!;
     final container = ProviderContainer(
       overrides: [
@@ -54,6 +63,9 @@ void main() {
         loginSessionProvider.overrideWith((ref) => Stream.value(null)),
         connectivityProvider.overrideWith((ref) => Stream.value(online)),
         accountDeletionRepositoryProvider.overrideWithValue(repo),
+        if (eligibility != null)
+          instructorDeletionEligibilityProvider('a')
+              .overrideWith((ref) => eligibility()),
         accountDeletionCleanupProvider.overrideWithValue(FakeRemoval()),
         deletionSessionCleanupProvider.overrideWithValue((_) async {}),
       ],
@@ -75,7 +87,7 @@ void main() {
           ),
           home: recovery
               ? const DeletionRecoveryGate(child: Text('private child'))
-              : const DeleteAccountScreen(userId: 'a'),
+              : DeleteAccountScreen(userId: 'a', instructor: instructor),
         ),
       ),
     );
@@ -195,4 +207,88 @@ void main() {
     expect(button('Resume deletion'), findsOneWidget);
     expect(button('Cancel'), findsNothing);
   });
+  for (final dark in [false, true]) {
+    testWidgets(
+      'instructor eligible recovery warning at 130 percent dark=$dark',
+      (tester) async {
+        await mount(
+          tester,
+          instructor: true,
+          dark: dark,
+          eligibility: () async =>
+              const InstructorDeletionEligibility(0, hasRecoveryClasses: true),
+        );
+        expect(find.text(instructorDeletionWarning), findsOneWidget);
+        expect(find.text(studentDeletionWarning), findsNothing);
+        await reveal(tester, find.text(recoveryClassesWarning));
+        await reveal(tester, find.byType(TextField));
+        await tester.enterText(find.byType(TextField), 'DELETE');
+        await tester.pump();
+        await reveal(tester, button('Delete my account'));
+        expect(
+          tester.widget<FiloButton>(button('Delete my account')).onPressed,
+          isNotNull,
+        );
+        expect(tester.takeException(), isNull);
+      },
+    );
+  }
+  for (final count in [1, 4]) {
+    testWidgets('instructor $count class block disables deletion', (
+      tester,
+    ) async {
+      await mount(
+        tester,
+        instructor: true,
+        eligibility: () async => InstructorDeletionEligibility(count),
+      );
+      expect(find.text('Delete your classes first'), findsOneWidget);
+      await reveal(tester, button('Delete my account'));
+      expect(
+        tester.widget<FiloButton>(button('Delete my account')).onPressed,
+        isNull,
+      );
+    });
+  }
+  testWidgets('instructor failed eligibility retries without inventing zero', (
+    tester,
+  ) async {
+    var fail = true;
+    await mount(
+      tester,
+      instructor: true,
+      eligibility: () async {
+        if (fail) throw StateError('fixture');
+        return const InstructorDeletionEligibility(0);
+      },
+    );
+    expect(
+      find.text("Couldn't check your classes. Try again."),
+      findsOneWidget,
+    );
+    fail = false;
+    await tester.tap(find.widgetWithText(TextButton, 'Retry'));
+    await tester.pumpAndSettle();
+    expect(find.text(instructorDeletionWarning), findsOneWidget);
+    expect(find.text(recoveryClassesWarning), findsNothing);
+  });
+  testWidgets(
+    'instructor pending restart bypasses forbidden eligibility reads',
+    (tester) async {
+      var calls = 0;
+      await mount(
+        tester,
+        instructor: true,
+        stage: DeletionStage.pending,
+        recovery: false,
+        eligibility: () async {
+          calls++;
+          throw StateError('must not read');
+        },
+      );
+      expect(calls, 0);
+      expect(find.text(instructorDeletionWarning), findsOneWidget);
+      expect(find.text(studentDeletionWarning), findsNothing);
+    },
+  );
 }

@@ -61,7 +61,10 @@ class DeletionRecoveryGate extends ConsumerWidget {
     return Navigator(
       key: ValueKey('account-deletion-$id'),
       onGenerateRoute: (_) => MaterialPageRoute<void>(
-        builder: (_) => DeleteAccountScreen(userId: id),
+        builder: (_) => DeleteAccountScreen(
+          userId: id,
+          instructor: records[id]?.instructor ?? flow.instructor,
+        ),
       ),
     );
   }

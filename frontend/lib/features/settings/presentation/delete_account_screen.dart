@@ -5,12 +5,23 @@ import '../../../core/account_deletion_journal.dart';
 import '../../../core/connectivity/connectivity_provider.dart';
 import '../../../core/widgets/filo_widgets.dart';
 import '../application/account_deletion.dart';
+import '../data/account_deletion_repository.dart';
 
 const studentDeletionWarning =
     "Your name, email address, and profile photo will be removed. Your submissions and grades will stay in your instructors' records as Deleted User. You will leave all your classes. Downloaded files stored in Filo on this device will be removed. If you selected the wrong role, you can sign in again after deleting your account and choose your role again. To join your classes again, you will need to request to join and receive instructor approval.";
 
+const instructorDeletionWarning =
+    'Your name, email address, and profile photo will be removed. Downloaded files stored in Filo on this device will be removed. This cannot be undone.';
+const recoveryClassesWarning =
+    'Your classes in recovery will be permanently removed with your account.';
+
 class DeleteAccountScreen extends ConsumerStatefulWidget {
-  const DeleteAccountScreen({required this.userId, super.key});
+  const DeleteAccountScreen({
+    required this.userId,
+    this.instructor = false,
+    super.key,
+  });
+  final bool instructor;
   final String userId;
   @override
   ConsumerState<DeleteAccountScreen> createState() =>
@@ -19,9 +30,24 @@ class DeleteAccountScreen extends ConsumerStatefulWidget {
 
 class _DeleteAccountScreenState extends ConsumerState<DeleteAccountScreen> {
   late final TextEditingController _confirmation;
+  late final AppLifecycleListener _lifecycle;
+  void _refreshEligibility() {
+    if (!mounted ||
+        !widget.instructor ||
+        ref.read(accountDeletionProvider).busyUser != null ||
+        ref.read(deletionJournalProvider).asData?.value[widget.userId] != null)
+      return;
+    _confirmation.clear();
+    ref.read(accountDeletionProvider.notifier).remember(widget.userId, '');
+    ref
+        .read(accountDeletionProvider.notifier)
+        .refreshEligibility(widget.userId);
+  }
+
   @override
   void initState() {
     super.initState();
+    _lifecycle = AppLifecycleListener(onResume: _refreshEligibility);
     _confirmation = TextEditingController(
       text: ref.read(accountDeletionProvider.notifier).draft(widget.userId),
     );
@@ -29,6 +55,7 @@ class _DeleteAccountScreenState extends ConsumerState<DeleteAccountScreen> {
 
   @override
   void dispose() {
+    _lifecycle.dispose();
     _confirmation.dispose();
     super.dispose();
   }
@@ -36,7 +63,9 @@ class _DeleteAccountScreenState extends ConsumerState<DeleteAccountScreen> {
   @override
   Widget build(BuildContext context) {
     final id = widget.userId;
-    final record = ref.watch(deletionJournalProvider).asData?.value[id];
+    final journal = ref.watch(deletionJournalProvider);
+    final ready = journal.asData != null;
+    final record = journal.asData?.value[id];
     final ui = ref.watch(accountDeletionProvider);
     final busy = ui.busyUser != null;
     final online = ref.watch(connectivityProvider).asData?.value == true;
@@ -47,10 +76,30 @@ class _DeleteAccountScreenState extends ConsumerState<DeleteAccountScreen> {
     final cleanup = record?.stage == DeletionStage.cleanup;
     final pending = record?.stage == DeletionStage.pending;
     final message = ui.errorUser == id ? ui.message : null;
+    final instructor = record?.instructor ?? widget.instructor;
+    final checking = instructor && ready && record == null;
+    final eligibility = checking
+        ? ref.watch(instructorDeletionEligibilityProvider(id))
+        : const AsyncData<InstructorDeletionEligibility>(
+            InstructorDeletionEligibility(0),
+          );
+    final serverCount = ui.errorUser == id ? ui.ownedClassCount : null;
+    final count = serverCount ?? eligibility.asData?.value.count;
+    final blocked = count != null && count > 0;
+    final eligible =
+        ready &&
+        (!checking ||
+            (!eligibility.isLoading && !eligibility.hasError && count == 0));
+    ref.listen(connectivityProvider, (previous, next) {
+      if (previous?.asData?.value != true && next.asData?.value == true) {
+        _refreshEligibility();
+      }
+    });
     ref.listen(accountDeletionProvider, (_, next) {
       if (next.busyUser == null &&
-          ref.read(deletionJournalProvider).asData?.value[id]?.stage ==
-              DeletionStage.uncertain) {
+              ref.read(deletionJournalProvider).asData?.value[id]?.stage ==
+                  DeletionStage.uncertain ||
+          (next.errorUser == id && next.ownershipBlocked)) {
         _confirmation.clear();
         ref.read(accountDeletionProvider.notifier).remember(id, '');
       }
@@ -67,14 +116,46 @@ class _DeleteAccountScreenState extends ConsumerState<DeleteAccountScreen> {
           child: ListView(
             padding: const EdgeInsets.all(24),
             children: [
-              if (!cleanup)
+              if (!cleanup && (!checking || eligible))
                 FiloPanel(
                   color: colors.errorContainer,
                   child: Text(
-                    studentDeletionWarning,
+                    instructor
+                        ? instructorDeletionWarning
+                        : studentDeletionWarning,
                     style: TextStyle(color: colors.onErrorContainer),
                   ),
                 ),
+              if (checking) ...[
+                if (eligibility.isLoading && online)
+                  const Padding(
+                    padding: EdgeInsets.all(16),
+                    child: Center(child: CircularProgressIndicator()),
+                  ),
+                if (blocked) ...[
+                  Semantics(
+                    header: true,
+                    child: Text(
+                      'Delete your classes first',
+                      style: Theme.of(context).textTheme.titleLarge,
+                    ),
+                  ),
+                  Text(
+                    count == 1
+                        ? 'You must delete 1 class before you can delete your account. Archived classes must also be deleted.'
+                        : 'You must delete $count classes before you can delete your account. Archived classes must also be deleted.',
+                  ),
+                ],
+                if (eligibility.hasError && online && !blocked)
+                  const Text("Couldn't check your classes. Try again."),
+                TextButton(
+                  onPressed: online && !busy ? _refreshEligibility : null,
+                  child: Text(eligibility.hasError ? 'Retry' : 'Refresh'),
+                ),
+                if (eligible &&
+                    eligibility.asData?.value.hasRecoveryClasses == true)
+                  const Text(recoveryClassesWarning),
+              ],
               const SizedBox(height: 20),
               if (busy)
                 const Padding(
@@ -104,7 +185,7 @@ class _DeleteAccountScreenState extends ConsumerState<DeleteAccountScreen> {
                 const SizedBox(height: 20),
                 TextField(
                   controller: _confirmation,
-                  enabled: !busy,
+                  enabled: !busy && eligible && !blocked,
                   autocorrect: false,
                   enableSuggestions: false,
                   textCapitalization: TextCapitalization.none,
@@ -154,10 +235,16 @@ class _DeleteAccountScreenState extends ConsumerState<DeleteAccountScreen> {
                           .removeLocal(id)
                     : sameSession &&
                           online &&
+                          eligible &&
+                          !blocked &&
                           (pending || _confirmation.text == 'DELETE')
                     ? () => ref
                           .read(accountDeletionProvider.notifier)
-                          .request(id, _confirmation.text)
+                          .request(
+                            id,
+                            _confirmation.text,
+                            instructor: instructor,
+                          )
                     : null,
               ),
               const SizedBox(height: 16),

@@ -231,12 +231,12 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                   'Delete account',
                   FiloIcons.delete,
                   destructive: true,
-                  subtitle: profile.role == AccountRole.instructor
-                      ? 'Instructor account deletion is not available here yet.'
-                      : null,
-                  onTap: profile.role == AccountRole.student
-                      ? () => _open(DeleteAccountScreen(userId: profile.id))
-                      : null,
+                  onTap: () => _open(
+                    DeleteAccountScreen(
+                      userId: profile.id,
+                      instructor: profile.role == AccountRole.instructor,
+                    ),
+                  ),
                 ),
               ]),
             ],

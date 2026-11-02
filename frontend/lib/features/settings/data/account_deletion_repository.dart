@@ -6,9 +6,48 @@ class DeletionRejected implements Exception {
   const DeletionRejected();
 }
 
+class OwnedClassesExist extends DeletionRejected {
+  const OwnedClassesExist(this.count);
+  final int? count;
+}
+
+class InstructorDeletionEligibility {
+  const InstructorDeletionEligibility(
+    this.count, {
+    this.hasRecoveryClasses = false,
+  });
+  final int count;
+  final bool hasRecoveryClasses;
+}
+
 class AccountDeletionRepository {
   AccountDeletionRepository(this.client);
   final SupabaseClient client;
+  Future<InstructorDeletionEligibility> eligibility(
+    String id, {
+    bool Function()? isCurrent,
+  }) async {
+    final count = await client
+        .rpc('owned_class_count')
+        .timeout(const Duration(seconds: 20));
+    if (isCurrent != null && !isCurrent())
+      throw StateError('Obsolete eligibility');
+    if (count is! int || count < 0)
+      throw const FormatException('Invalid class count');
+    if (count > 0) return InstructorDeletionEligibility(count);
+    final rows = await client
+        .from('classes')
+        .select('id')
+        .eq('owner_id', id)
+        .not('deleted_at', 'is', null)
+        .limit(1)
+        .timeout(const Duration(seconds: 20));
+    return InstructorDeletionEligibility(
+      0,
+      hasRecoveryClasses: rows.isNotEmpty,
+    );
+  }
+
   Future<DeletionStage> request() async {
     int status;
     dynamic data;
@@ -32,12 +71,15 @@ class AccountDeletionRepository {
       return DeletionStage.pending;
     final error = data is Map ? data['error'] : null;
     final code = error is Map ? error['code'] : null;
+    if (status == 409 && code == 'OWNED_CLASSES_EXIST') {
+      final count = error['count'];
+      throw OwnedClassesExist(count is int && count > 0 ? count : null);
+    }
     if ({
               400: 'INVALID_REQUEST',
               401: 'NOT_AUTHENTICATED',
               403: 'NOT_ALLOWED',
               405: 'METHOD_NOT_ALLOWED',
-              409: 'OWNED_CLASSES_EXIST',
             }[status] ==
             code &&
         code != null) {

@@ -6,11 +6,17 @@ import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 enum DeletionStage { uncertain, pending, cleanup }
 
 class DeletionRecord {
-  const DeletionRecord(this.userId, this.sessionId, this.stage);
+  const DeletionRecord(
+    this.userId,
+    this.sessionId,
+    this.stage, {
+    this.instructor = false,
+  });
+  final bool instructor;
   final String userId, sessionId;
   final DeletionStage stage;
   DeletionRecord at(DeletionStage stage) =>
-      DeletionRecord(userId, sessionId, stage);
+      DeletionRecord(userId, sessionId, stage, instructor: instructor);
 }
 
 class DeletionJournalStore {
@@ -30,6 +36,7 @@ class DeletionJournalStore {
           id,
           row['session'] as String,
           DeletionStage.values.byName(row['stage'] as String),
+          instructor: (row['instructor'] ?? false) as bool,
         ),
       );
     });
@@ -42,6 +49,7 @@ class DeletionJournalStore {
         record.userId: {
           'session': record.sessionId,
           'stage': record.stage.name,
+          'instructor': record.instructor,
         },
     }),
   );

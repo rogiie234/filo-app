@@ -30,6 +30,20 @@ final deletionSessionProvider = Provider<({String userId, String sessionId})?>((
 final accountDeletionRepositoryProvider = Provider(
   (ref) => AccountDeletionRepository(ref.watch(supabaseClientProvider)),
 );
+final instructorDeletionEligibilityProvider = FutureProvider.autoDispose
+    .family<InstructorDeletionEligibility, String>((ref, id) async {
+      final session = ref.watch(deletionSessionProvider);
+      final online = ref.watch(connectivityProvider).asData?.value == true;
+      if (session?.userId != id || !online)
+        throw StateError('Eligibility unavailable');
+      return ref
+          .watch(accountDeletionRepositoryProvider)
+          .eligibility(
+            id,
+            isCurrent: () =>
+                ref.mounted && ref.read(deletionSessionProvider) == session,
+          );
+    });
 final accountDeletionCleanupProvider = Provider(
   (ref) => AccountDeletionCleanup(ref.watch(userDatabaseManagerProvider)),
 );
@@ -56,7 +70,16 @@ final deletionSessionCleanupProvider = Provider<Future<void> Function(String)>(
 );
 
 class DeletionUi {
-  const DeletionUi({this.busyUser, this.errorUser, this.message});
+  const DeletionUi({
+    this.busyUser,
+    this.errorUser,
+    this.message,
+    this.instructor = false,
+    this.ownedClassCount,
+    this.ownershipBlocked = false,
+  });
+  final bool instructor, ownershipBlocked;
+  final int? ownedClassCount;
   final String? busyUser, errorUser, message;
 }
 
@@ -104,7 +127,18 @@ class AccountDeletion extends Notifier<DeletionUi> {
     return const DeletionUi();
   }
 
-  Future<void> request(String id, String confirmation) async {
+  void refreshEligibility(String id) {
+    if (state.busyUser != null) return;
+    if (state.errorUser == id)
+      state = DeletionUi(errorUser: id, instructor: state.instructor);
+    ref.invalidate(instructorDeletionEligibilityProvider(id));
+  }
+
+  Future<void> request(
+    String id,
+    String confirmation, {
+    bool instructor = false,
+  }) async {
     if (state.busyUser != null ||
         ref.read(connectivityProvider).asData?.value != true)
       return;
@@ -124,6 +158,15 @@ class AccountDeletion extends Notifier<DeletionUi> {
     }
     if (previous?.stage != DeletionStage.pending && confirmation != 'DELETE')
       return;
+    instructor = previous?.instructor ?? instructor;
+    if (instructor && previous == null) {
+      final eligibility = ref.read(instructorDeletionEligibilityProvider(id));
+      if (eligibility.isLoading ||
+          eligibility.hasError ||
+          eligibility.asData?.value.count != 0 ||
+          (state.errorUser == id && state.ownedClassCount != null))
+        return;
+    }
     final generation = _generation;
     bool current() =>
         ref.mounted &&
@@ -135,10 +178,11 @@ class AccountDeletion extends Notifier<DeletionUi> {
       id,
       session.sessionId,
       previous?.stage ?? DeletionStage.uncertain,
+      instructor: instructor,
     );
     remember(id, confirmation);
     var recorded = previous != null;
-    state = DeletionUi(busyUser: id);
+    state = DeletionUi(busyUser: id, instructor: instructor);
     try {
       await journal.put(id, record);
       recorded = true;
@@ -153,17 +197,30 @@ class AccountDeletion extends Notifier<DeletionUi> {
       if (result == DeletionStage.cleanup) {
         await _remove(id);
       }
-    } on DeletionRejected {
+    } on DeletionRejected catch (error) {
       if (current()) {
         try {
           // A prior accepted/uncertain attempt cannot be disproved by a later denial.
           if (previous == null) {
             await journal.put(id, null);
             await cleanup.block(id, false);
-            state = DeletionUi(
-              errorUser: id,
-              message: "Couldn't delete your account. Try again.",
-            );
+            if (!current()) return;
+            if (error is OwnedClassesExist) {
+              remember(id, '');
+              ref.invalidate(instructorDeletionEligibilityProvider(id));
+              state = DeletionUi(
+                errorUser: id,
+                instructor: instructor,
+                ownershipBlocked: true,
+                ownedClassCount: error.count,
+              );
+            } else {
+              state = DeletionUi(
+                errorUser: id,
+                instructor: instructor,
+                message: "Couldn't delete your account. Try again.",
+              );
+            }
           } else {
             state = DeletionUi(
               errorUser: id,
@@ -181,6 +238,7 @@ class AccountDeletion extends Notifier<DeletionUi> {
       if (current())
         state = DeletionUi(
           errorUser: id,
+          instructor: instructor,
           message: recorded
               ? "We couldn't confirm whether your account was deleted. Connect and check your account status before trying again."
               : "Couldn't delete your account. Try again.",
