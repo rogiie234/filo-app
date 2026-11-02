@@ -89,7 +89,7 @@ class PushEvents extends ChangeNotifier {
     final raw = data['notification_id'];
     final id = validId(raw) ? (raw as String).toLowerCase() : null;
     if (id == null && !open) return;
-    final key = '$id:$open';
+    final key = 'push:$accountId:$id:$open';
     if (!_seen.add(key)) return;
     _pending.add(PushEvent(id, open: open, accountId: accountId));
     notifyListeners();
@@ -145,6 +145,22 @@ class PushEvents extends ChangeNotifier {
 
   void retry(PushEvent event) {
     _pending.add(event);
+    notifyListeners();
+  }
+
+  void clearAccount(String id) {
+    if (_inboxOpen?.accountId == id) finishOpen(_inboxOpen!);
+    for (final event
+        in _pending.where((event) => event.accountId == id).toList()) {
+      finishOpen(event);
+      _pending.remove(event);
+    }
+    _seen.removeWhere(
+      (key) =>
+          key.startsWith('push:$id:') ||
+          key.startsWith('study:$id:') ||
+          key.startsWith('reminder:$id:'),
+    );
     notifyListeners();
   }
 

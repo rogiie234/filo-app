@@ -34,9 +34,9 @@ final class StudyScheduler {
         for(int i=0;i<scheduled.length();i++) cleanup.put(scheduled.getJSONObject(i));
         for(int i=0;i<cleanup.length();i++) {
             JSONObject r=cleanup.getJSONObject(i);
-            alarms().cancel(pending(r)); notifications().cancel("study:"+account(),r.getInt("id"));
+            PendingIntent intent=pending(r); alarms().cancel(intent); intent.cancel(); owner.cancelTap(account(),r.getInt("id"),true); notifications().cancel("study:"+account(),r.getInt("id"));
         }
-        for(int i=0;i<shown().length();i++) notifications().cancel("study:"+account(),shown().getJSONObject(i).getInt("id"));
+        for(int i=0;i<shown().length();i++) { int id=shown().getJSONObject(i).getInt("id"); owner.cancelTap(account(),id,true); notifications().cancel("study:"+account(),id); }
         owner.commit(owner.store.edit().remove("study_registry").remove("study_consumed").remove("study_error").remove("study_shown").remove("study_cleanup").remove("study_once"));
     }
     private JSONArray desired() throws Exception {
@@ -105,7 +105,7 @@ final class StudyScheduler {
             owner.commit(owner.store.edit().putString("study_registry",future.toString()).putString("study_consumed",retained.toString()).putString("study_cleanup",cleanup.toString()).putBoolean("study_error",true));
             for(int i=0;i<cleanup.length();i++) {
                 JSONObject r=cleanup.getJSONObject(i);
-                if(!ids.contains(r.getInt("id"))) { alarms().cancel(pending(r)); notifications().cancel("study:"+account(),r.getInt("id")); }
+                if(!ids.contains(r.getInt("id"))) { PendingIntent intent=pending(r); alarms().cancel(intent); intent.cancel(); owner.cancelTap(account(),r.getInt("id"),true); notifications().cancel("study:"+account(),r.getInt("id")); }
             }
             notifications().createNotificationChannel(new NotificationChannel(CHANNEL,"Study alarms",NotificationManager.IMPORTANCE_DEFAULT));
             for(int i=0;i<future.length();i++) {

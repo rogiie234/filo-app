@@ -64,8 +64,19 @@ final class DeadlineScheduler {
         return PendingIntent.getBroadcast(context, row.getInt("id"), i, PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE);
     }
     private String token(JSONObject row) throws Exception { return row.getInt("id") + ":" + row.getLong("fireAt"); }
+    void cancelTap(String account, int id, boolean study) {
+        Intent launch = context.getPackageManager().getLaunchIntentForPackage(context.getPackageName());
+        if (launch == null) return;
+        if (!study) launch.setAction("com.filo.reminders.OPEN");
+        launch.setData(Uri.parse((study ? "filo-study-tap://" : "filo-deadline-tap://") + account + "/" + id));
+        PendingIntent tap = PendingIntent.getActivity(context, id, launch, PendingIntent.FLAG_NO_CREATE | PendingIntent.FLAG_IMMUTABLE);
+        if (tap != null) tap.cancel();
+    }
     private void cancel(JSONObject row) throws Exception {
-        alarms().cancel(intent(row));
+        PendingIntent pending = intent(row);
+        alarms().cancel(pending);
+        pending.cancel();
+        cancelTap(store.getString("account", ""), row.getInt("id"), false);
         notifications().cancel("deadline:" + store.getString("account", ""), row.getInt("id"));
     }
     void activate(String account, String lease, String path) throws Exception {
@@ -84,9 +95,33 @@ final class DeadlineScheduler {
             new StudyScheduler(this).clear();
             for (int i = 0; i < old.length(); i++) cancel(old.getJSONObject(i));
             for (android.service.notification.StatusBarNotification n : notifications().getActiveNotifications()) {
-                if (("deadline:" + account).equals(n.getTag())) notifications().cancel(n.getTag(), n.getId());
+                if (("deadline:" + account).equals(n.getTag())) {
+                    if (n.getNotification().contentIntent != null) n.getNotification().contentIntent.cancel();
+                    notifications().cancel(n.getTag(), n.getId());
+                }
             }
             commit(store.edit().clear());
+        }
+    }
+    void clearAccount(String account) throws Exception {
+        if (account == null || !account.matches("[a-zA-Z0-9-]+")) throw new IllegalArgumentException("Invalid account");
+        synchronized (DeadlineScheduler.class) {
+            if (DeadlinePolicy.ownsAccount(store.getString("account", ""), account)) {
+                // Fence receivers even when a damaged registry prevents cancellation.
+                commit(store.edit().remove("lease"));
+                clear();
+            }
+            for (android.service.notification.StatusBarNotification n : notifications().getActiveNotifications()) {
+                if (DeadlinePolicy.accountNotification(n.getTag(), account)) {
+                    if (n.getNotification().contentIntent != null) n.getNotification().contentIntent.cancel();
+                    notifications().cancel(n.getTag(), n.getId());
+                }
+            }
+            for (android.service.notification.StatusBarNotification n : notifications().getActiveNotifications()) {
+                if (DeadlinePolicy.accountNotification(n.getTag(), account)) {
+                    throw new IllegalStateException("Notifications remain");
+                }
+            }
         }
     }
     void reconcile(String account, String lease) throws Exception {

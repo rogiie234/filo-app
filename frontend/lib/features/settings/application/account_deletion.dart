@@ -3,6 +3,9 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../core/account_deletion_journal.dart';
 import '../../../core/connectivity/connectivity_provider.dart';
 import '../../../core/notifications/push_providers.dart';
+import '../../../core/notifications/deadline_reminders.dart';
+import '../../../core/notifications/push_events.dart';
+import 'profile_settings.dart';
 import '../../../core/supabase/session_gate.dart';
 import '../../../core/supabase/supabase_provider.dart';
 import '../../../core/sync/background_sync.dart';
@@ -50,17 +53,33 @@ final accountDeletionCleanupProvider = Provider(
 final deletionSessionCleanupProvider = Provider<Future<void> Function(String)>(
   (ref) => (id) async {
     final client = ref.read(supabaseClientProvider);
-    if (client.auth.currentUser != null && client.auth.currentUser!.id != id)
-      return;
-    final push = ref.read(pushRegistrationProvider);
-    final current = push.sessionGuard();
-    await stopBackgroundSync(isCurrent: current);
-    if (client.auth.currentUser?.id == id) {
-      if (!current()) return;
-      await push.leave();
-      if (client.auth.currentUser?.id == id)
-        throw StateError('Local session remains');
+    Object? failure;
+    try {
+      await stopBackgroundSyncForAccount(id);
+    } catch (error) {
+      failure = error;
     }
+    try {
+      await const DeadlineBridge().clearAccount(id);
+    } catch (error) {
+      failure ??= error;
+    }
+    try {
+      ref.read(pushEventsProvider).clearAccount(id);
+      await ref.read(confirmedProfileProvider.notifier).clearAccount(id);
+      ref.invalidate(cachedAccountProfileProvider(id));
+      ref.invalidate(accountProfileProvider(id));
+    } catch (error) {
+      failure ??= error;
+    }
+    try {
+      await ref.read(pushRegistrationProvider).leaveForDeletion(id);
+    } catch (error) {
+      failure ??= error;
+    }
+    if (client.auth.currentUser?.id == id)
+      failure ??= StateError('Local session remains');
+    if (failure != null) throw failure;
     if (client.auth.currentUser != null) return;
     ref.invalidate(syncCoordinatorProvider);
     ref.invalidate(driveBackupProvider);
@@ -263,6 +282,10 @@ class AccountDeletion extends Notifier<DeletionUi> {
       await ref.read(deletionSessionCleanupProvider)(id);
       await ref.read(accountDeletionCleanupProvider).remove(id);
       await ref.read(deletionJournalProvider.notifier).put(id, null);
+      if (_draftUser == id) {
+        _draftUser = null;
+        _draft = '';
+      }
     } catch (_) {
       state = DeletionUi(
         errorUser: id,

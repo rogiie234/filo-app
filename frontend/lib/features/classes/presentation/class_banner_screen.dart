@@ -1,3 +1,5 @@
+import '../../../core/picked_image_file.dart';
+
 import 'dart:typed_data';
 
 import 'package:flutter/material.dart';
@@ -33,20 +35,24 @@ class _ClassBannerState extends ConsumerState<ClassBannerScreen> {
         requestFullMetadata: false,
       );
       if (image == null) return;
-      final extension = image.name.split('.').last.toLowerCase();
-      if (!['jpg', 'jpeg', 'png', 'webp'].contains(extension)) {
-        throw const FormatException('Choose a JPG, PNG, or WebP image.');
-      }
-      if (await image.length() > 2097152) {
-        throw const FormatException('Choose a banner image smaller than 2 MB.');
-      }
-      final bytes = await image.readAsBytes();
-      if (!mounted) return;
-      setState(() {
-        _uploadPath = null;
-        _bannerImage = bytes;
-        _imageExtension = extension;
-        _error = null;
+      await usePickedImage(image, () async {
+        final extension = image.name.split('.').last.toLowerCase();
+        if (!['jpg', 'jpeg', 'png', 'webp'].contains(extension)) {
+          throw const FormatException('Choose a JPG, PNG, or WebP image.');
+        }
+        if (await image.length() > 2097152) {
+          throw const FormatException(
+            'Choose a banner image smaller than 2 MB.',
+          );
+        }
+        final bytes = await image.readAsBytes();
+        if (!mounted) return;
+        setState(() {
+          _uploadPath = null;
+          _bannerImage = bytes;
+          _imageExtension = extension;
+          _error = null;
+        });
       });
     } catch (error) {
       if (mounted) {

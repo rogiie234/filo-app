@@ -6,5 +6,12 @@ final class DeadlinePolicy {
     static boolean current(String account, String lease, String eventAccount, String eventLease) {
         return !lease.isEmpty() && account.equals(eventAccount) && lease.equals(eventLease);
     }
+    static boolean ownsAccount(String current, String deleting) {
+        return deleting != null && !deleting.isEmpty() && deleting.equals(current);
+    }
+    static boolean accountNotification(String tag, String account) {
+        return account != null && !account.isEmpty() &&
+            (("deadline:" + account).equals(tag) || ("study:" + account).equals(tag));
+    }
     static boolean exact(int sdk, boolean allowed) { return sdk < 31 || allowed; }
 }

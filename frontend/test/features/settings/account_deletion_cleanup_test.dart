@@ -43,40 +43,63 @@ void main() {
     FileStorage.setBlocked(Directory(p.join(root.path, 'files', 'a')), false);
     await root.delete(recursive: true);
   });
-  test(
-    'removes only owner files, snapshots, database and owner secure keys',
-    () async {
-      final a = await manager.openForUser('a');
-      await a.customStatement(
-        "INSERT INTO app_settings(key,value) VALUES('theme','dark')",
-      );
-      await fixture('files/a/blobs/download.pdf');
-      await fixture('files/a/folders/nested/personal.txt');
-      await fixture('drive_backup/a/job/snapshot.zip');
-      final other = await fixture('files/b/blobs/keep.pdf');
-      final export = await fixture('exports/keep.pdf');
-      final b = await manager.openForUser('b');
-      await cleanup.remove('a');
-      expect(await Directory(p.join(root.path, 'files/a')).exists(), isFalse);
-      expect(
-        await Directory(p.join(root.path, 'drive_backup/a')).exists(),
-        isFalse,
-      );
-      expect(
-        await File(p.join(root.path, 'databases/a.sqlite')).exists(),
-        isFalse,
-      );
-      expect(await other.readAsString(), 'files/b/blobs/keep.pdf');
-      expect(await export.readAsString(), 'exports/keep.pdf');
-      expect(await b.customSelect('SELECT 1').get(), isNotEmpty);
-      const secure = FlutterSecureStorage();
-      expect(await secure.read(key: 'filo.drive.a.job'), isNull);
-      expect(await secure.read(key: 'filo.offline_verified.a'), isNull);
-      expect(await secure.read(key: 'filo.offline_verified.b'), 'preserve');
-      expect(await secure.read(key: 'filo.device'), 'installation');
-      await cleanup.remove('a'); // Interrupted cleanup is idempotent.
-    },
-  );
+  test('removes only owner files, snapshots, database and owner secure keys', () async {
+    final a = await manager.openForUser('a');
+    await a.customStatement(
+      "INSERT INTO app_settings(key,value) VALUES('theme','dark')",
+    );
+    await fixture('files/a/blobs/download.pdf');
+    await fixture('files/a/folders/nested/personal.txt');
+    await fixture('drive_backup/a/job/snapshot.zip');
+    final other = await fixture('files/b/blobs/keep.pdf');
+    await fixture('.account-a.lock');
+    final otherLock = await fixture('.account-b.lock');
+    final export = await fixture('exports/keep.pdf');
+    final b = await manager.openForUser('b');
+    await b.customStatement(
+      "INSERT INTO app_settings(key,value) VALUES('theme','light')",
+    );
+    await b.customStatement(
+      "INSERT INTO file_settings(key,value) VALUES('alarm-fixture','preserve')",
+    );
+    await cleanup.remove('a');
+    expect(await Directory(p.join(root.path, 'files/a')).exists(), isFalse);
+    expect(
+      await Directory(p.join(root.path, 'drive_backup/a')).exists(),
+      isFalse,
+    );
+    expect(
+      await File(p.join(root.path, 'databases/a.sqlite')).exists(),
+      isFalse,
+    );
+    expect(await other.readAsString(), 'files/b/blobs/keep.pdf');
+    expect(await File(p.join(root.path, '.account-a.lock')).exists(), isFalse);
+    expect(await otherLock.readAsString(), '.account-b.lock');
+    expect(
+      (await b
+              .customSelect("SELECT value FROM app_settings WHERE key='theme'")
+              .getSingle())
+          .read<String>('value'),
+      'light',
+    );
+    expect(
+      (await b
+              .customSelect(
+                "SELECT value FROM file_settings WHERE key='alarm-fixture'",
+              )
+              .getSingle())
+          .read<String>('value'),
+      'preserve',
+    );
+    expect(await export.readAsString(), 'exports/keep.pdf');
+    expect(await b.customSelect('SELECT 1').get(), isNotEmpty);
+    const secure = FlutterSecureStorage();
+    expect(await secure.read(key: 'filo.drive.a.job'), isNull);
+    expect(await secure.read(key: 'filo.offline_verified.a'), isNull);
+    expect(await secure.read(key: 'filo.offline_verified.b'), 'preserve');
+    expect(await secure.read(key: 'filo.device'), 'installation');
+    await cleanup.remove('a'); // Interrupted cleanup is idempotent.
+  });
   test(
     'blocks new temporary writes and waits for active foreground lease',
     () async {

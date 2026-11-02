@@ -1,10 +1,11 @@
 import 'dart:async';
-import 'dart:io';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:path_provider/path_provider.dart';
 import 'package:share_plus/share_plus.dart';
+
+import '../../files/data/account_temporary_file.dart';
+import '../../../core/supabase/auth_providers.dart';
 
 import '../../../core/connectivity/connectivity_provider.dart';
 import '../../../core/widgets/filo_widgets.dart';
@@ -67,17 +68,27 @@ class _InstructorResultsScreenState
   Future<void> _export(QuizMonitoring data, List<ResultJson> rows) async {
     if (_exporting || rows.isEmpty) return;
     setState(() => _exporting = true);
-    Directory? directory;
+    final owner = ref.read(authUserIdProvider).asData?.value;
+    if (owner == null) {
+      setState(() => _exporting = false);
+      return;
+    }
+    AccountTemporaryFile? temporary;
     try {
       // Capture the displayed snapshot before awaiting platform operations.
       final csv = resultsCsv(data, rows);
       final title = data.quiz['title'] as String? ?? 'Quiz';
       final filename = resultsCsvFilename(title, DateTime.now().toUtc());
-      final temporary = await getTemporaryDirectory();
-      directory = await temporary.createTemp('filo-results-');
-      final file = File('${directory.path}/$filename');
+      temporary = await AccountTemporaryFile.create(
+        owner,
+        filename,
+        isCurrent: () =>
+            mounted && ref.read(authUserIdProvider).asData?.value == owner,
+      );
+      final file = temporary.file;
       await file.writeAsString(csv, flush: true);
-      if (!mounted) return;
+      if (!mounted || ref.read(authUserIdProvider).asData?.value != owner)
+        return;
       final current = ref
           .read(quizMonitoringProvider(widget.quizId))
           .asData
@@ -97,9 +108,9 @@ class _InstructorResultsScreenState
     } catch (_) {
       if (mounted) showMessage(context, "Couldn't export results. Try again.");
     } finally {
-      if (directory != null) {
+      if (temporary != null) {
         try {
-          await directory.delete(recursive: true);
+          await temporary.close();
         } catch (_) {
           // The platform may retain the shared file handle temporarily.
         }

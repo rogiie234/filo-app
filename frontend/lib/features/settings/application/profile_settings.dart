@@ -1,3 +1,4 @@
+import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/supabase/auth_providers.dart';
@@ -110,6 +111,15 @@ class ConfirmedProfileController extends Notifier<ConfirmedProfile?> {
   ConfirmedProfile? build() {
     ref.watch(authUserIdProvider);
     return null;
+  }
+
+  Future<void> clearAccount(String id) async {
+    final current = state;
+    if (current == null || current.profile.id != id) return;
+    state = null;
+    if (current.photo != null) await MemoryImage(current.photo!.bytes).evict();
+    if (current.profile.photoUrl != null)
+      await NetworkImage(current.profile.photoUrl!).evict();
   }
 
   void publish(AccountProfile profile, ProfilePhotoDraft? photo) {

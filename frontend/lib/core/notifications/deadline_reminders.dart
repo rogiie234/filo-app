@@ -35,6 +35,13 @@ class DeadlineBridge {
       });
   }
 
+  Future<void> clearAccount(String accountId) async {
+    if (supported)
+      await channel.invokeMethod<void>('clearAccount', {
+        'accountId': accountId,
+      });
+  }
+
   Future<void> clear() async {
     if (supported) await channel.invokeMethod<void>('clear');
   }

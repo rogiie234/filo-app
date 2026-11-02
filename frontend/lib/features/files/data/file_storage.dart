@@ -3,6 +3,7 @@ import 'dart:io';
 import 'package:flutter/services.dart';
 import 'package:path/path.dart' as p;
 import 'package:path_provider/path_provider.dart';
+import 'package:uuid/uuid.dart';
 
 const maxLocalFileBytes = 26214400;
 
@@ -148,11 +149,20 @@ class FileStorage {
     final storage = FileStorage(
       Directory(p.join(support.path, 'files', userId)),
     );
-    await storage.root.create(recursive: true);
-    await Directory(p.join(storage.root.path, 'blobs')).create(recursive: true);
-    await Directory(p.join(storage.root.path, 'temporary'))
-        .create(recursive: true);
-    if (cleanTemporary) await storage.clearTemporary(isCurrent: isCurrent);
+    final opening = storage.reserveTemporary('.opening-${const Uuid().v4()}');
+    try {
+      await storage.root.create(recursive: true);
+      await Directory(p.join(storage.root.path, 'blobs'))
+          .create(recursive: true);
+      await Directory(p.join(storage.root.path, 'temporary'))
+          .create(recursive: true);
+      if (cleanTemporary) await storage.clearTemporary(isCurrent: isCurrent);
+      storage.ensureAvailable();
+      if (isCurrent != null && !isCurrent())
+        throw StateError('Account changed');
+    } finally {
+      storage.releaseTemporary(opening);
+    }
     return storage;
   }
 

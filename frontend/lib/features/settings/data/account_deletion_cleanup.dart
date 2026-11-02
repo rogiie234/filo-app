@@ -58,13 +58,41 @@ class AccountDeletionCleanup {
       }
       await _remove(p.join(parent.path, id), parent.path);
     }
+    final legacyLock = p.join(support.path, '.account-$id.lock');
+    final legacyType = await FileSystemEntity.type(
+      legacyLock,
+      followLinks: false,
+    );
+    if (legacyType == FileSystemEntityType.directory)
+      throw StateError('Invalid legacy lock');
+    await _remove(legacyLock, support.path);
     const storage = FlutterSecureStorage();
+    bool owned(String key) =>
+        key == 'filo.offline_verified.$id' ||
+        key == 'notifications_prompt_$id' ||
+        key.startsWith('filo.drive.$id.');
     final keys = await storage.readAll();
     for (final key in keys.keys.toList()) {
-      if (key == 'filo.offline_verified.$id' ||
-          key == 'notifications_prompt_$id' ||
-          key.startsWith('filo.drive.$id.')) {
+      if (owned(key)) {
         await storage.delete(key: key);
+      }
+    }
+    if ((await storage.readAll()).keys.any(owned))
+      throw StateError('Account keys remain');
+    for (final path in [
+      p.join(support.path, 'files', id),
+      p.join(support.path, 'drive_backup', id),
+      p.join(support.path, '.account-$id.lock'),
+      for (final suffix in ['', '-wal', '-shm', '-journal'])
+        p.join(
+          support.path,
+          'databases',
+          '${UserDatabaseManager.filenameForUser(id)}$suffix',
+        ),
+    ]) {
+      if (await FileSystemEntity.type(path, followLinks: false) !=
+          FileSystemEntityType.notFound) {
+        throw StateError('Account files remain');
       }
     }
   }

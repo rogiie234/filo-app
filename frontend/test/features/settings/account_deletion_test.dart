@@ -148,7 +148,11 @@ void main() {
   late FakeRemoval cleanup;
   late ProviderContainer container;
   var session = (userId: 'a', sessionId: 's');
-  Future<void> setup({bool online = true, DeletionStage? stage}) async {
+  Future<void> setup({
+    bool online = true,
+    DeletionStage? stage,
+    Future<void> Function(String)? sessionCleanup,
+  }) async {
     journal = MemoryJournal();
     if (stage != null) journal.saved['a'] = DeletionRecord('a', 's', stage);
     remote = FakeDeletion();
@@ -161,7 +165,9 @@ void main() {
         connectivityProvider.overrideWith((ref) => Stream.value(online)),
         accountDeletionRepositoryProvider.overrideWithValue(remote),
         accountDeletionCleanupProvider.overrideWithValue(cleanup),
-        deletionSessionCleanupProvider.overrideWithValue((_) async {}),
+        deletionSessionCleanupProvider.overrideWithValue(
+          sessionCleanup ?? (_) async {},
+        ),
       ],
     );
     addTearDown(container.dispose);
@@ -280,5 +286,25 @@ void main() {
         .request('a', 'DELETE');
     expect(remote.calls, 0);
     expect(journal.saved['a']!.stage, DeletionStage.pending);
+  });
+  test('native cleanup failure retains journal; offline retry never repeats server deletion', () async {
+    var fail = true;
+    await setup(
+      online: false,
+      stage: DeletionStage.cleanup,
+      sessionCleanup: (_) async {
+        if (fail) throw StateError('native cancellation');
+      },
+    );
+    final flow = container.read(accountDeletionProvider.notifier);
+    await flow.removeLocal('a');
+    expect(journal.saved['a']!.stage, DeletionStage.cleanup);
+    expect(cleanup.removed, 0);
+    expect(remote.calls, 0);
+    fail = false;
+    await flow.removeLocal('a');
+    expect(journal.saved, isEmpty);
+    expect(cleanup.removed, 1);
+    expect(remote.calls, 0);
   });
 }

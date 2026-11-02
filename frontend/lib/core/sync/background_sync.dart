@@ -129,3 +129,11 @@ Future<void> stopBackgroundSync({bool Function()? isCurrent}) =>
       if (isCurrent != null && !isCurrent()) return;
       await Workmanager().cancelByUniqueName('filo.sync');
     });
+
+Future<void> stopBackgroundSyncForAccount(String id) =>
+    _updateSchedule(() async {
+      const storage = FlutterSecureStorage();
+      if (await storage.read(key: 'filo.sync.active') != id) return;
+      await Workmanager().cancelByUniqueName('filo.sync');
+      await storage.delete(key: 'filo.sync.active');
+    });

@@ -32,6 +32,7 @@ public final class DeadlineReminderPlugin implements FlutterPlugin, ActivityAwar
                             try { response = new StudyScheduler(scheduler).restore(); }
                             catch(Exception e) { new StudyScheduler(scheduler).failed(); throw e; }
                             break;
+                        case "clearAccount": scheduler.clearAccount(call.argument("accountId")); break;
                         case "clear": scheduler.clear(); break;
                         case "status": response = scheduler.status(); break;
                         case "openSettings": openSettings(call.argument("section")); break;
@@ -39,9 +40,12 @@ public final class DeadlineReminderPlugin implements FlutterPlugin, ActivityAwar
                         case "guideOpenSettings": response=new PhoneSettings(scheduler.context).open(call.argument("section")); break;
                         default: main.post(result::notImplemented); return;
                     }
-                    Object answer = response; main.post(() -> result.success(answer));
+                    Object answer = response; main.post(() -> {
+                        if (call.method.equals("clearAccount") && tap != null && Objects.equals(tap.get("accountId"), call.argument("accountId"))) tap = null;
+                        result.success(answer);
+                    });
                 } catch (Exception e) {
-                    if (!call.method.equals("studyReconcile") && !call.method.equals("openSettings") && !call.method.startsWith("guide")) scheduler.failed();
+                    if (!call.method.equals("clearAccount") && !call.method.equals("studyReconcile") && !call.method.equals("openSettings") && !call.method.startsWith("guide")) scheduler.failed();
                     main.post(() -> result.error("REMINDER_UNAVAILABLE", "Could not update local reminders", null));
                 }
             });

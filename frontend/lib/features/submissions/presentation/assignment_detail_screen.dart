@@ -10,6 +10,8 @@ import 'package:uuid/uuid.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../../../core/connectivity/connectivity_provider.dart';
+import '../../../core/picked_image_file.dart';
+import '../../files/data/account_temporary_file.dart';
 import '../../../core/supabase/supabase_provider.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/widgets/filo_widgets.dart';
@@ -62,6 +64,22 @@ class _AssignmentDetailScreenState
     extends ConsumerState<AssignmentDetailScreen> {
   final _comment = TextEditingController();
   final _pending = <_PendingFile>[];
+  final _pickedCopies = <AccountTemporaryFile>{};
+  Future<void> _releasePickedCopies({bool leaving = false}) async {
+    for (final copy in _pickedCopies.toList()) {
+      if (_pending.any((file) => file.path == copy.file.path && file.uploading))
+        continue;
+      if (!leaving && _pending.any((file) => file.path == copy.file.path))
+        continue;
+      _pickedCopies.remove(copy);
+      try {
+        await copy.close();
+      } catch (_) {
+        /* Owned leftovers are removed by account cleanup. */
+      }
+    }
+  }
+
   final _opening = <String>{};
   Timer? _ticker;
   bool _busy = false,
@@ -102,6 +120,7 @@ class _AssignmentDetailScreenState
   @override
   void dispose() {
     _ticker?.cancel();
+    unawaited(_releasePickedCopies(leaving: true));
     _comment.dispose();
     super.dispose();
   }
@@ -346,6 +365,12 @@ class _AssignmentDetailScreenState
   }
 
   Future<void> _photo(ImageSource source) async {
+    final client = ref.read(supabaseClientProvider);
+    final session = client.auth.currentSession;
+    if (session == null) return;
+    bool current() =>
+        mounted &&
+        client.auth.currentSession?.accessToken == session.accessToken;
     try {
       final photo = await ImagePicker().pickImage(
         source: source,
@@ -354,8 +379,22 @@ class _AssignmentDetailScreenState
         maxHeight: 2000,
         requestFullMetadata: false,
       );
-      if (photo != null && mounted) {
-        await _selectFile(photo.path, photo.name);
+      if (photo != null) {
+        await usePickedImage(photo, () async {
+          if (!current()) return;
+          final copy = await AccountTemporaryFile.create(
+            session.user.id,
+            photo.name,
+            isCurrent: current,
+          );
+          _pickedCopies.add(copy);
+          try {
+            await File(photo.path).copy(copy.file.path);
+            if (current()) await _selectFile(copy.file.path, photo.name);
+          } finally {
+            await _releasePickedCopies(leaving: !mounted);
+          }
+        });
       }
     } catch (_) {
       _message(
@@ -436,6 +475,7 @@ class _AssignmentDetailScreenState
       );
       if (mounted) {
         setState(() => _pending.remove(file));
+        unawaited(_releasePickedCopies());
       }
     } catch (error) {
       if (mounted) {
@@ -446,18 +486,16 @@ class _AssignmentDetailScreenState
         );
       }
     } finally {
-      if (mounted) {
-        setState(() {
-          _busy = false;
-          file.uploading = false;
-        });
-      }
+      file.uploading = false;
+      if (mounted) setState(() => _busy = false);
+      await _releasePickedCopies(leaving: !mounted);
     }
   }
 
   Future<void> _discard(_PendingFile file) async {
     if (!file.attempted) {
       setState(() => _pending.remove(file));
+      unawaited(_releasePickedCopies());
       return;
     }
     if (!_online) {
@@ -471,6 +509,7 @@ class _AssignmentDetailScreenState
       await repository!.discardUpload(widget.postId, file.id, file.name);
       if (mounted) {
         setState(() => _pending.remove(file));
+        unawaited(_releasePickedCopies());
       }
     });
   }
@@ -769,6 +808,7 @@ class _AssignmentDetailScreenState
           setState(() {
             _commentDirty = false;
             _pending.clear();
+            unawaited(_releasePickedCopies());
             _draftLink = null;
             _draftText = null;
           });

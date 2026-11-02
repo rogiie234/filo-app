@@ -26,4 +26,18 @@ public class DeadlinePolicyTest {
         assertFalse(DeadlinePolicy.exact(31, false));
         assertTrue(DeadlinePolicy.exact(31, true));
     }
+    @Test public void deletionTargetsOnlyItsNativeAccountRegistry() {
+        assertTrue(DeadlinePolicy.ownsAccount("A", "A"));
+        assertFalse(DeadlinePolicy.ownsAccount("B", "A"));
+        assertFalse(DeadlinePolicy.ownsAccount("", "A"));
+        assertFalse(DeadlinePolicy.ownsAccount("B", ""));
+    }
+    @Test public void deletionCancelsOnlyMatchingReminderAndStudyTags() {
+        assertTrue(DeadlinePolicy.accountNotification("deadline:A", "A"));
+        assertTrue(DeadlinePolicy.accountNotification("study:A", "A"));
+        assertFalse(DeadlinePolicy.accountNotification("deadline:B", "A"));
+        assertFalse(DeadlinePolicy.accountNotification("study:B", "A"));
+        assertFalse(DeadlinePolicy.accountNotification(null, "A"));
+        assertFalse(DeadlinePolicy.accountNotification("deadline:A2", "A"));
+    }
 }

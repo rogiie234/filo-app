@@ -12,6 +12,7 @@ class PushRegistration {
     required this.deleteToken,
     required this.signOut,
     this.onStatus,
+    this.signOutDeleted,
   });
 
   final String? Function() account;
@@ -22,11 +23,12 @@ class PushRegistration {
   final Future<void> Function(String token) unregister;
   final Future<void> Function() deleteToken;
   final Future<void> Function() signOut;
+  final Future<void> Function()? signOutDeleted;
   final void Function(String)? onStatus;
   Future<void>? _pending;
   Future<void>? _leaving;
   String? _token, _registeredAccount, _registeredToken, _blockedAccount;
-  bool _again = false, _disposed = false;
+  bool _again = false, _disposed = false, _deletionLeave = false;
   Object _generation = Object();
 
   bool Function() sessionGuard() {
@@ -135,6 +137,58 @@ class PushRegistration {
         rethrow;
       }
     }
+  }
+
+  Future<void> leaveForDeletion(String id) {
+    final pending = _leaving;
+    if (pending != null) {
+      if (_deletionLeave) return pending;
+      return pending.then(
+        (_) => leaveForDeletion(id),
+        onError: (Object _, StackTrace _) => leaveForDeletion(id),
+      );
+    }
+    _deletionLeave = true;
+    return _leaving = _leaveDeleted(id).whenComplete(() {
+      _deletionLeave = false;
+      _leaving = null;
+      if (_again && !_disposed && account() != null) unawaited(sync());
+    });
+  }
+
+  Future<void> _leaveDeleted(String id) async {
+    final owner = account();
+    if (owner != null && !owner.startsWith('$id:')) return;
+    final generation = _generation;
+    bool current() =>
+        !_disposed && identical(generation, _generation) && account() == owner;
+    _blockedAccount = owner;
+    _again = false;
+    await _pending;
+    if (!current()) return;
+    try {
+      if (owner != null && _token != null) await unregister(_token!);
+    } catch (_) {
+      /* Remote removal is best effort; local deletion is confirmed separately. */
+    }
+    if (!current()) return;
+    Object? tokenError;
+    try {
+      await deleteToken();
+    } catch (error) {
+      tokenError = error;
+    }
+    if (!current()) return;
+    _token = _registeredAccount = _registeredToken = null;
+    if (owner != null) {
+      try {
+        await (signOutDeleted ?? signOut)();
+      } catch (_) {
+        if (current()) rethrow;
+      }
+    }
+    if (tokenError != null && (current() || account() == null))
+      throw tokenError;
   }
 
   void dispose() {

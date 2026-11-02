@@ -37,7 +37,7 @@ final deadlineSessionProvider = FutureProvider.autoDispose<DeadlineReminders?>((
   await bridge.activate(
     id,
     lease,
-    '${root.path}/${UserDatabaseManager.filenameForUser(id)}',
+    '${root.path}/databases/${UserDatabaseManager.filenameForUser(id)}',
   );
   final service = DeadlineReminders(
     account.db,

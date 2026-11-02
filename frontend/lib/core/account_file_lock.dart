@@ -29,7 +29,8 @@ Future<AccountFileLock> lockAccountFiles(
   if (!RegExp(r'^[a-zA-Z0-9-]+$').hasMatch(id)) {
     throw StateError('Invalid account');
   }
-  final name = 'filo.account.files.$id';
+  final support = await directoryProvider();
+  final name = 'filo.account.files:${p.normalize(support.absolute.path)}';
   final port = ReceivePort();
   // POSIX file locks alone do not exclude another isolate in the same process.
   if (!IsolateNameServer.registerPortWithName(port.sendPort, name)) {
@@ -38,8 +39,7 @@ Future<AccountFileLock> lockAccountFiles(
   }
   RandomAccessFile? handle;
   try {
-    final support = await directoryProvider();
-    final file = File(p.join(support.path, '.account-$id.lock'));
+    final file = File(p.join(support.path, '.account-files.lock'));
     if (await FileSystemEntity.type(file.path, followLinks: false) ==
         FileSystemEntityType.link) {
       throw StateError('Unsafe account lock');

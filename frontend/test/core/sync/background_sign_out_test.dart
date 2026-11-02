@@ -76,4 +76,21 @@ void main() {
     await scheduleBackgroundSync('b');
     expect(work.events, ['schedule:b']);
   });
+  test('deletion removes matching background marker but preserves replacement account', () async {
+    await stopBackgroundSyncForAccount('b');
+    expect(work.events, isEmpty);
+    await stopBackgroundSyncForAccount('a');
+    expect(work.events, ['cancel']);
+    expect(
+      await const FlutterSecureStorage().read(key: 'filo.sync.active'),
+      isNull,
+    );
+    await scheduleBackgroundSync('b');
+    await stopBackgroundSyncForAccount('a');
+    expect(
+      await const FlutterSecureStorage().read(key: 'filo.sync.active'),
+      'b',
+    );
+    expect(work.events, ['cancel', 'schedule:b']);
+  });
 }

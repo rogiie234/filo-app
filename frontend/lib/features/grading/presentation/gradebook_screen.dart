@@ -1,10 +1,11 @@
 import 'dart:async';
-import 'dart:io';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:path_provider/path_provider.dart';
 import 'package:share_plus/share_plus.dart';
+
+import '../../files/data/account_temporary_file.dart';
+import '../../../core/supabase/auth_providers.dart';
 
 import '../../../core/widgets/filo_icon.dart';
 import '../../../core/connectivity/connectivity_provider.dart';
@@ -115,7 +116,12 @@ class _GradebookScreenState extends ConsumerState<GradebookScreen> {
       return;
     }
     setState(() => _exporting = true);
-    File? file;
+    final owner = ref.read(authUserIdProvider).asData?.value;
+    if (owner == null) {
+      setState(() => _exporting = false);
+      return;
+    }
+    AccountTemporaryFile? temporary;
     try {
       String cell(Object? value) {
         var text = value?.toString() ?? '';
@@ -155,18 +161,17 @@ class _GradebookScreenState extends ConsumerState<GradebookScreen> {
       final room = rooms.where((r) => r.id == widget.classId).firstOrNull;
       final name = room == null ? 'class' : '${room.section}_${room.course}';
       final date = DateTime.now().toIso8601String().split('T').first;
-      final directory = await getTemporaryDirectory();
-      // Use a dedicated temporary directory; remove only this export after sharing.
-      final exportDirectory = await Directory(
-        '${directory.path}/filo-grades-${DateTime.now().microsecondsSinceEpoch}',
-      ).create();
-      file = File(
-        '${exportDirectory.path}/${name.replaceAll(RegExp(r'[^\w-]'), '_')}_$date.csv',
+      temporary = await AccountTemporaryFile.create(
+        owner,
+        "${name.replaceAll(RegExp(r'[^\w-]'), '_')}_$date.csv",
+        isCurrent: () =>
+            mounted && ref.read(authUserIdProvider).asData?.value == owner,
       );
+      final file = temporary.file;
       await file.writeAsString(
         '\uFEFF${rows.map((row) => row.map(cell).join(',')).join('\r\n')}\r\n',
       );
-      if (!mounted) {
+      if (!mounted || ref.read(authUserIdProvider).asData?.value != owner) {
         return;
       }
       final box = context.findRenderObject() as RenderBox?;
@@ -186,12 +191,9 @@ class _GradebookScreenState extends ConsumerState<GradebookScreen> {
         );
       }
     } finally {
-      if (file != null) {
+      if (temporary != null) {
         try {
-          if (await file.exists()) {
-            await file.delete();
-          }
-          await file.parent.delete();
+          await temporary.close();
         } catch (_) {
           /* OS may retain a share handle. */
         }

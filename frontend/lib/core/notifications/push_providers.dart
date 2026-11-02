@@ -133,10 +133,16 @@ final pushRegistrationProvider = Provider<PushRegistration>((ref) {
         }
       }
     },
+    signOutDeleted: () async {
+      final current = currentSession();
+      if (current()) await client.auth.signOut(scope: SignOutScope.local);
+    },
     signOut: () async {
       final current = currentSession();
+      final accountId = client.auth.currentUser?.id;
       try {
-        await const DeadlineBridge().clear();
+        if (accountId != null)
+          await const DeadlineBridge().clearAccount(accountId);
       } catch (_) {
         _pushStatus('Sign-out cleanup pending: deadline reminders');
       }

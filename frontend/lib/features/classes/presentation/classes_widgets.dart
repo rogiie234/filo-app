@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:typed_data';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -24,8 +25,26 @@ final classImageProvider = FutureProvider.autoDispose
       }
       final renewal = Timer(const Duration(minutes: 50), ref.invalidateSelf);
       ref.onDispose(renewal.cancel);
-      return await client.storage.from(key.$1).createSignedUrl(key.$2, 3600);
+      final url = await client.storage
+          .from(key.$1)
+          .createSignedUrl(key.$2, 3600);
+      if (!ref.mounted) {
+        await NetworkImage(url).evict();
+        return null;
+      }
+      ref.onDispose(() => unawaited(NetworkImage(url).evict()));
+      return url;
     });
+
+final _avatarUrlCache = Provider.autoDispose.family<void, String>((ref, url) {
+  ref.onDispose(() => unawaited(NetworkImage(url).evict()));
+});
+final _avatarMemoryCache = Provider.autoDispose.family<void, Uint8List>((
+  ref,
+  bytes,
+) {
+  ref.onDispose(() => unawaited(MemoryImage(bytes).evict()));
+});
 
 class ClassImage extends ConsumerWidget {
   const ClassImage({
@@ -33,10 +52,12 @@ class ClassImage extends ConsumerWidget {
     this.url,
     this.path,
     required this.bucket,
+    this.evictOnDispose = false,
     required this.fallback,
   });
   final String? url, path;
   final String bucket;
+  final bool evictOnDispose;
   final Widget fallback;
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -46,6 +67,7 @@ class ClassImage extends ConsumerWidget {
     if (resolved == null || resolved.isEmpty) {
       return fallback;
     }
+    if (evictOnDispose) ref.watch(_avatarUrlCache(resolved));
     return Image.network(
       resolved,
       fit: BoxFit.cover,
@@ -75,6 +97,7 @@ class FiloAvatar extends ConsumerWidget {
         saved?.profile.id == userId && saved?.profile.avatarPath == path
         ? saved?.photo
         : null;
+    if (photo != null) ref.watch(_avatarMemoryCache(photo.bytes));
     return ExcludeSemantics(
       child: SizedBox.square(
         dimension: size,
@@ -89,6 +112,7 @@ class FiloAvatar extends ConsumerWidget {
                   url: url,
                   path: path,
                   bucket: 'avatars',
+                  evictOnDispose: true,
                   fallback: ColoredBox(
                     color: Theme.of(context).brightness == Brightness.dark
                         ? Theme.of(context).colorScheme.primaryContainer

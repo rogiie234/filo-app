@@ -2,6 +2,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:image_picker/image_picker.dart';
 
 import '../domain/profile_photo.dart';
+import '../../../core/picked_image_file.dart';
 
 final profilePhotoPickerProvider =
     Provider<Future<ProfilePhotoDraft?> Function()>(
@@ -15,6 +16,10 @@ final profilePhotoPickerProvider =
         );
         return image == null
             ? null
-            : await ProfilePhotoDraft.compress(await image.readAsBytes());
+            : await usePickedImage(
+                image,
+                () async =>
+                    ProfilePhotoDraft.compress(await image.readAsBytes()),
+              );
       },
     );
