@@ -20,14 +20,15 @@ class Brand extends StatelessWidget {
     child: Row(
       mainAxisSize: MainAxisSize.min,
       children: [
-        ClipRRect(
-          borderRadius: BorderRadius.circular(12),
-          child: Image.asset(
-            'assets/brand/icon.png',
-            width: 36,
-            height: 36,
-            cacheWidth: 108,
-          ),
+        Image.asset(
+          Theme.of(context).brightness == Brightness.dark
+              ? 'assets/brand/logo-mark-dark.png'
+              : 'assets/brand/logo-mark-light.png',
+          width: 36,
+          height: 36,
+          fit: BoxFit.contain,
+          cacheWidth: (36 * MediaQuery.devicePixelRatioOf(context)).ceil(),
+          excludeFromSemantics: true,
         ),
         const SizedBox(width: 8),
         const Text(

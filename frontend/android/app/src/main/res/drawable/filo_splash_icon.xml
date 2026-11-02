@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<layer-list xmlns:android="http://schemas.android.com/apk/res/android">
+    <item android:width="288dp" android:height="288dp" android:gravity="center">
+        <bitmap android:src="@drawable/filo_splash_logo" android:gravity="fill"
+            android:filter="true" android:tint="@color/filo_logo_ink" />
+    </item>
+</layer-list>
