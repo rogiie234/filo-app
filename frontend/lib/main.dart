@@ -21,6 +21,11 @@ import 'core/sync/background_sync.dart';
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
   LicenseRegistry.addLicense(() async* {
+    yield LicenseEntryWithLineBreaks([
+      'Nunito',
+    ], await rootBundle.loadString('assets/fonts/OFL.txt'));
+  });
+  LicenseRegistry.addLicense(() async* {
     final license = await rootBundle.loadString(
       'assets/fonts/phosphor/LICENSE',
     );

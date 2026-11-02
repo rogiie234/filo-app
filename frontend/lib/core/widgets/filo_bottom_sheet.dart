@@ -21,7 +21,7 @@ Future<T?> showFiloBottomSheet<T>({
   isScrollControlled: isScrollControlled,
   useSafeArea: true,
   showDragHandle: false,
-  backgroundColor: FiloColors.background,
+  backgroundColor: Theme.of(context).colorScheme.surface,
   elevation: 0,
   clipBehavior: Clip.antiAlias,
   shape: const RoundedRectangleBorder(
@@ -51,22 +51,22 @@ Future<T?> showFiloBottomSheet<T>({
           .removePadding(removeBottom: true),
       child: Theme(
         data: Theme.of(sheetContext).copyWith(
-          listTileTheme: const ListTileThemeData(
+          listTileTheme: ListTileThemeData(
             contentPadding: EdgeInsets.symmetric(horizontal: 24, vertical: 4),
             minTileHeight: 56,
-            iconColor: FiloColors.primary,
-            textColor: FiloColors.ink,
+            iconColor: Theme.of(context).colorScheme.primary,
+            textColor: Theme.of(context).colorScheme.onSurface,
             titleTextStyle: TextStyle(
               fontFamily: 'Nunito',
               fontSize: 15,
               fontWeight: FontWeight.w700,
-              color: FiloColors.ink,
+              color: Theme.of(context).colorScheme.onSurface,
             ),
             subtitleTextStyle: TextStyle(
               fontFamily: 'Nunito',
               fontSize: 13,
               height: 1.4,
-              color: FiloColors.secondary,
+              color: Theme.of(context).colorScheme.onSurfaceVariant,
             ),
             shape: RoundedRectangleBorder(
               borderRadius: BorderRadius.all(Radius.circular(16)),
@@ -120,11 +120,11 @@ Future<T?> showFiloBottomSheet<T>({
                             title,
                             maxLines: 2,
                             overflow: TextOverflow.ellipsis,
-                            style: const TextStyle(
+                            style: TextStyle(
                               fontSize: 22,
-                              fontWeight: FontWeight.w800,
-                              height: 1.25,
-                              color: FiloColors.ink,
+                              fontWeight: FontWeight.w700,
+                              height: 28 / 22,
+                              color: Theme.of(context).colorScheme.onSurface,
                             ),
                           ),
                         ),
@@ -166,7 +166,7 @@ class _FiloSheetHandle extends StatelessWidget {
       width: 40,
       height: 4,
       decoration: BoxDecoration(
-        color: FiloColors.border,
+        color: Theme.of(context).colorScheme.outline,
         borderRadius: BorderRadius.circular(2),
       ),
     ),
@@ -192,18 +192,18 @@ class FiloSheetAction extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final ink = onTap == null
-        ? FiloColors.secondary
+        ? Theme.of(context).colorScheme.onSurfaceVariant
         : destructive
-        ? FiloColors.error
-        : FiloColors.primary;
+        ? Theme.of(context).colorScheme.error
+        : Theme.of(context).colorScheme.primary;
     return Semantics(
       button: true,
       enabled: onTap != null,
       child: Material(
-        color: FiloColors.surface,
+        color: Theme.of(context).colorScheme.surface,
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(20),
-          side: const BorderSide(color: FiloColors.border),
+          side: BorderSide(color: Theme.of(context).colorScheme.outline),
         ),
         clipBehavior: Clip.antiAlias,
         child: InkWell(
@@ -217,7 +217,9 @@ class FiloSheetAction extends StatelessWidget {
                     width: 44,
                     height: 44,
                     decoration: BoxDecoration(
-                      color: FiloColors.tint,
+                      color: Theme.of(context)
+                          .colorScheme
+                          .surfaceContainerHighest,
                       borderRadius: BorderRadius.circular(14),
                     ),
                     child: FiloIcon(icon, color: ink),
@@ -240,10 +242,12 @@ class FiloSheetAction extends StatelessWidget {
                         const SizedBox(height: 4),
                         Text(
                           description!,
-                          style: const TextStyle(
+                          style: TextStyle(
                             fontSize: 13,
                             height: 1.4,
-                            color: FiloColors.secondary,
+                            color: Theme.of(context)
+                                .colorScheme
+                                .onSurfaceVariant,
                           ),
                         ),
                       ],

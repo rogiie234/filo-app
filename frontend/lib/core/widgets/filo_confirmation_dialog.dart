@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 
 import 'filo_icon.dart';
-import '../theme/app_theme.dart';
 import 'filo_button.dart';
 
 /// Returns false for cancellation, the system back action, or barrier dismissal.
@@ -48,16 +47,12 @@ class FiloConfirmationDialog extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => Dialog(
-    backgroundColor: Theme.of(context).scaffoldBackgroundColor,
+    backgroundColor: Theme.of(context).colorScheme.surface,
     surfaceTintColor: Colors.transparent,
     insetPadding: const EdgeInsets.symmetric(horizontal: 24, vertical: 24),
     shape: RoundedRectangleBorder(
       borderRadius: BorderRadius.circular(28),
-      side: BorderSide(
-        color: Theme.of(context).brightness == Brightness.dark
-            ? Theme.of(context).colorScheme.outline
-            : FiloColors.border,
-      ),
+      side: BorderSide(color: Theme.of(context).colorScheme.outline),
     ),
     child: ConstrainedBox(
       constraints: const BoxConstraints(maxWidth: 400),
@@ -73,9 +68,7 @@ class FiloConfirmationDialog extends StatelessWidget {
                   width: 64,
                   height: 64,
                   decoration: BoxDecoration(
-                    color: Theme.of(context).brightness == Brightness.dark
-                        ? Theme.of(context).colorScheme.primaryContainer
-                        : FiloColors.selected,
+                    color: Theme.of(context).colorScheme.primaryContainer,
                     borderRadius: BorderRadius.circular(22),
                   ),
                   child: FiloIcon(
@@ -93,9 +86,9 @@ class FiloConfirmationDialog extends StatelessWidget {
               child: Text(
                 title,
                 textAlign: TextAlign.center,
-                style: Theme.of(context).textTheme.headlineSmall?.copyWith(
+                style: Theme.of(context).textTheme.titleLarge?.copyWith(
                   color: Theme.of(context).colorScheme.onSurface,
-                  fontWeight: FontWeight.w800,
+                  fontWeight: FontWeight.w700,
                 ),
               ),
             ),
@@ -104,10 +97,7 @@ class FiloConfirmationDialog extends StatelessWidget {
               message,
               textAlign: TextAlign.center,
               style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                color: Theme.of(context).brightness == Brightness.dark
-                    ? Theme.of(context).colorScheme.onSurfaceVariant
-                    : FiloColors.secondary,
-                height: 1.5,
+                color: Theme.of(context).colorScheme.onSurfaceVariant,
               ),
             ),
             const SizedBox(height: 28),

@@ -61,10 +61,22 @@ flutter:
     - assets/mascots/cheerful_note.png
     - assets/mascots/waiting.png
     - assets/fonts/phosphor/LICENSE
+    - assets/fonts/OFL.txt
   fonts:
     - family: Nunito
       fonts:
         - asset: assets/fonts/Nunito.ttf
+          weight: 400
+        - asset: assets/fonts/Nunito.ttf
+          weight: 500
+        - asset: assets/fonts/Nunito.ttf
+          weight: 600
+        - asset: assets/fonts/Nunito.ttf
+          weight: 700
+        - asset: assets/fonts/Nunito.ttf
+          weight: 800
+        - asset: assets/fonts/Nunito.ttf
+          weight: 900
     - family: FiloPhosphorRegular
       fonts:
         - asset: assets/fonts/phosphor/Phosphor-Regular.ttf

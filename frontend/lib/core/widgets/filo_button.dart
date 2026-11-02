@@ -13,6 +13,8 @@ class FiloButton extends StatefulWidget {
     this.idlePulse = false,
     this.secondary = false,
     this.destructive = false,
+    this.outlined = false,
+    this.text = false,
     this.icon,
     this.leading,
     this.animateArrow = false,
@@ -22,6 +24,8 @@ class FiloButton extends StatefulWidget {
   final bool idlePulse;
   final bool secondary;
   final bool destructive;
+  final bool outlined;
+  final bool text;
   final IconData? icon;
   final Widget? leading;
   final bool animateArrow;
@@ -99,58 +103,54 @@ class _FiloButtonState extends State<FiloButton>
     // Busy is a temporary guard: preserve its active palette while unavailable
     // actions use a distinct, reusable disabled design.
     final disabled = widget.onPressed == null && !widget.busy;
-    final dark = Theme.of(context).brightness == Brightness.dark;
     final colors = Theme.of(context).colorScheme;
-    final foreground = widget.destructive && !disabled
-        ? colors.onError
-        : dark
-        ? disabled
-              ? colors.onSurfaceVariant
-              : widget.secondary
-              ? colors.onSurface
-              : colors.onPrimary
-        : disabled
-        ? FiloColors.disabledButtonInk
+    final tokens = FiloThemeTokens.of(context);
+    final flat = widget.outlined || widget.text;
+    final edge = disabled || flat
+        ? 0.0
         : widget.secondary
-        ? FiloAnimation.secondaryLabel
-        : FiloAnimation.primaryLabel;
-    final fill = widget.destructive && !disabled
-        ? colors.error
-        : dark
-        ? disabled
-              ? colors.surfaceContainerHighest
-              : widget.secondary
-              ? colors.surface
-              : colors.primary
-        : disabled
-        ? FiloColors.disabledButtonFill
+        ? 3.0
+        : 4.0;
+    final foreground = disabled
+        ? tokens.disabledInk
+        : widget.destructive
+        ? tokens.onDestructive
+        : flat
+        ? colors.primary
         : widget.secondary
-        ? FiloColors.surface
-        : FiloColors.primary;
+        ? colors.onSurface
+        : colors.onPrimary;
+    final fill = flat
+        ? Colors.transparent
+        : disabled
+        ? tokens.disabledFill
+        : widget.destructive
+        ? tokens.destructive
+        : widget.secondary
+        ? colors.surface
+        : colors.primary;
     return ValueListenableBuilder<Set<WidgetState>>(
       valueListenable: _states,
       builder: (context, states, _) {
         final pressed =
             states.contains(WidgetState.pressed) && !disabled && !widget.busy;
         final button = AnimatedScale(
-          scale: pressed ? FiloAnimation.pressScale : 1,
+          scale: 1,
           duration: reduced ? Duration.zero : FiloAnimation.pressDuration,
           curve: FiloAnimation.uiCurve,
           child: AnimatedContainer(
             duration: reduced ? Duration.zero : FiloAnimation.pressDuration,
             curve: FiloAnimation.uiCurve,
             decoration: BoxDecoration(
-              color: widget.destructive && !disabled
-                  ? colors.error.withValues(alpha: 0.8)
-                  : dark
-                  ? colors.outline
-                  : disabled
-                  ? FiloColors.disabledButtonFill
+              color: disabled || flat
+                  ? Colors.transparent
+                  : widget.destructive
+                  ? tokens.destructiveEdge
                   : widget.secondary
-                  ? FiloColors.mint
-                  : FiloColors.edge,
+                  ? tokens.mint
+                  : tokens.primaryEdge,
               borderRadius: BorderRadius.circular(32),
-              boxShadow: disabled
+              boxShadow: disabled || flat
                   ? const []
                   : [
                       BoxShadow(
@@ -168,10 +168,8 @@ class _FiloButtonState extends State<FiloButton>
               duration: reduced ? Duration.zero : FiloAnimation.pressDuration,
               curve: FiloAnimation.uiCurve,
               padding: EdgeInsets.only(
-                top: pressed ? FiloAnimation.pressDepth : 0,
-                bottom: pressed
-                    ? FiloAnimation.pressedEdgeDepth
-                    : FiloAnimation.buttonEdgeDepth,
+                top: pressed && !flat ? edge - 1 : 0,
+                bottom: pressed && !flat ? 1 : edge,
               ),
               child: FilledButton(
                 statesController: _states,
@@ -184,117 +182,141 @@ class _FiloButtonState extends State<FiloButton>
                       disabledBackgroundColor: fill,
                       overlayColor: FiloAnimation.pressOverlay,
                       splashFactory: NoSplash.splashFactory,
-                      side: disabled
-                          ? BorderSide(
-                              color: dark
-                                  ? colors.outline
-                                  : FiloColors.disabledButtonBorder,
-                            )
-                          : widget.secondary
-                          ? BorderSide(
-                              color: dark ? colors.outline : FiloColors.border,
-                            )
+                      side: widget.text
+                          ? BorderSide.none
+                          : disabled
+                          ? BorderSide(color: tokens.disabledBorder)
+                          : widget.secondary || widget.outlined
+                          ? BorderSide(color: colors.outline, width: 1.5)
                           : null,
-                      minimumSize: const Size(double.infinity, 56),
-                      padding: const EdgeInsets.symmetric(
+                      minimumSize: Size(double.infinity, flat ? 48 : 56 - edge),
+                      padding: EdgeInsets.symmetric(
                         horizontal: 20,
-                        vertical: 16,
+                        vertical: flat ? 12 : 14,
                       ),
                       shape: const StadiumBorder(),
                       textStyle: Theme.of(context).textTheme.labelLarge,
                     ).copyWith(
                       foregroundColor: WidgetStatePropertyAll(foreground),
                       iconColor: WidgetStatePropertyAll(foreground),
-                      overlayColor: const WidgetStatePropertyAll(
-                        FiloAnimation.pressOverlay,
+                      overlayColor: WidgetStateProperty.resolveWith(
+                        (states) =>
+                            states.contains(WidgetState.focused) ||
+                                (flat && states.contains(WidgetState.pressed))
+                            ? colors.primary.withValues(alpha: .12)
+                            : Colors.transparent,
                       ),
                     ),
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
+                child: Stack(
+                  alignment: Alignment.center,
                   children: [
-                    if (widget.leading != null) ...[
-                      widget.leading!,
-                      const SizedBox(width: 12),
-                    ],
-                    Flexible(
-                      child: AnimatedSwitcher(
-                        switchInCurve: FiloAnimation.labelInCurve,
-                        switchOutCurve: FiloAnimation.labelOutCurve,
-                        duration: reduced
-                            ? Duration.zero
-                            : FiloAnimation.labelDuration,
-                        layoutBuilder: (current, previous) => Stack(
-                          alignment: Alignment.center,
+                    if (widget.busy)
+                      Semantics(
+                        label: widget.label,
+                        liveRegion: true,
+                        child: SizedBox.square(
+                          dimension: 20,
+                          child: CircularProgressIndicator(
+                            strokeWidth: 2,
+                            color: foreground,
+                          ),
+                        ),
+                      ),
+                    ExcludeSemantics(
+                      excluding: widget.busy,
+                      child: Opacity(
+                        opacity: widget.busy ? 0 : 1,
+                        child: Row(
+                          mainAxisAlignment: MainAxisAlignment.center,
                           children: [
-                            for (final label in widget.labelVariants)
-                              ExcludeSemantics(
-                                child: Opacity(
-                                  opacity: 0,
-                                  child: Text(
-                                    label,
-                                    textAlign: TextAlign.center,
-                                    style: TextStyle(color: foreground),
-                                  ),
+                            if (widget.leading != null) ...[
+                              widget.leading!,
+                              const SizedBox(width: 12),
+                            ],
+                            Flexible(
+                              child: AnimatedSwitcher(
+                                switchInCurve: FiloAnimation.labelInCurve,
+                                switchOutCurve: FiloAnimation.labelOutCurve,
+                                duration: reduced
+                                    ? Duration.zero
+                                    : FiloAnimation.labelDuration,
+                                layoutBuilder: (current, previous) => Stack(
+                                  alignment: Alignment.center,
+                                  children: [
+                                    for (final label in widget.labelVariants)
+                                      ExcludeSemantics(
+                                        child: Opacity(
+                                          opacity: 0,
+                                          child: Text(
+                                            label,
+                                            textAlign: TextAlign.center,
+                                            style: TextStyle(color: foreground),
+                                          ),
+                                        ),
+                                      ),
+                                    for (final child in previous)
+                                      ExcludeSemantics(child: child),
+                                    if (current != null) current,
+                                  ],
+                                ),
+                                transitionBuilder: (child, animation) {
+                                  if (reduced) {
+                                    return child;
+                                  }
+                                  return FadeTransition(
+                                    opacity: animation,
+                                    child: AnimatedBuilder(
+                                      animation: animation,
+                                      child: child,
+                                      builder: (context, child) =>
+                                          Transform.translate(
+                                            offset: Offset(
+                                              0,
+                                              FiloAnimation.labelRise *
+                                                  (1 - animation.value),
+                                            ),
+                                            child: child,
+                                          ),
+                                    ),
+                                  );
+                                },
+                                child: Text(
+                                  widget.label,
+                                  key: ValueKey(widget.label),
+                                  textAlign: TextAlign.center,
+                                  style: TextStyle(color: foreground),
                                 ),
                               ),
-                            for (final child in previous)
-                              ExcludeSemantics(child: child),
-                            if (current != null) current,
+                            ),
+                            if (widget.icon != null) ...[
+                              const SizedBox(width: 12),
+                              TweenAnimationBuilder<double>(
+                                tween: Tween(
+                                  begin: 0,
+                                  end: pressed && widget.animateArrow
+                                      ? FiloAnimation.arrowNudge
+                                      : 0,
+                                ),
+                                duration: reduced
+                                    ? Duration.zero
+                                    : FiloAnimation.pressDuration,
+                                curve: FiloAnimation.uiCurve,
+                                builder: (context, offset, child) =>
+                                    Transform.translate(
+                                      offset: Offset(offset, 0),
+                                      child: child,
+                                    ),
+                                child: FiloIcon(
+                                  widget.icon,
+                                  color: foreground,
+                                  size: 20,
+                                ),
+                              ),
+                            ],
                           ],
                         ),
-                        transitionBuilder: (child, animation) {
-                          if (reduced) {
-                            return child;
-                          }
-                          return FadeTransition(
-                            opacity: animation,
-                            child: AnimatedBuilder(
-                              animation: animation,
-                              child: child,
-                              builder: (context, child) => Transform.translate(
-                                offset: Offset(
-                                  0,
-                                  FiloAnimation.labelRise *
-                                      (1 - animation.value),
-                                ),
-                                child: child,
-                              ),
-                            ),
-                          );
-                        },
-                        child: Text(
-                          widget.label,
-                          key: ValueKey(widget.label),
-                          textAlign: TextAlign.center,
-                          style: TextStyle(color: foreground),
-                        ),
                       ),
                     ),
-                    if (widget.icon != null) ...[
-                      const SizedBox(width: 12),
-                      TweenAnimationBuilder<double>(
-                        tween: Tween(
-                          begin: 0,
-                          end: pressed && widget.animateArrow
-                              ? FiloAnimation.arrowNudge
-                              : 0,
-                        ),
-                        duration: reduced
-                            ? Duration.zero
-                            : FiloAnimation.pressDuration,
-                        curve: FiloAnimation.uiCurve,
-                        builder: (context, offset, child) =>
-                            Transform.translate(
-                              offset: Offset(offset, 0),
-                              child: child,
-                            ),
-                        child: FiloIcon(
-                          widget.icon,
-                          color: foreground,
-                          size: 20,
-                        ),
-                      ),
-                    ],
                   ],
                 ),
               ),

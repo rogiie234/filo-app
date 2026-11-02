@@ -32,7 +32,7 @@ abstract final class FiloAnimation {
   static const pressOverlay = Colors.transparent;
   static const subtitleDelay = Duration(milliseconds: 100);
   static const skipDuration = Duration(milliseconds: 500);
-  static const pressDuration = Duration(milliseconds: 300);
+  static const pressDuration = Duration(milliseconds: 80);
   static const indicatorDuration = Duration(milliseconds: 400);
   static const backgroundDuration = Duration(seconds: 16);
   static const idlePulseDuration = Duration(seconds: 8);

@@ -3,7 +3,6 @@ import 'filo_icons.dart';
 import 'package:flutter/material.dart';
 
 import '../theme/animation_constants.dart';
-import '../theme/app_theme.dart';
 
 export 'filo_icons.dart';
 
@@ -91,9 +90,13 @@ class FiloSelectionIndicator extends StatelessWidget {
         curve: FiloAnimation.uiCurve,
         decoration: BoxDecoration(
           shape: BoxShape.circle,
-          color: selected ? FiloColors.primary : Colors.transparent,
+          color: selected
+              ? Theme.of(context).colorScheme.primary
+              : Colors.transparent,
           border: Border.all(
-            color: selected ? FiloColors.primary : FiloColors.secondary,
+            color: selected
+                ? Theme.of(context).colorScheme.primary
+                : Theme.of(context).colorScheme.onSurfaceVariant,
             width: 2,
           ),
         ),
@@ -105,9 +108,9 @@ class FiloSelectionIndicator extends StatelessWidget {
             scale: selected ? 1 : FiloAnimation.iconSelectionScale,
             duration: duration,
             curve: FiloAnimation.uiCurve,
-            child: const FiloIcon(
+            child: FiloIcon(
               FiloIcons.check,
-              color: Colors.white,
+              color: Theme.of(context).colorScheme.onPrimary,
               size: 16,
             ),
           ),

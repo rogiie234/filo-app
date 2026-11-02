@@ -25,13 +25,13 @@ class FiloNoticeDialog extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => AlertDialog(
-    backgroundColor: FiloColors.background,
+    backgroundColor: Theme.of(context).colorScheme.surface,
     surfaceTintColor: Colors.transparent,
     constraints: const BoxConstraints(maxWidth: 440),
     insetPadding: const EdgeInsets.symmetric(horizontal: 24, vertical: 24),
     shape: RoundedRectangleBorder(
       borderRadius: BorderRadius.circular(28),
-      side: const BorderSide(color: FiloColors.border),
+      side: BorderSide(color: Theme.of(context).colorScheme.outline),
     ),
     scrollable: true,
     titlePadding: const EdgeInsets.fromLTRB(24, 24, 24, 0),
@@ -45,10 +45,14 @@ class FiloNoticeDialog extends StatelessWidget {
             width: 48,
             height: 48,
             decoration: BoxDecoration(
-              color: FiloColors.mint,
+              color: FiloThemeTokens.of(context).mint,
               borderRadius: BorderRadius.circular(16),
             ),
-            child: FiloIcon(icon, size: 26, color: FiloColors.primary),
+            child: FiloIcon(
+              icon,
+              size: 26,
+              color: Theme.of(context).colorScheme.primary,
+            ),
           ),
         ),
         const SizedBox(width: 14),
@@ -57,11 +61,11 @@ class FiloNoticeDialog extends StatelessWidget {
             padding: const EdgeInsets.only(top: 8),
             child: Text(
               title,
-              style: const TextStyle(
+              style: TextStyle(
                 fontSize: 22,
-                fontWeight: FontWeight.w800,
-                height: 1.25,
-                color: FiloColors.ink,
+                fontWeight: FontWeight.w700,
+                height: 28 / 22,
+                color: Theme.of(context).colorScheme.onSurface,
               ),
             ),
           ),
@@ -74,28 +78,31 @@ class FiloNoticeDialog extends StatelessWidget {
       children: [
         for (var index = 0; index < sections.length; index++) ...[
           if (index > 0)
-            const Padding(
-              padding: EdgeInsets.symmetric(vertical: 20),
-              child: Divider(height: 1, color: FiloColors.border),
+            Padding(
+              padding: const EdgeInsets.symmetric(vertical: 20),
+              child: Divider(
+                height: 1,
+                color: Theme.of(context).colorScheme.outline,
+              ),
             ),
           Semantics(
             header: true,
             child: Text(
               sections[index].heading,
-              style: const TextStyle(
+              style: TextStyle(
                 fontSize: 15,
                 fontWeight: FontWeight.w800,
-                color: FiloColors.primary,
+                color: Theme.of(context).colorScheme.primary,
               ),
             ),
           ),
           const SizedBox(height: 8),
           Text(
             sections[index].body,
-            style: const TextStyle(
+            style: TextStyle(
               fontSize: 15,
               height: 1.55,
-              color: FiloColors.ink,
+              color: Theme.of(context).colorScheme.onSurface,
             ),
           ),
         ],

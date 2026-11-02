@@ -30,56 +30,58 @@ class App extends ConsumerWidget {
       themeMode: appearance.asData?.value ?? ThemeMode.system,
       themeAnimationDuration: Duration.zero,
       routerConfig: ref.watch(appRouterProvider),
-      builder: (context, child) => _ForegroundTickers(
-        child: DeletionRecoveryGate(
-          child: Consumer(
-            builder: (context, ref, _) {
-              final login = ref.watch(loginSessionProvider);
-              final database = ref.watch(accountDatabaseProvider);
-              if (login.asData?.value != null) {
-                // Replacing the router child here also removes its Navigator/Overlay.
-                // Keep authentication screens inside a route so text editing and
-                // selection can find the overlay required by EditableText.
-                return PushNotificationHost(
-                  key: ValueKey(login.asData!.value!.user.id),
-                  userId: login.asData!.value!.user.id,
-                  child: const SessionScreen(),
-                );
-              }
-              // Public screens must not wait for the previous account's SQLite cleanup.
-              // The database provider still closes/serializes files before another
-              // account can open them; signed-in screens remain verification-gated.
-              final signedOut =
-                  login.asData != null && login.asData!.value == null;
-              if (!signedOut && database.isLoading) {
-                return const Scaffold(
-                  body: Center(child: CircularProgressIndicator()),
-                );
-              }
-              if (!signedOut && database.hasError) {
-                return Scaffold(
-                  body: Center(
-                    child: Column(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        const Text('Could not open your saved data.'),
-                        TextButton(
-                          onPressed: () {
-                            ref.invalidate(verifiedUserIdProvider);
-                            ref.invalidate(accountDatabaseProvider);
-                          },
-                          child: const Text('Try again'),
-                        ),
-                      ],
+      builder: (context, child) => FiloTextScale(
+        child: _ForegroundTickers(
+          child: DeletionRecoveryGate(
+            child: Consumer(
+              builder: (context, ref, _) {
+                final login = ref.watch(loginSessionProvider);
+                final database = ref.watch(accountDatabaseProvider);
+                if (login.asData?.value != null) {
+                  // Replacing the router child here also removes its Navigator/Overlay.
+                  // Keep authentication screens inside a route so text editing and
+                  // selection can find the overlay required by EditableText.
+                  return PushNotificationHost(
+                    key: ValueKey(login.asData!.value!.user.id),
+                    userId: login.asData!.value!.user.id,
+                    child: const SessionScreen(),
+                  );
+                }
+                // Public screens must not wait for the previous account's SQLite cleanup.
+                // The database provider still closes/serializes files before another
+                // account can open them; signed-in screens remain verification-gated.
+                final signedOut =
+                    login.asData != null && login.asData!.value == null;
+                if (!signedOut && database.isLoading) {
+                  return const Scaffold(
+                    body: Center(child: CircularProgressIndicator()),
+                  );
+                }
+                if (!signedOut && database.hasError) {
+                  return Scaffold(
+                    body: Center(
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          const Text('Could not open your saved data.'),
+                          TextButton(
+                            onPressed: () {
+                              ref.invalidate(verifiedUserIdProvider);
+                              ref.invalidate(accountDatabaseProvider);
+                            },
+                            child: const Text('Try again'),
+                          ),
+                        ],
+                      ),
                     ),
-                  ),
+                  );
+                }
+                return KeyedSubtree(
+                  key: ValueKey(ref.watch(authUserIdProvider).asData?.value),
+                  child: child ?? const SizedBox.shrink(),
                 );
-              }
-              return KeyedSubtree(
-                key: ValueKey(ref.watch(authUserIdProvider).asData?.value),
-                child: child ?? const SizedBox.shrink(),
-              );
-            },
+              },
+            ),
           ),
         ),
       ),
