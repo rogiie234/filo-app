@@ -27,6 +27,23 @@ class PushRegistration {
   Future<void>? _leaving;
   String? _token, _registeredAccount, _registeredToken, _blockedAccount;
   bool _again = false, _disposed = false;
+  Object _generation = Object();
+
+  bool Function() sessionGuard() {
+    final owner = account();
+    final generation = _generation;
+    return () =>
+        !_disposed &&
+        owner != null &&
+        account() == owner &&
+        identical(generation, _generation);
+  }
+
+  void accountChanged() {
+    _generation = Object();
+    _token = _registeredAccount = _registeredToken = _blockedAccount = null;
+    _again = true;
+  }
 
   Future<void> sync() {
     if (_disposed || _leaving != null) return Future.value();
@@ -46,7 +63,8 @@ class PushRegistration {
         continue;
       }
       if (owner == _blockedAccount) return;
-      bool current() => !_disposed && _leaving == null && account() == owner;
+      final sessionCurrent = sessionGuard();
+      bool current() => _leaving == null && sessionCurrent();
       var stage = 'eligibility';
       try {
         if (!await canRegister() || !current()) continue;
@@ -72,39 +90,50 @@ class PushRegistration {
           onStatus?.call('Phone registered');
         }
       } catch (_) {
-        onStatus?.call('Registration pending: $stage failed');
+        if (current()) onStatus?.call('Registration pending: $stage failed');
         // Resume/reconnect retries only the current account; tokens never enter logs.
       }
     }
   }
 
-  Future<void> leave() =>
-      _leaving ??= _leave().whenComplete(() => _leaving = null);
+  Future<void> leave() => _leaving ??= _leave().whenComplete(() {
+    _leaving = null;
+    if (_again && !_disposed && account() != null) unawaited(sync());
+  });
 
   Future<void> _leave() async {
+    final current = sessionGuard();
+    if (!current()) return;
     _blockedAccount = account();
     _again = false;
-    // Let an already dispatched registration finish before removing its token.
+    // Finish dispatched registration before removal, but never cross a session change.
     await _pending;
+    if (!current()) return;
     try {
       final token = _token ?? await getToken();
+      if (!current()) return;
       if (token != null) await unregister(token);
     } catch (_) {
-      // Offline/revoked sessions cannot remove the server row; invalidate FCM too.
-      onStatus?.call('Sign-out cleanup pending: unregister failed');
+      if (current())
+        onStatus?.call('Sign-out cleanup pending: unregister failed');
     }
+    if (!current()) return;
     try {
       await deleteToken();
     } catch (_) {
-      // Authentication sign-out must remain available when Firebase is offline.
-      onStatus?.call('Sign-out cleanup pending: FCM invalidation failed');
+      if (current())
+        onStatus?.call('Sign-out cleanup pending: FCM invalidation failed');
     }
+    if (!current()) return;
     _token = _registeredAccount = _registeredToken = null;
     try {
       await signOut();
     } catch (_) {
-      _blockedAccount = null;
-      rethrow;
+      // The SDK can remove the local session before remote revocation fails.
+      if (current()) {
+        _blockedAccount = null;
+        rethrow;
+      }
     }
   }
 

@@ -11,6 +11,7 @@ Future<bool> showFiloConfirmation(
   required String message,
   required String confirmLabel,
   String cancelLabel = 'Go back',
+  bool cancelIsPrimary = false,
   IconData icon = FiloIcons.checkCircle,
 }) async =>
     await showDialog<bool>(
@@ -20,6 +21,7 @@ Future<bool> showFiloConfirmation(
         message: message,
         confirmLabel: confirmLabel,
         cancelLabel: cancelLabel,
+        cancelIsPrimary: cancelIsPrimary,
         icon: icon,
       ),
     ) ??
@@ -33,6 +35,7 @@ class FiloConfirmationDialog extends StatelessWidget {
     required this.message,
     required this.confirmLabel,
     this.cancelLabel = 'Go back',
+    this.cancelIsPrimary = false,
     this.icon = FiloIcons.checkCircle,
   });
 
@@ -41,6 +44,7 @@ class FiloConfirmationDialog extends StatelessWidget {
   final String confirmLabel;
   final String cancelLabel;
   final IconData icon;
+  final bool cancelIsPrimary;
 
   @override
   Widget build(BuildContext context) => Dialog(
@@ -108,14 +112,14 @@ class FiloConfirmationDialog extends StatelessWidget {
             ),
             const SizedBox(height: 28),
             FiloButton(
-              label: confirmLabel,
-              onPressed: () => Navigator.of(context).pop(true),
+              label: cancelIsPrimary ? cancelLabel : confirmLabel,
+              onPressed: () => Navigator.of(context).pop(!cancelIsPrimary),
             ),
             const SizedBox(height: 12),
             FiloButton(
-              label: cancelLabel,
+              label: cancelIsPrimary ? confirmLabel : cancelLabel,
               secondary: true,
-              onPressed: () => Navigator.of(context).pop(false),
+              onPressed: () => Navigator.of(context).pop(cancelIsPrimary),
             ),
           ],
         ),

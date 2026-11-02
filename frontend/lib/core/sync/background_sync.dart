@@ -90,7 +90,15 @@ Future<void> initializeBackgroundSync() async {
   await Workmanager().initialize(filoBackgroundDispatcher);
 }
 
-Future<void> scheduleBackgroundSync(String userId) async {
+// Keep a previous session's stop from overtaking the next account's schedule.
+Future<void> _scheduling = Future.value();
+Future<void> _updateSchedule(Future<void> Function() action) {
+  final next = _scheduling.then((_) => action());
+  _scheduling = next.then<void>((_) {}, onError: (Object _, StackTrace _) {});
+  return next;
+}
+
+Future<void> scheduleBackgroundSync(String userId) => _updateSchedule(() async {
   await const FlutterSecureStorage().write(
     key: 'filo.sync.active',
     value: userId,
@@ -103,9 +111,12 @@ Future<void> scheduleBackgroundSync(String userId) async {
     inputData: {'user_id': userId},
     constraints: Constraints(networkType: NetworkType.connected),
   );
-}
+});
 
-Future<void> stopBackgroundSync() async {
-  await const FlutterSecureStorage().delete(key: 'filo.sync.active');
-  await Workmanager().cancelByUniqueName('filo.sync');
-}
+Future<void> stopBackgroundSync({bool Function()? isCurrent}) =>
+    _updateSchedule(() async {
+      if (isCurrent != null && !isCurrent()) return;
+      await const FlutterSecureStorage().delete(key: 'filo.sync.active');
+      if (isCurrent != null && !isCurrent()) return;
+      await Workmanager().cancelByUniqueName('filo.sync');
+    });

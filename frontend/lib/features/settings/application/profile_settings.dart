@@ -79,17 +79,18 @@ final profileCacheProvider = FutureProvider<ProfileCache?>((ref) async {
 });
 
 final cachedAccountProfileProvider = StreamProvider.autoDispose
-    .family<AccountProfile?, String>((ref, id) async* {
+    .family<AccountProfile?, String>((ref, id) {
       if (ref.watch(authUserIdProvider).asData?.value != id) {
-        yield null;
-        return;
+        return Stream.value(null);
       }
-      final cache = await ref.watch(profileCacheProvider.future);
-      if (cache == null || cache.userId != id || !ref.mounted) {
-        yield null;
-        return;
-      }
-      yield* cache.watch();
+      // Capture dependencies before a lazy stream can start after disposal.
+      final ready = ref.watch(profileCacheProvider.future);
+      return ready.asStream().asyncExpand((cache) {
+        if (!ref.mounted || cache == null || cache.userId != id) {
+          return Stream<AccountProfile?>.value(null);
+        }
+        return cache.watch();
+      });
     });
 
 class ConfirmedProfile {

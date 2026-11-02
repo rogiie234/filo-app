@@ -13,6 +13,7 @@ import '../application/theme_settings.dart';
 import '../application/profile_settings.dart';
 import 'edit_profile_screen.dart';
 import 'storage_screen.dart';
+import 'privacy_notice_screen.dart';
 
 class SettingsScreen extends ConsumerStatefulWidget {
   const SettingsScreen({required this.profile, super.key});
@@ -23,37 +24,42 @@ class SettingsScreen extends ConsumerStatefulWidget {
 }
 
 class _SettingsScreenState extends ConsumerState<SettingsScreen> {
-  bool _signingOut = false;
+  bool _signingOut = false, _confirmingSignOut = false;
   String? _signOutError;
 
   Future<void> _signOut() async {
-    if (_signingOut) return;
+    if (_signingOut || _confirmingSignOut) return;
+    final service = ref.read(pushRegistrationProvider);
+    final current = service.sessionGuard();
+    _confirmingSignOut = true;
     final confirmed = await showFiloConfirmation(
       context,
       title: 'Sign out?',
       message: 'Your local files will stay on this device. They will be available only to this account when you sign in again.',
       confirmLabel: 'Sign out',
       cancelLabel: 'Cancel',
+      cancelIsPrimary: true,
       icon: FiloIcons.logout,
     );
-    if (!confirmed || !mounted || _signingOut) return;
+    _confirmingSignOut = false;
+    if (!confirmed || !mounted || _signingOut || !current()) return;
     setState(() {
       _signingOut = true;
       _signOutError = null;
     });
     try {
       try {
-        await stopBackgroundSync();
+        await stopBackgroundSync(isCurrent: current);
       } catch (_) {
         // Sign-out must remain available when background cleanup fails.
       }
-      if (!mounted ||
-          ref.read(authUserIdProvider).asData?.value != widget.profile.id)
-        return;
-      await ref.read(pushRegistrationProvider).leave();
-      if (mounted) Navigator.of(context).popUntil((route) => route.isFirst);
+      if (!mounted || !current()) return;
+      await service.leave();
+      if (mounted && service.account() == null) {
+        Navigator.of(context).popUntil((route) => route.isFirst);
+      }
     } catch (_) {
-      if (mounted)
+      if (mounted && current())
         setState(() => _signOutError = "Couldn't sign out. Try again.");
     } finally {
       if (mounted) setState(() => _signingOut = false);
@@ -198,8 +204,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                 _entry(
                   'Privacy notice',
                   FiloIcons.shield,
-                  subtitle:
-                      'The full Privacy Notice is not available here yet.',
+                  onTap: () => _open(const PrivacyNoticeScreen()),
                 ),
               ]),
               _group([

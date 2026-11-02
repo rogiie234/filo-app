@@ -7,11 +7,11 @@ class Fixture {
   String? account = 'account-a:session-a';
   String token = 'synthetic-token-one';
   bool permitted = true, failRegister = false, failUnregister = false;
-  bool failDelete = false, failSignOut = false;
-  Future<void>? waitForToken, waitForRegister;
+  bool failDelete = false, failSignOut = false, failAfterLocalSignOut = false;
+  Future<void>? waitForToken, waitForRegister, waitForUnregister, waitForDelete;
   final events = <String>[];
   final statuses = <String>[];
-  late final service = PushRegistration(
+  late final PushRegistration service = PushRegistration(
     onStatus: statuses.add,
     account: () => account,
     canRegister: () async => permitted,
@@ -27,21 +27,68 @@ class Fixture {
     },
     unregister: (token) async {
       events.add('unregister:$token');
+      await waitForUnregister;
       if (failUnregister) throw StateError('offline');
     },
     deleteToken: () async {
       events.add('delete-token');
+      await waitForDelete;
       if (failDelete) throw StateError('offline');
     },
     signOut: () async {
       events.add('sign-out');
       if (failSignOut) throw StateError('offline');
       account = null;
+      service.accountChanged();
+      if (failAfterLocalSignOut) throw StateError('remote revocation failed');
     },
   );
 }
 
 void main() {
+  for (final stage in ['token', 'registration', 'unregister', 'delete']) {
+    test(
+      'session replacement during $stage stops old cleanup including A-B-A',
+      () async {
+        final gate = Completer<void>();
+        final f = Fixture();
+        if (stage == 'token') f.waitForToken = gate.future;
+        if (stage == 'registration') f.waitForRegister = gate.future;
+        if (stage == 'unregister') f.waitForUnregister = gate.future;
+        if (stage == 'delete') f.waitForDelete = gate.future;
+        final registration = stage == 'registration'
+            ? f.service.sync()
+            : Future<void>.value();
+        await Future<void>.delayed(Duration.zero);
+        final leaving = f.service.leave();
+        expect(identical(leaving, f.service.leave()), isTrue);
+        await Future<void>.delayed(Duration.zero);
+        f.account = 'account-b:session-b';
+        f.service.accountChanged();
+        f.account = 'account-a:session-a';
+        f.service.accountChanged();
+        gate.complete();
+        await Future.wait([registration, leaving]);
+        await f.service.sync();
+        expect(f.events, isNot(contains('sign-out')));
+        if (stage != 'delete')
+          expect(f.events, isNot(contains('delete-token')));
+        if (stage == 'token' || stage == 'registration') {
+          expect(f.events.where((e) => e.startsWith('unregister:')), isEmpty);
+        }
+        f.service.dispose();
+      },
+    );
+  }
+
+  test('remote error after local session removal does not report a retained session', () async {
+    final f = Fixture()..failAfterLocalSignOut = true;
+    await f.service.leave();
+    expect(f.account, isNull);
+    expect(f.events.last, 'sign-out');
+    f.service.dispose();
+  });
+
   test('A to B to A registers each new session on the same phone', () async {
     final f = Fixture();
     await f.service.sync();

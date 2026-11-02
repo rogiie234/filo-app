@@ -1,4 +1,6 @@
 import 'package:drift/native.dart';
+import 'package:filo/core/notifications/push_registration.dart';
+import 'package:filo/core/notifications/push_providers.dart';
 import 'package:filo/core/supabase/auth_providers.dart';
 import 'package:filo/core/theme/app_theme.dart';
 import 'package:filo/data/local/app_database.dart';
@@ -36,6 +38,18 @@ void main() {
     overrides: [
       authUserIdProvider.overrideWith((ref) => Stream.value('account-a')),
       accountDatabaseProvider.overrideWith((ref) async => database),
+      pushRegistrationProvider.overrideWith(
+        (ref) => PushRegistration(
+          account: () => 'account-a:session-a',
+          canRegister: () async => false,
+          getToken: () async => null,
+          deviceHash: () async => 'fixture',
+          register: (_, _) async {},
+          unregister: (_) async {},
+          deleteToken: () async {},
+          signOut: () async {},
+        ),
+      ),
       themeSettingsRepositoryProvider.overrideWith((ref) async => repository),
     ],
     child: Consumer(

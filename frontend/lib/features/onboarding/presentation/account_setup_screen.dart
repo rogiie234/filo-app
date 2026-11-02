@@ -1,5 +1,7 @@
 import 'dart:async';
 
+import '../../../core/privacy/privacy_notice.dart';
+
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -242,16 +244,7 @@ class _AccountSetupScreenState extends ConsumerState<AccountSetupScreen> {
     context: context,
     builder: (context) => const FiloNoticeDialog(
       title: 'Privacy Notice',
-      sections: [
-        FiloNoticeSection(
-          heading: 'Your information',
-          body: 'Filo collects your name, email address, profile photo, school, and selected role to set up your account. It stores your class activity, including submissions, grades, and counts of leaving the app during exams, to provide learning and assessment features. Filo also records device and login verification information to protect account access.',
-        ),
-        FiloNoticeSection(
-          heading: 'AI processing',
-          body: 'When you use AI features, Filo sends your requests and the text needed for those features, including text from learning materials you select, to Google for processing with Gemini. Avoid including passwords or sensitive personal information in AI requests.',
-        ),
-      ],
+      sections: privacyNoticeSections,
     ),
   );
 

@@ -1,5 +1,8 @@
 import 'dart:async';
 
+import 'package:supabase_flutter/supabase_flutter.dart'
+    show AuthChangeEvent, SignOutScope, Session;
+
 import 'deadline_reminders.dart';
 
 import 'package:firebase_core/firebase_core.dart';
@@ -27,16 +30,30 @@ void _pushStatus(String message) {
 
 final pushRegistrationProvider = Provider<PushRegistration>((ref) {
   final client = ref.watch(supabaseClientProvider);
+  String? identityFor(Session? session) {
+    if (session == null) return null;
+    try {
+      return '${session.user.id}:${sessionIdFromToken(session.accessToken)}';
+    } catch (_) {
+      return null;
+    }
+  }
+
+  String? identity() => identityFor(client.auth.currentSession);
+  var generation = Object();
+  var observed = identity();
+  bool Function() currentSession() {
+    final owner = identity();
+    final captured = generation;
+    return () =>
+        ref.mounted &&
+        owner != null &&
+        identity() == owner &&
+        identical(generation, captured);
+  }
+
   final service = PushRegistration(
-    account: () {
-      final session = client.auth.currentSession;
-      if (session == null) return null;
-      try {
-        return '${session.user.id}:${sessionIdFromToken(session.accessToken)}';
-      } catch (_) {
-        return null;
-      }
-    },
+    account: identity,
     canRegister: () async {
       if (!_firebaseReady) {
         _pushStatus('Firebase unavailable');
@@ -101,29 +118,44 @@ final pushRegistrationProvider = Provider<PushRegistration>((ref) {
           .timeout(const Duration(seconds: 5));
     },
     deleteToken: () async {
+      final current = currentSession();
       if (_firebaseReady) {
         try {
           await FirebaseMessaging.instance
               .setAutoInitEnabled(false)
               .timeout(const Duration(seconds: 5));
         } finally {
-          await FirebaseMessaging.instance.deleteToken().timeout(
-            const Duration(seconds: 5),
-          );
+          if (current() || identity() == null) {
+            await FirebaseMessaging.instance.deleteToken().timeout(
+              const Duration(seconds: 5),
+            );
+          }
         }
       }
     },
     signOut: () async {
+      final current = currentSession();
       try {
         await const DeadlineBridge().clear();
       } catch (_) {
         _pushStatus('Sign-out cleanup pending: deadline reminders');
       }
-      await client.auth.signOut();
+      if (current()) await client.auth.signOut(scope: SignOutScope.local);
     },
     onStatus: _pushStatus,
   );
-  ref.onDispose(service.dispose);
+  final authChanges = client.auth.onAuthStateChange.listen((event) {
+    final next = identityFor(event.session);
+    if (next != observed || event.event == AuthChangeEvent.signedOut) {
+      observed = next;
+      generation = Object();
+      service.accountChanged();
+    }
+  });
+  ref.onDispose(() {
+    service.dispose();
+    unawaited(authChanges.cancel());
+  });
   return service;
 });
 
