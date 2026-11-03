@@ -63,12 +63,12 @@ class _StorageScreenState extends ConsumerState<StorageScreen> {
   }
 
   Widget _size(String label, int bytes) => Padding(
-    padding: const EdgeInsets.symmetric(vertical: 12),
+    padding: const EdgeInsets.symmetric(vertical: FiloSpacing.s12),
     child: Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Text(label, style: Theme.of(context).textTheme.titleMedium),
-        const SizedBox(height: 8),
+        const SizedBox(height: FiloSpacing.s8),
         Semantics(
           label: '$label: $bytes bytes',
           excludeSemantics: true,
@@ -103,7 +103,7 @@ class _StorageScreenState extends ConsumerState<StorageScreen> {
       body: SafeArea(
         child: ListView(
           controller: _scroll,
-          padding: const EdgeInsets.all(24),
+          padding: const EdgeInsets.all(FiloSpacing.screen),
           children: [
             usage.when(
               skipLoadingOnRefresh: false,
@@ -119,11 +119,11 @@ class _StorageScreenState extends ConsumerState<StorageScreen> {
               ),
               loading: () => FiloPanel(
                 child: Padding(
-                  padding: const EdgeInsets.all(24),
+                  padding: const EdgeInsets.all(FiloSpacing.screen),
                   child: Column(
                     children: [
                       const FiloCircularProgressIndicator(),
-                      const SizedBox(height: 16),
+                      const SizedBox(height: FiloSpacing.s16),
                       Text(
                         _clearing
                             ? 'Clearing cache\u2026'
@@ -151,17 +151,17 @@ class _StorageScreenState extends ConsumerState<StorageScreen> {
                 ),
               ),
             ),
-            const SizedBox(height: 16),
+            const SizedBox(height: FiloSpacing.s16),
             const Text(
               'These sizes cover files for this account on this device. They exclude the database, active transfers, queued backups and other app data.',
             ),
-            const SizedBox(height: 16),
+            const SizedBox(height: FiloSpacing.s16),
             FiloButton(
               label: 'Refresh',
               secondary: true,
               onPressed: usage.isLoading || _clearing ? null : _refresh,
             ),
-            const SizedBox(height: 16),
+            const SizedBox(height: FiloSpacing.s16),
             FiloButton(
               label: 'Clear cache',
               busy: _clearing,
@@ -172,15 +172,15 @@ class _StorageScreenState extends ConsumerState<StorageScreen> {
                   ? _clear
                   : null,
             ),
-            const SizedBox(height: 12),
+            const SizedBox(height: FiloSpacing.s12),
             const Text(
               'Clearing the cache in Filo does not delete your downloaded files.',
             ),
-            const SizedBox(height: 8),
+            const SizedBox(height: FiloSpacing.s8),
             const Text(
               'Only unused temporary files are cleared. The cache may already be empty.',
             ),
-            const SizedBox(height: 24),
+            const SizedBox(height: FiloSpacing.screen),
             FiloPanel(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -189,11 +189,11 @@ class _StorageScreenState extends ConsumerState<StorageScreen> {
                     'Your files are kept inside Filo',
                     style: Theme.of(context).textTheme.titleMedium,
                   ),
-                  const SizedBox(height: 12),
+                  const SizedBox(height: FiloSpacing.s12),
                   const Text(
                     'Downloaded files are stored inside Filo on this phone. Uninstalling Filo or clearing its app data removes these files. Drive backup can protect them by saving copies to your own Google Drive.',
                   ),
-                  const SizedBox(height: 16),
+                  const SizedBox(height: FiloSpacing.s16),
                   FiloButton(
                     label: 'Set up Drive backup',
                     secondary: true,

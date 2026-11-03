@@ -118,11 +118,11 @@ class FiloFileTypeTile extends StatelessWidget {
     final (ink, fill) = details.type.colors(Theme.of(context));
     return ExcludeSemantics(
       child: Container(
-        width: 44,
-        height: 44,
+        width: FiloControlSize.fileTile,
+        height: FiloControlSize.fileTile,
         decoration: BoxDecoration(
           color: fill,
-          borderRadius: BorderRadius.circular(12),
+          borderRadius: BorderRadius.circular(FiloRadii.small),
         ),
         alignment: Alignment.center,
         child: FiloIcon(details.type.icon, size: 24, color: ink),

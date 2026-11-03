@@ -96,9 +96,9 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
   }
 
   Widget _group(List<Widget> entries) => Padding(
-    padding: const EdgeInsets.only(bottom: 20),
+    padding: const EdgeInsets.only(bottom: FiloSpacing.s20),
     child: FiloPanel(
-      padding: const EdgeInsets.symmetric(horizontal: 4),
+      padding: const EdgeInsets.symmetric(horizontal: FiloSpacing.s4),
       child: Column(
         children: [
           for (var i = 0; i < entries.length; i++) ...[
@@ -136,7 +136,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
         appBar: AppBar(title: const Text('Profile and settings')),
         body: SafeArea(
           child: ListView(
-            padding: const EdgeInsets.all(24),
+            padding: const EdgeInsets.all(FiloSpacing.screen),
             children: [
               FiloPanel(
                 child: Column(
@@ -148,21 +148,21 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                       path: profile.avatarPath,
                       size: 80,
                     ),
-                    const SizedBox(height: 16),
+                    const SizedBox(height: FiloSpacing.s16),
                     Text(
                       profile.name,
                       textAlign: TextAlign.center,
                       style: Theme.of(context).textTheme.titleLarge,
                     ),
                     if (profile.school?.isNotEmpty == true) ...[
-                      const SizedBox(height: 8),
+                      const SizedBox(height: FiloSpacing.s8),
                       Text(profile.school!, textAlign: TextAlign.center),
                     ],
                     if (profile.email != null) ...[
-                      const SizedBox(height: 8),
+                      const SizedBox(height: FiloSpacing.s8),
                       Text(profile.email!, textAlign: TextAlign.center),
                     ],
-                    const SizedBox(height: 8),
+                    const SizedBox(height: FiloSpacing.s8),
                     Text(
                       profile.role.label,
                       style: Theme.of(context).textTheme.bodyMedium,
@@ -170,7 +170,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                   ],
                 ),
               ),
-              const SizedBox(height: 24),
+              const SizedBox(height: FiloSpacing.screen),
               _group([
                 _entry(
                   'Edit profile',
@@ -218,7 +218,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                 ),
                 if (_signOutError != null)
                   Padding(
-                    padding: const EdgeInsets.all(16),
+                    padding: const EdgeInsets.all(FiloSpacing.s16),
                     child: Column(
                       children: [
                         Text(_signOutError!, semanticsLabel: _signOutError),
@@ -297,12 +297,12 @@ class _ThemeSettingsScreenState extends ConsumerState<ThemeSettingsScreen> {
       appBar: AppBar(title: const Text('Theme')),
       body: SafeArea(
         child: ListView(
-          padding: const EdgeInsets.all(24),
+          padding: const EdgeInsets.all(FiloSpacing.screen),
           children: [
             const Text(
               'Choose how Filo looks on this device. System follows your phone’s appearance.',
             ),
-            const SizedBox(height: 24),
+            const SizedBox(height: FiloSpacing.screen),
             if (appearance.isLoading)
               const Center(child: FiloCircularProgressIndicator()),
             if (appearance.hasError) ...[
@@ -343,11 +343,11 @@ class _ThemeSettingsScreenState extends ConsumerState<ThemeSettingsScreen> {
             ),
             if (_saving)
               const Padding(
-                padding: EdgeInsets.all(16),
+                padding: EdgeInsets.all(FiloSpacing.s16),
                 child: Text('Saving…', textAlign: TextAlign.center),
               ),
             if (_failed != null) ...[
-              const SizedBox(height: 20),
+              const SizedBox(height: FiloSpacing.s20),
               const Text(
                 "Couldn't save your changes. Try again.",
                 semanticsLabel: "Couldn't save your changes. Try again.",

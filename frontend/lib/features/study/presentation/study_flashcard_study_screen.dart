@@ -133,7 +133,7 @@ class _StudyBodyState extends ConsumerState<_StudyBody> {
               ? const Center(child: Text('This deck is no longer available.'))
               : ListView(
                   controller: _scroll,
-                  padding: const EdgeInsets.all(24),
+                  padding: const EdgeInsets.all(FiloSpacing.screen),
                   children: [
                     const StudyOfflineBanner(),
                     if (_session.loading)
@@ -150,15 +150,15 @@ class _StudyBodyState extends ConsumerState<_StudyBody> {
                         child: FiloLinearProgressIndicator(
                           value: _session.progress,
                           minHeight: 10,
-                          borderRadius: BorderRadius.circular(10),
+                          borderRadius: BorderRadius.circular(FiloRadii.small),
                         ),
                       ),
-                      const SizedBox(height: 12),
+                      const SizedBox(height: FiloSpacing.s12),
                       Text(
                         'Card ${_session.completed + 1} of ${_session.total}',
                         style: Theme.of(context).textTheme.labelLarge,
                       ),
-                      const SizedBox(height: 16),
+                      const SizedBox(height: FiloSpacing.s16),
                       Center(
                         child: ConstrainedBox(
                           constraints: const BoxConstraints(maxWidth: 560),
@@ -173,11 +173,11 @@ class _StudyBodyState extends ConsumerState<_StudyBody> {
                           ),
                         ),
                       ),
-                      const SizedBox(height: 16),
+                      const SizedBox(height: FiloSpacing.s16),
                       const Text(
                         'Swipe left for Still learning or right for Got it. You can also use the buttons.',
                       ),
-                      const SizedBox(height: 16),
+                      const SizedBox(height: FiloSpacing.s16),
                       FiloButton(
                         label: 'Still learning',
                         secondary: true,
@@ -189,7 +189,7 @@ class _StudyBodyState extends ConsumerState<_StudyBody> {
                             ? () => _session.mark('learning')
                             : null,
                       ),
-                      const SizedBox(height: 12),
+                      const SizedBox(height: FiloSpacing.s12),
                       FiloButton(
                         label: 'Got it',
                         icon: Icons.check,
@@ -207,13 +207,13 @@ class _StudyBodyState extends ConsumerState<_StudyBody> {
                       const Text('Deck complete'),
                       Text('${_session.known} known'),
                       Text('${_session.learning} still learning'),
-                      const SizedBox(height: 16),
+                      const SizedBox(height: FiloSpacing.s16),
                       if (_session.learning > 0)
                         FiloButton(
                           label: 'Study missed cards again',
                           onPressed: _session.repeatMissed,
                         ),
-                      const SizedBox(height: 12),
+                      const SizedBox(height: FiloSpacing.s12),
                       FiloButton(
                         label: 'Back to decks',
                         secondary: true,
@@ -226,7 +226,7 @@ class _StudyBodyState extends ConsumerState<_StudyBody> {
                         child: const Text('Saving card...'),
                       ),
                     if (_session.error != null) ...[
-                      const SizedBox(height: 16),
+                      const SizedBox(height: FiloSpacing.s16),
                       Semantics(liveRegion: true, child: Text(_session.error!)),
                       TextButton(
                         onPressed: !enabled
@@ -237,7 +237,7 @@ class _StudyBodyState extends ConsumerState<_StudyBody> {
                         child: const Text('Try again'),
                       ),
                     ],
-                    const SizedBox(height: 16),
+                    const SizedBox(height: FiloSpacing.s16),
                     const Text(
                       'AI can make mistakes. Check important answers.',
                     ),

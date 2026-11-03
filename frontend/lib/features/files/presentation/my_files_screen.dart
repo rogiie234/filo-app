@@ -52,7 +52,7 @@ class _MyFilesScreenState extends ConsumerState<MyFilesScreen> {
         child: ListenableBuilder(
           listenable: service,
           builder: (context, _) => Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 24),
+            padding: const EdgeInsets.symmetric(horizontal: FiloSpacing.screen),
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
@@ -199,7 +199,7 @@ class _MyFilesScreenState extends ConsumerState<MyFilesScreen> {
       context: context,
       showDragHandle: true,
       builder: (context) => Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 24),
+        padding: const EdgeInsets.symmetric(horizontal: FiloSpacing.screen),
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
@@ -209,7 +209,7 @@ class _MyFilesScreenState extends ConsumerState<MyFilesScreen> {
               icon: FiloIcons.upload,
               onTap: () => Navigator.pop(context, 'files'),
             ),
-            const SizedBox(height: 12),
+            const SizedBox(height: FiloSpacing.s12),
             FiloSheetAction(
               label: 'New folder',
               description: 'Organize files on this device.',
@@ -504,7 +504,7 @@ class _MyFilesScreenState extends ConsumerState<MyFilesScreen> {
           floatingActionButtonAnimator:
               FloatingActionButtonAnimator.noAnimation,
           floatingActionButton: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 24),
+            padding: const EdgeInsets.symmetric(horizontal: FiloSpacing.screen),
             child: FiloButton(
               label: _busy ? 'Please wait\u2026' : 'Add files',
               icon: _busy ? null : FiloIcons.add,
@@ -518,7 +518,7 @@ class _MyFilesScreenState extends ConsumerState<MyFilesScreen> {
               : repo == null || fileData.hasError || folderData.hasError
               ? Center(
                   child: SingleChildScrollView(
-                    padding: const EdgeInsets.all(24),
+                    padding: const EdgeInsets.all(FiloSpacing.screen),
                     child: EmptyState(
                       title: "Couldn't load files. Try again.",
                       pose: 'confused',
@@ -535,7 +535,12 @@ class _MyFilesScreenState extends ConsumerState<MyFilesScreen> {
                   ),
                 )
               : ListView(
-                  padding: const EdgeInsets.fromLTRB(20, 8, 20, 96),
+                  padding: const EdgeInsets.fromLTRB(
+                    FiloSpacing.s20,
+                    FiloSpacing.s8,
+                    FiloSpacing.s20,
+                    96,
+                  ),
                   children: [
                     TextField(
                       controller: _search,

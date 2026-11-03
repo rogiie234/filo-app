@@ -37,14 +37,14 @@ class TodoTaskCard extends StatelessWidget {
     return Material(
       color: Theme.of(context).colorScheme.surface,
       shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(24),
+        borderRadius: BorderRadius.circular(FiloRadii.large),
         side: BorderSide(color: Theme.of(context).colorScheme.outline),
       ),
       clipBehavior: Clip.antiAlias,
       child: InkWell(
         onTap: onTap,
         child: Padding(
-          padding: const EdgeInsets.all(18),
+          padding: const EdgeInsets.all(FiloSpacing.s20),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
@@ -57,7 +57,7 @@ class TodoTaskCard extends StatelessWidget {
                       height: 40,
                       decoration: BoxDecoration(
                         color: Theme.of(context).colorScheme.surfaceContainer,
-                        borderRadius: BorderRadius.circular(14),
+                        borderRadius: BorderRadius.circular(FiloRadii.small),
                       ),
                       child: FiloIcon(
                         FiloIcons.assessment,
@@ -66,36 +66,32 @@ class TodoTaskCard extends StatelessWidget {
                       ),
                     ),
                   ),
-                  const SizedBox(width: 12),
+                  const SizedBox(width: FiloSpacing.s12),
                   Expanded(
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(
                           title,
-                          style: TextStyle(
-                            fontSize: 17,
-                            fontWeight: FontWeight.w800,
-                            height: 1.3,
-                            color: Theme.of(context).colorScheme.onSurface,
-                          ),
+                          style: Theme.of(context).textTheme.titleMedium!
+                              .copyWith(
+                                color: Theme.of(context).colorScheme.onSurface,
+                              ),
                         ),
-                        const SizedBox(height: 5),
+                        const SizedBox(height: FiloSpacing.s4),
                         Text(
                           classLabel,
-                          style: TextStyle(
-                            fontSize: 13,
-                            fontWeight: FontWeight.w600,
-                            height: 1.4,
-                            color: Theme.of(context)
-                                .colorScheme
-                                .onSurfaceVariant,
-                          ),
+                          style: Theme.of(context).textTheme.bodySmall!
+                              .copyWith(
+                                color: Theme.of(context)
+                                    .colorScheme
+                                    .onSurfaceVariant,
+                              ),
                         ),
                       ],
                     ),
                   ),
-                  const SizedBox(width: 8),
+                  const SizedBox(width: FiloSpacing.s8),
                   ExcludeSemantics(
                     child: FiloIcon(
                       FiloIcons.chevronRight,
@@ -105,7 +101,7 @@ class TodoTaskCard extends StatelessWidget {
                   ),
                 ],
               ),
-              const SizedBox(height: 16),
+              const SizedBox(height: FiloSpacing.s16),
               Wrap(
                 spacing: 12,
                 runSpacing: 8,
@@ -113,14 +109,14 @@ class TodoTaskCard extends StatelessWidget {
                 children: [
                   Container(
                     padding: const EdgeInsets.symmetric(
-                      horizontal: 10,
-                      vertical: 6,
+                      horizontal: FiloSpacing.s12,
+                      vertical: FiloSpacing.s8,
                     ),
                     decoration: BoxDecoration(
                       color: late
                           ? FiloThemeTokens.of(context).warningTint
                           : Theme.of(context).colorScheme.surfaceContainer,
-                      borderRadius: BorderRadius.circular(12),
+                      borderRadius: BorderRadius.circular(FiloRadii.small),
                       border: missing
                           ? Border.all(
                               color: Theme.of(context).colorScheme.error,
@@ -137,15 +133,12 @@ class TodoTaskCard extends StatelessWidget {
                             color: statusInk,
                           ),
                         ),
-                        const SizedBox(width: 6),
+                        const SizedBox(width: FiloSpacing.s8),
                         Flexible(
                           child: Text(
                             status,
-                            style: TextStyle(
-                              fontSize: 13,
-                              fontWeight: FontWeight.w700,
-                              color: statusInk,
-                            ),
+                            style: Theme.of(context).textTheme.bodySmall!
+                                .copyWith(color: statusInk),
                           ),
                         ),
                       ],
@@ -154,14 +147,13 @@ class TodoTaskCard extends StatelessWidget {
                   if (points != null)
                     Text(
                       '$points points',
-                      style: TextStyle(
-                        fontSize: 13,
+                      style: Theme.of(context).textTheme.bodySmall!.copyWith(
                         color: Theme.of(context).colorScheme.onSurfaceVariant,
                       ),
                     ),
                 ],
               ),
-              const SizedBox(height: 12),
+              const SizedBox(height: FiloSpacing.s12),
               Row(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
@@ -172,13 +164,11 @@ class TodoTaskCard extends StatelessWidget {
                       color: Theme.of(context).colorScheme.onSurfaceVariant,
                     ),
                   ),
-                  const SizedBox(width: 8),
+                  const SizedBox(width: FiloSpacing.s8),
                   Expanded(
                     child: Text(
                       dueLabel,
-                      style: TextStyle(
-                        fontSize: 13,
-                        height: 1.4,
+                      style: Theme.of(context).textTheme.bodySmall!.copyWith(
                         color: Theme.of(context).colorScheme.onSurfaceVariant,
                       ),
                     ),
@@ -221,7 +211,7 @@ class TodoTaskSkeleton extends StatelessWidget {
           children: [
             for (final width in [1.0, .6, .8])
               Padding(
-                padding: const EdgeInsets.only(bottom: 12),
+                padding: const EdgeInsets.only(bottom: FiloSpacing.s12),
                 child: FractionallySizedBox(
                   widthFactor: width,
                   alignment: Alignment.centerLeft,
@@ -229,7 +219,7 @@ class TodoTaskSkeleton extends StatelessWidget {
                     height: 16,
                     decoration: BoxDecoration(
                       color: FiloThemeTokens.of(context).mint,
-                      borderRadius: BorderRadius.circular(8),
+                      borderRadius: BorderRadius.circular(FiloRadii.small),
                     ),
                   ),
                 ),

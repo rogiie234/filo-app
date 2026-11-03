@@ -37,20 +37,20 @@ class _ClassFilesState extends ConsumerState<ClassFiles> {
     }).toList();
     return ListView(
       physics: const AlwaysScrollableScrollPhysics(),
-      padding: const EdgeInsets.all(24),
+      padding: const EdgeInsets.all(FiloSpacing.screen),
       children: [
         Text('Class files', style: Theme.of(context).textTheme.headlineMedium),
         if (!online)
           const Padding(
-            padding: EdgeInsets.symmetric(vertical: 12),
+            padding: EdgeInsets.symmetric(vertical: FiloSpacing.s12),
             child: Text(
               'You\u2019re offline. Files marked Available offline can still be opened. Connect to download more files or open web links.',
             ),
           ),
-        const SizedBox(height: 16),
+        const SizedBox(height: FiloSpacing.s16),
         ShaderMask(
           shaderCallback: (rect) => const LinearGradient(
-            colors: [Colors.white, Colors.white, Colors.transparent],
+            colors: [FiloPaint.white, FiloPaint.white, FiloPaint.transparent],
             stops: [0, 0.9, 1],
           ).createShader(rect),
           blendMode: BlendMode.dstIn,
@@ -60,7 +60,7 @@ class _ClassFilesState extends ConsumerState<ClassFiles> {
               children: [
                 for (final name in ['All', 'Images', 'PDFs', 'Documents'])
                   Padding(
-                    padding: const EdgeInsets.only(right: 8),
+                    padding: const EdgeInsets.only(right: FiloSpacing.s8),
                     child: FiloAnimatedChip(
                       label: Text(name),
                       selected: filter == name,
@@ -71,7 +71,7 @@ class _ClassFilesState extends ConsumerState<ClassFiles> {
             ),
           ),
         ),
-        const SizedBox(height: 16),
+        const SizedBox(height: FiloSpacing.s16),
         if (data.isLoading || sync.isLoading && rows.isEmpty) ...[
           for (var i = 0; i < 3; i++)
             const Card(

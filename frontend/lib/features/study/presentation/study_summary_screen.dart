@@ -166,7 +166,7 @@ class _SummaryBodyState extends ConsumerState<_SummaryBody> {
       child: Scaffold(
         appBar: AppBar(title: const Text('Summary')),
         body: ListView(
-          padding: const EdgeInsets.all(24),
+          padding: const EdgeInsets.all(FiloSpacing.screen),
           children: [
             const StudyOfflineBanner(),
             studyAsync(
@@ -179,7 +179,7 @@ class _SummaryBodyState extends ConsumerState<_SummaryBody> {
                       'Saved ${MaterialLocalizations.of(context).formatMediumDate(saved.updatedAt.toLocal())}',
                       style: Theme.of(context).textTheme.labelLarge,
                     ),
-                    const SizedBox(height: 12),
+                    const SizedBox(height: FiloSpacing.s12),
                     FiloPanel(child: StudyAnswerText(saved.content)),
                     _usage(StudySummaryUsage.decode(saved.usageJson)),
                     Align(
@@ -192,7 +192,9 @@ class _SummaryBodyState extends ConsumerState<_SummaryBody> {
                     ),
                   ] else
                     Padding(
-                      padding: const EdgeInsets.symmetric(vertical: 24),
+                      padding: const EdgeInsets.symmetric(
+                        vertical: FiloSpacing.screen,
+                      ),
                       child: EmptyState(
                         title: 'Generate a short summary of your sources.',
                         pose: _session.error == null ? 'reading' : 'confused',
@@ -200,7 +202,7 @@ class _SummaryBodyState extends ConsumerState<_SummaryBody> {
                       ),
                     ),
                   if (pending != null) ...[
-                    const SizedBox(height: 16),
+                    const SizedBox(height: FiloSpacing.s16),
                     const Text('New summary — not confirmed saved'),
                     FiloPanel(child: StudyAnswerText(pending.value.answer)),
                     _usage(StudySummaryUsage.fromResult(pending)),
@@ -214,9 +216,9 @@ class _SummaryBodyState extends ConsumerState<_SummaryBody> {
                       onPressed: _session.working ? null : _session.retrySave,
                     ),
                   ],
-                  const SizedBox(height: 16),
+                  const SizedBox(height: FiloSpacing.s16),
                   const Text('AI can make mistakes. Check important answers.'),
-                  const SizedBox(height: 16),
+                  const SizedBox(height: FiloSpacing.s16),
                   if (_session.working) ...[
                     if (!_session.saving)
                       const Mascot(pose: 'thinking', size: 120),
@@ -230,7 +232,7 @@ class _SummaryBodyState extends ConsumerState<_SummaryBody> {
                     ),
                     if (!MediaQuery.disableAnimationsOf(context))
                       const Padding(
-                        padding: EdgeInsets.all(16),
+                        padding: EdgeInsets.all(FiloSpacing.s16),
                         child: Center(
                           child: FiloCircularProgressIndicator(
                             semanticsLabel: 'Preparing summary',
@@ -239,7 +241,7 @@ class _SummaryBodyState extends ConsumerState<_SummaryBody> {
                       ),
                     if (!_session.saving) ...[
                       FiloButton(label: 'Cancel', onPressed: _session.cancel),
-                      const SizedBox(height: 8),
+                      const SizedBox(height: FiloSpacing.s8),
                       const Text(
                         'Cancel stops waiting on this phone. The server may still finish.',
                       ),
@@ -261,7 +263,7 @@ class _SummaryBodyState extends ConsumerState<_SummaryBody> {
             ),
             if (reason != null)
               Padding(
-                padding: const EdgeInsets.only(top: 12),
+                padding: const EdgeInsets.only(top: FiloSpacing.s12),
                 child: Text(reason),
               ),
             if (sources.hasError)
@@ -272,7 +274,7 @@ class _SummaryBodyState extends ConsumerState<_SummaryBody> {
               ),
             if (_session.error != null)
               Padding(
-                padding: const EdgeInsets.only(top: 12),
+                padding: const EdgeInsets.only(top: FiloSpacing.s12),
                 child: Semantics(
                   liveRegion: true,
                   child: Text(_session.error!),
@@ -285,7 +287,7 @@ class _SummaryBodyState extends ConsumerState<_SummaryBody> {
   }
 
   Widget _usage(StudySummaryUsage? usage) => Padding(
-    padding: const EdgeInsets.only(top: 12),
+    padding: const EdgeInsets.only(top: FiloSpacing.s12),
     child: Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [

@@ -86,17 +86,17 @@ class StartupErrorApp extends StatelessWidget {
       body: SafeArea(
         child: Center(
           child: SingleChildScrollView(
-            padding: const EdgeInsets.all(24),
+            padding: const EdgeInsets.all(FiloSpacing.screen),
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
-                const Text(
+                Text(
                   'Filo could not start',
-                  style: TextStyle(fontSize: 24),
+                  style: Theme.of(context).textTheme.titleLarge!,
                 ),
-                const SizedBox(height: 16),
+                const SizedBox(height: FiloSpacing.s16),
                 Text(message, textAlign: TextAlign.center),
-                const SizedBox(height: 16),
+                const SizedBox(height: FiloSpacing.s16),
                 const Text(
                   'For development, restart with:\n'
                   'flutter run --dart-define-from-file=.env.dev.json',

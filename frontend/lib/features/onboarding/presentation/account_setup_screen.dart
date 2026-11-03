@@ -320,7 +320,7 @@ class _AccountSetupScreenState extends ConsumerState<AccountSetupScreen> {
               constraints: const BoxConstraints(maxWidth: 520),
               child: ListView(
                 shrinkWrap: true,
-                padding: const EdgeInsets.all(24),
+                padding: const EdgeInsets.all(FiloSpacing.screen),
                 children: [
                   if (_stage == 'lookupError') ...[
                     Semantics(liveRegion: true, child: Text(_error!)),

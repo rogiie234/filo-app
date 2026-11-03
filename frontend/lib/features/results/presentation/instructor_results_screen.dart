@@ -175,7 +175,7 @@ class _InstructorResultsScreenState
             children: [
               if (data != null) ...[
                 Text(releasedLine(data.quiz)),
-                const SizedBox(height: 20),
+                const SizedBox(height: FiloSpacing.s20),
                 Wrap(
                   spacing: 12,
                   runSpacing: 12,
@@ -197,7 +197,7 @@ class _InstructorResultsScreenState
                     ),
                   ],
                 ),
-                const SizedBox(height: 12),
+                const SizedBox(height: FiloSpacing.s12),
                 if (data.average.points == null)
                   Text(
                     data.submittedCount == 0
@@ -216,7 +216,7 @@ class _InstructorResultsScreenState
                 if ((data.quiz['class'] as Map?)?['archived_at'] != null)
                   const Text('This class is archived.'),
                 if (data.quiz['results_released_at'] == null) ...[
-                  const SizedBox(height: 16),
+                  const SizedBox(height: FiloSpacing.s16),
                   FiloButton(
                     label: _busy ? 'Please wait...' : 'Release results',
                     onPressed:
@@ -229,7 +229,7 @@ class _InstructorResultsScreenState
                   else if (blocked != null)
                     Text(blocked),
                 ],
-                const SizedBox(height: 24),
+                const SizedBox(height: FiloSpacing.screen),
                 TextField(
                   decoration: const InputDecoration(
                     labelText: 'Search students',
@@ -237,7 +237,7 @@ class _InstructorResultsScreenState
                   ),
                   onChanged: (value) => setState(() => _search = value),
                 ),
-                const SizedBox(height: 12),
+                const SizedBox(height: FiloSpacing.s12),
                 Wrap(
                   spacing: 8,
                   runSpacing: 4,
@@ -256,7 +256,7 @@ class _InstructorResultsScreenState
                       ),
                   ],
                 ),
-                const SizedBox(height: 12),
+                const SizedBox(height: FiloSpacing.s12),
                 DropdownButtonFormField<String>(
                   isExpanded: true,
                   initialValue: _sort,
@@ -267,7 +267,7 @@ class _InstructorResultsScreenState
                   ],
                   onChanged: (value) => setState(() => _sort = value ?? 'Name'),
                 ),
-                const SizedBox(height: 16),
+                const SizedBox(height: FiloSpacing.s16),
                 if (rows.isEmpty)
                   Text(
                     data.members.isEmpty
@@ -313,7 +313,7 @@ class _InstructorResultsScreenState
                       );
                     },
                   ),
-                const SizedBox(height: 16),
+                const SizedBox(height: FiloSpacing.s16),
                 const Text(resultsLeaveNote),
               ],
             ],
@@ -345,16 +345,16 @@ class ResultStudentRow extends StatelessWidget {
   final bool actionsEnabled;
   @override
   Widget build(BuildContext context) => Padding(
-    padding: const EdgeInsets.only(bottom: 12),
+    padding: const EdgeInsets.only(bottom: FiloSpacing.s12),
     child: FiloPanel(
       padding: EdgeInsets.zero,
       child: Column(
         children: [
           InkWell(
             onTap: onTap,
-            borderRadius: BorderRadius.circular(28),
+            borderRadius: BorderRadius.circular(FiloRadii.large),
             child: Padding(
-              padding: const EdgeInsets.all(16),
+              padding: const EdgeInsets.all(FiloSpacing.s16),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [

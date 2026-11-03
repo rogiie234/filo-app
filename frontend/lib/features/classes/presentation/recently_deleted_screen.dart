@@ -71,7 +71,7 @@ class _RecentlyDeletedState extends ConsumerState<RecentlyDeletedScreen> {
         onRefresh: () => ref.read(classSyncProvider.notifier).refresh(),
         child: ListView(
           physics: const AlwaysScrollableScrollPhysics(),
-          padding: const EdgeInsets.all(24),
+          padding: const EdgeInsets.all(FiloSpacing.screen),
           children: [
             const Text(
               'Deleted classes can be restored within 14 days. After that they are permanently deleted, including server files. Downloaded files stay on devices.',

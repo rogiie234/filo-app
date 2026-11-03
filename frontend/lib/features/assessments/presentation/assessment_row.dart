@@ -32,10 +32,8 @@ class AssessmentTypeChip extends StatelessWidget {
   Widget build(BuildContext context) => Chip(
     label: Text(type == 'exam' ? 'Exam' : 'Quiz'),
     backgroundColor: Theme.of(context).colorScheme.surfaceContainer,
-    labelStyle: TextStyle(
-      color: Theme.of(context).colorScheme.onSurface,
-      fontWeight: FontWeight.w700,
-    ),
+    labelStyle: Theme.of(context).textTheme.labelMedium!
+        .copyWith(color: Theme.of(context).colorScheme.onSurface),
     visualDensity: VisualDensity.compact,
   );
 }
@@ -73,7 +71,7 @@ class AssessmentRow extends StatelessWidget {
     return Material(
       color: Theme.of(context).colorScheme.surface,
       shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(24),
+        borderRadius: BorderRadius.circular(FiloRadii.large),
         side: BorderSide(color: Theme.of(context).colorScheme.outline),
       ),
       clipBehavior: Clip.antiAlias,
@@ -83,7 +81,7 @@ class AssessmentRow extends StatelessWidget {
           InkWell(
             onTap: busy ? null : onOpen,
             child: Padding(
-              padding: const EdgeInsets.all(20),
+              padding: const EdgeInsets.all(FiloSpacing.s20),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
@@ -99,10 +97,10 @@ class AssessmentRow extends StatelessWidget {
                           color: Theme.of(context).colorScheme.onSurface,
                         ),
                         label: Text(status.label),
-                        labelStyle: TextStyle(
-                          color: Theme.of(context).colorScheme.onSurface,
-                          fontWeight: FontWeight.w700,
-                        ),
+                        labelStyle: Theme.of(context).textTheme.labelMedium!
+                            .copyWith(
+                              color: Theme.of(context).colorScheme.onSurface,
+                            ),
                         backgroundColor: Theme.of(context)
                             .colorScheme
                             .surfaceContainer,
@@ -110,26 +108,26 @@ class AssessmentRow extends StatelessWidget {
                       ),
                     ],
                   ),
-                  const SizedBox(height: 8),
+                  const SizedBox(height: FiloSpacing.s8),
                   Text(
                     quiz.title,
                     style: Theme.of(context).textTheme.titleMedium,
                   ),
-                  const SizedBox(height: 12),
+                  const SizedBox(height: FiloSpacing.s12),
                   Text(
                     'Opens: ${assessmentDateLabel(quiz.opensAt)}',
                     style: TextStyle(
                       color: Theme.of(context).colorScheme.onSurfaceVariant,
                     ),
                   ),
-                  const SizedBox(height: 4),
+                  const SizedBox(height: FiloSpacing.s4),
                   Text(
                     'Closes: ${assessmentDateLabel(quiz.closesAt)}',
                     style: TextStyle(
                       color: Theme.of(context).colorScheme.onSurfaceVariant,
                     ),
                   ),
-                  const SizedBox(height: 12),
+                  const SizedBox(height: FiloSpacing.s12),
                   Text(
                     '${quiz.questionCount == null ? 'Question count unavailable' : '${quiz.questionCount} ${quiz.questionCount == 1 ? 'question' : 'questions'}'} | ${quiz.totalPoints} ${quiz.totalPoints == 1 ? 'point' : 'points'}',
                   ),
@@ -142,7 +140,7 @@ class AssessmentRow extends StatelessWidget {
               alignment: Alignment.centerRight,
               child: busy
                   ? const Padding(
-                      padding: EdgeInsets.all(16),
+                      padding: EdgeInsets.all(FiloSpacing.s16),
                       child: Text('Deleting...'),
                     )
                   : PopupMenuButton<String>(

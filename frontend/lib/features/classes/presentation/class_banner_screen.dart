@@ -135,7 +135,7 @@ class _ClassBannerState extends ConsumerState<ClassBannerScreen> {
       child: Scaffold(
         appBar: AppBar(title: const Text('Change banner')),
         body: ListView(
-          padding: const EdgeInsets.all(24),
+          padding: const EdgeInsets.all(FiloSpacing.screen),
           children: [
             const Text('Choose a color or upload a new banner.'),
             Wrap(
@@ -174,9 +174,9 @@ class _ClassBannerState extends ConsumerState<ClassBannerScreen> {
               label: Text(_picking ? 'Opening photos…' : 'Upload banner image'),
             ),
             const Text('JPG, PNG, or WebP · up to 2 MB'),
-            const SizedBox(height: 16),
+            const SizedBox(height: FiloSpacing.s16),
             ClipRRect(
-              borderRadius: BorderRadius.circular(28),
+              borderRadius: BorderRadius.circular(FiloRadii.large),
               child: ClassBanner(
                 section: 'Your classroom',
                 instructor: 'Instructor',
@@ -184,7 +184,7 @@ class _ClassBannerState extends ConsumerState<ClassBannerScreen> {
                 image: _bannerImage == null ? null : MemoryImage(_bannerImage!),
               ),
             ),
-            const SizedBox(height: 16),
+            const SizedBox(height: FiloSpacing.s16),
             if (_error != null)
               Semantics(liveRegion: true, child: Text(_error!)),
             if (!online)

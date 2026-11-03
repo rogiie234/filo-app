@@ -224,7 +224,7 @@ class _SessionScreenState extends ConsumerState<SessionScreen> {
                   }),
             child: const Text('Sign out'),
           ),
-          const SizedBox(width: 8),
+          const SizedBox(width: FiloSpacing.s8),
         ],
       ),
       body: verification.isLoading
@@ -233,7 +233,12 @@ class _SessionScreenState extends ConsumerState<SessionScreen> {
               child: SingleChildScrollView(
                 keyboardDismissBehavior:
                     ScrollViewKeyboardDismissBehavior.onDrag,
-                padding: const EdgeInsets.fromLTRB(24, 16, 24, 40),
+                padding: const EdgeInsets.fromLTRB(
+                  FiloSpacing.screen,
+                  FiloSpacing.s16,
+                  FiloSpacing.screen,
+                  FiloSpacing.s40,
+                ),
                 child: Align(
                   alignment: Alignment.topCenter,
                   child: ConstrainedBox(
@@ -242,7 +247,7 @@ class _SessionScreenState extends ConsumerState<SessionScreen> {
                       crossAxisAlignment: CrossAxisAlignment.stretch,
                       children: [
                         const Center(child: Mascot(pose: 'curious', size: 156)),
-                        const SizedBox(height: 24),
+                        const SizedBox(height: FiloSpacing.screen),
                         Row(
                           mainAxisAlignment: MainAxisAlignment.center,
                           children: [
@@ -251,51 +256,50 @@ class _SessionScreenState extends ConsumerState<SessionScreen> {
                               size: 18,
                               color: Theme.of(context).colorScheme.primary,
                             ),
-                            SizedBox(width: 8),
+                            SizedBox(width: FiloSpacing.s8),
                             Flexible(
                               child: Text(
                                 'A quick security check',
                                 textAlign: TextAlign.center,
-                                style: TextStyle(
-                                  color: Theme.of(context).colorScheme.primary,
-                                  fontSize: 14,
-                                  fontWeight: FontWeight.w800,
-                                ),
+                                style: FiloTypography.strongLabel(context)
+                                    .copyWith(
+                                      color: Theme.of(context)
+                                          .colorScheme
+                                          .primary,
+                                    ),
                               ),
                             ),
                           ],
                         ),
-                        const SizedBox(height: 12),
+                        const SizedBox(height: FiloSpacing.s12),
                         Semantics(
                           header: true,
                           child: Text(
                             'Let\u2019s make sure\nit\u2019s you.',
                             textAlign: TextAlign.center,
-                            style: TextStyle(
-                              fontSize: 28,
-                              height: 1.2,
-                              fontWeight: FontWeight.w800,
-                              color: Theme.of(context).colorScheme.onSurface,
-                            ),
+                            style: Theme.of(context).textTheme.headlineMedium!
+                                .copyWith(
+                                  color: Theme.of(context)
+                                      .colorScheme
+                                      .onSurface,
+                                ),
                           ),
                         ),
-                        const SizedBox(height: 12),
+                        const SizedBox(height: FiloSpacing.s12),
                         Text(
                           sent
                               ? 'We sent a 6-digit code to $email. Enter it to verify this device. The code expires in 10 minutes.'
                               : 'One little check to keep your account safe. We\u2019ll send a 6-digit code to your Google email.',
                           textAlign: TextAlign.center,
-                          style: TextStyle(
-                            color: Theme.of(context)
-                                .colorScheme
-                                .onSurfaceVariant,
-                            fontSize: 15,
-                            fontWeight: FontWeight.w500,
-                            height: 1.5,
-                          ),
+                          style: Theme.of(context).textTheme.bodyLarge!
+                              .copyWith(
+                                color: Theme.of(context)
+                                    .colorScheme
+                                    .onSurfaceVariant,
+                              ),
                         ),
                         if (_message != null) ...[
-                          const SizedBox(height: 20),
+                          const SizedBox(height: FiloSpacing.s20),
                           Semantics(
                             liveRegion: true,
                             child: FiloPanel(
@@ -304,7 +308,7 @@ class _SessionScreenState extends ConsumerState<SessionScreen> {
                                   : Theme.of(context)
                                         .colorScheme
                                         .surfaceContainer,
-                              padding: const EdgeInsets.all(16),
+                              padding: const EdgeInsets.all(FiloSpacing.s16),
                               child: Row(
                                 crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [
@@ -317,14 +321,14 @@ class _SessionScreenState extends ConsumerState<SessionScreen> {
                                         : Theme.of(context).colorScheme.primary,
                                     size: 20,
                                   ),
-                                  const SizedBox(width: 10),
+                                  const SizedBox(width: FiloSpacing.s12),
                                   Expanded(child: Text(_message!)),
                                 ],
                               ),
                             ),
                           ),
                         ],
-                        const SizedBox(height: 24),
+                        const SizedBox(height: FiloSpacing.screen),
                         if (verification.hasError)
                           FiloPanel(
                             child: Column(
@@ -335,12 +339,12 @@ class _SessionScreenState extends ConsumerState<SessionScreen> {
                                   color: Theme.of(context).colorScheme.primary,
                                   size: 28,
                                 ),
-                                const SizedBox(height: 12),
+                                const SizedBox(height: FiloSpacing.s12),
                                 const Text(
                                   'We couldn\u2019t check this device. Please try again.',
                                   textAlign: TextAlign.center,
                                 ),
-                                const SizedBox(height: 20),
+                                const SizedBox(height: FiloSpacing.s20),
                                 FiloButton(
                                   label: 'Try again',
                                   onPressed: () =>
@@ -375,22 +379,23 @@ class _SessionScreenState extends ConsumerState<SessionScreen> {
                                               .primary,
                                         ),
                                       ),
-                                      const SizedBox(width: 12),
+                                      const SizedBox(width: FiloSpacing.s12),
                                       Expanded(
                                         child: Text(
                                           email,
-                                          style: TextStyle(
-                                            color: Theme.of(context)
-                                                .colorScheme
-                                                .onSurface,
-                                            fontSize: 14,
-                                            fontWeight: FontWeight.w800,
-                                          ),
+                                          style:
+                                              FiloTypography.strongLabel(
+                                                context,
+                                              ).copyWith(
+                                                color: Theme.of(context)
+                                                    .colorScheme
+                                                    .onSurface,
+                                              ),
                                         ),
                                       ),
                                     ],
                                   ),
-                                  const SizedBox(height: 24),
+                                  const SizedBox(height: FiloSpacing.screen),
                                   FiloButton(
                                     label: _busy
                                         ? 'Sending code\u2026'
@@ -403,14 +408,14 @@ class _SessionScreenState extends ConsumerState<SessionScreen> {
                                 ] else ...[
                                   Text(
                                     'Verification code',
-                                    style: TextStyle(
-                                      fontWeight: FontWeight.w800,
-                                      color: Theme.of(context)
-                                          .colorScheme
-                                          .onSurface,
-                                    ),
+                                    style: FiloTypography.strongLabel(context)
+                                        .copyWith(
+                                          color: Theme.of(context)
+                                              .colorScheme
+                                              .onSurface,
+                                        ),
                                   ),
-                                  const SizedBox(height: 12),
+                                  const SizedBox(height: FiloSpacing.s12),
                                   AutofillGroup(
                                     child: TextField(
                                       controller: _code,
@@ -428,10 +433,8 @@ class _SessionScreenState extends ConsumerState<SessionScreen> {
                                       autofillHints: null,
                                       maxLength: 6,
                                       textAlign: TextAlign.center,
-                                      style: const TextStyle(
-                                        fontSize: 24,
-                                        fontWeight: FontWeight.w800,
-                                        letterSpacing: 4,
+                                      style: FiloTypography.verificationCode(
+                                        context,
                                       ),
                                       inputFormatters: [
                                         FilteringTextInputFormatter.digitsOnly,
@@ -453,7 +456,7 @@ class _SessionScreenState extends ConsumerState<SessionScreen> {
                                       },
                                     ),
                                   ),
-                                  const SizedBox(height: 20),
+                                  const SizedBox(height: FiloSpacing.s20),
                                   FiloButton(
                                     label: _busy
                                         ? 'Please wait\u2026'
@@ -463,7 +466,7 @@ class _SessionScreenState extends ConsumerState<SessionScreen> {
                                         ? null
                                         : _verify,
                                   ),
-                                  const SizedBox(height: 8),
+                                  const SizedBox(height: FiloSpacing.s8),
                                   TextButton(
                                     onPressed: _canResend ? _send : null,
                                     child: Text(
@@ -472,17 +475,18 @@ class _SessionScreenState extends ConsumerState<SessionScreen> {
                                           : 'Resend code',
                                     ),
                                   ),
-                                  const SizedBox(height: 4),
+                                  const SizedBox(height: FiloSpacing.s4),
                                   Text(
                                     'No email yet? Check your spam folder.',
                                     textAlign: TextAlign.center,
-                                    style: TextStyle(
-                                      color: Theme.of(context)
-                                          .colorScheme
-                                          .onSurfaceVariant,
-                                      fontSize: 13,
-                                      height: 1.4,
-                                    ),
+                                    style: Theme.of(context)
+                                        .textTheme
+                                        .bodySmall!
+                                        .copyWith(
+                                          color: Theme.of(context)
+                                              .colorScheme
+                                              .onSurfaceVariant,
+                                        ),
                                   ),
                                 ],
                               ],

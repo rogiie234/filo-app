@@ -124,7 +124,7 @@ class _StudySourcePickerState extends ConsumerState<StudySourcePicker> {
         child: Column(
           children: [
             const Padding(
-              padding: EdgeInsets.symmetric(horizontal: 24),
+              padding: EdgeInsets.symmetric(horizontal: FiloSpacing.screen),
               child: StudyOfflineBanner(),
             ),
             const TabBar(
@@ -172,7 +172,7 @@ class _StudySourcePickerState extends ConsumerState<StudySourcePicker> {
             ),
             if (reader.hasError)
               const Padding(
-                padding: EdgeInsets.all(16),
+                padding: EdgeInsets.all(FiloSpacing.s16),
                 child: EmptyState(
                   title: 'Could not open your saved files. Try reopening the picker.',
                   pose: 'confused',
@@ -180,7 +180,7 @@ class _StudySourcePickerState extends ConsumerState<StudySourcePicker> {
                 ),
               ),
             Padding(
-              padding: const EdgeInsets.all(24),
+              padding: const EdgeInsets.all(FiloSpacing.screen),
               child: FiloButton(
                 label: _reading
                     ? 'Reading file...'
@@ -210,7 +210,7 @@ class _StudySourcePickerState extends ConsumerState<StudySourcePicker> {
     if (files.isEmpty)
       return const Center(
         child: Padding(
-          padding: EdgeInsets.all(24),
+          padding: EdgeInsets.all(FiloSpacing.screen),
           child: EmptyState(
             title: 'No saved files here. Add files in Files or download class files first.',
             pose: 'folder',

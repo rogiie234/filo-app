@@ -112,7 +112,12 @@ class DriveBackupScreen extends ConsumerWidget {
         child: CustomScrollView(
           slivers: [
             SliverPadding(
-              padding: const EdgeInsets.fromLTRB(24, 16, 24, 0),
+              padding: const EdgeInsets.fromLTRB(
+                FiloSpacing.screen,
+                FiloSpacing.s16,
+                FiloSpacing.screen,
+                0,
+              ),
               sliver: SliverToBoxAdapter(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -121,62 +126,52 @@ class DriveBackupScreen extends ConsumerWidget {
                       alignment: Alignment.centerLeft,
                       child: _BackupIcon(icon: FiloIcons.cloudUpload, size: 72),
                     ),
-                    const SizedBox(height: 20),
+                    const SizedBox(height: FiloSpacing.s20),
                     Text(
                       'Back up your files.',
-                      style: TextStyle(
-                        fontSize: 28,
-                        height: 1.2,
-                        fontWeight: FontWeight.w800,
-                        color: Theme.of(context).colorScheme.onSurface,
-                      ),
+                      style: Theme.of(context).textTheme.headlineMedium!
+                          .copyWith(
+                            color: Theme.of(context).colorScheme.onSurface,
+                          ),
                     ),
-                    const SizedBox(height: 10),
+                    const SizedBox(height: FiloSpacing.s12),
                     Text(
                       'Save copies of files from this phone to your own Google '
                       'Drive, in a folder named Filo Backup. Backup is one-way.',
-                      style: TextStyle(
-                        fontSize: 15,
-                        height: 1.5,
+                      style: Theme.of(context).textTheme.bodyLarge!.copyWith(
                         color: Theme.of(context).colorScheme.onSurfaceVariant,
-                        fontWeight: FontWeight.w500,
                       ),
                     ),
-                    const SizedBox(height: 16),
+                    const SizedBox(height: FiloSpacing.s16),
                     if (email != null && email.isNotEmpty) ...[
                       Text(
                         email,
-                        style: TextStyle(
-                          fontSize: 15,
-                          height: 1.4,
-                          fontWeight: FontWeight.w800,
+                        style: Theme.of(context).textTheme.labelLarge!.copyWith(
                           color: Theme.of(context).colorScheme.onSurface,
                         ),
                       ),
-                      const SizedBox(height: 8),
+                      const SizedBox(height: FiloSpacing.s8),
                     ],
                     Text(
                       'Use your Google account to save copies of your files. '
                       'Google may ask you to allow Drive access.',
-                      style: TextStyle(
-                        fontSize: 14,
-                        height: 1.5,
+                      style: Theme.of(context).textTheme.bodyMedium!.copyWith(
                         color: Theme.of(context).colorScheme.onSurfaceVariant,
                       ),
                     ),
-                    const SizedBox(height: 24),
+                    const SizedBox(height: FiloSpacing.screen),
                     FiloPanel(
                       padding: const EdgeInsets.symmetric(
-                        horizontal: 16,
-                        vertical: 8,
+                        horizontal: FiloSpacing.s16,
+                        vertical: FiloSpacing.s8,
                       ),
                       child: Column(
                         children: [
                           FiloSwitchListTile(
                             contentPadding: EdgeInsets.zero,
-                            title: const Text(
+                            title: Text(
                               'Turn on Drive backup',
-                              style: TextStyle(fontWeight: FontWeight.w800),
+                              style: FiloTypography.strongLabel(context),
                             ),
                             value: service.enabled,
                             onChanged: service.busy && !service.enabled
@@ -195,9 +190,9 @@ class DriveBackupScreen extends ConsumerWidget {
                           ),
                           FiloSwitchListTile(
                             contentPadding: EdgeInsets.zero,
-                            title: const Text(
+                            title: Text(
                               'Back up on Wi-Fi only',
-                              style: TextStyle(fontWeight: FontWeight.w700),
+                              style: Theme.of(context).textTheme.labelMedium!,
                             ),
                             subtitle: Text(
                               'Wait for Wi-Fi before uploading to save mobile data.',
@@ -205,7 +200,6 @@ class DriveBackupScreen extends ConsumerWidget {
                                 color: Theme.of(context)
                                     .colorScheme
                                     .onSurfaceVariant,
-                                height: 1.4,
                               ),
                             ),
                             value: service.wifiOnly,
@@ -216,7 +210,7 @@ class DriveBackupScreen extends ConsumerWidget {
                         ],
                       ),
                     ),
-                    const SizedBox(height: 16),
+                    const SizedBox(height: FiloSpacing.s16),
                     FiloPanel(
                       color: Theme.of(context).colorScheme.surfaceContainer,
                       child: Column(
@@ -233,49 +227,45 @@ class DriveBackupScreen extends ConsumerWidget {
                                   size: 22,
                                 ),
                               ),
-                              const SizedBox(width: 10),
+                              const SizedBox(width: FiloSpacing.s12),
                               Expanded(
                                 child: Text(
                                   service.enabled
                                       ? 'Backup status'
                                       : 'Drive backup is off',
-                                  style: const TextStyle(
-                                    fontSize: 17,
-                                    fontWeight: FontWeight.w800,
-                                  ),
+                                  style: Theme.of(context)
+                                      .textTheme
+                                      .titleMedium!,
                                 ),
                               ),
                             ],
                           ),
-                          const SizedBox(height: 12),
+                          const SizedBox(height: FiloSpacing.s12),
                           Semantics(
                             liveRegion: true,
                             child: Text(
                               service.message,
-                              style: const TextStyle(fontSize: 15, height: 1.5),
+                              style: Theme.of(context).textTheme.bodyLarge!,
                             ),
                           ),
                           if (service.busy) ...[
-                            const SizedBox(height: 16),
+                            const SizedBox(height: FiloSpacing.s16),
                             const FiloLinearProgressIndicator(
                               semanticsLabel: 'Drive backup in progress',
                               minHeight: 4,
                             ),
                           ],
-                          const SizedBox(height: 16),
+                          const SizedBox(height: FiloSpacing.s16),
                           Divider(
                             color: Theme.of(context).colorScheme.outline,
                             height: 1,
                           ),
-                          const SizedBox(height: 16),
+                          const SizedBox(height: FiloSpacing.s16),
                           Text(
                             lastLabel,
-                            style: const TextStyle(
-                              fontWeight: FontWeight.w700,
-                              height: 1.5,
-                            ),
+                            style: Theme.of(context).textTheme.labelMedium!,
                           ),
-                          const SizedBox(height: 6),
+                          const SizedBox(height: FiloSpacing.s8),
                           Text(
                             '${service.pendingCount} files pending',
                             style: TextStyle(
@@ -287,7 +277,7 @@ class DriveBackupScreen extends ConsumerWidget {
                         ],
                       ),
                     ),
-                    const SizedBox(height: 24),
+                    const SizedBox(height: FiloSpacing.screen),
                     FiloButton(
                       label: 'Back up now / Retry',
                       icon: FiloIcons.cloudUpload,
@@ -301,7 +291,7 @@ class DriveBackupScreen extends ConsumerWidget {
                             }
                           : null,
                     ),
-                    const SizedBox(height: 12),
+                    const SizedBox(height: FiloSpacing.s12),
                     FiloButton(
                       secondary: true,
                       label: 'Choose a file to back up',
@@ -310,43 +300,40 @@ class DriveBackupScreen extends ConsumerWidget {
                           ? () => _choose(context, ref, service)
                           : null,
                     ),
-                    const SizedBox(height: 16),
+                    const SizedBox(height: FiloSpacing.s16),
                     Text(
                       'Choose downloaded files with Android\u2019s file picker. '
                       'All files in My Files are backed up. Keep Filo open to '
                       'upload; pending files resume when you reopen it.',
-                      style: TextStyle(
-                        fontSize: 13,
-                        height: 1.5,
+                      style: Theme.of(context).textTheme.bodySmall!.copyWith(
                         color: Theme.of(context).colorScheme.onSurfaceVariant,
                       ),
                     ),
                     if (service.jobs.isNotEmpty) ...[
-                      const SizedBox(height: 28),
-                      const Text(
+                      const SizedBox(height: FiloSpacing.s32),
+                      Text(
                         'Files in backup',
-                        style: TextStyle(
-                          fontSize: 20,
-                          fontWeight: FontWeight.w800,
-                        ),
+                        style: Theme.of(context).textTheme.titleLarge!,
                       ),
-                      const SizedBox(height: 12),
+                      const SizedBox(height: FiloSpacing.s12),
                     ],
                   ],
                 ),
               ),
             ),
             SliverPadding(
-              padding: const EdgeInsets.symmetric(horizontal: 24),
+              padding: const EdgeInsets.symmetric(
+                horizontal: FiloSpacing.screen,
+              ),
               sliver: SliverList.builder(
                 itemCount: service.jobs.length,
                 itemBuilder: (context, index) {
                   final job = service.jobs[index];
                   final complete = job['status'] == 'complete';
                   return Padding(
-                    padding: const EdgeInsets.only(bottom: 10),
+                    padding: const EdgeInsets.only(bottom: FiloSpacing.s12),
                     child: FiloPanel(
-                      padding: const EdgeInsets.all(16),
+                      padding: const EdgeInsets.all(FiloSpacing.s16),
                       child: Row(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
@@ -355,32 +342,29 @@ class DriveBackupScreen extends ConsumerWidget {
                                 ? FiloIcons.cloudReady
                                 : FiloIcons.cloudUpload,
                           ),
-                          const SizedBox(width: 12),
+                          const SizedBox(width: FiloSpacing.s12),
                           Expanded(
                             child: Column(
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
                                 Text(
                                   job['name'] as String,
-                                  style: const TextStyle(
-                                    fontSize: 15,
-                                    fontWeight: FontWeight.w800,
-                                    height: 1.4,
-                                  ),
+                                  style: Theme.of(context)
+                                      .textTheme
+                                      .labelLarge!,
                                 ),
-                                const SizedBox(height: 6),
+                                const SizedBox(height: FiloSpacing.s8),
                                 Text(
                                   complete
                                       ? '${job['size']} bytes backed up'
                                             '${(job['elapsed_ms'] as int? ?? 0) > 0 ? ' \u00b7 ${((job['elapsed_ms'] as int) / 1000).toStringAsFixed(2)} s (latest upload attempt)' : ''}'
                                       : '${job['uploaded']} / ${job['size']} bytes',
-                                  style: TextStyle(
-                                    fontSize: 13,
-                                    color: Theme.of(context)
-                                        .colorScheme
-                                        .onSurfaceVariant,
-                                    height: 1.4,
-                                  ),
+                                  style: Theme.of(context).textTheme.bodySmall!
+                                      .copyWith(
+                                        color: Theme.of(context)
+                                            .colorScheme
+                                            .onSurfaceVariant,
+                                      ),
                                 ),
                               ],
                             ),
@@ -393,10 +377,20 @@ class DriveBackupScreen extends ConsumerWidget {
               ),
             ),
             SliverPadding(
-              padding: const EdgeInsets.fromLTRB(24, 16, 24, 32),
+              padding: const EdgeInsets.fromLTRB(
+                FiloSpacing.screen,
+                FiloSpacing.s16,
+                FiloSpacing.screen,
+                FiloSpacing.s32,
+              ),
               sliver: SliverToBoxAdapter(
                 child: TextButton.icon(
-                  style: TextButton.styleFrom(minimumSize: const Size(48, 48)),
+                  style: TextButton.styleFrom(
+                    minimumSize: const Size(
+                      FiloControlSize.compact,
+                      FiloControlSize.compact,
+                    ),
+                  ),
                   onPressed: () async {
                     final opened = await launchUrl(
                       Uri.parse('https://drive.google.com/drive/my-drive'),
@@ -435,7 +429,7 @@ class _BackupIcon extends StatelessWidget {
       height: size,
       decoration: BoxDecoration(
         color: Theme.of(context).colorScheme.primaryContainer,
-        borderRadius: BorderRadius.circular(size * .32),
+        borderRadius: BorderRadius.circular(FiloRadii.small),
       ),
       child: FiloIcon(
         icon,
@@ -453,7 +447,7 @@ class _BackupUnavailable extends StatelessWidget {
   @override
   Widget build(BuildContext context) => Center(
     child: SingleChildScrollView(
-      padding: const EdgeInsets.all(24),
+      padding: const EdgeInsets.all(FiloSpacing.screen),
       child: ConstrainedBox(
         constraints: const BoxConstraints(maxWidth: 480),
         child: EmptyState(

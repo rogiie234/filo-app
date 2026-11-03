@@ -1,3 +1,5 @@
+import '../../../core/theme/filo_banner_palette.dart';
+
 import 'package:flutter/material.dart';
 
 import '../../../core/theme/app_theme.dart';
@@ -10,7 +12,7 @@ class ClassBanner extends StatelessWidget {
     super.key,
     required this.section,
     required this.instructor,
-    this.color = 0xFF236B57,
+    this.color = filoDefaultBanner,
     this.image,
     this.avatar,
   });
@@ -20,13 +22,13 @@ class ClassBanner extends StatelessWidget {
   final ImageProvider? image;
   final Widget? avatar;
 
-  static const patternOpacity = .06;
-  static const imageScrim = Color(0xB3000000);
+  static const patternOpacity = FiloPaint.bannerPatternOpacity;
+  static const imageScrim = FiloPaint.bannerScrim;
 
   static Color foreground(int color) =>
       color == classBannerColors['sage'] || color == classBannerColors['olive']
-      ? FiloColors.ink
-      : Colors.white;
+      ? FiloPaint.bannerInk
+      : FiloPaint.white;
 
   @override
   Widget build(BuildContext context) {
@@ -34,7 +36,7 @@ class ClassBanner extends StatelessWidget {
         ? color
         : classBannerColor(null);
     final background = image == null ? preset : classBannerColor(null);
-    final ink = image == null ? foreground(preset) : Colors.white;
+    final ink = image == null ? foreground(preset) : FiloPaint.white;
     final fallback = ColoredBox(
       color: Color(background),
       child: CustomPaint(
@@ -72,7 +74,7 @@ class ClassBanner extends StatelessWidget {
                       gradient: LinearGradient(
                         begin: Alignment.topCenter,
                         end: Alignment.bottomCenter,
-                        colors: [Colors.transparent, imageScrim],
+                        colors: [FiloPaint.transparent, imageScrim],
                       ),
                     ),
                   ),
@@ -86,11 +88,11 @@ class ClassBanner extends StatelessWidget {
                       : const LinearGradient(
                           begin: Alignment.topCenter,
                           end: Alignment.bottomCenter,
-                          colors: [imageScrim, Color(0xD9000000)],
+                          colors: [imageScrim, FiloPaint.bannerScrimEnd],
                         ),
                 ),
                 child: Padding(
-                  padding: const EdgeInsets.all(24),
+                  padding: const EdgeInsets.all(FiloSpacing.screen),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
@@ -100,15 +102,11 @@ class ClassBanner extends StatelessWidget {
                           Expanded(
                             child: Text(
                               section,
-                              style: TextStyle(
-                                color: ink,
-                                fontSize: 26,
-                                height: 1.25,
-                                fontWeight: FontWeight.w900,
-                              ),
+                              style: Theme.of(context).textTheme.headlineMedium!
+                                  .copyWith(color: ink),
                             ),
                           ),
-                          const SizedBox(width: 16),
+                          const SizedBox(width: FiloSpacing.s16),
                           ExcludeSemantics(
                             child: SizedBox(
                               width: 44,
@@ -122,22 +120,18 @@ class ClassBanner extends StatelessWidget {
                           ),
                         ],
                       ),
-                      const SizedBox(height: 20),
+                      const SizedBox(height: FiloSpacing.s20),
                       Row(
                         children: [
                           if (avatar != null) ...[
-                            avatar!,
-                            const SizedBox(width: 12),
+                            ClipOval(child: avatar!),
+                            const SizedBox(width: FiloSpacing.s12),
                           ],
                           Expanded(
                             child: Text(
                               instructor,
-                              style: TextStyle(
-                                color: ink,
-                                fontSize: 14,
-                                height: 1.4,
-                                fontWeight: FontWeight.w700,
-                              ),
+                              style: Theme.of(context).textTheme.labelMedium!
+                                  .copyWith(color: ink),
                             ),
                           ),
                         ],

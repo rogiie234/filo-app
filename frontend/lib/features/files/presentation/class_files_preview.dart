@@ -21,17 +21,17 @@ class _PreviewClassFilesState extends State<PreviewClassFiles> {
           file.name.toLowerCase().contains(_query.toLowerCase()),
     );
     return ListView(
-      padding: const EdgeInsets.all(24),
+      padding: const EdgeInsets.all(FiloSpacing.screen),
       children: [
         Text('Class files', style: Theme.of(context).textTheme.headlineMedium),
-        const SizedBox(height: 8),
+        const SizedBox(height: FiloSpacing.s8),
         Text(
           'Good ideas, kept together.',
           style: TextStyle(
             color: Theme.of(context).colorScheme.onSurfaceVariant,
           ),
         ),
-        const SizedBox(height: 24),
+        const SizedBox(height: FiloSpacing.screen),
         TextField(
           decoration: const InputDecoration(
             hintText: 'Find a file',
@@ -39,14 +39,14 @@ class _PreviewClassFilesState extends State<PreviewClassFiles> {
           ),
           onChanged: (value) => setState(() => _query = value),
         ),
-        const SizedBox(height: 16),
+        const SizedBox(height: FiloSpacing.s16),
         SingleChildScrollView(
           scrollDirection: Axis.horizontal,
           child: Row(
             children: [
               for (final filter in ['All', 'Images', 'PDFs', 'Documents'])
                 Padding(
-                  padding: const EdgeInsets.only(right: 8),
+                  padding: const EdgeInsets.only(right: FiloSpacing.s8),
                   child: FiloAnimatedChip(
                     label: Text(filter),
                     selected: _filter == filter,
@@ -56,7 +56,7 @@ class _PreviewClassFilesState extends State<PreviewClassFiles> {
             ],
           ),
         ),
-        const SizedBox(height: 24),
+        const SizedBox(height: FiloSpacing.screen),
         if (files.isEmpty)
           EmptyState(
             pose: _query.trim().isNotEmpty || _filter != 'All'
@@ -67,12 +67,12 @@ class _PreviewClassFilesState extends State<PreviewClassFiles> {
           ),
         for (final file in files)
           Padding(
-            padding: const EdgeInsets.only(bottom: 12),
+            padding: const EdgeInsets.only(bottom: FiloSpacing.s12),
             child: FileCard(file: file),
           ),
         if (files.isNotEmpty)
           Padding(
-            padding: EdgeInsets.only(top: 12),
+            padding: EdgeInsets.only(top: FiloSpacing.s12),
             child: Text(
               'Sample file previews. Downloads are not connected yet.',
               style: TextStyle(
@@ -97,19 +97,16 @@ class FileCard extends StatelessWidget {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             FiloFileTypeTile(details: FiloFileDetails.fromName(file.name)),
-            const SizedBox(width: 12),
+            const SizedBox(width: FiloSpacing.s12),
             Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
                     file.name,
-                    style: const TextStyle(
-                      fontWeight: FontWeight.w800,
-                      fontSize: 16,
-                    ),
+                    style: Theme.of(context).textTheme.labelLarge!,
                   ),
-                  const SizedBox(height: 4),
+                  const SizedBox(height: FiloSpacing.s4),
                   FiloFileTypeLabel(
                     details: FiloFileDetails.fromName(file.name),
                   ),
@@ -124,7 +121,7 @@ class FileCard extends StatelessWidget {
             ),
           ],
         ),
-        const SizedBox(height: 12),
+        const SizedBox(height: FiloSpacing.s12),
         Align(
           alignment: Alignment.centerRight,
           child: TextButton.icon(
@@ -146,20 +143,20 @@ Future<void> showFilePreview(BuildContext context, PreviewFile file) =>
       isScrollControlled: true,
       builder: (context) => SafeArea(
         child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 24),
+          padding: const EdgeInsets.symmetric(horizontal: FiloSpacing.screen),
           child: Column(
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               const Chip(label: Text('Sample preview')),
-              const SizedBox(height: 12),
+              const SizedBox(height: FiloSpacing.s12),
               Text(file.name, style: Theme.of(context).textTheme.titleLarge),
-              const SizedBox(height: 20),
+              const SizedBox(height: FiloSpacing.s20),
               Text(
                 file.description,
                 style: Theme.of(context).textTheme.bodyLarge,
               ),
-              const SizedBox(height: 24),
+              const SizedBox(height: FiloSpacing.screen),
               FiloButton(
                 label: 'Back to files',
                 secondary: true,

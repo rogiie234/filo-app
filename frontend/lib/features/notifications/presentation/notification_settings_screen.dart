@@ -96,7 +96,7 @@ class _NotificationSettingsScreenState
           FiloCircularProgressIndicator(
             semanticsLabel: 'Checking notification access',
           ),
-          SizedBox(height: 16),
+          SizedBox(height: FiloSpacing.s16),
           Text('Checking notification access…'),
         ],
       );
@@ -105,7 +105,7 @@ class _NotificationSettingsScreenState
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           const Text('Could not check notification access. Try again.'),
-          const SizedBox(height: 16),
+          const SizedBox(height: FiloSpacing.s16),
           FiloButton(label: 'Retry', onPressed: _refresh),
         ],
       );
@@ -118,14 +118,11 @@ class _NotificationSettingsScreenState
             liveRegion: true,
             child: Text(
               enabled ? 'Notifications are on for Filo.' : 'Notifications are off for Filo. Turn them on in your phone settings.',
-              style: TextStyle(
-                color: Theme.of(context).colorScheme.onSurface,
-                fontSize: 16,
-                height: 1.5,
-              ),
+              style: Theme.of(context).textTheme.bodyLarge!
+                  .copyWith(color: Theme.of(context).colorScheme.onSurface),
             ),
           ),
-          const SizedBox(height: 16),
+          const SizedBox(height: FiloSpacing.s16),
           FiloButton(
             label: 'Open settings',
             busy: _opening,
@@ -138,7 +135,7 @@ class _NotificationSettingsScreenState
       appBar: AppBar(title: const Text('Notification settings')),
       body: SafeArea(
         child: SingleChildScrollView(
-          padding: const EdgeInsets.all(24),
+          padding: const EdgeInsets.all(FiloSpacing.screen),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
@@ -148,12 +145,12 @@ class _NotificationSettingsScreenState
                     : Theme.of(context).colorScheme.surface,
                 child: content,
               ),
-              const SizedBox(height: 24),
+              const SizedBox(height: FiloSpacing.screen),
               NotificationPreferenceControls(
                 initialClassId: widget.initialClassId,
               ),
               if (ref.watch(deadlineBridgeProvider).supported) ...[
-                const SizedBox(height: 24),
+                const SizedBox(height: FiloSpacing.screen),
                 KeyedSubtree(
                   key: _phoneSetup,
                   child: const DeadlineReminderSetup(),
@@ -205,7 +202,7 @@ class _DeadlineReminderSetupState extends ConsumerState<DeadlineReminderSetup> {
             'Deadline reminders',
             style: Theme.of(context).textTheme.titleLarge,
           ),
-          const SizedBox(height: 12),
+          const SizedBox(height: FiloSpacing.s12),
           if (status.isLoading)
             const Text('Checking deadline reminders…')
           else
@@ -218,7 +215,7 @@ class _DeadlineReminderSetupState extends ConsumerState<DeadlineReminderSetup> {
                   ? 'Deadline reminders are ready.'
                   : 'Deadline reminders are approximate and may arrive late. Allow Alarms & reminders for more precise timing.',
             ),
-          const SizedBox(height: 12),
+          const SizedBox(height: FiloSpacing.s12),
           const Text('Reminders use saved due dates and work offline.'),
           TextButton(
             onPressed: _busy ? null : _retry,
@@ -312,7 +309,12 @@ class _NotificationPreferenceControlsState
     final retry = _failures[key];
     if (retry == null) return const SizedBox.shrink();
     return Padding(
-      padding: const EdgeInsets.fromLTRB(16, 0, 16, 12),
+      padding: const EdgeInsets.fromLTRB(
+        FiloSpacing.s16,
+        0,
+        FiloSpacing.s16,
+        FiloSpacing.s12,
+      ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -322,7 +324,12 @@ class _NotificationPreferenceControlsState
                 : 'Some notification settings could not be saved',
           ),
           TextButton(
-            style: TextButton.styleFrom(minimumSize: const Size(48, 48)),
+            style: TextButton.styleFrom(
+              minimumSize: const Size(
+                FiloControlSize.compact,
+                FiloControlSize.compact,
+              ),
+            ),
             onPressed:
                 ref.read(connectivityProvider).asData?.value == true &&
                     !_saving.containsKey(key)
@@ -395,14 +402,14 @@ class _NotificationPreferenceControlsState
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         Text('Push preferences', style: theme.textTheme.titleLarge),
-        const SizedBox(height: 8),
+        const SizedBox(height: FiloSpacing.s8),
         const Text(
           'These settings control pushes. Notifications still arrive in your inbox. Global type mutes also apply to every class.',
         ),
-        const SizedBox(height: 16),
+        const SizedBox(height: FiloSpacing.s16),
         if (!online)
           const Padding(
-            padding: EdgeInsets.only(bottom: 16),
+            padding: EdgeInsets.only(bottom: FiloSpacing.s16),
             child: Text(
               'You’re offline. Showing saved preferences. Connect to change them.',
             ),
@@ -425,7 +432,7 @@ class _NotificationPreferenceControlsState
               preferences.isLoading ||
               (online && refreshing.isLoading))
             const Padding(
-              padding: EdgeInsets.all(24),
+              padding: EdgeInsets.all(FiloSpacing.screen),
               child: Center(
                 child: FiloCircularProgressIndicator(
                   semanticsLabel: 'Loading notification preferences',
@@ -439,9 +446,9 @@ class _NotificationPreferenceControlsState
                   : 'No saved notification preferences. Connect to load them.',
             ),
         ] else ...[
-          const SizedBox(height: 16),
+          const SizedBox(height: FiloSpacing.s16),
           Text('Notification types', style: theme.textTheme.titleMedium),
-          const SizedBox(height: 8),
+          const SizedBox(height: FiloSpacing.s8),
           FiloPanel(
             child: Column(
               children: [
@@ -470,9 +477,9 @@ class _NotificationPreferenceControlsState
               ],
             ),
           ),
-          const SizedBox(height: 24),
+          const SizedBox(height: FiloSpacing.screen),
           Text('Classes', style: theme.textTheme.titleMedium),
-          const SizedBox(height: 8),
+          const SizedBox(height: FiloSpacing.s8),
           if (classes.hasError)
             retryLoad('Could not load classes. Try again.', reloadClasses: true)
           else if (rooms == null)
@@ -491,7 +498,7 @@ class _NotificationPreferenceControlsState
                 key: room.id == widget.initialClassId
                     ? _focusedClass
                     : ValueKey(room.id),
-                padding: const EdgeInsets.only(bottom: 12),
+                padding: const EdgeInsets.only(bottom: FiloSpacing.s12),
                 child: FiloPanel(
                   child: Column(
                     children: [

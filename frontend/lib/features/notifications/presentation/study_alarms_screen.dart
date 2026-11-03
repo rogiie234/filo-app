@@ -148,7 +148,7 @@ class _StudyAlarmsState extends ConsumerState<StudyAlarmsScreen>
       ),
       body: SafeArea(
         child: ListView(
-          padding: const EdgeInsets.all(24),
+          padding: const EdgeInsets.all(FiloSpacing.screen),
           children: [
             const StudyOfflineBanner(),
             FiloButton(
@@ -159,7 +159,7 @@ class _StudyAlarmsState extends ConsumerState<StudyAlarmsScreen>
                   ? () => _edit()
                   : null,
             ),
-            const SizedBox(height: 16),
+            const SizedBox(height: FiloSpacing.s16),
             if (_error != null) ...[
               Semantics(liveRegion: true, child: Text(_error!)),
               TextButton(onPressed: _refresh, child: const Text('Retry')),
@@ -195,7 +195,7 @@ class _StudyAlarmsState extends ConsumerState<StudyAlarmsScreen>
                 },
                 child: const Text('Open settings'),
               ),
-            const SizedBox(height: 16),
+            const SizedBox(height: FiloSpacing.s16),
             if (alarms.isLoading || repo.isLoading)
               const Center(
                 child: FiloCircularProgressIndicator(
@@ -221,17 +221,19 @@ class _StudyAlarmsState extends ConsumerState<StudyAlarmsScreen>
             else
               for (final alarm in alarms.requireValue)
                 Padding(
-                  padding: const EdgeInsets.only(bottom: 12),
+                  padding: const EdgeInsets.only(bottom: FiloSpacing.s12),
                   child: FiloPanel(
                     child: Row(
                       children: [
                         const Mascot(pose: 'clock', size: 48),
-                        const SizedBox(width: 12),
+                        const SizedBox(width: FiloSpacing.s12),
                         Expanded(
                           child: InkWell(
                             onTap: _busy ? null : () => _edit(alarm),
                             child: Padding(
-                              padding: const EdgeInsets.symmetric(vertical: 12),
+                              padding: const EdgeInsets.symmetric(
+                                vertical: FiloSpacing.s12,
+                              ),
                               child: Column(
                                 crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [
@@ -494,7 +496,7 @@ class _StudyAlarmEditorState extends ConsumerState<StudyAlarmEditor> {
         child: Form(
           key: _form,
           child: ListView(
-            padding: const EdgeInsets.all(24),
+            padding: const EdgeInsets.all(FiloSpacing.screen),
             children: [
               const StudyOfflineBanner(),
               if (account.hasError)
@@ -509,7 +511,7 @@ class _StudyAlarmEditorState extends ConsumerState<StudyAlarmEditor> {
                 validator: (v) =>
                     v == null || v.trim().isEmpty ? 'Enter a subject.' : null,
               ),
-              const SizedBox(height: 16),
+              const SizedBox(height: FiloSpacing.s16),
               ListTile(
                 title: const Text('Time'),
                 subtitle: Text(_time.format(context)),
@@ -524,7 +526,7 @@ class _StudyAlarmEditorState extends ConsumerState<StudyAlarmEditor> {
                         if (t != null && mounted) setState(() => _time = t);
                       },
               ),
-              const SizedBox(height: 16),
+              const SizedBox(height: FiloSpacing.s16),
               const Text('Repeat days'),
               Wrap(
                 spacing: 8,
@@ -557,7 +559,7 @@ class _StudyAlarmEditorState extends ConsumerState<StudyAlarmEditor> {
                 Text(
                   'Once: ${locale.formatFullDate(nextStudyOnce(DateTime.now(), _time.hour * 60 + _time.minute))}',
                 ),
-              const SizedBox(height: 16),
+              const SizedBox(height: FiloSpacing.s16),
               DropdownButtonFormField<String>(
                 itemHeight: null,
                 initialValue: _link ?? '',
@@ -577,7 +579,7 @@ class _StudyAlarmEditorState extends ConsumerState<StudyAlarmEditor> {
                   child: const Text('Retry links'),
                 ),
               ],
-              const SizedBox(height: 24),
+              const SizedBox(height: FiloSpacing.screen),
               FiloButton(
                 label: _busy ? 'Saving…' : 'Save',
                 onPressed: _busy || !account.hasValue || account.hasError

@@ -49,7 +49,7 @@ class _NewAssessmentScreenState extends ConsumerState<NewAssessmentScreen> {
       body: Form(
         key: _form,
         child: ListView(
-          padding: const EdgeInsets.all(24),
+          padding: const EdgeInsets.all(FiloSpacing.screen),
           children: [
             Text(
               'A little challenge. A lot to discover.',
@@ -57,7 +57,7 @@ class _NewAssessmentScreenState extends ConsumerState<NewAssessmentScreen> {
                 color: Theme.of(context).colorScheme.onSurfaceVariant,
               ),
             ),
-            const SizedBox(height: 24),
+            const SizedBox(height: FiloSpacing.screen),
             TextFormField(
               controller: _title,
               maxLength: 120,
@@ -66,7 +66,7 @@ class _NewAssessmentScreenState extends ConsumerState<NewAssessmentScreen> {
                   ? 'Give your assessment a title.'
                   : null,
             ),
-            const SizedBox(height: 12),
+            const SizedBox(height: FiloSpacing.s12),
             Wrap(
               spacing: 12,
               children: [
@@ -78,7 +78,7 @@ class _NewAssessmentScreenState extends ConsumerState<NewAssessmentScreen> {
                   ),
               ],
             ),
-            const SizedBox(height: 20),
+            const SizedBox(height: FiloSpacing.s20),
             TextFormField(
               controller: _minutes,
               keyboardType: TextInputType.number,
@@ -93,7 +93,7 @@ class _NewAssessmentScreenState extends ConsumerState<NewAssessmentScreen> {
                     : null;
               },
             ),
-            const SizedBox(height: 20),
+            const SizedBox(height: FiloSpacing.s20),
             TextFormField(
               controller: _instructions,
               maxLines: 3,
@@ -103,30 +103,30 @@ class _NewAssessmentScreenState extends ConsumerState<NewAssessmentScreen> {
                 alignLabelWithHint: true,
               ),
             ),
-            const SizedBox(height: 12),
+            const SizedBox(height: FiloSpacing.s12),
             FiloPanel(
               color: Theme.of(context).colorScheme.primaryContainer,
-              padding: const EdgeInsets.all(16),
+              padding: const EdgeInsets.all(FiloSpacing.s16),
               child: Row(
                 children: [
                   const FiloIcon(FiloIcons.sparkle),
-                  const SizedBox(width: 12),
-                  const Expanded(
+                  const SizedBox(width: FiloSpacing.s12),
+                  Expanded(
                     child: Text(
                       'Start with a little inspiration.',
-                      style: TextStyle(fontWeight: FontWeight.w800),
+                      style: FiloTypography.strongLabel(context),
                     ),
                   ),
                 ],
               ),
             ),
-            const SizedBox(height: 12),
+            const SizedBox(height: FiloSpacing.s12),
             OutlinedButton.icon(
               onPressed: _samples,
               icon: const FiloIcon(FiloIcons.sparkle),
               label: const Text('Generate with AI'),
             ),
-            const SizedBox(height: 28),
+            const SizedBox(height: FiloSpacing.s32),
             Row(
               children: [
                 Expanded(
@@ -143,10 +143,10 @@ class _NewAssessmentScreenState extends ConsumerState<NewAssessmentScreen> {
                 ),
               ],
             ),
-            const SizedBox(height: 16),
+            const SizedBox(height: FiloSpacing.s16),
             for (int index = 0; index < _questions.length; index++)
               Padding(
-                padding: const EdgeInsets.only(bottom: 16),
+                padding: const EdgeInsets.only(bottom: FiloSpacing.s16),
                 child: _questionCard(_questions[index], index),
               ),
             OutlinedButton.icon(
@@ -156,18 +156,17 @@ class _NewAssessmentScreenState extends ConsumerState<NewAssessmentScreen> {
             ),
             if (_error != null)
               Padding(
-                padding: const EdgeInsets.only(top: 16),
+                padding: const EdgeInsets.only(top: FiloSpacing.s16),
                 child: Text(
                   _error!,
                   style: TextStyle(color: Theme.of(context).colorScheme.error),
                 ),
               ),
-            const SizedBox(height: 20),
+            const SizedBox(height: FiloSpacing.s20),
             Text(
               'Drafts and published assessments stay in this preview session.',
-              style: TextStyle(
+              style: Theme.of(context).textTheme.bodySmall!.copyWith(
                 color: Theme.of(context).colorScheme.onSurfaceVariant,
-                fontSize: 12,
               ),
             ),
           ],
@@ -175,7 +174,12 @@ class _NewAssessmentScreenState extends ConsumerState<NewAssessmentScreen> {
       ),
       bottomNavigationBar: SafeArea(
         child: Padding(
-          padding: const EdgeInsets.fromLTRB(24, 12, 24, 12),
+          padding: const EdgeInsets.fromLTRB(
+            FiloSpacing.screen,
+            FiloSpacing.s12,
+            FiloSpacing.screen,
+            FiloSpacing.s12,
+          ),
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
@@ -229,7 +233,7 @@ class _NewAssessmentScreenState extends ConsumerState<NewAssessmentScreen> {
               ),
           ],
         ),
-        const SizedBox(height: 16),
+        const SizedBox(height: FiloSpacing.s16),
         DropdownButtonFormField<String>(
           initialValue: question.type,
           isExpanded: true,
@@ -248,7 +252,7 @@ class _NewAssessmentScreenState extends ConsumerState<NewAssessmentScreen> {
             question.correct = null;
           }),
         ),
-        const SizedBox(height: 16),
+        const SizedBox(height: FiloSpacing.s16),
         TextFormField(
           controller: question.prompt,
           minLines: 2,
@@ -262,7 +266,7 @@ class _NewAssessmentScreenState extends ConsumerState<NewAssessmentScreen> {
               ? 'Write a question.'
               : null,
         ),
-        const SizedBox(height: 8),
+        const SizedBox(height: FiloSpacing.s8),
         TextFormField(
           controller: question.points,
           keyboardType: TextInputType.number,
@@ -274,14 +278,14 @@ class _NewAssessmentScreenState extends ConsumerState<NewAssessmentScreen> {
                 : null;
           },
         ),
-        const SizedBox(height: 20),
+        const SizedBox(height: FiloSpacing.s20),
         if (question.type == 'Multiple choice' ||
             question.type == 'True or false') ...[
-          const Text(
+          Text(
             'Select the correct answer',
-            style: TextStyle(fontWeight: FontWeight.w800),
+            style: FiloTypography.strongLabel(context),
           ),
-          const SizedBox(height: 8),
+          const SizedBox(height: FiloSpacing.s8),
           RadioGroup<int>(
             groupValue: question.correct,
             onChanged: (value) => setState(() => question.correct = value),
@@ -293,7 +297,7 @@ class _NewAssessmentScreenState extends ConsumerState<NewAssessmentScreen> {
                   option++
                 )
                   Padding(
-                    padding: const EdgeInsets.only(bottom: 8),
+                    padding: const EdgeInsets.only(bottom: FiloSpacing.s8),
                     child: Row(
                       children: [
                         FiloRadio<int>(value: option),
@@ -348,22 +352,22 @@ class _NewAssessmentScreenState extends ConsumerState<NewAssessmentScreen> {
       isScrollControlled: true,
       builder: (context) => SafeArea(
         child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 24),
+          padding: const EdgeInsets.symmetric(horizontal: FiloSpacing.screen),
           child: Column(
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               const FiloIcon(FiloIcons.sparkle, size: 32),
-              const SizedBox(height: 16),
+              const SizedBox(height: FiloSpacing.s16),
               Text(
                 'A starting point.',
                 style: Theme.of(context).textTheme.titleLarge,
               ),
-              const SizedBox(height: 12),
+              const SizedBox(height: FiloSpacing.s12),
               const Text(
                 'AI generation is not connected in this preview. Try two sample questions about computing, then make them your own.',
               ),
-              const SizedBox(height: 24),
+              const SizedBox(height: FiloSpacing.screen),
               FiloButton(
                 label: 'Use sample questions',
                 onPressed: () => Navigator.pop(context, true),

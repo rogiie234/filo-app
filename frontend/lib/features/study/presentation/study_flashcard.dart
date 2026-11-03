@@ -89,7 +89,7 @@ class _StudyFlashcardState extends State<StudyFlashcard> {
                 constraints: const BoxConstraints(minHeight: 280),
                 height: 360,
                 decoration: BoxDecoration(
-                  borderRadius: BorderRadius.circular(28),
+                  borderRadius: BorderRadius.circular(FiloRadii.large),
                   color: _drag == 0
                       ? Theme.of(context).colorScheme.surface
                       : _drag > 0
@@ -100,7 +100,7 @@ class _StudyFlashcardState extends State<StudyFlashcard> {
                     width: 1.5,
                   ),
                 ),
-                padding: const EdgeInsets.all(24),
+                padding: const EdgeInsets.all(FiloSpacing.screen),
                 child: AnimatedSwitcher(
                   key: ValueKey(!motion),
                   duration: motion
@@ -128,11 +128,11 @@ class _StudyFlashcardState extends State<StudyFlashcard> {
                             Icon(
                               _drag > 0 ? Icons.check : Icons.school_outlined,
                             ),
-                            const SizedBox(width: 8),
+                            const SizedBox(width: FiloSpacing.s8),
                             Text(_drag > 0 ? 'Got it' : 'Still learning'),
                           ],
                         ),
-                      const SizedBox(height: 16),
+                      const SizedBox(height: FiloSpacing.s16),
                       Expanded(
                         child: Center(
                           child: SingleChildScrollView(
@@ -144,7 +144,7 @@ class _StudyFlashcardState extends State<StudyFlashcard> {
                           ),
                         ),
                       ),
-                      const SizedBox(height: 16),
+                      const SizedBox(height: FiloSpacing.s16),
                       Text(
                         _back
                             ? 'Tap to see the question'

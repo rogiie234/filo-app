@@ -169,13 +169,13 @@ class _CreateClassScreenState extends ConsumerState<CreateClassScreen> {
         body: Form(
           key: _form,
           child: ListView(
-            padding: const EdgeInsets.all(24),
+            padding: const EdgeInsets.all(FiloSpacing.screen),
             children: [
               Text(
                 'A new place to grow.',
                 style: Theme.of(context).textTheme.headlineMedium,
               ),
-              const SizedBox(height: 24),
+              const SizedBox(height: FiloSpacing.screen),
               TextFormField(
                 controller: _course,
                 enabled: editable,
@@ -185,7 +185,7 @@ class _CreateClassScreenState extends ConsumerState<CreateClassScreen> {
                 validator: (v) =>
                     v == null || v.trim().isEmpty ? 'Enter a course.' : null,
               ),
-              const SizedBox(height: 16),
+              const SizedBox(height: FiloSpacing.s16),
               TextFormField(
                 controller: _section,
                 enabled: editable,
@@ -194,7 +194,7 @@ class _CreateClassScreenState extends ConsumerState<CreateClassScreen> {
                 validator: (v) =>
                     v == null || v.trim().isEmpty ? 'Enter a section.' : null,
               ),
-              const SizedBox(height: 16),
+              const SizedBox(height: FiloSpacing.s16),
               TextFormField(
                 controller: _year,
                 enabled: editable,
@@ -207,9 +207,9 @@ class _CreateClassScreenState extends ConsumerState<CreateClassScreen> {
                     ? 'Enter a school year.'
                     : null,
               ),
-              const SizedBox(height: 24),
+              const SizedBox(height: FiloSpacing.screen),
               Text('Banner', style: Theme.of(context).textTheme.titleMedium),
-              const SizedBox(height: 12),
+              const SizedBox(height: FiloSpacing.s12),
               Wrap(
                 spacing: 8,
                 runSpacing: 8,
@@ -248,9 +248,9 @@ class _CreateClassScreenState extends ConsumerState<CreateClassScreen> {
                 ),
               ),
               const Text('JPG, PNG, or WebP · up to 2 MB'),
-              const SizedBox(height: 16),
+              const SizedBox(height: FiloSpacing.s16),
               ClipRRect(
-                borderRadius: BorderRadius.circular(28),
+                borderRadius: BorderRadius.circular(FiloRadii.large),
                 child: ValueListenableBuilder<TextEditingValue>(
                   valueListenable: _section,
                   builder: (context, value, _) => ClassBanner(
@@ -265,13 +265,13 @@ class _CreateClassScreenState extends ConsumerState<CreateClassScreen> {
                   ),
                 ),
               ),
-              const SizedBox(height: 8),
+              const SizedBox(height: FiloSpacing.s8),
               const Text(
                 'A permanent join code is generated when you create the class.',
               ),
               if (_error != null)
                 Padding(
-                  padding: const EdgeInsets.only(top: 16),
+                  padding: const EdgeInsets.only(top: FiloSpacing.s16),
                   child: Text(
                     _error!,
                     style: TextStyle(
@@ -284,13 +284,18 @@ class _CreateClassScreenState extends ConsumerState<CreateClassScreen> {
         ),
         bottomNavigationBar: SafeArea(
           child: Padding(
-            padding: const EdgeInsets.fromLTRB(24, 12, 24, 20),
+            padding: const EdgeInsets.fromLTRB(
+              FiloSpacing.screen,
+              FiloSpacing.s12,
+              FiloSpacing.screen,
+              FiloSpacing.s20,
+            ),
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
                 if (!online)
                   const Padding(
-                    padding: EdgeInsets.only(bottom: 8),
+                    padding: EdgeInsets.only(bottom: FiloSpacing.s8),
                     child: Text('Connect to the internet to create a class.'),
                   ),
                 FiloButton(

@@ -95,7 +95,7 @@ class _PhoneLimitsGuideState extends ConsumerState<PhoneLimitsGuideScreen> {
     String section, {
     bool? allowed,
   }) => Padding(
-    padding: const EdgeInsets.only(top: 16),
+    padding: const EdgeInsets.only(top: FiloSpacing.s16),
     child: FiloPanel(
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -109,10 +109,10 @@ class _PhoneLimitsGuideState extends ConsumerState<PhoneLimitsGuideScreen> {
                 semanticLabel: 'Exact-alarm access allowed',
               ),
             ),
-          const SizedBox(height: 12),
+          const SizedBox(height: FiloSpacing.s12),
           for (var i = 0; i < lines.length; i++)
             Padding(
-              padding: const EdgeInsets.only(bottom: 8),
+              padding: const EdgeInsets.only(bottom: FiloSpacing.s8),
               child: Text('${i + 1}. ${lines[i]}'),
             ),
           FiloButton(
@@ -154,7 +154,7 @@ class _PhoneLimitsGuideState extends ConsumerState<PhoneLimitsGuideScreen> {
         appBar: AppBar(title: const Text('Alarm setup')),
         body: SafeArea(
           child: ListView(
-            padding: const EdgeInsets.all(24),
+            padding: const EdgeInsets.all(FiloSpacing.screen),
             children: [
               if (!current) ...[
                 if (repository.isLoading)
@@ -175,12 +175,12 @@ class _PhoneLimitsGuideState extends ConsumerState<PhoneLimitsGuideScreen> {
                   phoneGuideHeading,
                   style: Theme.of(context).textTheme.headlineMedium,
                 ),
-                const SizedBox(height: 16),
+                const SizedBox(height: FiloSpacing.s16),
                 const Text(phoneGuideIntroduction),
                 if (!access.isLoading &&
                     !access.hasError &&
                     access.asData?.value == false) ...[
-                  const SizedBox(height: 16),
+                  const SizedBox(height: FiloSpacing.s16),
                   const Text(
                     'Notifications are off for Filo. Turn them on in your phone settings.',
                   ),
@@ -204,7 +204,7 @@ class _PhoneLimitsGuideState extends ConsumerState<PhoneLimitsGuideScreen> {
                 ],
                 if (capability.isLoading)
                   const Padding(
-                    padding: EdgeInsets.all(24),
+                    padding: EdgeInsets.all(FiloSpacing.screen),
                     child: Center(
                       child: FiloCircularProgressIndicator(
                         semanticsLabel: 'Checking phone setup steps',
@@ -266,7 +266,7 @@ class _PhoneLimitsGuideState extends ConsumerState<PhoneLimitsGuideScreen> {
                     child: const Text('Try again'),
                   ),
                 if (_manual) ...[
-                  const SizedBox(height: 16),
+                  const SizedBox(height: FiloSpacing.s16),
                   const Text(phoneGuideFallback),
                   if (_retrySection != null)
                     TextButton(
@@ -275,7 +275,7 @@ class _PhoneLimitsGuideState extends ConsumerState<PhoneLimitsGuideScreen> {
                     ),
                 ],
               ],
-              const SizedBox(height: 24),
+              const SizedBox(height: FiloSpacing.screen),
               FiloButton(label: 'Done', onPressed: _closing ? null : _close),
               TextButton(
                 onPressed: _closing ? null : _close,

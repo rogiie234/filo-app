@@ -11,15 +11,18 @@ Future<T?> showFiloDialog<T>({
   required BuildContext context,
   required WidgetBuilder builder,
   bool barrierDismissible = true,
+  bool animate = true,
   AnimationStyle? animationStyle,
 }) {
-  final motion = FiloMotion.enabled(context);
+  final motion = animate && FiloMotion.enabled(context);
   return showDialog<T>(
     context: context,
     barrierDismissible: barrierDismissible,
     animationStyle: motion ? animationStyle : AnimationStyle.noAnimation,
-    builder: (dialog) =>
-        FiloMotionScope(enabled: motion, child: builder(dialog)),
+    builder: (_) => FiloMotionScope(
+      enabled: motion,
+      child: Builder(builder: builder),
+    ),
   );
 }
 
@@ -139,12 +142,12 @@ class FiloPageTransitions extends PageTransitionsBuilder {
   ) => FiloMotionScope(child: transition(context, animation, child));
 }
 
-/// Exam/result destinations have no entrance, exit or inherited decoration.
+/// Exam/result/grading destinations have no entrance, exit or decoration.
 class FiloInstantRoute<T> extends MaterialPageRoute<T> {
   FiloInstantRoute({required WidgetBuilder builder, super.settings})
     : super(
-        builder: (context) =>
-            FiloMotionScope(enabled: false, child: builder(context)),
+        builder: (_) =>
+            FiloMotionScope(enabled: false, child: Builder(builder: builder)),
       );
   @override
   Duration get transitionDuration => Duration.zero;
@@ -164,8 +167,8 @@ class FiloInstantDialogRoute<T> extends DialogRoute<T> {
     required super.context,
     required WidgetBuilder builder,
   }) : super(
-         builder: (context) =>
-             FiloMotionScope(enabled: false, child: builder(context)),
+         builder: (_) =>
+             FiloMotionScope(enabled: false, child: Builder(builder: builder)),
        );
   @override
   Duration get transitionDuration => Duration.zero;

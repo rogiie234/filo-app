@@ -114,7 +114,7 @@ class _DeleteAccountScreenState extends ConsumerState<DeleteAccountScreen> {
         ),
         body: SafeArea(
           child: ListView(
-            padding: const EdgeInsets.all(24),
+            padding: const EdgeInsets.all(FiloSpacing.screen),
             children: [
               if (!cleanup && (!checking || eligible))
                 FiloPanel(
@@ -129,7 +129,7 @@ class _DeleteAccountScreenState extends ConsumerState<DeleteAccountScreen> {
               if (checking) ...[
                 if (eligibility.isLoading && online)
                   const Padding(
-                    padding: EdgeInsets.all(16),
+                    padding: EdgeInsets.all(FiloSpacing.s16),
                     child: Center(child: FiloCircularProgressIndicator()),
                   ),
                 if (blocked) ...[
@@ -156,10 +156,10 @@ class _DeleteAccountScreenState extends ConsumerState<DeleteAccountScreen> {
                     eligibility.asData?.value.hasRecoveryClasses == true)
                   const Text(recoveryClassesWarning),
               ],
-              const SizedBox(height: 20),
+              const SizedBox(height: FiloSpacing.s20),
               if (busy)
                 const Padding(
-                  padding: EdgeInsets.all(16),
+                  padding: EdgeInsets.all(FiloSpacing.s16),
                   child: Center(child: FiloCircularProgressIndicator()),
                 ),
               if (cleanup && !busy && message == null)
@@ -178,11 +178,13 @@ class _DeleteAccountScreenState extends ConsumerState<DeleteAccountScreen> {
                 ),
               if (message != null)
                 Padding(
-                  padding: const EdgeInsets.symmetric(vertical: 16),
+                  padding: const EdgeInsets.symmetric(
+                    vertical: FiloSpacing.s16,
+                  ),
                   child: Semantics(liveRegion: true, child: Text(message)),
                 ),
               if (!cleanup && !pending) ...[
-                const SizedBox(height: 20),
+                const SizedBox(height: FiloSpacing.s20),
                 TextField(
                   controller: _confirmation,
                   enabled: !busy && eligible && !blocked,
@@ -203,10 +205,10 @@ class _DeleteAccountScreenState extends ConsumerState<DeleteAccountScreen> {
                   },
                 ),
               ],
-              const SizedBox(height: 20),
+              const SizedBox(height: FiloSpacing.s20),
               if (!online && !cleanup)
                 const Padding(
-                  padding: EdgeInsets.only(bottom: 16),
+                  padding: EdgeInsets.only(bottom: FiloSpacing.s16),
                   child: Text(
                     'Connect to the internet to delete your account.',
                   ),
@@ -247,7 +249,7 @@ class _DeleteAccountScreenState extends ConsumerState<DeleteAccountScreen> {
                           )
                     : null,
               ),
-              const SizedBox(height: 16),
+              const SizedBox(height: FiloSpacing.s16),
               if (!busy && record == null)
                 FiloButton(
                   label: 'Cancel',

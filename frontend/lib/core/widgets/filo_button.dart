@@ -123,7 +123,7 @@ class _FiloButtonState extends State<FiloButton>
         ? colors.onSurface
         : colors.onPrimary;
     final fill = flat
-        ? Colors.transparent
+        ? FiloPaint.transparent
         : disabled
         ? tokens.disabledFill
         : widget.destructive
@@ -139,13 +139,13 @@ class _FiloButtonState extends State<FiloButton>
         final button = DecoratedBox(
           decoration: BoxDecoration(
             color: disabled || flat
-                ? Colors.transparent
+                ? FiloPaint.transparent
                 : widget.destructive
                 ? tokens.destructiveEdge
                 : widget.secondary
                 ? tokens.mint
                 : tokens.primaryEdge,
-            borderRadius: BorderRadius.circular(32),
+            borderRadius: BorderRadius.circular(FiloRadii.pill),
             boxShadow: disabled || flat
                 ? const []
                 : const [
@@ -185,10 +185,15 @@ class _FiloButtonState extends State<FiloButton>
                           : widget.secondary || widget.outlined
                           ? BorderSide(color: tokens.controlBorder, width: 1.5)
                           : null,
-                      minimumSize: Size(double.infinity, flat ? 48 : 56 - edge),
+                      minimumSize: Size(
+                        double.infinity,
+                        flat
+                            ? FiloControlSize.compact
+                            : FiloControlSize.primary - edge,
+                      ),
                       padding: EdgeInsets.symmetric(
-                        horizontal: 20,
-                        vertical: flat ? 12 : 14,
+                        horizontal: FiloSpacing.s20,
+                        vertical: flat ? FiloSpacing.s12 : FiloSpacing.s16,
                       ),
                       shape: const StadiumBorder(),
                       textStyle: Theme.of(context).textTheme.labelLarge,
@@ -201,7 +206,7 @@ class _FiloButtonState extends State<FiloButton>
                             states.contains(WidgetState.focused) ||
                                 (flat && states.contains(WidgetState.pressed))
                             ? colors.primary.withValues(alpha: .12)
-                            : Colors.transparent,
+                            : FiloPaint.transparent,
                       ),
                     ),
                 child: Stack(
@@ -228,7 +233,7 @@ class _FiloButtonState extends State<FiloButton>
                           children: [
                             if (widget.leading != null) ...[
                               widget.leading!,
-                              const SizedBox(width: 12),
+                              const SizedBox(width: FiloSpacing.s12),
                             ],
                             Flexible(
                               child: AnimatedSwitcher(
@@ -287,7 +292,7 @@ class _FiloButtonState extends State<FiloButton>
                               ),
                             ),
                             if (widget.icon != null) ...[
-                              const SizedBox(width: 12),
+                              const SizedBox(width: FiloSpacing.s12),
                               FiloMotionTween(
                                 value: pressed && widget.animateArrow
                                     ? FiloAnimation.arrowNudge

@@ -45,14 +45,19 @@ class RoleSelectionView extends StatelessWidget {
           children: [
             Expanded(
               child: SingleChildScrollView(
-                padding: const EdgeInsets.fromLTRB(24, 16, 24, 24),
+                padding: const EdgeInsets.fromLTRB(
+                  FiloSpacing.screen,
+                  FiloSpacing.s16,
+                  FiloSpacing.screen,
+                  FiloSpacing.screen,
+                ),
                 child: Center(
                   child: ConstrainedBox(
                     constraints: const BoxConstraints(maxWidth: 520),
                     child: Column(
                       children: [
                         const Mascot(pose: 'thinking', size: 140),
-                        const SizedBox(height: 16),
+                        const SizedBox(height: FiloSpacing.s16),
                         entrance(
                           context,
                           Column(
@@ -64,26 +69,27 @@ class RoleSelectionView extends StatelessWidget {
                                     .textTheme
                                     .headlineMedium,
                               ),
-                              const SizedBox(height: 10),
+                              const SizedBox(height: FiloSpacing.s12),
                               Text(
                                 'A place for curious minds and inspiring teachers.',
                                 textAlign: TextAlign.center,
-                                style: TextStyle(
-                                  color: Theme.of(context)
-                                      .colorScheme
-                                      .onSurfaceVariant,
-                                  fontSize: 16,
-                                  height: 1.5,
-                                ),
+                                style: Theme.of(context).textTheme.bodyLarge!
+                                    .copyWith(
+                                      color: Theme.of(context)
+                                          .colorScheme
+                                          .onSurfaceVariant,
+                                    ),
                               ),
                             ],
                           ),
                           Duration.zero,
                         ),
-                        const SizedBox(height: 24),
+                        const SizedBox(height: FiloSpacing.screen),
                         for (final role in AccountRole.values)
                           Padding(
-                            padding: const EdgeInsets.only(bottom: 12),
+                            padding: const EdgeInsets.only(
+                              bottom: FiloSpacing.s12,
+                            ),
                             child: entrance(
                               context,
                               RoleOptionCard(
@@ -101,7 +107,12 @@ class RoleSelectionView extends StatelessWidget {
               ),
             ),
             Padding(
-              padding: const EdgeInsets.fromLTRB(24, 12, 24, 40),
+              padding: const EdgeInsets.fromLTRB(
+                FiloSpacing.screen,
+                FiloSpacing.s12,
+                FiloSpacing.screen,
+                FiloSpacing.s40,
+              ),
               child: Center(
                 child: ConstrainedBox(
                   constraints: const BoxConstraints(maxWidth: 520),

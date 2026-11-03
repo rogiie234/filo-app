@@ -133,7 +133,7 @@ class _CreatePostScreenState extends ConsumerState<CreatePostScreen> {
                 _postId != null ||
                 _uncertain,
             child: ListView(
-              padding: const EdgeInsets.all(24),
+              padding: const EdgeInsets.all(FiloSpacing.screen),
               children: [
                 Text(
                   'Share something worth learning.',
@@ -141,7 +141,7 @@ class _CreatePostScreenState extends ConsumerState<CreatePostScreen> {
                     color: Theme.of(context).colorScheme.onSurfaceVariant,
                   ),
                 ),
-                const SizedBox(height: 24),
+                const SizedBox(height: FiloSpacing.screen),
                 TextFormField(
                   controller: _title,
                   maxLength: 120,
@@ -150,7 +150,7 @@ class _CreatePostScreenState extends ConsumerState<CreatePostScreen> {
                       ? 'Give your post a title.'
                       : null,
                 ),
-                const SizedBox(height: 16),
+                const SizedBox(height: FiloSpacing.s16),
                 TextFormField(
                   controller: _message,
                   minLines: 4,
@@ -161,7 +161,7 @@ class _CreatePostScreenState extends ConsumerState<CreatePostScreen> {
                     alignLabelWithHint: true,
                   ),
                 ),
-                const SizedBox(height: 16),
+                const SizedBox(height: FiloSpacing.s16),
                 Wrap(
                   spacing: 12,
                   runSpacing: 8,
@@ -178,19 +178,23 @@ class _CreatePostScreenState extends ConsumerState<CreatePostScreen> {
                     ),
                   ],
                 ),
-                const SizedBox(height: 12),
+                const SizedBox(height: FiloSpacing.s12),
                 Text(
                   'Up to 10 attachments · 25 MB per file',
-                  style: TextStyle(
+                  style: Theme.of(context).textTheme.bodySmall!.copyWith(
                     color: Theme.of(context).colorScheme.onSurfaceVariant,
-                    fontSize: 12,
                   ),
                 ),
                 for (final attachment in _attachments)
                   Padding(
-                    padding: const EdgeInsets.only(top: 12),
+                    padding: const EdgeInsets.only(top: FiloSpacing.s12),
                     child: FiloPanel(
-                      padding: const EdgeInsets.fromLTRB(16, 8, 8, 8),
+                      padding: const EdgeInsets.fromLTRB(
+                        FiloSpacing.s16,
+                        FiloSpacing.s8,
+                        FiloSpacing.s8,
+                        FiloSpacing.s8,
+                      ),
                       child: Row(
                         children: [
                           FiloIcon(
@@ -199,14 +203,14 @@ class _CreatePostScreenState extends ConsumerState<CreatePostScreen> {
                                 : FiloIcons.attachment,
                             size: 20,
                           ),
-                          const SizedBox(width: 8),
+                          const SizedBox(width: FiloSpacing.s8),
                           Expanded(
                             child: Column(
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
                                 Text(attachment.name),
                                 if (attachment.drive) ...[
-                                  const Text('Google Drive ? File or document'),
+                                  const Text('Google Drive - file or document'),
                                   const Text(
                                     'Set sharing to Anyone with the link so students can download it.',
                                   ),
@@ -224,16 +228,16 @@ class _CreatePostScreenState extends ConsumerState<CreatePostScreen> {
                       ),
                     ),
                   ),
-                const SizedBox(height: 24),
+                const SizedBox(height: FiloSpacing.screen),
                 FiloPanel(
                   color: Theme.of(context).colorScheme.surfaceContainer,
                   child: Column(
                     children: [
                       FiloSwitchListTile(
                         contentPadding: EdgeInsets.zero,
-                        title: const Text(
+                        title: Text(
                           'Require submission',
-                          style: TextStyle(fontWeight: FontWeight.w800),
+                          style: FiloTypography.strongLabel(context),
                         ),
                         subtitle: Text(
                           widget.postId != null
@@ -246,7 +250,7 @@ class _CreatePostScreenState extends ConsumerState<CreatePostScreen> {
                             : (value) => setState(() => _submission = value),
                       ),
                       if (_submission) ...[
-                        const SizedBox(height: 20),
+                        const SizedBox(height: FiloSpacing.s20),
                         TextFormField(
                           controller: _points,
                           keyboardType: TextInputType.number,
@@ -262,7 +266,7 @@ class _CreatePostScreenState extends ConsumerState<CreatePostScreen> {
                                 : null;
                           },
                         ),
-                        const SizedBox(height: 16),
+                        const SizedBox(height: FiloSpacing.s16),
                         OutlinedButton.icon(
                           onPressed: _pickDue,
                           icon: const FiloIcon(FiloIcons.calendar),
@@ -299,12 +303,11 @@ class _CreatePostScreenState extends ConsumerState<CreatePostScreen> {
                     ],
                   ),
                 ),
-                const SizedBox(height: 24),
+                const SizedBox(height: FiloSpacing.screen),
                 Text(
                   "To share a video, add a link. Video links open in the browser and aren't downloaded.",
-                  style: TextStyle(
+                  style: Theme.of(context).textTheme.bodySmall!.copyWith(
                     color: Theme.of(context).colorScheme.onSurfaceVariant,
-                    fontSize: 12,
                   ),
                 ),
               ],
@@ -313,7 +316,12 @@ class _CreatePostScreenState extends ConsumerState<CreatePostScreen> {
         ),
         bottomNavigationBar: SafeArea(
           child: Padding(
-            padding: const EdgeInsets.fromLTRB(24, 12, 24, 20),
+            padding: const EdgeInsets.fromLTRB(
+              FiloSpacing.screen,
+              FiloSpacing.s12,
+              FiloSpacing.screen,
+              FiloSpacing.s20,
+            ),
             child: ConstrainedBox(
               constraints: BoxConstraints(
                 maxHeight: MediaQuery.sizeOf(context).height * 0.45,

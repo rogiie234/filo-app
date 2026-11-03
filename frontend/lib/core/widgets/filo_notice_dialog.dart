@@ -26,17 +26,30 @@ class FiloNoticeDialog extends StatelessWidget {
   @override
   Widget build(BuildContext context) => AlertDialog(
     backgroundColor: Theme.of(context).colorScheme.surface,
-    surfaceTintColor: Colors.transparent,
+    surfaceTintColor: FiloPaint.transparent,
     constraints: const BoxConstraints(maxWidth: 440),
-    insetPadding: const EdgeInsets.symmetric(horizontal: 24, vertical: 24),
+    insetPadding: const EdgeInsets.symmetric(
+      horizontal: FiloSpacing.screen,
+      vertical: FiloSpacing.screen,
+    ),
     shape: RoundedRectangleBorder(
-      borderRadius: BorderRadius.circular(28),
+      borderRadius: BorderRadius.circular(FiloRadii.large),
       side: BorderSide(color: Theme.of(context).colorScheme.outline),
     ),
     scrollable: true,
-    titlePadding: const EdgeInsets.fromLTRB(24, 24, 24, 0),
-    contentPadding: const EdgeInsets.fromLTRB(24, 24, 24, 8),
-    actionsPadding: const EdgeInsets.all(24),
+    titlePadding: const EdgeInsets.fromLTRB(
+      FiloSpacing.screen,
+      FiloSpacing.screen,
+      FiloSpacing.screen,
+      0,
+    ),
+    contentPadding: const EdgeInsets.fromLTRB(
+      FiloSpacing.screen,
+      FiloSpacing.screen,
+      FiloSpacing.screen,
+      FiloSpacing.s8,
+    ),
+    actionsPadding: const EdgeInsets.all(FiloSpacing.screen),
     title: Row(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -46,7 +59,7 @@ class FiloNoticeDialog extends StatelessWidget {
             height: 48,
             decoration: BoxDecoration(
               color: FiloThemeTokens.of(context).mint,
-              borderRadius: BorderRadius.circular(16),
+              borderRadius: BorderRadius.circular(FiloRadii.medium),
             ),
             child: FiloIcon(
               icon,
@@ -55,18 +68,14 @@ class FiloNoticeDialog extends StatelessWidget {
             ),
           ),
         ),
-        const SizedBox(width: 14),
+        const SizedBox(width: FiloSpacing.s16),
         Expanded(
           child: Padding(
-            padding: const EdgeInsets.only(top: 8),
+            padding: const EdgeInsets.only(top: FiloSpacing.s8),
             child: Text(
               title,
-              style: TextStyle(
-                fontSize: 22,
-                fontWeight: FontWeight.w700,
-                height: 28 / 22,
-                color: Theme.of(context).colorScheme.onSurface,
-              ),
+              style: Theme.of(context).textTheme.titleLarge!
+                  .copyWith(color: Theme.of(context).colorScheme.onSurface),
             ),
           ),
         ),
@@ -79,7 +88,7 @@ class FiloNoticeDialog extends StatelessWidget {
         for (var index = 0; index < sections.length; index++) ...[
           if (index > 0)
             Padding(
-              padding: const EdgeInsets.symmetric(vertical: 20),
+              padding: const EdgeInsets.symmetric(vertical: FiloSpacing.s20),
               child: Divider(
                 height: 1,
                 color: Theme.of(context).colorScheme.outline,
@@ -89,21 +98,15 @@ class FiloNoticeDialog extends StatelessWidget {
             header: true,
             child: Text(
               sections[index].heading,
-              style: TextStyle(
-                fontSize: 15,
-                fontWeight: FontWeight.w800,
-                color: Theme.of(context).colorScheme.primary,
-              ),
+              style: Theme.of(context).textTheme.labelLarge!
+                  .copyWith(color: Theme.of(context).colorScheme.primary),
             ),
           ),
-          const SizedBox(height: 8),
+          const SizedBox(height: FiloSpacing.s8),
           Text(
             sections[index].body,
-            style: TextStyle(
-              fontSize: 15,
-              height: 1.55,
-              color: Theme.of(context).colorScheme.onSurface,
-            ),
+            style: Theme.of(context).textTheme.bodyLarge!
+                .copyWith(color: Theme.of(context).colorScheme.onSurface),
           ),
         ],
       ],

@@ -285,8 +285,8 @@ class _ChatBodyState extends ConsumerState<_ChatBody> {
                 children: [
                   Padding(
                     padding: const EdgeInsets.symmetric(
-                      horizontal: 24,
-                      vertical: 12,
+                      horizontal: FiloSpacing.screen,
+                      vertical: FiloSpacing.s12,
                     ),
                     child: Text(
                       modeLabel,
@@ -302,7 +302,9 @@ class _ChatBodyState extends ConsumerState<_ChatBody> {
                           )
                         : ListView.builder(
                             controller: _scroll,
-                            padding: const EdgeInsets.symmetric(horizontal: 24),
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: FiloSpacing.screen,
+                            ),
                             itemCount:
                                 _session.messages.length +
                                 (_session.pendingAnswer != null ? 1 : 0) +
@@ -342,7 +344,9 @@ class _ChatBodyState extends ConsumerState<_ChatBody> {
                                       context,
                                     ))
                                       const Padding(
-                                        padding: EdgeInsets.all(12),
+                                        padding: EdgeInsets.all(
+                                          FiloSpacing.s12,
+                                        ),
                                         child: SizedBox(
                                           width: 20,
                                           height: 20,
@@ -362,7 +366,9 @@ class _ChatBodyState extends ConsumerState<_ChatBody> {
                               return _session.messages.isEmpty &&
                                       _session.pendingAnswer == null
                                   ? Padding(
-                                      padding: const EdgeInsets.all(16),
+                                      padding: const EdgeInsets.all(
+                                        FiloSpacing.s16,
+                                      ),
                                       child: EmptyState(
                                         title:
                                             'Ask a question to start a chat.',
@@ -381,7 +387,12 @@ class _ChatBodyState extends ConsumerState<_ChatBody> {
                       maxHeight: constraints.maxHeight * .55,
                     ),
                     child: SingleChildScrollView(
-                      padding: const EdgeInsets.fromLTRB(24, 8, 24, 16),
+                      padding: const EdgeInsets.fromLTRB(
+                        FiloSpacing.screen,
+                        FiloSpacing.s8,
+                        FiloSpacing.screen,
+                        FiloSpacing.s16,
+                      ),
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.stretch,
                         children: [
@@ -389,7 +400,7 @@ class _ChatBodyState extends ConsumerState<_ChatBody> {
                           const Text(
                             'AI can make mistakes. Check important answers.',
                           ),
-                          const SizedBox(height: 8),
+                          const SizedBox(height: FiloSpacing.s8),
                           for (final notice in _session.notices) Text(notice),
                           if (_session.error != null)
                             Semantics(
@@ -416,7 +427,9 @@ class _ChatBodyState extends ConsumerState<_ChatBody> {
                           Container(
                             decoration: BoxDecoration(
                               color: Theme.of(context).colorScheme.surface,
-                              borderRadius: BorderRadius.circular(32),
+                              borderRadius: BorderRadius.circular(
+                                FiloRadii.pill,
+                              ),
                               border: Border.all(
                                 color: Theme.of(context).colorScheme.outline,
                               ),
@@ -469,7 +482,9 @@ class _ChatBodyState extends ConsumerState<_ChatBody> {
                           ),
                           if (reason != null)
                             Padding(
-                              padding: const EdgeInsets.only(top: 8),
+                              padding: const EdgeInsets.only(
+                                top: FiloSpacing.s8,
+                              ),
                               child: Text(reason),
                             ),
                         ],

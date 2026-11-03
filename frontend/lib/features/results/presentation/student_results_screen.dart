@@ -54,7 +54,7 @@ class StudentResultsScreen extends ConsumerWidget {
                       result.passed! ? 'Passed' : 'Not passed',
                     ),
                   ),
-                const SizedBox(height: 24),
+                const SizedBox(height: FiloSpacing.screen),
                 if (result.review == null)
                   const Text(resultsScoreOnly)
                 else

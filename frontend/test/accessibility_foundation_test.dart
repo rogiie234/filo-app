@@ -26,6 +26,7 @@ void main() {
         (tokens.success, tokens.successTint),
         (tokens.info, tokens.infoTint),
         (tokens.onLime, tokens.lime),
+        (tokens.timerWarning, tokens.timerWarningTint),
       ]) {
         expect(contrast(pair.$1, pair.$2), greaterThanOrEqualTo(4.5));
       }
@@ -40,6 +41,8 @@ void main() {
         tokens.controlBorder,
       );
       expect(tokens.copyWith().controlBorder, tokens.controlBorder);
+      expect(tokens.copyWith().timerWarning, tokens.timerWarning);
+      expect(tokens.lerp(tokens, .5).timerWarningTint, tokens.timerWarningTint);
       expect(tokens.lerp(tokens, .5).controlBorder, tokens.controlBorder);
     });
 

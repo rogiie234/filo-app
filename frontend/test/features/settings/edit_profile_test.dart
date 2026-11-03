@@ -318,6 +318,24 @@ void main() {
           );
           await tester.tap(button('Choose photo'));
           await tester.pumpAndSettle();
+          await tester.scrollUntilVisible(
+            find.byType(ClipOval),
+            -250,
+            scrollable: find
+                .descendant(
+                  of: find.byType(ListView).last,
+                  matching: find.byType(Scrollable),
+                )
+                .first,
+          );
+          await tester.pumpAndSettle();
+          expect(
+            find.descendant(
+              of: find.byType(EditProfileScreen),
+              matching: find.byType(ClipOval),
+            ),
+            findsOneWidget,
+          );
           await reveal(tester, button('Save'));
           await tester.tap(button('Save'));
           await tester.pumpAndSettle();

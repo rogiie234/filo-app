@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../theme/animation_constants.dart';
 import '../theme/app_theme.dart';
+import '../theme/filo_motion.dart';
 import 'filo_icon.dart';
 
 /// Shared modal shell. Builders supply shrink-wrapped content and retain their
@@ -25,11 +26,11 @@ Future<T?> showFiloBottomSheet<T>({
   elevation: 0,
   clipBehavior: Clip.antiAlias,
   shape: const RoundedRectangleBorder(
-    borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
+    borderRadius: BorderRadius.vertical(top: Radius.circular(FiloRadii.large)),
   ),
   constraints: const BoxConstraints(maxWidth: 560),
   // Animate the native route once; content has no per-row entrance controllers.
-  sheetAnimationStyle: !animate || MediaQuery.disableAnimationsOf(context)
+  sheetAnimationStyle: !animate || !FiloMotion.enabled(context)
       ? AnimationStyle.noAnimation
       : AnimationStyle(
           duration: FiloAnimation.sheetDuration,
@@ -47,37 +48,33 @@ Future<T?> showFiloBottomSheet<T>({
             .toDouble();
     final content = MediaQuery(
       data: MediaQuery.of(sheetContext)
-          .copyWith(
-            disableAnimations:
-                !animate || MediaQuery.disableAnimationsOf(context),
-          )
+          .copyWith(disableAnimations: !animate || !FiloMotion.enabled(context))
           .removeViewInsets(removeBottom: true)
           .removePadding(removeBottom: true),
       child: Theme(
         data: Theme.of(sheetContext).copyWith(
           listTileTheme: ListTileThemeData(
-            contentPadding: EdgeInsets.symmetric(horizontal: 24, vertical: 4),
-            minTileHeight: 56,
+            contentPadding: EdgeInsets.symmetric(
+              horizontal: FiloSpacing.screen,
+              vertical: FiloSpacing.s4,
+            ),
+            minTileHeight: FiloControlSize.primary,
             iconColor: Theme.of(context).colorScheme.primary,
             textColor: Theme.of(context).colorScheme.onSurface,
-            titleTextStyle: TextStyle(
-              fontFamily: 'Nunito',
-              fontSize: 15,
-              fontWeight: FontWeight.w700,
-              color: Theme.of(context).colorScheme.onSurface,
-            ),
-            subtitleTextStyle: TextStyle(
-              fontFamily: 'Nunito',
-              fontSize: 13,
-              height: 1.4,
+            titleTextStyle: Theme.of(context).textTheme.labelLarge!
+                .copyWith(color: Theme.of(context).colorScheme.onSurface),
+            subtitleTextStyle: Theme.of(context).textTheme.bodySmall!.copyWith(
               color: Theme.of(context).colorScheme.onSurfaceVariant,
             ),
             shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.all(Radius.circular(16)),
+              borderRadius: BorderRadius.all(Radius.circular(FiloRadii.medium)),
             ),
           ),
         ),
-        child: Builder(builder: builder),
+        child: FiloMotionScope(
+          enabled: animate && FiloMotion.enabled(context),
+          child: Builder(builder: builder),
+        ),
       ),
     );
     return Padding(
@@ -91,7 +88,7 @@ Future<T?> showFiloBottomSheet<T>({
             children: [
               if (title == null)
                 SizedBox(
-                  height: 48,
+                  height: FiloControlSize.compact,
                   child: Stack(
                     alignment: Alignment.center,
                     children: [
@@ -110,11 +107,16 @@ Future<T?> showFiloBottomSheet<T>({
               else ...[
                 if (showDragHandle)
                   const Padding(
-                    padding: EdgeInsets.symmetric(vertical: 12),
+                    padding: EdgeInsets.symmetric(vertical: FiloSpacing.s12),
                     child: _FiloSheetHandle(),
                   ),
                 Padding(
-                  padding: const EdgeInsets.fromLTRB(24, 0, 12, 12),
+                  padding: const EdgeInsets.fromLTRB(
+                    FiloSpacing.screen,
+                    0,
+                    FiloSpacing.s12,
+                    FiloSpacing.s12,
+                  ),
                   child: Row(
                     children: [
                       Expanded(
@@ -124,16 +126,16 @@ Future<T?> showFiloBottomSheet<T>({
                             title,
                             maxLines: 2,
                             overflow: TextOverflow.ellipsis,
-                            style: TextStyle(
-                              fontSize: 22,
-                              fontWeight: FontWeight.w700,
-                              height: 28 / 22,
-                              color: Theme.of(context).colorScheme.onSurface,
-                            ),
+                            style: Theme.of(context).textTheme.titleLarge!
+                                .copyWith(
+                                  color: Theme.of(context)
+                                      .colorScheme
+                                      .onSurface,
+                                ),
                           ),
                         ),
                       ),
-                      const SizedBox(width: 8),
+                      const SizedBox(width: FiloSpacing.s8),
                       IconButton(
                         tooltip: 'Close',
                         onPressed: () => Navigator.of(sheetContext).pop(),
@@ -146,7 +148,7 @@ Future<T?> showFiloBottomSheet<T>({
               Flexible(
                 child: RepaintBoundary(
                   child: Padding(
-                    padding: const EdgeInsets.only(bottom: 24),
+                    padding: const EdgeInsets.only(bottom: FiloSpacing.screen),
                     // Long lists opt out of the outer scroller to stay lazy.
                     child: scrollBody
                         ? SingleChildScrollView(child: content)
@@ -171,7 +173,7 @@ class _FiloSheetHandle extends StatelessWidget {
       height: 4,
       decoration: BoxDecoration(
         color: Theme.of(context).colorScheme.outline,
-        borderRadius: BorderRadius.circular(2),
+        borderRadius: BorderRadius.circular(FiloRadii.small),
       ),
     ),
   );
@@ -206,14 +208,14 @@ class FiloSheetAction extends StatelessWidget {
       child: Material(
         color: Theme.of(context).colorScheme.surface,
         shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(20),
+          borderRadius: BorderRadius.circular(FiloRadii.medium),
           side: BorderSide(color: Theme.of(context).colorScheme.outline),
         ),
         clipBehavior: Clip.antiAlias,
         child: InkWell(
           onTap: onTap,
           child: Padding(
-            padding: const EdgeInsets.all(16),
+            padding: const EdgeInsets.all(FiloSpacing.s16),
             child: Row(
               children: [
                 ExcludeSemantics(
@@ -224,41 +226,37 @@ class FiloSheetAction extends StatelessWidget {
                       color: Theme.of(context)
                           .colorScheme
                           .surfaceContainerHighest,
-                      borderRadius: BorderRadius.circular(14),
+                      borderRadius: BorderRadius.circular(FiloRadii.small),
                     ),
                     child: FiloIcon(icon, color: ink),
                   ),
                 ),
-                const SizedBox(width: 14),
+                const SizedBox(width: FiloSpacing.s16),
                 Expanded(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
                         label,
-                        style: TextStyle(
-                          fontSize: 16,
-                          fontWeight: FontWeight.w800,
-                          color: ink,
-                        ),
+                        style: Theme.of(context).textTheme.labelLarge!
+                            .copyWith(color: ink),
                       ),
                       if (description != null) ...[
-                        const SizedBox(height: 4),
+                        const SizedBox(height: FiloSpacing.s4),
                         Text(
                           description!,
-                          style: TextStyle(
-                            fontSize: 13,
-                            height: 1.4,
-                            color: Theme.of(context)
-                                .colorScheme
-                                .onSurfaceVariant,
-                          ),
+                          style: Theme.of(context).textTheme.bodySmall!
+                              .copyWith(
+                                color: Theme.of(context)
+                                    .colorScheme
+                                    .onSurfaceVariant,
+                              ),
                         ),
                       ],
                     ],
                   ),
                 ),
-                const SizedBox(width: 8),
+                const SizedBox(width: FiloSpacing.s8),
                 ExcludeSemantics(
                   child: FiloIcon(FiloIcons.chevronRight, size: 18, color: ink),
                 ),

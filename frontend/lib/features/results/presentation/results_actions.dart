@@ -28,6 +28,7 @@ Future<void> releaseQuizResults(
     final count = data.notStarted.length;
     final accepted = await showFiloConfirmation(
       context,
+      animate: false,
       title: 'Release results?',
       confirmLabel: 'Release results',
       cancelLabel: 'Cancel',
@@ -164,6 +165,7 @@ class _SecondChanceScreenState extends ConsumerState<SecondChanceScreen> {
       if (!mounted) return;
       final accepted = await showFiloConfirmation(
         context,
+        animate: false,
         title: 'Allow another attempt?',
         confirmLabel: 'Allow another attempt',
         cancelLabel: 'Cancel',
@@ -226,7 +228,7 @@ class _SecondChanceScreenState extends ConsumerState<SecondChanceScreen> {
                       attempt.studentName,
                       style: Theme.of(context).textTheme.titleLarge,
                     ),
-                    const SizedBox(height: 16),
+                    const SizedBox(height: FiloSpacing.s16),
                     if (closed) ...[
                       const Text(
                         'Extend the closing time first so the student can retake it.',
@@ -249,7 +251,7 @@ class _SecondChanceScreenState extends ConsumerState<SecondChanceScreen> {
                         counterText: '${_reason.text.runes.length} characters',
                       ),
                     ),
-                    const SizedBox(height: 16),
+                    const SizedBox(height: FiloSpacing.s16),
                     TextField(
                       controller: _proof,
                       enabled: !_busy,
@@ -261,7 +263,7 @@ class _SecondChanceScreenState extends ConsumerState<SecondChanceScreen> {
                         hintText: 'Optional. For example: showed the phone in person.',
                       ),
                     ),
-                    const SizedBox(height: 16),
+                    const SizedBox(height: FiloSpacing.s16),
                     if (!online)
                       const Text(
                         'Connect to the internet to allow another attempt.',

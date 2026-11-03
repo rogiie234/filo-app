@@ -51,7 +51,7 @@ class _StudyNotebookScreenState extends ConsumerState<StudyNotebookScreen> {
                 children: [
                   AppBar(title: const Text('Notebook')),
                   const Padding(
-                    padding: EdgeInsets.all(24),
+                    padding: EdgeInsets.all(FiloSpacing.screen),
                     child: EmptyState(
                       title: 'This notebook is no longer available.',
                       pose: 'confused',
@@ -98,7 +98,7 @@ class _StudyNotebookScreenState extends ConsumerState<StudyNotebookScreen> {
                 ),
                 Expanded(
                   child: ListView(
-                    padding: const EdgeInsets.all(24),
+                    padding: const EdgeInsets.all(FiloSpacing.screen),
                     children: [
                       const StudyOfflineBanner(),
                       studyAsync(ref.watch(studySourcesProvider(id)), (
@@ -120,7 +120,7 @@ class _StudyNotebookScreenState extends ConsumerState<StudyNotebookScreen> {
                                 'Answers use your files',
                                 style: Theme.of(context).textTheme.titleMedium,
                               ),
-                            const SizedBox(height: 12),
+                            const SizedBox(height: FiloSpacing.s12),
                             Wrap(
                               spacing: 8,
                               runSpacing: 8,
@@ -143,7 +143,9 @@ class _StudyNotebookScreenState extends ConsumerState<StudyNotebookScreen> {
                                                 source.name,
                                               ),
                                             ),
-                                            const SizedBox(width: 8),
+                                            const SizedBox(
+                                              width: FiloSpacing.s8,
+                                            ),
                                             Flexible(
                                               child: Column(
                                                 crossAxisAlignment:
@@ -177,7 +179,9 @@ class _StudyNotebookScreenState extends ConsumerState<StudyNotebookScreen> {
                               const Text('Tap a source to remove it.'),
                             if (missing.asData?.value.isNotEmpty == true)
                               const Padding(
-                                padding: EdgeInsets.symmetric(vertical: 12),
+                                padding: EdgeInsets.symmetric(
+                                  vertical: FiloSpacing.s12,
+                                ),
                                 child: Text(
                                   'An original file is no longer on this phone. Its saved text is still available.',
                                 ),
@@ -186,7 +190,7 @@ class _StudyNotebookScreenState extends ConsumerState<StudyNotebookScreen> {
                               const Text(
                                 'Could not check original files. Saved text is still available.',
                               ),
-                            const SizedBox(height: 12),
+                            const SizedBox(height: FiloSpacing.s12),
                             FiloButton(
                               label: 'Add files',
                               icon: FiloIcons.add,
@@ -206,14 +210,16 @@ class _StudyNotebookScreenState extends ConsumerState<StudyNotebookScreen> {
                           ],
                         );
                       }, retry: () => ref.invalidate(studySourcesProvider(id))),
-                      const SizedBox(height: 24),
+                      const SizedBox(height: FiloSpacing.screen),
                       for (final tool in StudyTool.values)
                         Padding(
-                          padding: const EdgeInsets.only(bottom: 12),
+                          padding: const EdgeInsets.only(
+                            bottom: FiloSpacing.s12,
+                          ),
                           child: FiloPanel(
                             padding: const EdgeInsets.symmetric(
-                              vertical: 12,
-                              horizontal: 4,
+                              vertical: FiloSpacing.s12,
+                              horizontal: FiloSpacing.s4,
                             ),
                             child: ListTile(
                               leading: const FiloIcon(FiloIcons.sparkle),

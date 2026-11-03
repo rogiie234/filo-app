@@ -255,27 +255,27 @@ class _ClassworkListState extends ConsumerState<ClassworkList> {
     final content = ListView(
       key: PageStorageKey('classwork-$id'),
       physics: const AlwaysScrollableScrollPhysics(),
-      padding: const EdgeInsets.all(24),
+      padding: const EdgeInsets.all(FiloSpacing.screen),
       children: [
         Text('Classwork', style: Theme.of(context).textTheme.headlineMedium),
-        const SizedBox(height: 8),
+        const SizedBox(height: FiloSpacing.s8),
         Text(
           'Make space for your next small win.',
           style: TextStyle(
             color: Theme.of(context).colorScheme.onSurfaceVariant,
           ),
         ),
-        const SizedBox(height: 20),
+        const SizedBox(height: FiloSpacing.s20),
         if (live)
           Padding(
-            padding: const EdgeInsets.only(bottom: 16),
+            padding: const EdgeInsets.only(bottom: FiloSpacing.s16),
             child: OutlinedButton.icon(
               icon: FiloIcon(
                 student ? FiloIcons.grades : FiloIcons.spreadsheet,
               ),
               label: Text(student ? 'My grades' : 'Gradebook'),
               onPressed: () => Navigator.of(context).push(
-                MaterialPageRoute<void>(
+                FiloInstantRoute<void>(
                   builder: (_) => student
                       ? MyGradesScreen(classId: id)
                       : GradebookScreen(classId: id),
@@ -285,7 +285,7 @@ class _ClassworkListState extends ConsumerState<ClassworkList> {
           ),
         if (live && !online)
           const Padding(
-            padding: EdgeInsets.only(bottom: 16),
+            padding: EdgeInsets.only(bottom: FiloSpacing.s16),
             child: OfflineBanner(),
           ),
         if (student) ...[
@@ -293,16 +293,16 @@ class _ClassworkListState extends ConsumerState<ClassworkList> {
             blendMode: BlendMode.dstIn,
             shaderCallback: (rect) => const LinearGradient(
               colors: [
-                Colors.transparent,
-                Colors.black,
-                Colors.black,
-                Colors.transparent,
+                FiloPaint.transparent,
+                FiloPaint.mask,
+                FiloPaint.mask,
+                FiloPaint.transparent,
               ],
               stops: [0, .025, .94, 1],
             ).createShader(rect),
             child: SingleChildScrollView(
               scrollDirection: Axis.horizontal,
-              padding: const EdgeInsets.symmetric(horizontal: 8),
+              padding: const EdgeInsets.symmetric(horizontal: FiloSpacing.s8),
               child: Row(
                 children: [
                   for (final filter in [
@@ -313,7 +313,7 @@ class _ClassworkListState extends ConsumerState<ClassworkList> {
                     'Quizzes',
                   ])
                     Padding(
-                      padding: const EdgeInsets.only(right: 8),
+                      padding: const EdgeInsets.only(right: FiloSpacing.s8),
                       child: ClassworkFilterChip(
                         label: filter,
                         selected: _filter == filter,
@@ -324,7 +324,7 @@ class _ClassworkListState extends ConsumerState<ClassworkList> {
               ),
             ),
           ),
-          const SizedBox(height: 20),
+          const SizedBox(height: FiloSpacing.s20),
         ],
         if (failed) ...[
           EmptyState(
@@ -359,7 +359,7 @@ class _ClassworkListState extends ConsumerState<ClassworkList> {
         if (loading)
           for (var i = 0; i < 3; i++)
             const Padding(
-              padding: EdgeInsets.only(bottom: 12),
+              padding: EdgeInsets.only(bottom: FiloSpacing.s12),
               child: StreamPostSkeleton(),
             )
         else if (empty && !failed)
@@ -393,7 +393,7 @@ class _ClassworkListState extends ConsumerState<ClassworkList> {
             if (entry.quiz != null)
               Padding(
                 key: ValueKey('quiz:${entry.quiz!.id}'),
-                padding: const EdgeInsets.only(bottom: 12),
+                padding: const EdgeInsets.only(bottom: FiloSpacing.s12),
                 child: StudentQuizRow(
                   key: ValueKey('quiz:${entry.quiz!.id}'),
                   quiz: entry.quiz!,
@@ -411,7 +411,7 @@ class _ClassworkListState extends ConsumerState<ClassworkList> {
             else
               Padding(
                 key: ValueKey('post:${entry.post!.id}'),
-                padding: const EdgeInsets.only(bottom: 12),
+                padding: const EdgeInsets.only(bottom: FiloSpacing.s12),
                 child: AssignmentRow(
                   post: entry.post!,
                   status: student ? statusFor(entry.post!) : null,
@@ -419,7 +419,7 @@ class _ClassworkListState extends ConsumerState<ClassworkList> {
                   onTap: () {
                     if (live && !student) {
                       Navigator.of(context).push(
-                        MaterialPageRoute<void>(
+                        FiloInstantRoute<void>(
                           builder: (_) => SubmissionsScreen(
                             classId: id,
                             postId: entry.post!.id,
@@ -492,8 +492,8 @@ class AssignmentStatusChip extends StatelessWidget {
             ? Theme.of(context).colorScheme.error
             : Theme.of(context).colorScheme.onSurface,
         fontWeight: status == AssignmentStatus.graded
-            ? FontWeight.w800
-            : FontWeight.w600,
+            ? FiloTypography.emphasis
+            : FiloTypography.medium,
       ),
       visualDensity: VisualDensity.compact,
     );
@@ -516,14 +516,14 @@ class AssignmentRow extends StatelessWidget {
   Widget build(BuildContext context) => Material(
     color: Theme.of(context).colorScheme.surface,
     shape: RoundedRectangleBorder(
-      borderRadius: BorderRadius.circular(24),
+      borderRadius: BorderRadius.circular(FiloRadii.large),
       side: BorderSide(color: Theme.of(context).colorScheme.outline),
     ),
     clipBehavior: Clip.antiAlias,
     child: InkWell(
       onTap: onTap,
       child: Padding(
-        padding: const EdgeInsets.all(20),
+        padding: const EdgeInsets.all(FiloSpacing.s20),
         child: Row(
           children: [
             FiloIcon(
@@ -531,7 +531,7 @@ class AssignmentRow extends StatelessWidget {
               color: Theme.of(context).colorScheme.primary,
               size: 28,
             ),
-            const SizedBox(width: 16),
+            const SizedBox(width: FiloSpacing.s16),
             Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -540,7 +540,7 @@ class AssignmentRow extends StatelessWidget {
                     post.title,
                     style: Theme.of(context).textTheme.titleMedium,
                   ),
-                  const SizedBox(height: 6),
+                  const SizedBox(height: FiloSpacing.s8),
                   Text(
                     streamDueLabel(context, post),
                     style: TextStyle(

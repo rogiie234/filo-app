@@ -121,7 +121,7 @@ class _ClassesScreenState extends ConsumerState<ClassesScreen> {
                   : null,
             ),
             Padding(
-              padding: const EdgeInsets.only(right: 16),
+              padding: const EdgeInsets.only(right: FiloSpacing.s16),
               child: IconButton(
                 tooltip: live ? 'Your account' : 'Change preview role',
                 onPressed: _roleMenu,
@@ -148,11 +148,16 @@ class _ClassesScreenState extends ConsumerState<ClassesScreen> {
                   physics: const AlwaysScrollableScrollPhysics(),
                   keyboardDismissBehavior:
                       ScrollViewKeyboardDismissBehavior.onDrag,
-                  padding: const EdgeInsets.fromLTRB(24, 16, 24, 112),
+                  padding: const EdgeInsets.fromLTRB(
+                    FiloSpacing.screen,
+                    FiloSpacing.s16,
+                    FiloSpacing.screen,
+                    112,
+                  ),
                   children: [
                     if (live && !online) ...const [
                       OfflineBanner(),
-                      SizedBox(height: 16),
+                      SizedBox(height: FiloSpacing.s16),
                     ],
                     if (live && sync.hasError)
                       EmptyState(
@@ -177,7 +182,7 @@ class _ClassesScreenState extends ConsumerState<ClassesScreen> {
                         bob: false,
                       ),
                     if ((live && sync.hasError) || cards.hasError)
-                      const SizedBox(height: 16),
+                      const SizedBox(height: FiloSpacing.s16),
                     Row(
                       children: [
                         Expanded(
@@ -186,37 +191,35 @@ class _ClassesScreenState extends ConsumerState<ClassesScreen> {
                             children: [
                               Text(
                                 'Your classes',
-                                style: TextStyle(
-                                  fontSize: 28,
-                                  fontWeight: FontWeight.w800,
-                                  height: 1.2,
-                                  color: Theme.of(context)
-                                      .colorScheme
-                                      .onSurface,
-                                ),
+                                style: Theme.of(context)
+                                    .textTheme
+                                    .headlineMedium!
+                                    .copyWith(
+                                      color: Theme.of(context)
+                                          .colorScheme
+                                          .onSurface,
+                                    ),
                               ),
-                              const SizedBox(height: 8),
+                              const SizedBox(height: FiloSpacing.s8),
                               Text(
                                 'A good place to grow.',
-                                style: TextStyle(
-                                  color: Theme.of(context)
-                                      .colorScheme
-                                      .onSurfaceVariant,
-                                  fontSize: 15,
-                                  fontWeight: FontWeight.w500,
-                                  height: 1.5,
-                                ),
+                                style: Theme.of(context).textTheme.bodyLarge!
+                                    .copyWith(
+                                      color: Theme.of(context)
+                                          .colorScheme
+                                          .onSurfaceVariant,
+                                    ),
                               ),
                             ],
                           ),
                         ),
                         if (rooms.isNotEmpty || loading) ...[
-                          const SizedBox(width: 16),
+                          const SizedBox(width: FiloSpacing.s16),
                           const Mascot(size: 72),
                         ],
                       ],
                     ),
-                    const SizedBox(height: 24),
+                    const SizedBox(height: FiloSpacing.screen),
                     TextField(
                       controller: _search,
                       textInputAction: TextInputAction.search,
@@ -238,10 +241,14 @@ class _ClassesScreenState extends ConsumerState<ClassesScreen> {
                                 },
                               ),
                         border: const OutlineInputBorder(
-                          borderRadius: BorderRadius.all(Radius.circular(999)),
+                          borderRadius: BorderRadius.all(
+                            Radius.circular(FiloRadii.pill),
+                          ),
                         ),
                         enabledBorder: OutlineInputBorder(
-                          borderRadius: BorderRadius.all(Radius.circular(999)),
+                          borderRadius: BorderRadius.all(
+                            Radius.circular(FiloRadii.pill),
+                          ),
                           borderSide: BorderSide(
                             color: FiloThemeTokens.of(context).controlBorder,
                           ),
@@ -249,7 +256,7 @@ class _ClassesScreenState extends ConsumerState<ClassesScreen> {
                       ),
                       onChanged: (value) => setState(() => _query = value),
                     ),
-                    const SizedBox(height: 24),
+                    const SizedBox(height: FiloSpacing.screen),
                     if (rooms.isEmpty &&
                         !loading &&
                         !cards.hasError &&
@@ -289,7 +296,7 @@ class _ClassesScreenState extends ConsumerState<ClassesScreen> {
                         'Archived',
                         style: Theme.of(context).textTheme.titleLarge,
                       ),
-                      const SizedBox(height: 16),
+                      const SizedBox(height: FiloSpacing.s16),
                       for (final room in rooms.where((room) => room.archived))
                         FiloListItem(
                           index: entranceRooms.indexOf(room),
@@ -315,7 +322,9 @@ class _ClassesScreenState extends ConsumerState<ClassesScreen> {
         floatingActionButton: _destination != 0
             ? null
             : Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 24),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: FiloSpacing.screen,
+                ),
                 child: FiloButton(
                   label: student ? 'Join class' : 'Create class',
                   icon: FiloIcons.add,
@@ -382,7 +391,7 @@ class _ClassesScreenState extends ConsumerState<ClassesScreen> {
         );
 
   Widget _classTile(ClassRoom room) => Padding(
-    padding: const EdgeInsets.only(bottom: 16),
+    padding: const EdgeInsets.only(bottom: FiloSpacing.s16),
     child: ClassCard(
       room: room,
       pendingRequests: widget.profile?.role == AccountRole.instructor
@@ -519,7 +528,7 @@ class _JoinSheetState extends ConsumerState<_JoinSheet> {
   @override
   Widget build(BuildContext context) => SafeArea(
     child: Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 24),
+      padding: const EdgeInsets.symmetric(horizontal: FiloSpacing.screen),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -530,7 +539,7 @@ class _JoinSheetState extends ConsumerState<_JoinSheet> {
               style: Theme.of(context).textTheme.titleLarge,
             ),
           ),
-          const SizedBox(height: 8),
+          const SizedBox(height: FiloSpacing.s8),
           Text(
             widget.preview
                 ? 'Enter the code from your instructor.\nPreview code: FILO26'
@@ -539,7 +548,7 @@ class _JoinSheetState extends ConsumerState<_JoinSheet> {
               color: Theme.of(context).colorScheme.onSurfaceVariant,
             ),
           ),
-          const SizedBox(height: 24),
+          const SizedBox(height: FiloSpacing.screen),
           TextField(
             controller: _code,
             enabled: !_busy,
@@ -550,11 +559,11 @@ class _JoinSheetState extends ConsumerState<_JoinSheet> {
               errorText: _error,
             ),
           ),
-          const SizedBox(height: 16),
+          const SizedBox(height: FiloSpacing.s16),
           if (!widget.preview &&
               ref.watch(connectivityProvider).asData?.value != true)
             const Padding(
-              padding: EdgeInsets.only(bottom: 8),
+              padding: EdgeInsets.only(bottom: FiloSpacing.s8),
               child: Text('Connect to the internet to join a class.'),
             ),
           FiloButton(
@@ -622,7 +631,7 @@ class _SyncErrorStatus extends ConsumerWidget {
         // Routine timestamps/sync activity stay out of the navigation area.
         if (sync.errors.isEmpty) return const SizedBox.shrink();
         return Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 24),
+          padding: const EdgeInsets.symmetric(horizontal: FiloSpacing.screen),
           child: Row(
             children: [
               ExcludeSemantics(
@@ -632,7 +641,7 @@ class _SyncErrorStatus extends ConsumerWidget {
                   color: Theme.of(context).colorScheme.onSurfaceVariant,
                 ),
               ),
-              const SizedBox(width: 8),
+              const SizedBox(width: FiloSpacing.s8),
               Expanded(
                 child: Text(
                   !online

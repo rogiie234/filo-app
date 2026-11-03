@@ -51,10 +51,13 @@ class GradingSkeleton extends StatelessWidget {
       6,
       (_) => Container(
         height: 76,
-        margin: const EdgeInsets.all(12),
+        margin: const EdgeInsets.symmetric(
+          horizontal: FiloSpacing.screen,
+          vertical: FiloSpacing.s8,
+        ),
         decoration: BoxDecoration(
           color: FiloThemeTokens.of(context).mint,
-          borderRadius: BorderRadius.circular(16),
+          borderRadius: BorderRadius.circular(FiloRadii.medium),
         ),
       ),
     ),
@@ -119,26 +122,16 @@ class _SubmissionsScreenState extends ConsumerState<SubmissionsScreen> {
         _message('No grades to return.');
         return;
       }
-      final confirmed = await showFiloDialog<bool>(
-        context: context,
-        builder: (context) => AlertDialog(
-          title: Text('Return $count graded ${count == 1 ? 'work' : 'works'}?'),
-          content: Text(
-            count == 1
-                ? 'This student will be able to see their score and feedback.'
-                : 'These students will be able to see their scores and feedback.',
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(context, false),
-              child: const Text('Cancel'),
-            ),
-            FilledButton(
-              onPressed: () => Navigator.pop(context, true),
-              child: const Text('Return'),
-            ),
-          ],
-        ),
+      final confirmed = await showFiloConfirmation(
+        context,
+        animate: false,
+        title: 'Return $count graded ${count == 1 ? 'work' : 'works'}?',
+        message: count == 1
+            ? 'This student will be able to see their score and feedback.'
+            : 'These students will be able to see their scores and feedback.',
+        confirmLabel: 'Return',
+        cancelLabel: 'Cancel',
+        cancelIsPrimary: true,
       );
       if (confirmed != true || !_online) {
         return;
@@ -187,196 +180,200 @@ class _SubmissionsScreenState extends ConsumerState<SubmissionsScreen> {
         !rooms.any((c) => c.id == widget.classId && c.archivedAt == null);
     final sync = ref.watch(gradingSyncProvider(widget.classId));
     final state = ref.watch(gradingDataProvider(widget.classId));
-    return Scaffold(
-      appBar: AppBar(title: const Text('Submissions')),
-      body: state.when(
-        loading: () => const GradingSkeleton(),
-        error: (_, _) => Center(
-          child: TextButton(
-            onPressed: _refresh,
-            child: const Text("Couldn't load grades. Try again."),
+    return FiloMotionScope(
+      enabled: false,
+      child: Scaffold(
+        appBar: AppBar(title: const Text('Submissions')),
+        body: state.when(
+          loading: () => const GradingSkeleton(),
+          error: (_, _) => Center(
+            child: TextButton(
+              onPressed: _refresh,
+              child: const Text("Couldn't load grades. Try again."),
+            ),
           ),
-        ),
-        data: (data) {
-          if (!data.loaded) {
-            return sync.isLoading
-                ? const GradingSkeleton()
-                : Center(
-                    child: TextButton(
-                      onPressed: _refresh,
-                      child: Text(
-                        online
-                            ? "Couldn't load grades. Try again."
-                            : 'Connect to the internet to load grades',
+          data: (data) {
+            if (!data.loaded) {
+              return sync.isLoading
+                  ? const GradingSkeleton()
+                  : Center(
+                      child: TextButton(
+                        onPressed: _refresh,
+                        child: Text(
+                          online
+                              ? "Couldn't load grades. Try again."
+                              : 'Connect to the internet to load grades',
+                        ),
                       ),
-                    ),
-                  );
-          }
-          final assignment = data.assignment(widget.postId);
-          if (assignment == null) {
-            return Center(
-              child: Text(
-                online
-                    ? 'This item is no longer available.'
-                    : 'Connect to the internet to load grades',
-              ),
-            );
-          }
-          final members =
-              data.members.where((m) => m['status'] == 'active').toList()
-                ..sort((a, b) => gradingName(a).compareTo(gradingName(b)));
-          String status(Json member) =>
-              data.status(widget.postId, member['student_id'].toString());
-          final visible = members.where((m) {
-            final s = status(m);
-            return gradingName(m)
-                    .toLowerCase()
-                    .contains(_search.toLowerCase()) &&
-                (_filter == 'All' ||
-                    (_filter == 'To grade' &&
-                        (s == 'Turned in' || s == 'Late')) ||
-                    (_filter == 'Graded' && s.startsWith('Graded')) ||
-                    _filter == s);
-          }).toList();
-          final pending = data.submissions
-              .where(
-                (s) =>
-                    s['post_id'] == widget.postId &&
-                    data.grade(s['id'].toString())?['returned_at'] == null &&
-                    data.grade(s['id'].toString()) != null,
-              )
-              .length;
-          return RefreshIndicator(
-            onRefresh: _refresh,
-            child: ListView(
-              physics: const AlwaysScrollableScrollPhysics(),
-              padding: const EdgeInsets.all(16),
-              children: [
-                if (!online) const OfflineBanner(),
-                if (sync.hasError)
-                  TextButton(
-                    onPressed: _refresh,
-                    child: const Text("Couldn't load grades. Try again."),
-                  ),
-                if (archived) const Text('This class is archived.'),
-                Text(
-                  '${assignment['title']}',
-                  style: Theme.of(context).textTheme.headlineSmall,
+                    );
+            }
+            final assignment = data.assignment(widget.postId);
+            if (assignment == null) {
+              return Center(
+                child: Text(
+                  online
+                      ? 'This item is no longer available.'
+                      : 'Connect to the internet to load grades',
                 ),
-                Text(
-                  '${gradingDate(assignment['due_at'])} · ${assignment['points']} points',
-                ),
-                Wrap(
-                  spacing: 8,
-                  children: ['Turned in', 'Late', 'Missing', 'Graded']
-                      .map(
-                        (s) => Card(
-                          child: Padding(
-                            padding: const EdgeInsets.all(12),
-                            child: Text(
-                              '$s: ${members.where((m) => s == 'Graded' ? status(m).startsWith(s) : status(m) == s).length}',
-                            ),
-                          ),
-                        ),
-                      )
-                      .toList(),
-                ),
-                TextField(
-                  decoration: const InputDecoration(
-                    labelText: 'Search students',
-                    prefixIcon: FiloIcon(FiloIcons.search),
-                  ),
-                  onChanged: (v) => setState(() => _search = v),
-                ),
-                Wrap(
-                  spacing: 8,
-                  children: ['All', 'To grade', 'Late', 'Missing', 'Graded']
-                      .map(
-                        (s) => FiloAnimatedChip.filter(
-                          label: Text(s),
-                          selected: _filter == s,
-                          onSelected: (_) => setState(() => _filter = s),
-                        ),
-                      )
-                      .toList(),
-                ),
-                OutlinedButton(
-                  onPressed:
-                      online &&
-                          !archived &&
-                          !_busy &&
-                          pending > 0 &&
-                          _error == null
-                      ? _returnAll
-                      : null,
-                  child: Text('Return all graded ($pending)'),
-                ),
-                if (_error != null)
-                  ListTile(
-                    title: Text(_error!),
-                    trailing: TextButton(
-                      onPressed: _refresh,
-                      child: const Text('Refresh'),
-                    ),
-                  ),
-                if (!data.submissions.any(
+              );
+            }
+            final members =
+                data.members.where((m) => m['status'] == 'active').toList()
+                  ..sort((a, b) => gradingName(a).compareTo(gradingName(b)));
+            String status(Json member) =>
+                data.status(widget.postId, member['student_id'].toString());
+            final visible = members.where((m) {
+              final s = status(m);
+              return gradingName(m)
+                      .toLowerCase()
+                      .contains(_search.toLowerCase()) &&
+                  (_filter == 'All' ||
+                      (_filter == 'To grade' &&
+                          (s == 'Turned in' || s == 'Late')) ||
+                      (_filter == 'Graded' && s.startsWith('Graded')) ||
+                      _filter == s);
+            }).toList();
+            final pending = data.submissions
+                .where(
                   (s) =>
                       s['post_id'] == widget.postId &&
-                      s['submitted_at'] != null,
-                ))
-                  const Padding(
-                    padding: EdgeInsets.all(12),
-                    child: Text(
-                      "No submissions yet.\nStudents' work will appear here after they turn it in.",
+                      data.grade(s['id'].toString())?['returned_at'] == null &&
+                      data.grade(s['id'].toString()) != null,
+                )
+                .length;
+            return RefreshIndicator(
+              onRefresh: _refresh,
+              child: ListView(
+                physics: const AlwaysScrollableScrollPhysics(),
+                padding: const EdgeInsets.all(FiloSpacing.screen),
+                children: [
+                  if (!online) const OfflineBanner(),
+                  if (sync.hasError)
+                    TextButton(
+                      onPressed: _refresh,
+                      child: const Text("Couldn't load grades. Try again."),
                     ),
+                  if (archived) const Text('This class is archived.'),
+                  Text(
+                    '${assignment['title']}',
+                    style: Theme.of(context).textTheme.headlineSmall,
                   ),
-                if (visible.isEmpty)
-                  const Padding(
-                    padding: EdgeInsets.all(24),
-                    child: Text('No matching results.'),
+                  Text(
+                    '${gradingDate(assignment['due_at'])} · ${assignment['points']} points',
                   ),
-                ...visible.map((m) {
-                  final id = m['student_id'].toString(), s = status(m);
-                  final submission = data.submission(widget.postId, id);
-                  final grade = submission == null
-                      ? null
-                      : data.grade(submission['id'].toString());
-                  return Card(
-                    child: ListTile(
-                      leading: FiloAvatar(
-                        name: gradingName(m),
-                        path:
-                            (m['profiles'] as Map?)?['avatar_path'] as String?,
-                      ),
-                      title: Text(gradingName(m)),
-                      subtitle: GradeStatusChip(s),
-                      trailing: grade == null
-                          ? null
-                          : Text(
-                              '${grade['score']}/${assignment['points']}${grade['returned_at'] == null ? '\nNot returned' : ''}',
-                            ),
-                      onTap: () {
-                        if (submission == null && s != 'Missing') {
-                          _message('No work turned in.');
-                          return;
-                        }
-                        Navigator.of(context).push(
-                          MaterialPageRoute<void>(
-                            builder: (_) => GradeScreen(
-                              classId: widget.classId,
-                              postId: widget.postId,
-                              studentId: id,
+                  Wrap(
+                    spacing: 8,
+                    children: ['Turned in', 'Late', 'Missing', 'Graded']
+                        .map(
+                          (s) => Card(
+                            child: Padding(
+                              padding: const EdgeInsets.all(FiloSpacing.s12),
+                              child: Text(
+                                '$s: ${members.where((m) => s == 'Graded' ? status(m).startsWith(s) : status(m) == s).length}',
+                              ),
                             ),
                           ),
-                        );
-                      },
+                        )
+                        .toList(),
+                  ),
+                  TextField(
+                    decoration: const InputDecoration(
+                      labelText: 'Search students',
+                      prefixIcon: FiloIcon(FiloIcons.search),
                     ),
-                  );
-                }),
-              ],
-            ),
-          );
-        },
+                    onChanged: (v) => setState(() => _search = v),
+                  ),
+                  Wrap(
+                    spacing: 8,
+                    children: ['All', 'To grade', 'Late', 'Missing', 'Graded']
+                        .map(
+                          (s) => FiloAnimatedChip.filter(
+                            label: Text(s),
+                            selected: _filter == s,
+                            onSelected: (_) => setState(() => _filter = s),
+                          ),
+                        )
+                        .toList(),
+                  ),
+                  OutlinedButton(
+                    onPressed:
+                        online &&
+                            !archived &&
+                            !_busy &&
+                            pending > 0 &&
+                            _error == null
+                        ? _returnAll
+                        : null,
+                    child: Text('Return all graded ($pending)'),
+                  ),
+                  if (_error != null)
+                    ListTile(
+                      title: Text(_error!),
+                      trailing: TextButton(
+                        onPressed: _refresh,
+                        child: const Text('Refresh'),
+                      ),
+                    ),
+                  if (!data.submissions.any(
+                    (s) =>
+                        s['post_id'] == widget.postId &&
+                        s['submitted_at'] != null,
+                  ))
+                    const Padding(
+                      padding: EdgeInsets.all(FiloSpacing.s12),
+                      child: Text(
+                        "No submissions yet.\nStudents' work will appear here after they turn it in.",
+                      ),
+                    ),
+                  if (visible.isEmpty)
+                    const Padding(
+                      padding: EdgeInsets.all(FiloSpacing.screen),
+                      child: Text('No matching results.'),
+                    ),
+                  ...visible.map((m) {
+                    final id = m['student_id'].toString(), s = status(m);
+                    final submission = data.submission(widget.postId, id);
+                    final grade = submission == null
+                        ? null
+                        : data.grade(submission['id'].toString());
+                    return Card(
+                      child: ListTile(
+                        leading: FiloAvatar(
+                          name: gradingName(m),
+                          path:
+                              (m['profiles'] as Map?)?['avatar_path']
+                                  as String?,
+                        ),
+                        title: Text(gradingName(m)),
+                        subtitle: GradeStatusChip(s),
+                        trailing: grade == null
+                            ? null
+                            : Text(
+                                '${grade['score']}/${assignment['points']}${grade['returned_at'] == null ? '\nNot returned' : ''}',
+                              ),
+                        onTap: () {
+                          if (submission == null && s != 'Missing') {
+                            _message('No work turned in.');
+                            return;
+                          }
+                          Navigator.of(context).push(
+                            FiloInstantRoute<void>(
+                              builder: (_) => GradeScreen(
+                                classId: widget.classId,
+                                postId: widget.postId,
+                                studentId: id,
+                              ),
+                            ),
+                          );
+                        },
+                      ),
+                    );
+                  }),
+                ],
+              ),
+            );
+          },
+        ),
       ),
     );
   }

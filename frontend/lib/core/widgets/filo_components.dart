@@ -63,7 +63,9 @@ class FiloStatusChip extends StatelessWidget {
     label: label ?? preset.label,
     icon: preset.icon,
     status: preset.tone,
-    fontWeight: preset == FiloStatusPreset.graded ? FontWeight.w800 : null,
+    fontWeight: preset == FiloStatusPreset.graded
+        ? FiloTypography.emphasis
+        : null,
   );
   final String label;
   final IconData icon;
@@ -196,13 +198,16 @@ class FiloCard extends StatelessWidget {
           ? Theme.of(context).colorScheme.surfaceContainerHighest
           : Theme.of(context).colorScheme.surface,
       shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(28),
+        borderRadius: BorderRadius.circular(FiloRadii.large),
         side: BorderSide(color: Theme.of(context).colorScheme.outline),
       ),
       clipBehavior: Clip.antiAlias,
       child: InkWell(
         onTap: onTap,
-        child: Padding(padding: const EdgeInsets.all(20), child: child),
+        child: Padding(
+          padding: const EdgeInsets.all(FiloSpacing.s20),
+          child: child,
+        ),
       ),
     ),
   );
@@ -220,7 +225,7 @@ void showFiloToast(
   messenger.showSnackBar(
     SnackBar(
       duration: Duration(seconds: kind == FiloToastKind.error ? 4 : 3),
-      margin: const EdgeInsets.all(16),
+      margin: const EdgeInsets.all(FiloSpacing.s16),
       content: Row(
         children: [
           FiloIcon(
@@ -232,7 +237,7 @@ void showFiloToast(
             color: Theme.of(context).colorScheme.onInverseSurface,
             size: 20,
           ),
-          const SizedBox(width: 12),
+          const SizedBox(width: FiloSpacing.s12),
           Expanded(child: Text(message)),
         ],
       ),
@@ -251,7 +256,7 @@ class FiloProgressBar extends StatelessWidget {
   Widget build(BuildContext context) => FiloLinearProgressIndicator(
     value: value.clamp(0.0, 1.0).toDouble(),
     minHeight: 10,
-    borderRadius: BorderRadius.circular(5),
+    borderRadius: BorderRadius.circular(FiloRadii.small),
     backgroundColor: FiloThemeTokens.of(context).mint,
     color: Theme.of(context).colorScheme.primary,
     semanticsLabel: label,
@@ -277,7 +282,7 @@ class FiloPageIndicator extends StatelessWidget {
               width: i == index ? 36 : 8,
               height: 8,
               decoration: BoxDecoration(
-                borderRadius: BorderRadius.circular(4),
+                borderRadius: BorderRadius.circular(FiloRadii.small),
                 color: i == index
                     ? Theme.of(context).colorScheme.primary
                     : FiloThemeTokens.of(context).mint,
@@ -304,10 +309,10 @@ class FiloBanner extends StatelessWidget {
     liveRegion: true,
     child: Container(
       width: double.infinity,
-      padding: const EdgeInsets.all(16),
+      padding: const EdgeInsets.all(FiloSpacing.s16),
       decoration: BoxDecoration(
         color: Theme.of(context).colorScheme.primaryContainer,
-        borderRadius: BorderRadius.circular(12),
+        borderRadius: BorderRadius.circular(FiloRadii.small),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -318,7 +323,7 @@ class FiloBanner extends StatelessWidget {
                 icon,
                 color: Theme.of(context).colorScheme.onPrimaryContainer,
               ),
-              const SizedBox(width: 12),
+              const SizedBox(width: FiloSpacing.s12),
               Expanded(
                 child: Text(
                   message,
@@ -329,7 +334,10 @@ class FiloBanner extends StatelessWidget {
               ),
             ],
           ),
-          if (action != null) ...[const SizedBox(height: 8), action!],
+          if (action != null) ...[
+            const SizedBox(height: FiloSpacing.s8),
+            action!,
+          ],
         ],
       ),
     ),
@@ -405,7 +413,7 @@ class _FiloSkeletonState extends State<FiloSkeleton>
             height: widget.height,
             decoration: BoxDecoration(
               color: FiloThemeTokens.of(context).mint,
-              borderRadius: BorderRadius.circular(12),
+              borderRadius: BorderRadius.circular(FiloRadii.small),
             ),
           ),
         ),

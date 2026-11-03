@@ -316,7 +316,12 @@ class _InstructorClassworkListState
         physics: const AlwaysScrollableScrollPhysics(),
         slivers: [
           SliverPadding(
-            padding: const EdgeInsets.fromLTRB(24, 24, 24, 0),
+            padding: const EdgeInsets.fromLTRB(
+              FiloSpacing.screen,
+              FiloSpacing.screen,
+              FiloSpacing.screen,
+              0,
+            ),
             sliver: SliverToBoxAdapter(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -325,24 +330,24 @@ class _InstructorClassworkListState
                     'Classwork',
                     style: Theme.of(context).textTheme.headlineMedium,
                   ),
-                  const SizedBox(height: 8),
+                  const SizedBox(height: FiloSpacing.s8),
                   Text(
                     'Assignments, quizzes and exams. Newest first.',
                     style: TextStyle(
                       color: Theme.of(context).colorScheme.onSurfaceVariant,
                     ),
                   ),
-                  const SizedBox(height: 16),
+                  const SizedBox(height: FiloSpacing.s16),
                   OutlinedButton.icon(
                     icon: const FiloIcon(FiloIcons.spreadsheet),
                     label: const Text('Gradebook'),
                     onPressed: () => Navigator.of(context).push(
-                      MaterialPageRoute<void>(
+                      FiloInstantRoute<void>(
                         builder: (_) => GradebookScreen(classId: id),
                       ),
                     ),
                   ),
-                  const SizedBox(height: 16),
+                  const SizedBox(height: FiloSpacing.s16),
                   if (!online) ...[
                     const OfflineBanner(),
                     const Text(
@@ -360,7 +365,9 @@ class _InstructorClassworkListState
                           'Drafts',
                         ])
                           Padding(
-                            padding: const EdgeInsets.only(right: 8),
+                            padding: const EdgeInsets.only(
+                              right: FiloSpacing.s8,
+                            ),
                             child: ClassworkFilterChip(
                               label: filter,
                               selected: _filter == filter,
@@ -371,10 +378,10 @@ class _InstructorClassworkListState
                       ],
                     ),
                   ),
-                  const SizedBox(height: 20),
+                  const SizedBox(height: FiloSpacing.s20),
                   if (_refreshing)
                     const Padding(
-                      padding: EdgeInsets.only(bottom: 12),
+                      padding: EdgeInsets.only(bottom: FiloSpacing.s12),
                       child: FiloLinearProgressIndicator(
                         semanticsLabel: 'Refreshing classwork',
                       ),
@@ -396,7 +403,7 @@ class _InstructorClassworkListState
                     ),
                   if (!complete && !loading && !failed)
                     Padding(
-                      padding: const EdgeInsets.only(bottom: 16),
+                      padding: const EdgeInsets.only(bottom: FiloSpacing.s16),
                       child: Text(
                         online ? 'Refresh to load the remaining classwork.' : 'Some classwork is not saved on this device. Connect to the internet and refresh.',
                       ),
@@ -404,7 +411,9 @@ class _InstructorClassworkListState
                   if (entries.isEmpty && complete && !loading && !failed)
                     filteredEmpty
                         ? const Padding(
-                            padding: EdgeInsets.symmetric(vertical: 24),
+                            padding: EdgeInsets.symmetric(
+                              vertical: FiloSpacing.screen,
+                            ),
                             child: EmptyState(
                               title: 'No classwork matches this filter.',
                               pose: 'curious',
@@ -429,17 +438,24 @@ class _InstructorClassworkListState
           ),
           if (initialWaiting || loading && entries.isEmpty)
             SliverPadding(
-              padding: const EdgeInsets.symmetric(horizontal: 24),
+              padding: const EdgeInsets.symmetric(
+                horizontal: FiloSpacing.screen,
+              ),
               sliver: SliverList.builder(
                 itemCount: 3,
                 itemBuilder: (_, index) => const Padding(
-                  padding: EdgeInsets.only(bottom: 12),
+                  padding: EdgeInsets.only(bottom: FiloSpacing.s12),
                   child: StreamPostSkeleton(),
                 ),
               ),
             ),
           SliverPadding(
-            padding: const EdgeInsets.fromLTRB(24, 0, 24, 24),
+            padding: const EdgeInsets.fromLTRB(
+              FiloSpacing.screen,
+              0,
+              FiloSpacing.screen,
+              FiloSpacing.screen,
+            ),
             sliver: SliverList.builder(
               itemCount: initialWaiting ? 0 : entries.length,
               findChildIndexCallback: (key) {
@@ -451,7 +467,7 @@ class _InstructorClassworkListState
                 final quiz = entry.quiz;
                 return Padding(
                   key: ValueKey(entry.key),
-                  padding: const EdgeInsets.only(bottom: 12),
+                  padding: const EdgeInsets.only(bottom: FiloSpacing.s12),
                   child: quiz != null
                       ? AssessmentRow(
                           quiz: quiz,
@@ -492,7 +508,7 @@ class _InstructorClassworkListState
                           status: null,
                           showStatus: false,
                           onTap: () => Navigator.of(context).push(
-                            MaterialPageRoute<void>(
+                            FiloInstantRoute<void>(
                               builder: (_) => SubmissionsScreen(
                                 classId: id,
                                 postId: entry.post!.id,

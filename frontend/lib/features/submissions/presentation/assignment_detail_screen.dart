@@ -875,7 +875,7 @@ class _AssignmentDetailScreenState
                 },
                 child: ListView(
                   physics: const AlwaysScrollableScrollPhysics(),
-                  padding: const EdgeInsets.all(24),
+                  padding: const EdgeInsets.all(FiloSpacing.screen),
                   children: [
                     if (!online) const OfflineBanner(),
                     if (_error != null || failed || sync.hasError) ...[
@@ -913,9 +913,9 @@ class _AssignmentDetailScreenState
                         alignment: Alignment.centerLeft,
                         child: AssignmentStatusChip(status: status),
                       ),
-                      const SizedBox(height: 16),
+                      const SizedBox(height: FiloSpacing.s16),
                       SelectableText(_post!.body ?? ''),
-                      const SizedBox(height: 16),
+                      const SizedBox(height: FiloSpacing.s16),
                       if (attachments.isLoading)
                         const FiloLinearProgressIndicator(),
                       if (attachments.hasError)
@@ -937,11 +937,11 @@ class _AssignmentDetailScreenState
                           onUnavailable: () =>
                               setState(() => _unavailable = true),
                         ),
-                      const SizedBox(height: 24),
+                      const SizedBox(height: FiloSpacing.screen),
                       if (_grade != null)
                         Card(
                           child: Padding(
-                            padding: const EdgeInsets.all(20),
+                            padding: const EdgeInsets.all(FiloSpacing.s20),
                             child: Column(
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
@@ -963,7 +963,7 @@ class _AssignmentDetailScreenState
                       Card(
                         color: Theme.of(context).colorScheme.surfaceContainer,
                         child: Padding(
-                          padding: const EdgeInsets.all(20),
+                          padding: const EdgeInsets.all(FiloSpacing.s20),
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
@@ -1138,7 +1138,7 @@ class _AssignmentDetailScreenState
                               if (!_turnedIn && _fileRestriction != null)
                                 Padding(
                                   padding: const EdgeInsets.symmetric(
-                                    vertical: 8,
+                                    vertical: FiloSpacing.s8,
                                   ),
                                   child: Text(_fileRestriction!),
                                 ),
@@ -1288,7 +1288,12 @@ class _AssignmentDetailScreenState
             ? null
             : SafeArea(
                 child: Padding(
-                  padding: const EdgeInsets.fromLTRB(24, 12, 24, 16),
+                  padding: const EdgeInsets.fromLTRB(
+                    FiloSpacing.screen,
+                    FiloSpacing.s12,
+                    FiloSpacing.screen,
+                    FiloSpacing.s16,
+                  ),
                   child: _turnedIn
                       ? unsubmitAllowed
                             ? Semantics(

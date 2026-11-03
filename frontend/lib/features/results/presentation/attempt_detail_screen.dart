@@ -367,7 +367,7 @@ class _AttemptDetailScreenState extends ConsumerState<AttemptDetailScreen> {
                       Text('Leave-app count: ${detail.session.leaves}'),
                     ],
                   ),
-                  const SizedBox(height: 12),
+                  const SizedBox(height: FiloSpacing.s12),
                   Text(
                     '${detail.session.score ?? '—'}/${detail.quiz['total_points']} points',
                     style: Theme.of(context).textTheme.headlineMedium,
@@ -391,7 +391,7 @@ class _AttemptDetailScreenState extends ConsumerState<AttemptDetailScreen> {
                   ),
                   if (detail.quiz['results_released_at'] != null)
                     const Padding(
-                      padding: EdgeInsets.symmetric(vertical: 12),
+                      padding: EdgeInsets.symmetric(vertical: FiloSpacing.s12),
                       child: Text(
                         'The student will see the updated score at the next sync.',
                       ),
@@ -470,9 +470,11 @@ class _AttemptDetailScreenState extends ConsumerState<AttemptDetailScreen> {
                             crossAxisAlignment: CrossAxisAlignment.stretch,
                             children: [
                               if (overriddenMark(answer))
-                                const Text(
+                                Text(
                                   'Edited',
-                                  style: TextStyle(fontWeight: FontWeight.w700),
+                                  style: Theme.of(context)
+                                      .textTheme
+                                      .labelMedium!,
                                 ),
                               if (edit != null) ...[
                                 TextField(
@@ -485,7 +487,7 @@ class _AttemptDetailScreenState extends ConsumerState<AttemptDetailScreen> {
                                     helperText: '0 to ${q['points']}',
                                   ),
                                 ),
-                                const SizedBox(height: 12),
+                                const SizedBox(height: FiloSpacing.s12),
                                 TextField(
                                   controller: edit.feedback,
                                   enabled: !readOnly,
@@ -560,7 +562,7 @@ class AttemptHistory extends ConsumerWidget {
         (c) => c['previous_session_id'] == session.id,
       ))
         Padding(
-          padding: const EdgeInsets.all(16),
+          padding: const EdgeInsets.all(FiloSpacing.s16),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
@@ -584,7 +586,7 @@ class _HistoryAnswers extends ConsumerWidget {
     final state = ref.watch(resultAttemptProvider(key));
     final data = state.asData?.value;
     return Padding(
-      padding: const EdgeInsets.all(16),
+      padding: const EdgeInsets.all(FiloSpacing.s16),
       child: Column(
         children: [
           if (state.isLoading) const ResultsSkeleton(),

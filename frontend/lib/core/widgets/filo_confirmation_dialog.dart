@@ -1,3 +1,5 @@
+import '../theme/filo_design_tokens.dart';
+
 import 'package:flutter/material.dart';
 
 import 'filo_icon.dart';
@@ -12,10 +14,12 @@ Future<bool> showFiloConfirmation(
   required String confirmLabel,
   String cancelLabel = 'Go back',
   bool cancelIsPrimary = false,
+  bool animate = true,
   IconData icon = FiloIcons.checkCircle,
 }) async =>
     await showFiloDialog<bool>(
       context: context,
+      animate: animate,
       animationStyle: FiloMotion.enabled(context)
           ? null
           : AnimationStyle.noAnimation,
@@ -52,16 +56,19 @@ class FiloConfirmationDialog extends StatelessWidget {
   @override
   Widget build(BuildContext context) => Dialog(
     backgroundColor: Theme.of(context).colorScheme.surface,
-    surfaceTintColor: Colors.transparent,
-    insetPadding: const EdgeInsets.symmetric(horizontal: 24, vertical: 24),
+    surfaceTintColor: FiloPaint.transparent,
+    insetPadding: const EdgeInsets.symmetric(
+      horizontal: FiloSpacing.screen,
+      vertical: FiloSpacing.screen,
+    ),
     shape: RoundedRectangleBorder(
-      borderRadius: BorderRadius.circular(28),
+      borderRadius: BorderRadius.circular(FiloRadii.large),
       side: BorderSide(color: Theme.of(context).colorScheme.outline),
     ),
     child: ConstrainedBox(
       constraints: const BoxConstraints(maxWidth: 400),
       child: SingleChildScrollView(
-        padding: const EdgeInsets.all(24),
+        padding: const EdgeInsets.all(FiloSpacing.screen),
         child: Column(
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -73,7 +80,7 @@ class FiloConfirmationDialog extends StatelessWidget {
                   height: 64,
                   decoration: BoxDecoration(
                     color: Theme.of(context).colorScheme.primaryContainer,
-                    borderRadius: BorderRadius.circular(22),
+                    borderRadius: BorderRadius.circular(FiloRadii.medium),
                   ),
                   child: FiloIcon(
                     icon,
@@ -83,20 +90,18 @@ class FiloConfirmationDialog extends StatelessWidget {
                 ),
               ),
             ),
-            const SizedBox(height: 20),
+            const SizedBox(height: FiloSpacing.s20),
             Semantics(
               namesRoute: true,
               header: true,
               child: Text(
                 title,
                 textAlign: TextAlign.center,
-                style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                  color: Theme.of(context).colorScheme.onSurface,
-                  fontWeight: FontWeight.w700,
-                ),
+                style: Theme.of(context).textTheme.titleLarge
+                    ?.copyWith(color: Theme.of(context).colorScheme.onSurface),
               ),
             ),
-            const SizedBox(height: 12),
+            const SizedBox(height: FiloSpacing.s12),
             Text(
               message,
               textAlign: TextAlign.center,
@@ -104,12 +109,12 @@ class FiloConfirmationDialog extends StatelessWidget {
                 color: Theme.of(context).colorScheme.onSurfaceVariant,
               ),
             ),
-            const SizedBox(height: 28),
+            const SizedBox(height: FiloSpacing.s32),
             FiloButton(
               label: cancelIsPrimary ? cancelLabel : confirmLabel,
               onPressed: () => Navigator.of(context).pop(!cancelIsPrimary),
             ),
-            const SizedBox(height: 12),
+            const SizedBox(height: FiloSpacing.s12),
             FiloButton(
               label: cancelIsPrimary ? confirmLabel : cancelLabel,
               secondary: true,

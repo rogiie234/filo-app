@@ -40,14 +40,14 @@ class StudentQuizRow extends StatelessWidget {
     return Material(
       color: Theme.of(context).colorScheme.surface,
       shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(24),
+        borderRadius: BorderRadius.circular(FiloRadii.large),
         side: BorderSide(color: Theme.of(context).colorScheme.outline),
       ),
       clipBehavior: Clip.antiAlias,
       child: InkWell(
         onTap: onTap,
         child: Padding(
-          padding: const EdgeInsets.all(20),
+          padding: const EdgeInsets.all(FiloSpacing.s20),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
@@ -59,7 +59,7 @@ class StudentQuizRow extends StatelessWidget {
                     color: Theme.of(context).colorScheme.onSurfaceVariant,
                   ),
                 ),
-              const SizedBox(height: 8),
+              const SizedBox(height: FiloSpacing.s8),
               Wrap(
                 spacing: 8,
                 runSpacing: 4,
@@ -68,7 +68,7 @@ class StudentQuizRow extends StatelessWidget {
                   StudentQuizStatusChip(state: state),
                 ],
               ),
-              const SizedBox(height: 8),
+              const SizedBox(height: FiloSpacing.s8),
               Text('Closes: ${philippineQuizDate(quiz.closesAt)}'),
               Text(
                 '${quiz.points} points',
@@ -98,7 +98,7 @@ class StudentQuizSkeleton extends StatelessWidget {
           children: [
             for (final width in [1.0, .6, .8])
               Padding(
-                padding: const EdgeInsets.only(bottom: 16),
+                padding: const EdgeInsets.only(bottom: FiloSpacing.s16),
                 child: FractionallySizedBox(
                   widthFactor: width,
                   alignment: Alignment.centerLeft,

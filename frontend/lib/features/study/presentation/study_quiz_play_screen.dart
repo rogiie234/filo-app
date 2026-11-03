@@ -161,7 +161,7 @@ class _QuizPlayerState extends ConsumerState<_QuizPlayer> {
         body: SafeArea(
           child: ListView(
             controller: _scroll,
-            padding: const EdgeInsets.all(24),
+            padding: const EdgeInsets.all(FiloSpacing.screen),
             children: [
               const StudyOfflineBanner(),
               if (s.loading)
@@ -183,7 +183,7 @@ class _QuizPlayerState extends ConsumerState<_QuizPlayer> {
                     style: Theme.of(context).textTheme.headlineSmall,
                   ),
                 ),
-                const SizedBox(height: 16),
+                const SizedBox(height: FiloSpacing.s16),
                 Text(
                   s.saving
                       ? 'Saving attempt...'
@@ -203,7 +203,7 @@ class _QuizPlayerState extends ConsumerState<_QuizPlayer> {
                       _top();
                     },
                   ),
-                  const SizedBox(height: 12),
+                  const SizedBox(height: FiloSpacing.s12),
                   FiloButton(
                     label: 'History',
                     onPressed: () => Navigator.push(
@@ -230,12 +230,12 @@ class _QuizPlayerState extends ConsumerState<_QuizPlayer> {
                     'Question ${s.index + 1} of ${s.questions.length}',
                   ),
                 ),
-                const SizedBox(height: 8),
+                const SizedBox(height: FiloSpacing.s8),
                 FiloLinearProgressIndicator(
                   value: s.results.length / s.questions.length,
                   semanticsLabel: 'Quiz progress',
                 ),
-                const SizedBox(height: 24),
+                const SizedBox(height: FiloSpacing.screen),
                 Semantics(
                   header: true,
                   child: Text(
@@ -243,7 +243,7 @@ class _QuizPlayerState extends ConsumerState<_QuizPlayer> {
                     style: Theme.of(context).textTheme.titleLarge,
                   ),
                 ),
-                const SizedBox(height: 16),
+                const SizedBox(height: FiloSpacing.s16),
                 if (q.type == 'multiple_choice')
                   for (final originalIndex in s.optionOrder[q.id]!)
                     _choice(quizOptions(q)[originalIndex], originalIndex),
@@ -261,7 +261,7 @@ class _QuizPlayerState extends ConsumerState<_QuizPlayer> {
                     maxLines: 5,
                     onChanged: s.select,
                   ),
-                const SizedBox(height: 24),
+                const SizedBox(height: FiloSpacing.screen),
                 if (!s.checked)
                   FiloButton(
                     label: 'Check',
@@ -300,7 +300,7 @@ class _QuizPlayerState extends ConsumerState<_QuizPlayer> {
                   ),
                 ],
               ],
-              const SizedBox(height: 24),
+              const SizedBox(height: FiloSpacing.screen),
               const Text('AI can make mistakes. Check important answers.'),
             ],
           ),
@@ -310,12 +310,12 @@ class _QuizPlayerState extends ConsumerState<_QuizPlayer> {
   }
 
   Widget _choice(String label, Object value) => Padding(
-    padding: const EdgeInsets.only(bottom: 8),
+    padding: const EdgeInsets.only(bottom: FiloSpacing.s8),
     child: Semantics(
       selected: _session.answer == value,
       child: OutlinedButton(
         style: OutlinedButton.styleFrom(
-          minimumSize: const Size(double.infinity, 48),
+          minimumSize: const Size(double.infinity, FiloControlSize.compact),
           alignment: Alignment.centerLeft,
           backgroundColor: _session.answer == value
               ? Theme.of(context).colorScheme.primaryContainer
@@ -340,16 +340,16 @@ class QuizResultPanel extends StatelessWidget {
   final bool correct;
   @override
   Widget build(BuildContext context) => Padding(
-    padding: const EdgeInsets.symmetric(vertical: 16),
+    padding: const EdgeInsets.symmetric(vertical: FiloSpacing.s16),
     child: Semantics(
       liveRegion: true,
       child: Container(
-        padding: const EdgeInsets.all(16),
+        padding: const EdgeInsets.all(FiloSpacing.s16),
         decoration: BoxDecoration(
           color: correct
               ? FiloThemeTokens.of(context).mint
               : Theme.of(context).colorScheme.errorContainer,
-          borderRadius: BorderRadius.circular(20),
+          borderRadius: BorderRadius.circular(FiloRadii.medium),
         ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -362,7 +362,7 @@ class QuizResultPanel extends StatelessWidget {
                       ? Theme.of(context).colorScheme.primary
                       : Theme.of(context).colorScheme.error,
                 ),
-                const SizedBox(width: 8),
+                const SizedBox(width: FiloSpacing.s8),
                 Expanded(
                   child: Text(
                     correct ? 'Correct' : 'Not quite',
@@ -371,11 +371,11 @@ class QuizResultPanel extends StatelessWidget {
                 ),
               ],
             ),
-            const SizedBox(height: 8),
+            const SizedBox(height: FiloSpacing.s8),
             Text(question.prompt),
             Text('Your answer: ${quizAnswerText(question, answer)}'),
             Text('Correct answer: ${quizCorrectAnswer(question)}'),
-            const SizedBox(height: 8),
+            const SizedBox(height: FiloSpacing.s8),
             Text(question.explanation),
           ],
         ),
@@ -403,7 +403,7 @@ class StudyQuizHistoryScreen extends StatelessWidget {
           appBar: AppBar(title: const Text('History')),
           body: SafeArea(
             child: ListView(
-              padding: const EdgeInsets.all(24),
+              padding: const EdgeInsets.all(FiloSpacing.screen),
               children: [
                 const StudyOfflineBanner(),
                 studyAsync(
@@ -448,7 +448,7 @@ class StudyQuizHistoryScreen extends StatelessWidget {
                   ),
                   retry: () => ref.invalidate(studyQuestionsProvider(quizId)),
                 ),
-                const SizedBox(height: 16),
+                const SizedBox(height: FiloSpacing.s16),
                 const Text('AI can make mistakes. Check important answers.'),
               ],
             ),

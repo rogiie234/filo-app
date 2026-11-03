@@ -1,3 +1,5 @@
+import '../../../core/theme/filo_design_tokens.dart';
+
 import 'package:flutter/material.dart';
 
 import '../../../core/widgets/filo_icon.dart';
@@ -39,7 +41,7 @@ class _RoleOptionCardState extends State<RoleOptionCard> {
           color: selected
               ? Theme.of(context).colorScheme.primary
               : Theme.of(context).colorScheme.outline,
-          borderRadius: BorderRadius.circular(24),
+          borderRadius: BorderRadius.circular(FiloRadii.large),
         ),
         child: Padding(
           padding: const EdgeInsets.only(bottom: FiloAnimation.roleCardEdge),
@@ -48,21 +50,21 @@ class _RoleOptionCardState extends State<RoleOptionCard> {
             checked: selected,
             inMutuallyExclusiveGroup: true,
             child: Material(
-              color: Colors.transparent,
+              color: FiloPaint.transparent,
               child: InkWell(
                 onTap: onPressed,
                 onHighlightChanged: (pressed) {
                   if (_pressed != pressed) setState(() => _pressed = pressed);
                 },
-                borderRadius: BorderRadius.circular(24),
+                borderRadius: BorderRadius.circular(FiloRadii.large),
                 child: ExcludeSemantics(
                   child: Container(
-                    padding: const EdgeInsets.all(18),
+                    padding: const EdgeInsets.all(FiloSpacing.s20),
                     decoration: BoxDecoration(
                       color: selected
                           ? Theme.of(context).colorScheme.primaryContainer
                           : Theme.of(context).colorScheme.surface,
-                      borderRadius: BorderRadius.circular(24),
+                      borderRadius: BorderRadius.circular(FiloRadii.large),
                       border: Border.all(
                         color: selected
                             ? Theme.of(context).colorScheme.primary
@@ -81,7 +83,9 @@ class _RoleOptionCardState extends State<RoleOptionCard> {
                                 : Theme.of(context)
                                       .colorScheme
                                       .surfaceContainer,
-                            borderRadius: BorderRadius.circular(16),
+                            borderRadius: BorderRadius.circular(
+                              FiloRadii.medium,
+                            ),
                           ),
                           child: FiloIcon(
                             role == AccountRole.student
@@ -91,36 +95,34 @@ class _RoleOptionCardState extends State<RoleOptionCard> {
                             size: 26,
                           ),
                         ),
-                        const SizedBox(width: 14),
+                        const SizedBox(width: FiloSpacing.s16),
                         Expanded(
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
                               Text(
                                 role.label,
-                                style: TextStyle(
-                                  fontSize: 18,
-                                  fontWeight: FontWeight.w800,
-                                  color: Theme.of(context)
-                                      .colorScheme
-                                      .onSurface,
-                                ),
+                                style: Theme.of(context).textTheme.titleMedium!
+                                    .copyWith(
+                                      color: Theme.of(context)
+                                          .colorScheme
+                                          .onSurface,
+                                    ),
                               ),
-                              const SizedBox(height: 5),
+                              const SizedBox(height: FiloSpacing.s4),
                               Text(
                                 description,
-                                style: TextStyle(
-                                  fontSize: 14,
-                                  height: 1.45,
-                                  color: Theme.of(context)
-                                      .colorScheme
-                                      .onSurfaceVariant,
-                                ),
+                                style: Theme.of(context).textTheme.bodyMedium!
+                                    .copyWith(
+                                      color: Theme.of(context)
+                                          .colorScheme
+                                          .onSurfaceVariant,
+                                    ),
                               ),
                             ],
                           ),
                         ),
-                        const SizedBox(width: 10),
+                        const SizedBox(width: FiloSpacing.s12),
                         FiloSelectionIndicator(selected: selected),
                       ],
                     ),

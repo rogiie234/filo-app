@@ -18,10 +18,7 @@ class StudyAnswerText extends StatelessWidget {
       for (final match in RegExp(r'\*\*([^*]+)\*\*').allMatches(line)) {
         spans.add(TextSpan(text: line.substring(cursor, match.start)));
         spans.add(
-          TextSpan(
-            text: match[1],
-            style: const TextStyle(fontWeight: FontWeight.w800),
-          ),
+          TextSpan(text: match[1], style: FiloTypography.strongLabel(context)),
         );
         cursor = match.end;
       }
@@ -55,7 +52,7 @@ class StudyChatBubble extends StatelessWidget {
     return Align(
       alignment: ai ? Alignment.centerLeft : Alignment.centerRight,
       child: Padding(
-        padding: const EdgeInsets.symmetric(vertical: 8),
+        padding: const EdgeInsets.symmetric(vertical: FiloSpacing.s8),
         child: ConstrainedBox(
           constraints: BoxConstraints(
             maxWidth: (MediaQuery.sizeOf(context).width - 72)
@@ -63,7 +60,7 @@ class StudyChatBubble extends StatelessWidget {
                 .toDouble(),
           ),
           child: ClipRRect(
-            borderRadius: BorderRadius.circular(24),
+            borderRadius: BorderRadius.circular(FiloRadii.large),
             child: Container(
               decoration: BoxDecoration(
                 color: ai
@@ -78,7 +75,7 @@ class StudyChatBubble extends StatelessWidget {
                       )
                     : null,
               ),
-              padding: const EdgeInsets.all(16),
+              padding: const EdgeInsets.all(FiloSpacing.s16),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
@@ -118,7 +115,7 @@ class StudyChatBubble extends StatelessWidget {
                     ],
                   ),
                   if (ai) StudyAnswerText(content) else SelectableText(content),
-                  const SizedBox(height: 8),
+                  const SizedBox(height: FiloSpacing.s8),
                   Text(
                     mode == 'files'
                         ? 'Answers use your files'

@@ -1,4 +1,5 @@
 export 'filo_validation.dart';
+export '../theme/filo_design_tokens.dart';
 export '../theme/filo_motion.dart';
 export '../feedback/filo_haptics.dart';
 export 'filo_motion_widgets.dart';
@@ -39,11 +40,8 @@ class Brand extends StatelessWidget {
           cacheWidth: (36 * MediaQuery.devicePixelRatioOf(context)).ceil(),
           excludeFromSemantics: true,
         ),
-        const SizedBox(width: 8),
-        const Text(
-          'filo',
-          style: TextStyle(fontSize: 32, fontWeight: FontWeight.w900),
-        ),
+        const SizedBox(width: FiloSpacing.s8),
+        Text('filo', style: FiloTypography.wordmark(context)),
       ],
     ),
   );
@@ -98,7 +96,7 @@ class FiloPanel extends StatelessWidget {
     super.key,
     required this.child,
     this.color,
-    this.padding = const EdgeInsets.all(20),
+    this.padding = const EdgeInsets.all(FiloSpacing.s20),
   });
   final Widget child;
   final Color? color;
@@ -107,7 +105,7 @@ class FiloPanel extends StatelessWidget {
   Widget build(BuildContext context) => Material(
     color: color ?? Theme.of(context).colorScheme.surface,
     shape: RoundedRectangleBorder(
-      borderRadius: BorderRadius.circular(28),
+      borderRadius: BorderRadius.circular(FiloRadii.large),
       side: BorderSide(color: Theme.of(context).colorScheme.outline),
     ),
     child: Padding(padding: padding, child: child),
@@ -140,7 +138,7 @@ class EmptyState extends StatelessWidget {
           children: [
             if (showMascot) ...[
               Mascot(pose: pose, size: 120, bob: bob),
-              const SizedBox(height: 20),
+              const SizedBox(height: FiloSpacing.s20),
             ],
             Semantics(
               header: true,
@@ -151,7 +149,7 @@ class EmptyState extends StatelessWidget {
               ),
             ),
             if (message.isNotEmpty) ...[
-              const SizedBox(height: 8),
+              const SizedBox(height: FiloSpacing.s8),
               Text(
                 message,
                 textAlign: TextAlign.center,
@@ -160,7 +158,10 @@ class EmptyState extends StatelessWidget {
                 ),
               ),
             ],
-            if (action != null) ...[const SizedBox(height: 20), action!],
+            if (action != null) ...[
+              const SizedBox(height: FiloSpacing.s20),
+              action!,
+            ],
           ],
         ),
       );

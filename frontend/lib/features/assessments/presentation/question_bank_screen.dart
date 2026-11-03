@@ -124,7 +124,12 @@ class _QuestionBankScreenState extends ConsumerState<QuestionBankScreen> {
                 return Column(
                   children: [
                     Padding(
-                      padding: const EdgeInsets.fromLTRB(24, 12, 24, 8),
+                      padding: const EdgeInsets.fromLTRB(
+                        FiloSpacing.screen,
+                        FiloSpacing.s12,
+                        FiloSpacing.screen,
+                        FiloSpacing.s8,
+                      ),
                       child: Column(
                         children: [
                           TextField(
@@ -134,7 +139,7 @@ class _QuestionBankScreenState extends ConsumerState<QuestionBankScreen> {
                             ),
                             onChanged: (v) => setState(() => _search = v),
                           ),
-                          const SizedBox(height: 12),
+                          const SizedBox(height: FiloSpacing.s12),
                           DropdownButtonFormField<String>(
                             initialValue: _type,
                             isExpanded: true,
@@ -160,7 +165,7 @@ class _QuestionBankScreenState extends ConsumerState<QuestionBankScreen> {
                     ),
                     if (!online)
                       const Padding(
-                        padding: const EdgeInsets.all(24),
+                        padding: const EdgeInsets.all(FiloSpacing.screen),
                         child: EmptyState(
                           title: "You're offline. Connect, then refresh to use the question bank.",
                           pose: 'sleepy',
@@ -169,7 +174,7 @@ class _QuestionBankScreenState extends ConsumerState<QuestionBankScreen> {
                       ),
                     if (_error != null)
                       Padding(
-                        padding: const EdgeInsets.all(24),
+                        padding: const EdgeInsets.all(FiloSpacing.screen),
                         child: EmptyState(
                           title: _error!,
                           pose: 'confused',
@@ -186,7 +191,7 @@ class _QuestionBankScreenState extends ConsumerState<QuestionBankScreen> {
               }
               if (filtered.isEmpty) {
                 return Padding(
-                  padding: const EdgeInsets.all(24),
+                  padding: const EdgeInsets.all(FiloSpacing.screen),
                   child: EmptyState(
                     pose: _rows!.isEmpty ? 'thinking' : 'curious',
                     bob: !widget.picking,
@@ -214,7 +219,12 @@ class _QuestionBankScreenState extends ConsumerState<QuestionBankScreen> {
                 );
               }
               return Padding(
-                padding: const EdgeInsets.fromLTRB(24, 0, 24, 12),
+                padding: const EdgeInsets.fromLTRB(
+                  FiloSpacing.screen,
+                  0,
+                  FiloSpacing.screen,
+                  FiloSpacing.s12,
+                ),
                 child: FiloPanel(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
@@ -264,7 +274,12 @@ class _QuestionBankScreenState extends ConsumerState<QuestionBankScreen> {
         ),
         if (widget.picking)
           Padding(
-            padding: const EdgeInsets.fromLTRB(24, 12, 24, 0),
+            padding: const EdgeInsets.fromLTRB(
+              FiloSpacing.screen,
+              FiloSpacing.s12,
+              FiloSpacing.screen,
+              0,
+            ),
             child: FiloButton(
               label: 'Add selected (${_selected.length})',
               onPressed: available && _selected.isNotEmpty
@@ -385,7 +400,7 @@ class _BankEditorState extends ConsumerState<_BankEditor> {
         ),
         body: SafeArea(
           child: ListView(
-            padding: const EdgeInsets.all(24),
+            padding: const EdgeInsets.all(FiloSpacing.screen),
             children: [
               if (!online)
                 const Text("You're offline. Connect to save changes."),

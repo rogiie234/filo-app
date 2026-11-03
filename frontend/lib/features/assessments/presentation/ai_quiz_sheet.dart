@@ -1,3 +1,4 @@
+import '../../../core/theme/filo_design_tokens.dart';
 import '../../../core/theme/filo_motion.dart';
 import '../../../core/widgets/filo_motion_widgets.dart';
 
@@ -381,14 +382,14 @@ class _AiQuizSheetState extends ConsumerState<AiQuizSheet> {
     final canPickSources =
         !_busy && !(widget.regenerateType != null && _restoredContext);
     return Padding(
-      padding: const EdgeInsets.all(24),
+      padding: const EdgeInsets.all(FiloSpacing.screen),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           const Text(
             'Pick up to 3 files, 10 MB each. Text-based PDF, DOCX, PPTX, TXT, JPEG, PNG and WebP are supported. Scanned PDFs are unsupported.',
           ),
-          const SizedBox(height: 12),
+          const SizedBox(height: FiloSpacing.s12),
           if (canPickSources)
             DefaultTabController(
               length: 2,
@@ -514,7 +515,7 @@ class _AiQuizSheetState extends ConsumerState<AiQuizSheet> {
               Text('${source.name}: $warning'),
           ],
           for (final warning in allocation.warnings) Text(warning),
-          const SizedBox(height: 16),
+          const SizedBox(height: FiloSpacing.s16),
           if (widget.regenerateType == null) ...[
             Text(
               '$total of 20 questions',
@@ -543,7 +544,7 @@ class _AiQuizSheetState extends ConsumerState<AiQuizSheet> {
                   ),
                 ],
               ),
-            const SizedBox(height: 12),
+            const SizedBox(height: FiloSpacing.s12),
             const Text('Difficulty'),
             Wrap(
               spacing: 8,
@@ -573,7 +574,7 @@ class _AiQuizSheetState extends ConsumerState<AiQuizSheet> {
             Text(
               'Regenerate one ${_label(widget.regenerateType!)} question · $_difficulty',
             ),
-          const SizedBox(height: 16),
+          const SizedBox(height: FiloSpacing.s16),
           const Text(aiPrivacyNotice),
           if (!_acknowledged && !_initializing)
             TextButton(
@@ -605,7 +606,7 @@ class _AiQuizSheetState extends ConsumerState<AiQuizSheet> {
                 style: TextStyle(color: Theme.of(context).colorScheme.error),
               ),
             ),
-          const SizedBox(height: 16),
+          const SizedBox(height: FiloSpacing.s16),
           FilledButton(
             onPressed:
                 !_busy &&
@@ -618,7 +619,10 @@ class _AiQuizSheetState extends ConsumerState<AiQuizSheet> {
                 ? _generate
                 : null,
             style: FilledButton.styleFrom(
-              minimumSize: const Size(48, 48),
+              minimumSize: const Size(
+                FiloControlSize.compact,
+                FiloControlSize.compact,
+              ),
               backgroundColor: Theme.of(context).colorScheme.primary,
             ),
             child: Text(

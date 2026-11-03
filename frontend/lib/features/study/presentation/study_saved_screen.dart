@@ -65,7 +65,7 @@ class StudySavedScreen extends ConsumerWidget {
           (items) {
             if (!items.any((n) => n.id == notebookId)) {
               return Padding(
-                padding: const EdgeInsets.all(24),
+                padding: const EdgeInsets.all(FiloSpacing.screen),
                 child: EmptyState(
                   showMascot: _showMascot,
                   title: 'This notebook is no longer available.',
@@ -75,15 +75,15 @@ class StudySavedScreen extends ConsumerWidget {
               );
             }
             return ListView(
-              padding: const EdgeInsets.all(24),
+              padding: const EdgeInsets.all(FiloSpacing.screen),
               children: [
                 const StudyOfflineBanner(),
                 const Padding(
-                  padding: EdgeInsets.only(bottom: 16),
+                  padding: EdgeInsets.only(bottom: FiloSpacing.s16),
                   child: Text('Saved content · read only'),
                 ),
                 _content(context, ref),
-                const SizedBox(height: 24),
+                const SizedBox(height: FiloSpacing.screen),
                 const Text('AI can make mistakes. Check important answers.'),
               ],
             );
@@ -120,7 +120,7 @@ class StudySavedScreen extends ConsumerWidget {
                 ),
               for (final message in messages)
                 Padding(
-                  padding: const EdgeInsets.only(bottom: 12),
+                  padding: const EdgeInsets.only(bottom: FiloSpacing.s12),
                   child: FiloPanel(
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
@@ -129,7 +129,7 @@ class StudySavedScreen extends ConsumerWidget {
                           '${message.role == 'user' ? 'You' : 'AI'} · ${message.mode == 'general' ? 'General knowledge' : 'Answers use your files'}',
                           style: Theme.of(context).textTheme.labelLarge,
                         ),
-                        const SizedBox(height: 8),
+                        const SizedBox(height: FiloSpacing.s8),
                         SelectableText(message.content),
                       ],
                     ),
@@ -148,7 +148,7 @@ class StudySavedScreen extends ConsumerWidget {
                 const EmptyState(title: 'No cards saved yet.', pose: 'reading'),
               for (final card in cards)
                 Padding(
-                  padding: const EdgeInsets.only(bottom: 12),
+                  padding: const EdgeInsets.only(bottom: FiloSpacing.s12),
                   child: FiloPanel(
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -159,7 +159,7 @@ class StudySavedScreen extends ConsumerWidget {
                         ),
                         const Divider(),
                         SelectableText(card.back),
-                        const SizedBox(height: 8),
+                        const SizedBox(height: FiloSpacing.s8),
                         Text('Status: ${card.status}'),
                       ],
                     ),
@@ -182,7 +182,7 @@ class StudySavedScreen extends ConsumerWidget {
                 ),
               for (final question in questions)
                 Padding(
-                  padding: const EdgeInsets.only(bottom: 12),
+                  padding: const EdgeInsets.only(bottom: FiloSpacing.s12),
                   child: FiloPanel(
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.stretch,

@@ -213,7 +213,7 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
           child: Form(
             key: _form,
             child: ListView(
-              padding: const EdgeInsets.all(24),
+              padding: const EdgeInsets.all(FiloSpacing.screen),
               children: [
                 Center(
                   child: _photo == null
@@ -235,7 +235,7 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
                           ),
                         ),
                 ),
-                const SizedBox(height: 16),
+                const SizedBox(height: FiloSpacing.s16),
                 FiloButton(
                   label: _picking ? 'Preparing photo…' : 'Choose photo',
                   secondary: true,
@@ -244,13 +244,13 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
                 ),
                 if (_photoError != null)
                   Padding(
-                    padding: const EdgeInsets.only(top: 12),
+                    padding: const EdgeInsets.only(top: FiloSpacing.s12),
                     child: Semantics(
                       liveRegion: true,
                       child: Text(_photoError!),
                     ),
                   ),
-                const SizedBox(height: 24),
+                const SizedBox(height: FiloSpacing.screen),
                 FiloPanel(
                   child: Column(
                     children: [
@@ -269,7 +269,7 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
                             ? 'Use 80 characters or fewer.'
                             : null,
                       ),
-                      const SizedBox(height: 16),
+                      const SizedBox(height: FiloSpacing.s16),
                       TextFormField(
                         controller: _school,
                         readOnly: locked,
@@ -288,7 +288,7 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
                     ],
                   ),
                 ),
-                const SizedBox(height: 20),
+                const SizedBox(height: FiloSpacing.s20),
                 FiloPanel(
                   child: Column(
                     children: [
@@ -298,17 +298,17 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
                     ],
                   ),
                 ),
-                const SizedBox(height: 24),
+                const SizedBox(height: FiloSpacing.screen),
                 if (!online && _confirmed == null)
                   const Padding(
-                    padding: EdgeInsets.only(bottom: 16),
+                    padding: EdgeInsets.only(bottom: FiloSpacing.s16),
                     child: Text(
                       "You're offline. Connect to save your changes.",
                     ),
                   ),
                 if (_error != null)
                   Padding(
-                    padding: const EdgeInsets.only(bottom: 16),
+                    padding: const EdgeInsets.only(bottom: FiloSpacing.s16),
                     child: Semantics(liveRegion: true, child: Text(_error!)),
                   ),
                 FiloButton(

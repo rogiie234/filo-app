@@ -118,7 +118,12 @@ class _SignInScreenState extends ConsumerState<SignInScreen> {
         child: Column(
           children: [
             Padding(
-              padding: const EdgeInsets.fromLTRB(24, 12, 16, 0),
+              padding: const EdgeInsets.fromLTRB(
+                FiloSpacing.screen,
+                FiloSpacing.s12,
+                FiloSpacing.s16,
+                0,
+              ),
               child: Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
@@ -132,12 +137,12 @@ class _SignInScreenState extends ConsumerState<SignInScreen> {
             ),
             Expanded(
               child: SingleChildScrollView(
-                padding: const EdgeInsets.all(24),
+                padding: const EdgeInsets.all(FiloSpacing.screen),
                 child: Column(
                   children: [
-                    const SizedBox(height: 36),
+                    const SizedBox(height: FiloSpacing.s40),
                     Mascot(size: entryMascotSize(context), bob: true),
-                    const SizedBox(height: 32),
+                    const SizedBox(height: FiloSpacing.s32),
                     _entrance(
                       Text(
                         'Hello,\ncurious mind.',
@@ -145,20 +150,19 @@ class _SignInScreenState extends ConsumerState<SignInScreen> {
                         style: Theme.of(context).textTheme.headlineLarge,
                       ),
                     ),
-                    const SizedBox(height: 12),
+                    const SizedBox(height: FiloSpacing.s12),
                     _entrance(
                       Text(
                         'A little curiosity goes a long way.\nLet\u2019s see where yours takes you.',
                         textAlign: TextAlign.center,
-                        style: TextStyle(
+                        style: Theme.of(context).textTheme.bodyLarge!.copyWith(
                           color: Theme.of(context).colorScheme.onSurfaceVariant,
-                          fontSize: 16,
                         ),
                       ),
                       delay: FiloAnimation.subtitleDelay,
                     ),
                     if (_failure != null) ...[
-                      const SizedBox(height: 24),
+                      const SizedBox(height: FiloSpacing.screen),
                       Semantics(
                         liveRegion: true,
                         child: Column(
@@ -169,10 +173,10 @@ class _SignInScreenState extends ConsumerState<SignInScreen> {
                                 style: Theme.of(context).textTheme.titleMedium,
                                 textAlign: TextAlign.center,
                               ),
-                            const SizedBox(height: 8),
+                            const SizedBox(height: FiloSpacing.s8),
                             Text(_failure!, textAlign: TextAlign.center),
                             if (!_clockIncorrect) ...[
-                              const SizedBox(height: 8),
+                              const SizedBox(height: FiloSpacing.s8),
                               const Text(
                                 _clockHint,
                                 textAlign: TextAlign.center,
@@ -181,7 +185,7 @@ class _SignInScreenState extends ConsumerState<SignInScreen> {
                           ],
                         ),
                       ),
-                      const SizedBox(height: 12),
+                      const SizedBox(height: FiloSpacing.s12),
                       FiloButton(
                         label: 'Open settings',
                         secondary: true,
@@ -189,7 +193,7 @@ class _SignInScreenState extends ConsumerState<SignInScreen> {
                             ? null
                             : _openSettings,
                       ),
-                      const SizedBox(height: 12),
+                      const SizedBox(height: FiloSpacing.s12),
                       FiloButton(
                         label: _checkingClock
                             ? 'Checking date and time...'
@@ -208,7 +212,12 @@ class _SignInScreenState extends ConsumerState<SignInScreen> {
               ),
             ),
             Padding(
-              padding: const EdgeInsets.fromLTRB(24, 12, 24, 40),
+              padding: const EdgeInsets.fromLTRB(
+                FiloSpacing.screen,
+                FiloSpacing.s12,
+                FiloSpacing.screen,
+                FiloSpacing.s40,
+              ),
               child: Column(
                 children: [
                   _entrance(
@@ -235,7 +244,7 @@ class _SignInScreenState extends ConsumerState<SignInScreen> {
                   ),
                   if (offline)
                     const Padding(
-                      padding: EdgeInsets.only(top: 12),
+                      padding: EdgeInsets.only(top: FiloSpacing.s12),
                       child: Text(
                         'You\u2019re offline. Connect to the internet to sign in.',
                         textAlign: TextAlign.center,

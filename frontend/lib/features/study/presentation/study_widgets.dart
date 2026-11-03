@@ -24,7 +24,7 @@ Widget studyAsync<T>(
   // Never render stale account data while its replacement is loading or failing.
   if (value.isLoading)
     return const Padding(
-      padding: EdgeInsets.all(24),
+      padding: EdgeInsets.all(FiloSpacing.screen),
       child: Center(
         child: FiloCircularProgressIndicator(
           semanticsLabel: 'Loading saved study content',
@@ -61,7 +61,7 @@ class StudyOfflineBanner extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) =>
       ref.watch(connectivityProvider).asData?.value == false
       ? const Padding(
-          padding: EdgeInsets.only(bottom: 16),
+          padding: EdgeInsets.only(bottom: FiloSpacing.s16),
           child: OfflineBanner(),
         )
       : const SizedBox.shrink();

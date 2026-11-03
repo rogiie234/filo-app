@@ -441,7 +441,7 @@ void main() {
     await tester.pumpAndSettle();
     await tester.tap(find.text('Class details'));
     await tester.pumpAndSettle();
-    expect(find.text('School Year: 2026-2027'), findsOneWidget);
+    expect(find.text('School year: 2026-2027'), findsOneWidget);
     expect(find.text('Class code: FILO26'), findsNothing);
     expect(find.text('Copy code'), findsNothing);
   });

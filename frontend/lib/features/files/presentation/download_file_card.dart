@@ -194,7 +194,7 @@ class _DownloadFileCardState extends ConsumerState<DownloadFileCard> {
       final state = manager?.states[a.id] ?? const DownloadState();
       return Card(
         child: Padding(
-          padding: const EdgeInsets.all(16),
+          padding: const EdgeInsets.all(FiloSpacing.s16),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
@@ -207,7 +207,7 @@ class _DownloadFileCardState extends ConsumerState<DownloadFileCard> {
                       kind: a.kind,
                     ),
                   ),
-                  const SizedBox(width: 12),
+                  const SizedBox(width: FiloSpacing.s12),
                   Expanded(
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
@@ -228,7 +228,7 @@ class _DownloadFileCardState extends ConsumerState<DownloadFileCard> {
                   ),
                 ],
               ),
-              const SizedBox(height: 8),
+              const SizedBox(height: FiloSpacing.s8),
               Text(
                 '${fileSize(a.sizeBytes)} · ${MaterialLocalizations.of(context).formatMediumDate(a.createdAt.toLocal())}',
               ),
@@ -257,7 +257,7 @@ class _DownloadFileCardState extends ConsumerState<DownloadFileCard> {
                         value: state.progress,
                       ),
                     ),
-                    const SizedBox(width: 12),
+                    const SizedBox(width: FiloSpacing.s12),
                     Expanded(
                       child: Text(
                         state.progress == null

@@ -129,12 +129,11 @@ class _ClassScreenState extends ConsumerState<ClassScreen> {
               room.section,
               maxLines: 2,
               overflow: TextOverflow.ellipsis,
-              style: const TextStyle(fontWeight: FontWeight.w900, fontSize: 22),
+              style: Theme.of(context).textTheme.titleLarge!,
             ),
             Text(
               room.course,
-              style: TextStyle(
-                fontSize: 12,
+              style: Theme.of(context).textTheme.bodySmall!.copyWith(
                 color: Theme.of(context).colorScheme.onSurfaceVariant,
               ),
               maxLines: 1,
@@ -143,7 +142,7 @@ class _ClassScreenState extends ConsumerState<ClassScreen> {
             if (live && instructor && room.joinCode != null)
               Text(
                 'Class code: ${room.joinCode}',
-                style: const TextStyle(fontSize: 12),
+                style: Theme.of(context).textTheme.bodySmall!,
               ),
           ],
         ),
@@ -163,7 +162,7 @@ class _ClassScreenState extends ConsumerState<ClassScreen> {
         children: [
           if (room.archived)
             const Padding(
-              padding: EdgeInsets.all(12),
+              padding: EdgeInsets.all(FiloSpacing.s12),
               child: Text('This class is archived.'),
             ),
           if (live && ref.watch(classSyncProvider).hasError)
@@ -208,7 +207,12 @@ class _ClassScreenState extends ConsumerState<ClassScreen> {
             SafeArea(
               bottom: false,
               child: Padding(
-                padding: const EdgeInsets.fromLTRB(24, 12, 24, 8),
+                padding: const EdgeInsets.fromLTRB(
+                  FiloSpacing.screen,
+                  FiloSpacing.s12,
+                  FiloSpacing.screen,
+                  FiloSpacing.s8,
+                ),
                 child: FiloButton(
                   label: _tab == 0 ? 'Create post' : 'New assessment',
                   icon: FiloIcons.add,
@@ -244,7 +248,9 @@ class _ClassScreenState extends ConsumerState<ClassScreen> {
             ),
           if (live && instructor && _tab != 2)
             Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 24),
+              padding: const EdgeInsets.symmetric(
+                horizontal: FiloSpacing.screen,
+              ),
               child: Text(
                 room.archived
                     ? 'This class is archived and read-only.'
@@ -373,13 +379,13 @@ class _ClassScreenState extends ConsumerState<ClassScreen> {
       showDragHandle: true,
       builder: (sheet) => SafeArea(
         child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 24),
+          padding: const EdgeInsets.symmetric(horizontal: FiloSpacing.screen),
           child: Column(
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Text('${room.section}\n${room.course}\n${room.instructor}'),
-              if (live) Text('School Year: ${room.schoolYear ?? ''}'),
+              if (live) Text('School year: ${room.schoolYear ?? ''}'),
               if (live && instructor) ...[
                 Text('Class code: ${room.joinCode ?? ''}'),
                 TextButton.icon(
@@ -665,12 +671,12 @@ class _ClassScreenState extends ConsumerState<ClassScreen> {
     final online = ref.watch(connectivityProvider).asData?.value == true;
     final headers = <Widget>[
       Text('Stream', style: Theme.of(context).textTheme.headlineMedium),
-      const SizedBox(height: 8),
+      const SizedBox(height: FiloSpacing.s8),
       Text(
         'What’s happening in your class.',
         style: TextStyle(color: Theme.of(context).colorScheme.onSurfaceVariant),
       ),
-      const SizedBox(height: 24),
+      const SizedBox(height: FiloSpacing.screen),
       if (live && ref.watch(connectivityProvider).asData?.value == false)
         const OfflineBanner(),
       if (live && (cached!.hasError || sync!.hasError))
@@ -733,18 +739,28 @@ class _ClassScreenState extends ConsumerState<ClassScreen> {
       key: PageStorageKey('stream-${room.id}'),
       slivers: [
         SliverPadding(
-          padding: const EdgeInsets.fromLTRB(24, 24, 24, 0),
+          padding: const EdgeInsets.fromLTRB(
+            FiloSpacing.screen,
+            FiloSpacing.screen,
+            FiloSpacing.screen,
+            0,
+          ),
           sliver: SliverList(delegate: SliverChildListDelegate(headers)),
         ),
         SliverPadding(
-          padding: const EdgeInsets.fromLTRB(24, 0, 24, 24),
+          padding: const EdgeInsets.fromLTRB(
+            FiloSpacing.screen,
+            0,
+            FiloSpacing.screen,
+            FiloSpacing.screen,
+          ),
           sliver: SliverList(
             delegate: SliverChildBuilderDelegate(
               (context, index) {
                 final post = posts[index];
                 return Padding(
                   key: ValueKey(post.id),
-                  padding: const EdgeInsets.only(bottom: 16),
+                  padding: const EdgeInsets.only(bottom: FiloSpacing.s16),
                   child: StreamPostCard(
                     post: post,
                     instructor: state.role == PreviewRole.instructor,
@@ -878,16 +894,16 @@ class _ClassScreenState extends ConsumerState<ClassScreen> {
       isScrollControlled: true,
       builder: (sheet) => SafeArea(
         child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 24),
+          padding: const EdgeInsets.symmetric(horizontal: FiloSpacing.screen),
           child: Column(
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Text(post.title, style: Theme.of(sheet).textTheme.titleLarge),
-              const SizedBox(height: 16),
+              const SizedBox(height: FiloSpacing.s16),
               Text(post.message),
               if (post.assignment) ...[
-                const SizedBox(height: 16),
+                const SizedBox(height: FiloSpacing.s16),
                 Text(streamDueLabel(sheet, post)),
                 if (post.points != null) Text('${post.points} points'),
               ],

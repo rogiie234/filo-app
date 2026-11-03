@@ -10,6 +10,8 @@ class FiloThemeTokens extends ThemeExtension<FiloThemeTokens> {
     required this.onLime,
     required this.hint,
     required this.controlBorder,
+    required this.timerWarning,
+    required this.timerWarningTint,
     required this.disabledFill,
     required this.disabledInk,
     required this.disabledBorder,
@@ -30,6 +32,8 @@ class FiloThemeTokens extends ThemeExtension<FiloThemeTokens> {
   final Color onLime;
   final Color hint;
   final Color controlBorder;
+  final Color timerWarning;
+  final Color timerWarningTint;
   final Color disabledFill;
   final Color disabledInk;
   final Color disabledBorder;
@@ -50,6 +54,8 @@ class FiloThemeTokens extends ThemeExtension<FiloThemeTokens> {
     onLime: Color(0xFF14423A),
     hint: Color(0xFF5F716A),
     controlBorder: Color(0xFF6E7E73),
+    timerWarning: Color(0xFF8A5200),
+    timerWarningTint: Color(0xFFFFF1D6),
     disabledFill: Color(0xFFE2E8E2),
     disabledInk: Color(0xFF4F625A),
     disabledBorder: Color(0xFFCCD7CE),
@@ -71,6 +77,8 @@ class FiloThemeTokens extends ThemeExtension<FiloThemeTokens> {
     onLime: Color(0xFF14423A),
     hint: Color(0xFF8FA399),
     controlBorder: Color(0xFF78978A),
+    timerWarning: Color(0xFFFFDDA0),
+    timerWarningTint: Color(0xFF493400),
     disabledFill: Color(0xFF1B2B26),
     disabledInk: Color(0xFFA9BDB3),
     disabledBorder: Color(0xFF2B3F38),
@@ -97,6 +105,8 @@ class FiloThemeTokens extends ThemeExtension<FiloThemeTokens> {
     Color? onLime,
     Color? hint,
     Color? controlBorder,
+    Color? timerWarning,
+    Color? timerWarningTint,
     Color? disabledFill,
     Color? disabledInk,
     Color? disabledBorder,
@@ -117,6 +127,8 @@ class FiloThemeTokens extends ThemeExtension<FiloThemeTokens> {
     onLime: onLime ?? this.onLime,
     hint: hint ?? this.hint,
     controlBorder: controlBorder ?? this.controlBorder,
+    timerWarning: timerWarning ?? this.timerWarning,
+    timerWarningTint: timerWarningTint ?? this.timerWarningTint,
     disabledFill: disabledFill ?? this.disabledFill,
     disabledInk: disabledInk ?? this.disabledInk,
     disabledBorder: disabledBorder ?? this.disabledBorder,
@@ -142,6 +154,12 @@ class FiloThemeTokens extends ThemeExtension<FiloThemeTokens> {
       onLime: Color.lerp(onLime, other.onLime, t)!,
       hint: Color.lerp(hint, other.hint, t)!,
       controlBorder: Color.lerp(controlBorder, other.controlBorder, t)!,
+      timerWarning: Color.lerp(timerWarning, other.timerWarning, t)!,
+      timerWarningTint: Color.lerp(
+        timerWarningTint,
+        other.timerWarningTint,
+        t,
+      )!,
       disabledFill: Color.lerp(disabledFill, other.disabledFill, t)!,
       disabledInk: Color.lerp(disabledInk, other.disabledInk, t)!,
       disabledBorder: Color.lerp(disabledBorder, other.disabledBorder, t)!,

@@ -420,9 +420,14 @@ class PushForegroundBanner extends StatelessWidget {
   Widget build(BuildContext context) => Material(
     color: FiloThemeTokens.of(context).mint,
     elevation: 4,
-    borderRadius: BorderRadius.circular(20),
+    borderRadius: BorderRadius.circular(FiloRadii.medium),
     child: Padding(
-      padding: const EdgeInsets.fromLTRB(16, 12, 16, 4),
+      padding: const EdgeInsets.fromLTRB(
+        FiloSpacing.s16,
+        FiloSpacing.s12,
+        FiloSpacing.s16,
+        FiloSpacing.s4,
+      ),
       child: Semantics(
         liveRegion: true,
         child: Column(
@@ -432,10 +437,8 @@ class PushForegroundBanner extends StatelessWidget {
               title,
               maxLines: 2,
               overflow: TextOverflow.ellipsis,
-              style: TextStyle(
-                color: Theme.of(context).colorScheme.onSurface,
-                fontWeight: FontWeight.w800,
-              ),
+              style: FiloTypography.strongLabel(context)
+                  .copyWith(color: Theme.of(context).colorScheme.onSurface),
             ),
             if (body != null && body!.isNotEmpty)
               Text(
@@ -450,14 +453,18 @@ class PushForegroundBanner extends StatelessWidget {
               mainAxisAlignment: MainAxisAlignment.end,
               children: [
                 ConstrainedBox(
-                  constraints: const BoxConstraints(minHeight: 48),
+                  constraints: const BoxConstraints(
+                    minHeight: FiloControlSize.compact,
+                  ),
                   child: TextButton(
                     onPressed: onOpen,
                     child: const Text('Open'),
                   ),
                 ),
                 ConstrainedBox(
-                  constraints: const BoxConstraints(minHeight: 48),
+                  constraints: const BoxConstraints(
+                    minHeight: FiloControlSize.compact,
+                  ),
                   child: TextButton(
                     onPressed: onDismiss,
                     child: const Text('Dismiss'),

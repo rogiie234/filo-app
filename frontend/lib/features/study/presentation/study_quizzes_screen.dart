@@ -34,7 +34,7 @@ class StudyQuizzesScreen extends StatelessWidget {
         appBar: AppBar(title: const Text('Practice quiz')),
         body: SafeArea(
           child: ListView(
-            padding: const EdgeInsets.all(24),
+            padding: const EdgeInsets.all(FiloSpacing.screen),
             children: [
               const StudyOfflineBanner(),
               studyAsync(
@@ -57,7 +57,7 @@ class StudyQuizzesScreen extends StatelessWidget {
                             ),
                     ),
                     if (quizzes.length >= 10) const Text(studyQuizLimitMessage),
-                    const SizedBox(height: 24),
+                    const SizedBox(height: FiloSpacing.screen),
                     if (quizzes.isEmpty)
                       const EmptyState(
                         title: 'No practice quizzes saved yet.',
@@ -65,11 +65,13 @@ class StudyQuizzesScreen extends StatelessWidget {
                       ),
                     for (final quiz in quizzes)
                       Padding(
-                        padding: const EdgeInsets.only(bottom: 12),
+                        padding: const EdgeInsets.only(bottom: FiloSpacing.s12),
                         child: FiloPanel(
                           padding: EdgeInsets.zero,
                           child: ListTile(
-                            contentPadding: const EdgeInsets.all(16),
+                            contentPadding: const EdgeInsets.all(
+                              FiloSpacing.s16,
+                            ),
                             title: Text(quiz.title),
                             subtitle: studyAsync(
                               ref.watch(studyQuestionsProvider(quiz.id)),
@@ -149,7 +151,7 @@ class StudyQuizzesScreen extends StatelessWidget {
                 retry: () => ref.invalidate(studyQuizzesProvider(notebookId)),
                 showMascot: true,
               ),
-              const SizedBox(height: 16),
+              const SizedBox(height: FiloSpacing.s16),
               const Text('AI can make mistakes. Check important answers.'),
             ],
           ),
@@ -282,12 +284,12 @@ class _QuizGenerateBodyState extends ConsumerState<_QuizGenerateBody> {
         appBar: AppBar(title: const Text('Generate practice quiz')),
         body: SafeArea(
           child: ListView(
-            padding: const EdgeInsets.all(24),
+            padding: const EdgeInsets.all(FiloSpacing.screen),
             children: [
               const StudyOfflineBanner(),
               if (result == null) ...[
                 const Text('How many questions?'),
-                const SizedBox(height: 8),
+                const SizedBox(height: FiloSpacing.s8),
                 DropdownButtonFormField<int>(
                   initialValue: _count,
                   decoration: const InputDecoration(
@@ -315,7 +317,7 @@ class _QuizGenerateBodyState extends ConsumerState<_QuizGenerateBody> {
                             }
                           }),
                   ),
-                const SizedBox(height: 16),
+                const SizedBox(height: FiloSpacing.s16),
                 TextField(
                   controller: _topic,
                   enabled: !_session.working && !_authorizing,
@@ -330,7 +332,7 @@ class _QuizGenerateBodyState extends ConsumerState<_QuizGenerateBody> {
                   onChanged: (_) => setState(() {}),
                 ),
                 Text('${_topic.text.runes.length}/200 characters'),
-                const SizedBox(height: 24),
+                const SizedBox(height: FiloSpacing.screen),
               ],
               if (_session.working) ...[
                 if (!_session.saving) const Mascot(pose: 'thinking', size: 120),
@@ -344,7 +346,7 @@ class _QuizGenerateBodyState extends ConsumerState<_QuizGenerateBody> {
                 ),
                 if (!MediaQuery.disableAnimationsOf(context))
                   const Padding(
-                    padding: EdgeInsets.all(16),
+                    padding: EdgeInsets.all(FiloSpacing.s16),
                     child: Center(
                       child: FiloCircularProgressIndicator(
                         semanticsLabel: 'Preparing practice quiz',
@@ -364,7 +366,7 @@ class _QuizGenerateBodyState extends ConsumerState<_QuizGenerateBody> {
                 ),
               if (reason != null && result == null)
                 Padding(
-                  padding: const EdgeInsets.only(top: 12),
+                  padding: const EdgeInsets.only(top: FiloSpacing.s12),
                   child: Text(reason),
                 ),
               if (sources.hasError || quizzes.hasError)
@@ -376,7 +378,7 @@ class _QuizGenerateBodyState extends ConsumerState<_QuizGenerateBody> {
                   child: const Text('Retry loading notebook'),
                 ),
               if (result != null) ...[
-                const SizedBox(height: 16),
+                const SizedBox(height: FiloSpacing.s16),
                 Text(
                   _session.savedId == null
                       ? 'Quiz not confirmed saved'
@@ -398,7 +400,7 @@ class _QuizGenerateBodyState extends ConsumerState<_QuizGenerateBody> {
                     Text(
                       'Only the first ${usage.retainedCharacters} characters of ${usage.name} were used.',
                     ),
-                const SizedBox(height: 16),
+                const SizedBox(height: FiloSpacing.s16),
                 if (_session.hasUnsaved)
                   ExpansionTile(
                     title: const Text('Prepared questions'),
@@ -431,13 +433,13 @@ class _QuizGenerateBodyState extends ConsumerState<_QuizGenerateBody> {
               ],
               if (_session.error != null)
                 Padding(
-                  padding: const EdgeInsets.only(top: 16),
+                  padding: const EdgeInsets.only(top: FiloSpacing.s16),
                   child: Semantics(
                     liveRegion: true,
                     child: Text(_session.error!),
                   ),
                 ),
-              const SizedBox(height: 16),
+              const SizedBox(height: FiloSpacing.s16),
               const Text('AI can make mistakes. Check important answers.'),
             ],
           ),

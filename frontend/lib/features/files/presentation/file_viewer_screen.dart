@@ -220,7 +220,7 @@ class _FileViewerScreenState extends ConsumerState<FileViewerScreen> {
           builder: (context, snapshot) {
             if (snapshot.hasError) {
               return SingleChildScrollView(
-                padding: const EdgeInsets.all(24),
+                padding: const EdgeInsets.all(FiloSpacing.screen),
                 child: EmptyState(
                   title: 'This file is no longer on your device.',
                   pose: 'confused',
@@ -234,7 +234,7 @@ class _FileViewerScreenState extends ConsumerState<FileViewerScreen> {
             }
             if (snapshot.data != true) {
               return SingleChildScrollView(
-                padding: const EdgeInsets.all(24),
+                padding: const EdgeInsets.all(FiloSpacing.screen),
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
                   children: [
@@ -261,7 +261,7 @@ class _FileViewerScreenState extends ConsumerState<FileViewerScreen> {
               return Column(
                 children: [
                   Padding(
-                    padding: const EdgeInsets.all(8),
+                    padding: const EdgeInsets.all(FiloSpacing.s8),
                     child: Text(
                       'Page $_page${_pages == 0 ? '' : ' of $_pages'}',
                     ),
@@ -353,7 +353,7 @@ class _FileViewerScreenState extends ConsumerState<FileViewerScreen> {
                           : !data.hasData
                           ? const Center(child: FiloCircularProgressIndicator())
                           : SingleChildScrollView(
-                              padding: const EdgeInsets.all(20),
+                              padding: const EdgeInsets.all(FiloSpacing.s20),
                               child: SelectableText(data.data!),
                             ),
                     ),
@@ -363,7 +363,7 @@ class _FileViewerScreenState extends ConsumerState<FileViewerScreen> {
             }
             return Center(
               child: SingleChildScrollView(
-                padding: const EdgeInsets.all(24),
+                padding: const EdgeInsets.all(FiloSpacing.screen),
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
                   children: [
@@ -372,7 +372,7 @@ class _FileViewerScreenState extends ConsumerState<FileViewerScreen> {
                     Text(
                       '${_row.size} bytes · ${ext.isEmpty ? 'File' : ext.substring(1).toUpperCase()}',
                     ),
-                    const SizedBox(height: 16),
+                    const SizedBox(height: FiloSpacing.s16),
                     const Text('Open this file in another app on your phone.'),
                     FilledButton(
                       onPressed: () =>

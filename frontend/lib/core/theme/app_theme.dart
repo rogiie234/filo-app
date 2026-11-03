@@ -3,6 +3,8 @@ import 'package:flutter/material.dart';
 import 'filo_theme_tokens.dart';
 import 'filo_motion.dart';
 export 'filo_theme_tokens.dart';
+export 'filo_design_tokens.dart';
+import 'filo_design_tokens.dart';
 
 class FiloColors {
   FiloColors._();
@@ -136,7 +138,7 @@ class AppTheme {
           displayColor: colors.onSurface,
         );
     OutlineInputBorder border(Color color, double width) => OutlineInputBorder(
-      borderRadius: BorderRadius.circular(28),
+      borderRadius: BorderRadius.circular(FiloRadii.large),
       borderSide: BorderSide(color: color, width: width),
     );
     return ThemeData(
@@ -156,36 +158,66 @@ class AppTheme {
       visualDensity: VisualDensity.standard,
       iconButtonTheme: IconButtonThemeData(
         style: IconButton.styleFrom(
-          minimumSize: const Size(48, 48),
+          minimumSize: const Size(
+            FiloControlSize.compact,
+            FiloControlSize.compact,
+          ),
           tapTargetSize: MaterialTapTargetSize.padded,
         ),
       ),
       filledButtonTheme: FilledButtonThemeData(
         style: FilledButton.styleFrom(
-          minimumSize: const Size(48, 48),
+          minimumSize: const Size(
+            FiloControlSize.compact,
+            FiloControlSize.primary,
+          ),
           disabledForegroundColor: tokens.disabledInk,
+          shape: const StadiumBorder(),
         ),
       ),
       outlinedButtonTheme: OutlinedButtonThemeData(
         style: OutlinedButton.styleFrom(
-          minimumSize: const Size(48, 48),
+          minimumSize: const Size(
+            FiloControlSize.compact,
+            FiloControlSize.compact,
+          ),
           disabledForegroundColor: tokens.disabledInk,
+          shape: const StadiumBorder(),
           side: BorderSide(color: tokens.controlBorder),
         ),
       ),
       textButtonTheme: TextButtonThemeData(
         style: TextButton.styleFrom(
-          minimumSize: const Size(48, 48),
+          minimumSize: const Size(
+            FiloControlSize.compact,
+            FiloControlSize.compact,
+          ),
           disabledForegroundColor: tokens.disabledInk,
+          shape: const StadiumBorder(),
         ),
       ),
       elevatedButtonTheme: ElevatedButtonThemeData(
         style: ElevatedButton.styleFrom(
-          minimumSize: const Size(48, 48),
+          minimumSize: const Size(
+            FiloControlSize.compact,
+            FiloControlSize.primary,
+          ),
           disabledForegroundColor: tokens.disabledInk,
+          shape: const StadiumBorder(),
         ),
       ),
-      listTileTheme: const ListTileThemeData(minTileHeight: 48),
+      cardTheme: CardThemeData(
+        color: colors.surfaceContainer,
+        surfaceTintColor: Colors.transparent,
+        margin: EdgeInsets.zero,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(FiloRadii.large),
+          side: BorderSide(color: colors.outline),
+        ),
+      ),
+      listTileTheme: const ListTileThemeData(
+        minTileHeight: FiloControlSize.compact,
+      ),
       fontFamily: 'Nunito',
       colorScheme: colors,
       scaffoldBackgroundColor: background,
@@ -207,19 +239,19 @@ class AppTheme {
         filled: true,
         fillColor: colors.surface,
         contentPadding: const EdgeInsets.symmetric(
-          horizontal: 20,
-          vertical: 16,
+          horizontal: FiloSpacing.s20,
+          vertical: FiloSpacing.s16,
         ),
         hintStyle: TextStyle(color: tokens.hint),
         errorMaxLines: 8,
         helperMaxLines: 8,
         suffixIconConstraints: const BoxConstraints(
-          minWidth: 48,
-          minHeight: 48,
+          minWidth: FiloControlSize.compact,
+          minHeight: FiloControlSize.compact,
         ),
         prefixIconConstraints: const BoxConstraints(
-          minWidth: 48,
-          minHeight: 48,
+          minWidth: FiloControlSize.compact,
+          minHeight: FiloControlSize.compact,
         ),
         labelStyle: TextStyle(color: colors.onSurfaceVariant),
         border: border(tokens.controlBorder, 1.5),
@@ -262,20 +294,27 @@ class AppTheme {
         side: BorderSide(color: tokens.controlBorder),
         shape: const StadiumBorder(),
         labelStyle: text.labelMedium,
-        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+        padding: const EdgeInsets.symmetric(
+          horizontal: FiloSpacing.s12,
+          vertical: FiloSpacing.s8,
+        ),
       ),
       dialogTheme: DialogThemeData(
         backgroundColor: colors.surface,
         surfaceTintColor: Colors.transparent,
         titleTextStyle: text.titleLarge,
         contentTextStyle: text.bodyLarge,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(28)),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(FiloRadii.large),
+        ),
       ),
       bottomSheetTheme: BottomSheetThemeData(
         backgroundColor: colors.surface,
         surfaceTintColor: Colors.transparent,
         shape: const RoundedRectangleBorder(
-          borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
+          borderRadius: BorderRadius.vertical(
+            top: Radius.circular(FiloRadii.large),
+          ),
         ),
       ),
       snackBarTheme: SnackBarThemeData(
@@ -284,7 +323,9 @@ class AppTheme {
         contentTextStyle: text.bodyMedium?.copyWith(
           color: colors.onInverseSurface,
         ),
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(FiloRadii.medium),
+        ),
       ),
       dividerTheme: DividerThemeData(color: colors.outline),
     );

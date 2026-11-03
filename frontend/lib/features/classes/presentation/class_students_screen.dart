@@ -161,7 +161,7 @@ class _ClassStudentsScreenState extends ConsumerState<ClassStudentsScreen> {
         onRefresh: _refresh,
         child: ListView(
           physics: const AlwaysScrollableScrollPhysics(),
-          padding: const EdgeInsets.all(24),
+          padding: const EdgeInsets.all(FiloSpacing.screen),
           children: [
             if (room != null)
               Text(room.section, style: Theme.of(context).textTheme.titleLarge),
@@ -204,16 +204,16 @@ class _ClassStudentsScreenState extends ConsumerState<ClassStudentsScreen> {
               ),
             if (_message != null)
               Padding(
-                padding: const EdgeInsets.symmetric(vertical: 12),
+                padding: const EdgeInsets.symmetric(vertical: FiloSpacing.s12),
                 child: Text(_message!),
               ),
-            const SizedBox(height: 24),
+            const SizedBox(height: FiloSpacing.screen),
             Text(
               'Requests (${pending.length})',
               key: _requestsKey,
               style: Theme.of(context).textTheme.headlineSmall,
             ),
-            const SizedBox(height: 12),
+            const SizedBox(height: FiloSpacing.s12),
             if (pending.isNotEmpty)
               FiloButton(
                 label: 'Approve all',
@@ -229,7 +229,7 @@ class _ClassStudentsScreenState extends ConsumerState<ClassStudentsScreen> {
               const Text('No pending requests.'),
             for (final student in pending)
               Padding(
-                padding: const EdgeInsets.only(top: 16),
+                padding: const EdgeInsets.only(top: FiloSpacing.s16),
                 child: FiloPanel(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
@@ -238,9 +238,9 @@ class _ClassStudentsScreenState extends ConsumerState<ClassStudentsScreen> {
                         student.name,
                         style: Theme.of(context).textTheme.titleMedium,
                       ),
-                      const SizedBox(height: 8),
+                      const SizedBox(height: FiloSpacing.s8),
                       const Text('Waiting for approval'),
-                      const SizedBox(height: 12),
+                      const SizedBox(height: FiloSpacing.s12),
                       Wrap(
                         spacing: 12,
                         runSpacing: 8,
@@ -265,12 +265,12 @@ class _ClassStudentsScreenState extends ConsumerState<ClassStudentsScreen> {
                   ),
                 ),
               ),
-            const SizedBox(height: 32),
+            const SizedBox(height: FiloSpacing.s32),
             Text(
               'Enrolled students (${active.length})',
               style: Theme.of(context).textTheme.headlineSmall,
             ),
-            const SizedBox(height: 12),
+            const SizedBox(height: FiloSpacing.s12),
             if (active.isEmpty &&
                 !students.isLoading &&
                 !students.hasError &&

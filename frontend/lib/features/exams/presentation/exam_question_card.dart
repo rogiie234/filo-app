@@ -48,9 +48,7 @@ class _ExamQuestionCardState extends State<ExamQuestionCard> {
     final q = widget.question;
     return SelectionContainer.disabled(
       child: FiloPanel(
-        color: Theme.of(context).brightness == Brightness.dark
-            ? Theme.of(context).colorScheme.surface
-            : Colors.white,
+        color: Theme.of(context).colorScheme.surface,
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
@@ -58,7 +56,7 @@ class _ExamQuestionCardState extends State<ExamQuestionCard> {
               'Question ${widget.number} · ${q.points} ${q.points == 1 ? 'point' : 'points'}',
               style: Theme.of(context).textTheme.labelLarge,
             ),
-            const SizedBox(height: 12),
+            const SizedBox(height: FiloSpacing.s12),
             Semantics(
               header: true,
               child: Text(
@@ -66,7 +64,7 @@ class _ExamQuestionCardState extends State<ExamQuestionCard> {
                 style: Theme.of(context).textTheme.titleMedium,
               ),
             ),
-            const SizedBox(height: 16),
+            const SizedBox(height: FiloSpacing.s16),
             if (q.type == 'multiple_choice')
               for (final option in q.options)
                 _option(

@@ -1,3 +1,5 @@
+import '../theme/filo_design_tokens.dart';
+
 import 'package:flutter/material.dart';
 
 import '../theme/animation_constants.dart';
@@ -53,7 +55,7 @@ class FiloNavigationBar extends StatelessWidget {
                     height: 32,
                     decoration: BoxDecoration(
                       color: Theme.of(context).colorScheme.secondaryContainer,
-                      borderRadius: BorderRadius.circular(32),
+                      borderRadius: BorderRadius.circular(FiloRadii.pill),
                     ),
                   ),
                 ),
@@ -61,10 +63,10 @@ class FiloNavigationBar extends StatelessWidget {
             ),
             NavigationBar(
               height: height,
-              backgroundColor: Colors.transparent,
-              surfaceTintColor: Colors.transparent,
+              backgroundColor: FiloPaint.transparent,
+              surfaceTintColor: FiloPaint.transparent,
               elevation: 0,
-              indicatorColor: Colors.transparent,
+              indicatorColor: FiloPaint.transparent,
               animationDuration: Duration.zero,
               selectedIndex: selectedIndex,
               onDestinationSelected: onDestinationSelected,

@@ -18,7 +18,7 @@ class NotificationPromptView extends StatelessWidget {
   final VoidCallback onSkip;
 
   Widget _benefit(BuildContext context, IconData icon, String label) => Padding(
-    padding: const EdgeInsets.symmetric(vertical: 8),
+    padding: const EdgeInsets.symmetric(vertical: FiloSpacing.s8),
     child: Row(
       children: [
         ExcludeSemantics(
@@ -27,7 +27,7 @@ class NotificationPromptView extends StatelessWidget {
             height: 40,
             decoration: BoxDecoration(
               color: Theme.of(context).colorScheme.surfaceContainer,
-              borderRadius: BorderRadius.circular(14),
+              borderRadius: BorderRadius.circular(FiloRadii.small),
             ),
             child: FiloIcon(
               icon,
@@ -36,15 +36,12 @@ class NotificationPromptView extends StatelessWidget {
             ),
           ),
         ),
-        const SizedBox(width: 14),
+        const SizedBox(width: FiloSpacing.s16),
         Expanded(
           child: Text(
             label,
-            style: TextStyle(
-              fontSize: 15,
-              fontWeight: FontWeight.w700,
-              color: Theme.of(context).colorScheme.onSurface,
-            ),
+            style: Theme.of(context).textTheme.labelLarge!
+                .copyWith(color: Theme.of(context).colorScheme.onSurface),
           ),
         ),
       ],
@@ -62,7 +59,7 @@ class NotificationPromptView extends StatelessWidget {
               height: 112,
               decoration: BoxDecoration(
                 color: FiloThemeTokens.of(context).mint,
-                borderRadius: BorderRadius.circular(36),
+                borderRadius: BorderRadius.circular(FiloRadii.pill),
                 border: Border.all(
                   color: Theme.of(context).colorScheme.outline,
                 ),
@@ -75,34 +72,29 @@ class NotificationPromptView extends StatelessWidget {
             ),
           ),
         ),
-        const SizedBox(height: 24),
+        const SizedBox(height: FiloSpacing.screen),
         Semantics(
           header: true,
           child: Text(
             'Stay up to date',
             textAlign: TextAlign.center,
-            style: TextStyle(
-              fontSize: 28,
-              height: 1.2,
-              fontWeight: FontWeight.w800,
-              color: Theme.of(context).colorScheme.onSurface,
-            ),
+            style: Theme.of(context).textTheme.headlineMedium!
+                .copyWith(color: Theme.of(context).colorScheme.onSurface),
           ),
         ),
-        const SizedBox(height: 12),
+        const SizedBox(height: FiloSpacing.s12),
         Text(
           'Enable notifications for class updates, deadlines, and grades. You can change notification access in Android settings.',
           textAlign: TextAlign.center,
-          style: TextStyle(
-            fontSize: 15,
-            height: 1.5,
-            fontWeight: FontWeight.w500,
-            color: Theme.of(context).colorScheme.onSurfaceVariant,
-          ),
+          style: Theme.of(context).textTheme.bodyLarge!
+              .copyWith(color: Theme.of(context).colorScheme.onSurfaceVariant),
         ),
-        const SizedBox(height: 24),
+        const SizedBox(height: FiloSpacing.screen),
         FiloPanel(
-          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
+          padding: const EdgeInsets.symmetric(
+            horizontal: FiloSpacing.s20,
+            vertical: FiloSpacing.s8,
+          ),
           child: Column(
             children: [
               _benefit(context, FiloIcons.announcement, 'Class updates'),
@@ -140,7 +132,12 @@ class NotificationPromptView extends StatelessWidget {
             Expanded(
               child: LayoutBuilder(
                 builder: (context, viewport) => SingleChildScrollView(
-                  padding: const EdgeInsets.fromLTRB(24, 24, 24, 24),
+                  padding: const EdgeInsets.fromLTRB(
+                    FiloSpacing.screen,
+                    FiloSpacing.screen,
+                    FiloSpacing.screen,
+                    FiloSpacing.screen,
+                  ),
                   child: ConstrainedBox(
                     constraints: BoxConstraints(
                       minHeight: (viewport.maxHeight - 48)
@@ -158,7 +155,12 @@ class NotificationPromptView extends StatelessWidget {
               ),
             ),
             Padding(
-              padding: const EdgeInsets.fromLTRB(24, 12, 24, 24),
+              padding: const EdgeInsets.fromLTRB(
+                FiloSpacing.screen,
+                FiloSpacing.s12,
+                FiloSpacing.screen,
+                FiloSpacing.screen,
+              ),
               child: Center(
                 child: ConstrainedBox(
                   constraints: const BoxConstraints(maxWidth: 520),
@@ -173,9 +175,11 @@ class NotificationPromptView extends StatelessWidget {
                         busy: busy,
                         onPressed: busy ? null : onEnable,
                       ),
-                      const SizedBox(height: 8),
+                      const SizedBox(height: FiloSpacing.s8),
                       ConstrainedBox(
-                        constraints: const BoxConstraints(minHeight: 48),
+                        constraints: const BoxConstraints(
+                          minHeight: FiloControlSize.compact,
+                        ),
                         child: TextButton(
                           onPressed: busy ? null : onSkip,
                           child: const Text('Not now'),

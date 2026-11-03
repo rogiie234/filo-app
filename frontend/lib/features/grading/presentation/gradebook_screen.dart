@@ -77,7 +77,7 @@ void openGradebookGrade(
   String student,
 ) {
   Navigator.of(context).push(
-    MaterialPageRoute<void>(
+    FiloInstantRoute<void>(
       builder: (_) =>
           GradeScreen(classId: classId, postId: post, studentId: student),
     ),
@@ -212,131 +212,143 @@ class _GradebookScreenState extends ConsumerState<GradebookScreen> {
     final data = state.asData?.value;
     final offline = ref.watch(connectivityProvider).asData?.value != true;
     final sync = ref.watch(gradingSyncProvider(widget.classId));
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text('Gradebook'),
-        actions: [
-          PopupMenuButton<String>(
-            tooltip: 'Gradebook options',
-            enabled: data != null && data.loaded && !_exporting,
-            onSelected: (_) => _export(data!),
-            itemBuilder: (_) => [
-              const PopupMenuItem(value: 'csv', child: Text('Export CSV')),
-            ],
-          ),
-        ],
-      ),
-      body: Column(
-        children: [
-          if (offline) const GradebookOfflineBanner(),
-          if (sync.hasError) GradebookRetry(onRetry: _refresh),
-          Padding(
-            padding: const EdgeInsets.all(12),
-            child: SegmentedButton<bool>(
-              segments: const [
-                ButtonSegment(
-                  value: false,
-                  icon: FiloIcon(FiloIcons.list),
-                  label: Text('List'),
-                ),
-                ButtonSegment(
-                  value: true,
-                  icon: FiloIcon(FiloIcons.spreadsheet),
-                  label: Text('Table'),
-                ),
+    return FiloMotionScope(
+      enabled: false,
+      child: Scaffold(
+        appBar: AppBar(
+          title: const Text('Gradebook'),
+          actions: [
+            PopupMenuButton<String>(
+              tooltip: 'Gradebook options',
+              enabled: data != null && data.loaded && !_exporting,
+              onSelected: (_) => _export(data!),
+              itemBuilder: (_) => [
+                const PopupMenuItem(value: 'csv', child: Text('Export CSV')),
               ],
-              selected: {_table},
-              onSelectionChanged: (values) =>
-                  setState(() => _table = values.first),
             ),
-          ),
-          Expanded(
-            child: state.when(
-              loading: () => const GradebookSkeleton(),
-              error: (_, _) => Center(
-                child: TextButton(
-                  onPressed: _refresh,
-                  child: const Text("Couldn't load grades. Try again."),
-                ),
+          ],
+        ),
+        body: Column(
+          children: [
+            if (offline) const GradebookOfflineBanner(),
+            if (sync.hasError) GradebookRetry(onRetry: _refresh),
+            Padding(
+              padding: const EdgeInsets.symmetric(
+                horizontal: FiloSpacing.screen,
+                vertical: FiloSpacing.s12,
               ),
-              data: (data) {
-                if (!data.loaded && !offline && sync.isLoading) {
-                  return const GradebookSkeleton();
-                }
-                if (!data.loaded) {
-                  return Center(
-                    child: TextButton(
-                      onPressed: _refresh,
-                      child: Text(
-                        offline
-                            ? 'Connect to the internet to load grades'
-                            : "Couldn't load grades. Try again.",
+              child: SegmentedButton<bool>(
+                segments: const [
+                  ButtonSegment(
+                    value: false,
+                    icon: FiloIcon(FiloIcons.list),
+                    label: Text('List'),
+                  ),
+                  ButtonSegment(
+                    value: true,
+                    icon: FiloIcon(FiloIcons.spreadsheet),
+                    label: Text('Table'),
+                  ),
+                ],
+                selected: {_table},
+                onSelectionChanged: (values) =>
+                    setState(() => _table = values.first),
+              ),
+            ),
+            Expanded(
+              child: state.when(
+                loading: () => const GradebookSkeleton(),
+                error: (_, _) => Center(
+                  child: TextButton(
+                    onPressed: _refresh,
+                    child: const Text("Couldn't load grades. Try again."),
+                  ),
+                ),
+                data: (data) {
+                  if (!data.loaded && !offline && sync.isLoading) {
+                    return const GradebookSkeleton();
+                  }
+                  if (!data.loaded) {
+                    return Center(
+                      child: TextButton(
+                        onPressed: _refresh,
+                        child: Text(
+                          offline
+                              ? 'Connect to the internet to load grades'
+                              : "Couldn't load grades. Try again.",
+                        ),
                       ),
-                    ),
-                  );
-                }
-                final active =
-                    data.members.where((m) => m['status'] == 'active').toList()
-                      ..sort(
-                        (a, b) => gradebookName(a).compareTo(gradebookName(b)),
-                      );
-                final former = data.members
-                    .where((m) => ['left', 'removed'].contains(m['status']))
-                    .toList();
-                if (data.members.isEmpty || data.items.isEmpty) {
+                    );
+                  }
+                  final active =
+                      data.members
+                          .where((m) => m['status'] == 'active')
+                          .toList()
+                        ..sort(
+                          (a, b) =>
+                              gradebookName(a).compareTo(gradebookName(b)),
+                        );
+                  final former = data.members
+                      .where((m) => ['left', 'removed'].contains(m['status']))
+                      .toList();
+                  if (data.members.isEmpty || data.items.isEmpty) {
+                    return RefreshIndicator(
+                      onRefresh: _refresh,
+                      child: ListView(
+                        physics: const AlwaysScrollableScrollPhysics(),
+                        children: const [
+                          Padding(
+                            padding: EdgeInsets.symmetric(
+                              horizontal: FiloSpacing.screen,
+                              vertical: FiloSpacing.s32,
+                            ),
+                            child: Text('Your gradebook is empty.'),
+                          ),
+                        ],
+                      ),
+                    );
+                  }
+                  if (_table) {
+                    return Column(
+                      children: [
+                        TextButton.icon(
+                          onPressed: _refresh,
+                          icon: const FiloIcon(FiloIcons.refresh),
+                          label: const Text('Refresh'),
+                        ),
+                        Expanded(
+                          child: _GradebookTable(
+                            data: data,
+                            members: active,
+                            classId: widget.classId,
+                            onRefresh: _refresh,
+                          ),
+                        ),
+                        if (former.isNotEmpty)
+                          ConstrainedBox(
+                            constraints: const BoxConstraints(maxHeight: 180),
+                            child: SingleChildScrollView(
+                              child: _former(data, former),
+                            ),
+                          ),
+                      ],
+                    );
+                  }
                   return RefreshIndicator(
                     onRefresh: _refresh,
                     child: ListView(
                       physics: const AlwaysScrollableScrollPhysics(),
-                      children: const [
-                        Padding(
-                          padding: EdgeInsets.all(32),
-                          child: Text('Your gradebook is empty.'),
-                        ),
+                      children: [
+                        for (final member in active) _student(data, member),
+                        if (former.isNotEmpty) _former(data, former),
                       ],
                     ),
                   );
-                }
-                if (_table) {
-                  return Column(
-                    children: [
-                      TextButton.icon(
-                        onPressed: _refresh,
-                        icon: const FiloIcon(FiloIcons.refresh),
-                        label: const Text('Refresh'),
-                      ),
-                      Expanded(
-                        child: _GradebookTable(
-                          data: data,
-                          members: active,
-                          classId: widget.classId,
-                          onRefresh: _refresh,
-                        ),
-                      ),
-                      if (former.isNotEmpty)
-                        ConstrainedBox(
-                          constraints: const BoxConstraints(maxHeight: 180),
-                          child: SingleChildScrollView(
-                            child: _former(data, former),
-                          ),
-                        ),
-                    ],
-                  );
-                }
-                return RefreshIndicator(
-                  onRefresh: _refresh,
-                  child: ListView(
-                    physics: const AlwaysScrollableScrollPhysics(),
-                    children: [
-                      for (final member in active) _student(data, member),
-                      if (former.isNotEmpty) _former(data, former),
-                    ],
-                  ),
-                );
-              },
+                },
+              ),
             ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }
@@ -349,6 +361,9 @@ class _GradebookScreenState extends ConsumerState<GradebookScreen> {
     final id = member['student_id'].toString();
     final total = data.total(id);
     return ListTile(
+      contentPadding: const EdgeInsets.symmetric(
+        horizontal: FiloSpacing.screen,
+      ),
       leading: const CircleAvatar(child: FiloIcon(FiloIcons.person)),
       title: Text(gradebookName(member)),
       subtitle: Text(
@@ -356,7 +371,7 @@ class _GradebookScreenState extends ConsumerState<GradebookScreen> {
       ),
       trailing: const FiloIcon(FiloIcons.chevronRight),
       onTap: () => Navigator.of(context).push(
-        MaterialPageRoute<void>(
+        FiloInstantRoute<void>(
           builder: (_) => _StudentGradesScreen(
             classId: widget.classId,
             studentId: id,
@@ -388,85 +403,91 @@ class _StudentGradesScreen extends ConsumerWidget {
       }
     }
 
-    return Scaffold(
-      appBar: AppBar(title: Text(name)),
-      body: ref
-          .watch(gradingDataProvider(classId))
-          .when(
-            loading: () => const GradebookSkeleton(),
-            error: (_, _) => Center(
-              child: TextButton(
-                onPressed: refresh,
-                child: const Text("Couldn't load grades. Try again."),
+    return FiloMotionScope(
+      enabled: false,
+      child: Scaffold(
+        appBar: AppBar(title: Text(name)),
+        body: ref
+            .watch(gradingDataProvider(classId))
+            .when(
+              loading: () => const GradebookSkeleton(),
+              error: (_, _) => Center(
+                child: TextButton(
+                  onPressed: refresh,
+                  child: const Text("Couldn't load grades. Try again."),
+                ),
               ),
-            ),
-            data: (data) {
-              if (!data.loaded) {
-                if (!offline && sync.isLoading) {
-                  return const GradebookSkeleton();
-                }
-                return Center(
-                  child: TextButton(
-                    onPressed: refresh,
-                    child: Text(
-                      offline
-                          ? 'Connect to the internet to load grades'
-                          : "Couldn't load grades. Try again.",
-                    ),
-                  ),
-                );
-              }
-              return Column(
-                children: [
-                  if (offline) const GradebookOfflineBanner(),
-                  if (sync.hasError) GradebookRetry(onRetry: refresh),
-                  Padding(
-                    padding: const EdgeInsets.all(16),
-                    child: Text(
-                      '${gradebookTotal(data.total(studentId))}${data.quizzesLoaded ? '' : '\nQuiz scores have not finished syncing.'}',
-                    ),
-                  ),
-                  Expanded(
-                    child: RefreshIndicator(
-                      onRefresh: refresh,
-                      child: ListView.builder(
-                        physics: const AlwaysScrollableScrollPhysics(),
-                        itemCount: data.items.length,
-                        itemBuilder: (context, index) {
-                          final assignment = data.items[index];
-                          final post = assignment['id'].toString();
-                          return ListTile(
-                            title: Text(assignment['title'].toString()),
-                            subtitle: Text(
-                              assignment['is_quiz'] == true
-                                  ? data.quizStatus(assignment, studentId)
-                                  : data.status(post, studentId),
-                            ),
-                            trailing: Text(
-                              assignment['is_quiz'] == true
-                                  ? gradebookItemCell(
-                                      data,
-                                      assignment,
-                                      studentId,
-                                    )
-                                  : '${gradebookCell(data, post, studentId)}/${assignment['points']}',
-                            ),
-                            onTap: () => openGradebookItem(
-                              context,
-                              classId,
-                              data,
-                              assignment,
-                              studentId,
-                            ),
-                          );
-                        },
+              data: (data) {
+                if (!data.loaded) {
+                  if (!offline && sync.isLoading) {
+                    return const GradebookSkeleton();
+                  }
+                  return Center(
+                    child: TextButton(
+                      onPressed: refresh,
+                      child: Text(
+                        offline
+                            ? 'Connect to the internet to load grades'
+                            : "Couldn't load grades. Try again.",
                       ),
                     ),
-                  ),
-                ],
-              );
-            },
-          ),
+                  );
+                }
+                return Column(
+                  children: [
+                    if (offline) const GradebookOfflineBanner(),
+                    if (sync.hasError) GradebookRetry(onRetry: refresh),
+                    Padding(
+                      padding: const EdgeInsets.all(FiloSpacing.s16),
+                      child: Text(
+                        '${gradebookTotal(data.total(studentId))}${data.quizzesLoaded ? '' : '\nQuiz scores have not finished syncing.'}',
+                      ),
+                    ),
+                    Expanded(
+                      child: RefreshIndicator(
+                        onRefresh: refresh,
+                        child: ListView.builder(
+                          physics: const AlwaysScrollableScrollPhysics(),
+                          itemCount: data.items.length,
+                          itemBuilder: (context, index) {
+                            final assignment = data.items[index];
+                            final post = assignment['id'].toString();
+                            return ListTile(
+                              contentPadding: const EdgeInsets.symmetric(
+                                horizontal: FiloSpacing.screen,
+                              ),
+                              title: Text(assignment['title'].toString()),
+                              subtitle: Text(
+                                assignment['is_quiz'] == true
+                                    ? data.quizStatus(assignment, studentId)
+                                    : data.status(post, studentId),
+                              ),
+                              trailing: Text(
+                                assignment['is_quiz'] == true
+                                    ? gradebookItemCell(
+                                        data,
+                                        assignment,
+                                        studentId,
+                                      )
+                                    : '${gradebookCell(data, post, studentId)}/${assignment['points']}',
+                              ),
+                              onTap: () => openGradebookItem(
+                                context,
+                                classId,
+                                data,
+                                assignment,
+                                studentId,
+                              ),
+                            );
+                          },
+                        ),
+                      ),
+                    ),
+                  ],
+                );
+              },
+            ),
+      ),
     );
   }
 }
@@ -530,7 +551,7 @@ class _GradebookTableState extends State<_GradebookTable> {
         onTap: tap,
         child: Container(
           alignment: Alignment.centerLeft,
-          padding: const EdgeInsets.symmetric(horizontal: 10),
+          padding: const EdgeInsets.symmetric(horizontal: FiloSpacing.s12),
           decoration: BoxDecoration(
             border: Border(
               bottom: BorderSide(color: Theme.of(context).colorScheme.outline),
@@ -626,7 +647,7 @@ class GradebookOfflineBanner extends StatelessWidget {
   Widget build(BuildContext context) => Container(
     width: double.infinity,
     color: FiloThemeTokens.of(context).warningTint,
-    padding: const EdgeInsets.all(12),
+    padding: const EdgeInsets.all(FiloSpacing.s12),
     child: const Text('Offline · Showing cached grades. Read-only.'),
   );
 }
@@ -636,7 +657,7 @@ class GradebookRetry extends StatelessWidget {
   final VoidCallback onRetry;
   @override
   Widget build(BuildContext context) => Padding(
-    padding: const EdgeInsets.symmetric(horizontal: 16),
+    padding: const EdgeInsets.symmetric(horizontal: FiloSpacing.screen),
     child: Row(
       children: [
         const Expanded(
@@ -657,10 +678,13 @@ class GradebookSkeleton extends StatelessWidget {
     itemCount: 6,
     itemBuilder: (_, _) => Container(
       height: 64,
-      margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+      margin: const EdgeInsets.symmetric(
+        horizontal: FiloSpacing.screen,
+        vertical: FiloSpacing.s8,
+      ),
       decoration: BoxDecoration(
         color: FiloThemeTokens.of(context).mint,
-        borderRadius: BorderRadius.circular(12),
+        borderRadius: BorderRadius.circular(FiloRadii.small),
       ),
     ),
   );

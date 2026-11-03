@@ -126,9 +126,8 @@ class FiloAvatar extends ConsumerWidget {
                         name.trim().isEmpty
                             ? '?'
                             : name.trim().characters.first.toUpperCase(),
-                        style: TextStyle(
+                        style: FiloTypography.strongLabel(context).copyWith(
                           color: Theme.of(context).colorScheme.onSurface,
-                          fontWeight: FontWeight.w800,
                         ),
                       ),
                     ),
@@ -156,10 +155,13 @@ class ApprovalChip extends StatelessWidget {
   const ApprovalChip({super.key});
   @override
   Widget build(BuildContext context) => Container(
-    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+    padding: const EdgeInsets.symmetric(
+      horizontal: FiloSpacing.s12,
+      vertical: FiloSpacing.s12,
+    ),
     decoration: BoxDecoration(
       color: FiloThemeTokens.of(context).warningTint,
-      borderRadius: BorderRadius.circular(14),
+      borderRadius: BorderRadius.circular(FiloRadii.small),
     ),
     child: Row(
       children: [
@@ -170,14 +172,12 @@ class ApprovalChip extends StatelessWidget {
             color: FiloThemeTokens.of(context).warning,
           ),
         ),
-        SizedBox(width: 8),
+        SizedBox(width: FiloSpacing.s8),
         Expanded(
           child: Text(
             'Waiting for approval',
-            style: TextStyle(
-              color: FiloThemeTokens.of(context).warning,
-              fontWeight: FontWeight.w700,
-            ),
+            style: Theme.of(context).textTheme.labelMedium!
+                .copyWith(color: FiloThemeTokens.of(context).warning),
           ),
         ),
       ],
@@ -189,13 +189,13 @@ class OfflineBanner extends StatelessWidget {
   const OfflineBanner({super.key});
   @override
   Widget build(BuildContext context) => Container(
-    margin: const EdgeInsets.only(bottom: 16),
-    padding: const EdgeInsets.all(16),
+    margin: const EdgeInsets.only(bottom: FiloSpacing.s16),
+    padding: const EdgeInsets.all(FiloSpacing.s16),
     decoration: BoxDecoration(
       color: Theme.of(context).brightness == Brightness.dark
           ? Theme.of(context).colorScheme.primaryContainer
           : Theme.of(context).colorScheme.primaryContainer,
-      borderRadius: BorderRadius.circular(20),
+      borderRadius: BorderRadius.circular(FiloRadii.medium),
     ),
     child: Row(
       children: [
@@ -203,7 +203,7 @@ class OfflineBanner extends StatelessWidget {
           FiloIcons.offline,
           color: Theme.of(context).colorScheme.onSurface,
         ),
-        SizedBox(width: 12),
+        SizedBox(width: FiloSpacing.s12),
         Expanded(child: Text("You're offline. Showing saved content.")),
       ],
     ),
@@ -217,17 +217,17 @@ class ClassCardSkeleton extends StatelessWidget {
     label: 'Loading classes',
     child: ExcludeSemantics(
       child: Container(
-        margin: const EdgeInsets.only(bottom: 16),
+        margin: const EdgeInsets.only(bottom: FiloSpacing.s16),
         clipBehavior: Clip.antiAlias,
         decoration: BoxDecoration(
           color: Theme.of(context).colorScheme.surface,
-          borderRadius: BorderRadius.circular(28),
+          borderRadius: BorderRadius.circular(FiloRadii.large),
         ),
         child: Column(
           children: [
             Container(height: 148, color: FiloThemeTokens.of(context).mint),
             Padding(
-              padding: const EdgeInsets.all(20),
+              padding: const EdgeInsets.all(FiloSpacing.s20),
               child: Row(
                 children: [
                   CircleAvatar(
@@ -235,13 +235,13 @@ class ClassCardSkeleton extends StatelessWidget {
                         .colorScheme
                         .surfaceContainer,
                   ),
-                  const SizedBox(width: 16),
+                  const SizedBox(width: FiloSpacing.s16),
                   Expanded(
                     child: Container(
                       height: 18,
                       decoration: BoxDecoration(
                         color: Theme.of(context).colorScheme.surfaceContainer,
-                        borderRadius: BorderRadius.circular(12),
+                        borderRadius: BorderRadius.circular(FiloRadii.small),
                       ),
                     ),
                   ),
@@ -280,12 +280,12 @@ class ClassCard extends ConsumerWidget {
         enabled: enabled,
         child: Container(
           decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(28),
+            borderRadius: BorderRadius.circular(FiloRadii.large),
             boxShadow: const [
               BoxShadow(
-                color: Color(0x1014423A),
-                blurRadius: 12,
-                offset: Offset(0, 4),
+                color: FiloPaint.cardShadow,
+                blurRadius: FiloPaint.cardShadowBlur,
+                offset: FiloPaint.cardShadowOffset,
               ),
             ],
           ),
@@ -294,7 +294,7 @@ class ClassCard extends ConsumerWidget {
                 ? Theme.of(context).colorScheme.surfaceContainer
                 : Theme.of(context).colorScheme.surface,
             shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(28),
+              borderRadius: BorderRadius.circular(FiloRadii.large),
               side: BorderSide(color: Theme.of(context).colorScheme.outline),
             ),
             clipBehavior: Clip.antiAlias,
@@ -316,7 +316,7 @@ class ClassCard extends ConsumerWidget {
                     ),
                   ),
                   Padding(
-                    padding: const EdgeInsets.all(20),
+                    padding: const EdgeInsets.all(FiloSpacing.s20),
                     child: Row(
                       children: [
                         ExcludeSemantics(
@@ -327,7 +327,9 @@ class ClassCard extends ConsumerWidget {
                               color: Theme.of(context)
                                   .colorScheme
                                   .surfaceContainer,
-                              borderRadius: BorderRadius.circular(14),
+                              borderRadius: BorderRadius.circular(
+                                FiloRadii.small,
+                              ),
                             ),
                             child: FiloIcon(
                               FiloIcons.book,
@@ -336,19 +338,19 @@ class ClassCard extends ConsumerWidget {
                             ),
                           ),
                         ),
-                        const SizedBox(width: 12),
+                        const SizedBox(width: FiloSpacing.s12),
                         Expanded(
                           child: Text(
                             room.course,
-                            style: TextStyle(
-                              fontSize: 18,
-                              height: 1.35,
-                              fontWeight: FontWeight.w800,
-                              color: Theme.of(context).colorScheme.onSurface,
-                            ),
+                            style: Theme.of(context).textTheme.titleMedium!
+                                .copyWith(
+                                  color: Theme.of(context)
+                                      .colorScheme
+                                      .onSurface,
+                                ),
                           ),
                         ),
-                        const SizedBox(width: 12),
+                        const SizedBox(width: FiloSpacing.s12),
                         Semantics(
                           label: pendingRequests > 0
                               ? 'Pending join requests'
@@ -379,20 +381,30 @@ class ClassCard extends ConsumerWidget {
                   ),
                   if (room.pending)
                     const Padding(
-                      padding: EdgeInsets.fromLTRB(20, 0, 20, 20),
+                      padding: EdgeInsets.fromLTRB(
+                        FiloSpacing.s20,
+                        0,
+                        FiloSpacing.s20,
+                        FiloSpacing.s20,
+                      ),
                       child: ApprovalChip(),
                     ),
                   if (room.archived)
                     Padding(
-                      padding: const EdgeInsets.fromLTRB(20, 0, 20, 20),
+                      padding: const EdgeInsets.fromLTRB(
+                        FiloSpacing.s20,
+                        0,
+                        FiloSpacing.s20,
+                        FiloSpacing.s20,
+                      ),
                       child: Container(
                         padding: const EdgeInsets.symmetric(
-                          horizontal: 12,
-                          vertical: 10,
+                          horizontal: FiloSpacing.s12,
+                          vertical: FiloSpacing.s12,
                         ),
                         decoration: BoxDecoration(
                           color: Theme.of(context).colorScheme.surfaceContainer,
-                          borderRadius: BorderRadius.circular(14),
+                          borderRadius: BorderRadius.circular(FiloRadii.small),
                         ),
                         child: Row(
                           children: [
@@ -405,17 +417,16 @@ class ClassCard extends ConsumerWidget {
                                     .onSurfaceVariant,
                               ),
                             ),
-                            SizedBox(width: 8),
+                            SizedBox(width: FiloSpacing.s8),
                             Expanded(
                               child: Text(
                                 'Archived \u00b7 Read only',
-                                style: TextStyle(
-                                  color: Theme.of(context)
-                                      .colorScheme
-                                      .onSurfaceVariant,
-                                  fontSize: 13,
-                                  fontWeight: FontWeight.w700,
-                                ),
+                                style: Theme.of(context).textTheme.bodySmall!
+                                    .copyWith(
+                                      color: Theme.of(context)
+                                          .colorScheme
+                                          .onSurfaceVariant,
+                                    ),
                               ),
                             ),
                           ],

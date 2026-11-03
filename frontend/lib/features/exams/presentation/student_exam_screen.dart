@@ -269,7 +269,7 @@ class _StudentExamScreenState extends ConsumerState<StudentExamScreen> {
         context: context,
         builder: (context) => Dialog(
           child: SingleChildScrollView(
-            padding: const EdgeInsets.all(24),
+            padding: const EdgeInsets.all(FiloSpacing.screen),
             child: Column(
               mainAxisSize: MainAxisSize.min,
               crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -280,13 +280,13 @@ class _StudentExamScreenState extends ConsumerState<StudentExamScreen> {
                       : 'You have $blanks unanswered ${blanks == 1 ? 'question' : 'questions'}. Submit anyway?',
                   style: Theme.of(context).textTheme.titleLarge,
                 ),
-                const SizedBox(height: 24),
+                const SizedBox(height: FiloSpacing.screen),
                 FiloButton(
                   label: 'Keep answering',
                   secondary: blanks == 0,
                   onPressed: () => Navigator.pop(context, false),
                 ),
-                const SizedBox(height: 12),
+                const SizedBox(height: FiloSpacing.s12),
                 FiloButton(
                   label: blanks == 0 ? 'Submit' : 'Submit anyway',
                   secondary: blanks > 0,
@@ -476,7 +476,7 @@ class _StudentExamScreenState extends ConsumerState<StudentExamScreen> {
                     )
                   : completion != null && attempt == null
                   ? ListView(
-                      padding: const EdgeInsets.all(24),
+                      padding: const EdgeInsets.all(FiloSpacing.screen),
                       children: [
                         Text(
                           completion == 'Your answers were submitted.'
@@ -489,7 +489,7 @@ class _StudentExamScreenState extends ConsumerState<StudentExamScreen> {
                           StudentResultsEntry(quizId: widget.request.quizId),
                         if (_essay &&
                             completion == 'Your answers were submitted.') ...[
-                          const SizedBox(height: 12),
+                          const SizedBox(height: FiloSpacing.s12),
                           const Text(
                             'Essay answers also need to be graded before results are available.',
                           ),
@@ -498,11 +498,11 @@ class _StudentExamScreenState extends ConsumerState<StudentExamScreen> {
                     )
                   : attempt == null || attempt.questions.isEmpty
                   ? ListView(
-                      padding: const EdgeInsets.all(24),
+                      padding: const EdgeInsets.all(FiloSpacing.screen),
                       children: [
                         if (_busy || repositoryState.isLoading)
                           const FiloLinearProgressIndicator(),
-                        const SizedBox(height: 16),
+                        const SizedBox(height: FiloSpacing.s16),
                         Semantics(
                           liveRegion: true,
                           child: Text(
@@ -513,7 +513,7 @@ class _StudentExamScreenState extends ConsumerState<StudentExamScreen> {
                                     : 'Loading your exam...'),
                           ),
                         ),
-                        const SizedBox(height: 16),
+                        const SizedBox(height: FiloSpacing.s16),
                         if (!_busy &&
                             !repositoryState.isLoading &&
                             (_message != null ||
@@ -650,7 +650,12 @@ class _StudentExamScreenState extends ConsumerState<StudentExamScreen> {
         Expanded(
           child: ListView.builder(
             key: PageStorageKey('exam-questions-${attempt.sessionId}'),
-            padding: const EdgeInsets.fromLTRB(24, 8, 24, 24),
+            padding: const EdgeInsets.fromLTRB(
+              FiloSpacing.screen,
+              FiloSpacing.s8,
+              FiloSpacing.screen,
+              FiloSpacing.screen,
+            ),
             keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.manual,
             itemCount: attempt.questions.length + 2,
             itemBuilder: (context, index) {
@@ -708,7 +713,7 @@ class _StudentExamScreenState extends ConsumerState<StudentExamScreen> {
                 final question = attempt.questions[index - 1];
                 return Padding(
                   key: ValueKey('${attempt.sessionId}:${question.id}'),
-                  padding: const EdgeInsets.only(top: 16),
+                  padding: const EdgeInsets.only(top: FiloSpacing.s16),
                   child: ExamQuestionCard(
                     question: question,
                     number: index,
@@ -719,7 +724,7 @@ class _StudentExamScreenState extends ConsumerState<StudentExamScreen> {
                 );
               }
               return Padding(
-                padding: const EdgeInsets.only(top: 24),
+                padding: const EdgeInsets.only(top: FiloSpacing.screen),
                 child: FiloButton(
                   label: r.submitting ? 'Submitting...' : 'Submit',
                   leading: r.submitting
@@ -844,24 +849,26 @@ class _ExamStatusBarState extends ConsumerState<_ExamStatusBar>
     }
     final theme = Theme.of(context);
     final colors = theme.colorScheme;
-    final dark = theme.brightness == Brightness.dark;
     final background = level == 1
         ? colors.errorContainer
         : level == 5
-        ? (dark
-              ? const Color(0xFF493400)
-              : FiloThemeTokens.of(context).warningTint)
+        ? FiloThemeTokens.of(context).timerWarningTint
         : colors.surface;
     final foreground = level == 1
         ? colors.onErrorContainer
         : level == 5
-        ? (dark ? const Color(0xFFFFDDA0) : FiloThemeTokens.of(context).warning)
+        ? FiloThemeTokens.of(context).timerWarning
         : colors.onSurface;
     return ColoredBox(
       key: const ValueKey('exam-status-bar'),
       color: background,
       child: Padding(
-        padding: const EdgeInsets.fromLTRB(24, 12, 24, 12),
+        padding: const EdgeInsets.fromLTRB(
+          FiloSpacing.screen,
+          FiloSpacing.s12,
+          FiloSpacing.screen,
+          FiloSpacing.s12,
+        ),
         child: DefaultTextStyle.merge(
           style: TextStyle(color: foreground),
           child: Column(

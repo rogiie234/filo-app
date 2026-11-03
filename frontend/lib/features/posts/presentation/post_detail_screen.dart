@@ -1,3 +1,4 @@
+import '../../../core/theme/filo_design_tokens.dart';
 import '../../../core/widgets/filo_motion_widgets.dart';
 
 import 'package:flutter/material.dart';
@@ -110,7 +111,7 @@ class _PostDetailScreenState extends ConsumerState<PostDetailScreen> {
                   online)
           ? const Center(child: Text('This item is no longer available.'))
           : ListView(
-              padding: const EdgeInsets.all(24),
+              padding: const EdgeInsets.all(FiloSpacing.screen),
               children: [
                 if (!online)
                   const Text(
@@ -130,7 +131,7 @@ class _PostDetailScreenState extends ConsumerState<PostDetailScreen> {
                     post.title,
                     style: Theme.of(context).textTheme.headlineSmall,
                   ),
-                  const SizedBox(height: 8),
+                  const SizedBox(height: FiloSpacing.s8),
                   Text(_date(context, post.createdAt)),
                   if (post.kind == 'assignment') ...[
                     Text('${post.points ?? 0} points'),
@@ -140,9 +141,9 @@ class _PostDetailScreenState extends ConsumerState<PostDetailScreen> {
                           : 'Due ${_date(context, post.dueAt!)}',
                     ),
                   ],
-                  const SizedBox(height: 24),
+                  const SizedBox(height: FiloSpacing.screen),
                   SelectableText(post.body ?? ''),
-                  const SizedBox(height: 24),
+                  const SizedBox(height: FiloSpacing.screen),
                   if (attachments.isLoading)
                     const FiloLinearProgressIndicator(),
                   if (attachments.hasError)

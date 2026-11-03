@@ -47,9 +47,12 @@ class StudentQuizOverview extends StatelessWidget {
       child: ListView(
         key: PageStorageKey('quiz-overview-${q?.id ?? 'loading'}'),
         physics: const AlwaysScrollableScrollPhysics(),
-        padding: const EdgeInsets.all(24),
+        padding: const EdgeInsets.all(FiloSpacing.screen),
         children: [
-          if (!online) ...[const OfflineBanner(), const SizedBox(height: 16)],
+          if (!online) ...[
+            const OfflineBanner(),
+            const SizedBox(height: FiloSpacing.s16),
+          ],
           if (q == null && loading) const StudentQuizSkeleton(),
           if (q != null) ...[
             Wrap(
@@ -61,7 +64,7 @@ class StudentQuizOverview extends StatelessWidget {
                 StudentQuizStatusChip(state: state!),
               ],
             ),
-            const SizedBox(height: 12),
+            const SizedBox(height: FiloSpacing.s12),
             Semantics(
               header: true,
               child: Text(
@@ -69,7 +72,7 @@ class StudentQuizOverview extends StatelessWidget {
                 style: Theme.of(context).textTheme.headlineMedium,
               ),
             ),
-            const SizedBox(height: 24),
+            const SizedBox(height: FiloSpacing.screen),
             FiloPanel(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -87,16 +90,16 @@ class StudentQuizOverview extends StatelessWidget {
                     ],
                   ),
                   const Padding(
-                    padding: EdgeInsets.symmetric(vertical: 12),
+                    padding: EdgeInsets.symmetric(vertical: FiloSpacing.s12),
                     child: Divider(),
                   ),
                   _schedule(context, 'Opens', philippineQuizDate(q.opensAt)),
-                  const SizedBox(height: 16),
+                  const SizedBox(height: FiloSpacing.s16),
                   _schedule(context, 'Closes', philippineQuizDate(q.closesAt)),
                 ],
               ),
             ),
-            const SizedBox(height: 24),
+            const SizedBox(height: FiloSpacing.screen),
             Semantics(
               header: true,
               child: Text(
@@ -104,14 +107,14 @@ class StudentQuizOverview extends StatelessWidget {
                 style: Theme.of(context).textTheme.titleMedium,
               ),
             ),
-            const SizedBox(height: 8),
+            const SizedBox(height: FiloSpacing.s8),
             Text(
               q.instructions.isEmpty
                   ? 'No instructions provided.'
                   : q.instructions,
             ),
             if (canAttempt && !resume) ...[
-              const SizedBox(height: 24),
+              const SizedBox(height: FiloSpacing.screen),
               FiloPanel(
                 color: FiloThemeTokens.of(context).warningTint,
                 child: Column(
@@ -124,7 +127,7 @@ class StudentQuizOverview extends StatelessWidget {
                         style: Theme.of(context).textTheme.titleMedium,
                       ),
                     ),
-                    const SizedBox(height: 8),
+                    const SizedBox(height: FiloSpacing.s8),
                     for (final rule in const [
                       (FiloIcons.checkCircle, 'You have one attempt only.'),
                       (
@@ -137,7 +140,9 @@ class StudentQuizOverview extends StatelessWidget {
                       ),
                     ])
                       Padding(
-                        padding: const EdgeInsets.symmetric(vertical: 8),
+                        padding: const EdgeInsets.symmetric(
+                          vertical: FiloSpacing.s8,
+                        ),
                         child: Row(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
@@ -147,7 +152,7 @@ class StudentQuizOverview extends StatelessWidget {
                                 color: FiloThemeTokens.of(context).warning,
                               ),
                             ),
-                            const SizedBox(width: 12),
+                            const SizedBox(width: FiloSpacing.s12),
                             Expanded(child: Text(rule.$2)),
                           ],
                         ),
@@ -155,7 +160,7 @@ class StudentQuizOverview extends StatelessWidget {
                   ],
                 ),
               ),
-              const SizedBox(height: 12),
+              const SizedBox(height: FiloSpacing.s12),
               CheckboxListTile(
                 contentPadding: EdgeInsets.zero,
                 controlAffinity: ListTileControlAffinity.leading,
@@ -166,21 +171,21 @@ class StudentQuizOverview extends StatelessWidget {
             ],
           ],
           if (message != null) ...[
-            const SizedBox(height: 16),
+            const SizedBox(height: FiloSpacing.s16),
             Semantics(liveRegion: true, child: Text(message!)),
           ],
           if (onRetry != null) ...[
-            const SizedBox(height: 8),
+            const SizedBox(height: FiloSpacing.s8),
             TextButton(
               onPressed: busy ? null : onRetry,
               child: const Text('Try again'),
             ),
           ],
           if (resultAction != null) ...[
-            const SizedBox(height: 24),
+            const SizedBox(height: FiloSpacing.screen),
             resultAction!,
           ] else if (q != null) ...[
-            const SizedBox(height: 24),
+            const SizedBox(height: FiloSpacing.screen),
             FiloButton(
               label: busy
                   ? 'Please wait...'
@@ -213,7 +218,7 @@ class StudentQuizOverview extends StatelessWidget {
     crossAxisAlignment: CrossAxisAlignment.start,
     children: [
       Text(label, style: Theme.of(context).textTheme.bodySmall),
-      const SizedBox(height: 4),
+      const SizedBox(height: FiloSpacing.s4),
       Text(value, style: Theme.of(context).textTheme.titleLarge),
     ],
   );
@@ -228,13 +233,13 @@ class StudentQuizOverview extends StatelessWidget {
           size: 20,
         ),
       ),
-      const SizedBox(width: 12),
+      const SizedBox(width: FiloSpacing.s12),
       Expanded(
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(label, style: Theme.of(context).textTheme.bodySmall),
-            const SizedBox(height: 4),
+            const SizedBox(height: FiloSpacing.s4),
             Text(value),
           ],
         ),

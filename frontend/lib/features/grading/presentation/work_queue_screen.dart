@@ -325,31 +325,29 @@ class _WorkQueueScreenState extends ConsumerState<WorkQueueScreen> {
       onRefresh: _refresh,
       child: ListView(
         physics: const AlwaysScrollableScrollPhysics(),
-        padding: const EdgeInsets.fromLTRB(24, 16, 24, 32),
+        padding: const EdgeInsets.fromLTRB(
+          FiloSpacing.screen,
+          FiloSpacing.s16,
+          FiloSpacing.screen,
+          FiloSpacing.s32,
+        ),
         children: [
           Semantics(
             header: true,
             child: Text(
               'To-do',
-              style: TextStyle(
-                fontSize: 28,
-                fontWeight: FontWeight.w800,
-                height: 1.2,
-                color: Theme.of(context).colorScheme.onSurface,
-              ),
+              style: Theme.of(context).textTheme.headlineMedium!
+                  .copyWith(color: Theme.of(context).colorScheme.onSurface),
             ),
           ),
-          const SizedBox(height: 8),
+          const SizedBox(height: FiloSpacing.s8),
           Text(
             'Assignments and quizzes, organized by due date.',
-            style: TextStyle(
-              fontSize: 15,
-              fontWeight: FontWeight.w500,
-              height: 1.5,
+            style: Theme.of(context).textTheme.bodyLarge!.copyWith(
               color: Theme.of(context).colorScheme.onSurfaceVariant,
             ),
           ),
-          const SizedBox(height: 20),
+          const SizedBox(height: FiloSpacing.s20),
           Wrap(
             spacing: 8,
             runSpacing: 8,
@@ -360,11 +358,10 @@ class _WorkQueueScreenState extends ConsumerState<WorkQueueScreen> {
                   selected: _taskFilter == filter,
                   selectedColor: Theme.of(context).colorScheme.primaryContainer,
                   backgroundColor: Theme.of(context).colorScheme.surface,
-                  labelStyle: TextStyle(
+                  labelStyle: Theme.of(context).textTheme.labelMedium!.copyWith(
                     color: _taskFilter == filter
                         ? Theme.of(context).colorScheme.onSurface
                         : Theme.of(context).colorScheme.onSurfaceVariant,
-                    fontWeight: FontWeight.w700,
                   ),
                   side: BorderSide(
                     color: _taskFilter == filter
@@ -372,16 +369,19 @@ class _WorkQueueScreenState extends ConsumerState<WorkQueueScreen> {
                         : FiloThemeTokens.of(context).controlBorder,
                   ),
                   padding: const EdgeInsets.symmetric(
-                    horizontal: 10,
-                    vertical: 8,
+                    horizontal: FiloSpacing.s12,
+                    vertical: FiloSpacing.s8,
                   ),
                   materialTapTargetSize: MaterialTapTargetSize.padded,
                   onSelected: (_) => setState(() => _taskFilter = filter),
                 ),
             ],
           ),
-          const SizedBox(height: 20),
-          if (!online) ...const [OfflineBanner(), SizedBox(height: 16)],
+          const SizedBox(height: FiloSpacing.s20),
+          if (!online) ...const [
+            OfflineBanner(),
+            SizedBox(height: FiloSpacing.s16),
+          ],
           if (queue.failed) ...[
             EmptyState(
               title: 'Could not refresh work.',
@@ -394,12 +394,12 @@ class _WorkQueueScreenState extends ConsumerState<WorkQueueScreen> {
                 label: const Text('Retry'),
               ),
             ),
-            const SizedBox(height: 16),
+            const SizedBox(height: FiloSpacing.s16),
           ],
           if (queue.loading && empty)
             for (var i = 0; i < 3; i++)
               const Padding(
-                padding: EdgeInsets.only(bottom: 12),
+                padding: EdgeInsets.only(bottom: FiloSpacing.s12),
                 child: TodoTaskSkeleton(),
               ),
           if (!queue.loading && !queue.failed && visible.isEmpty)
@@ -426,7 +426,10 @@ class _WorkQueueScreenState extends ConsumerState<WorkQueueScreen> {
           for (final group in groups)
             if (visible.any((entry) => entry.group == group)) ...[
               Padding(
-                padding: const EdgeInsets.only(top: 8, bottom: 12),
+                padding: const EdgeInsets.only(
+                  top: FiloSpacing.s8,
+                  bottom: FiloSpacing.s12,
+                ),
                 child: Semantics(
                   header: true,
                   child: Row(
@@ -434,20 +437,20 @@ class _WorkQueueScreenState extends ConsumerState<WorkQueueScreen> {
                       Expanded(
                         child: Text(
                           group,
-                          style: TextStyle(
-                            fontSize: 18,
-                            fontWeight: FontWeight.w800,
-                            color: Theme.of(context).colorScheme.onSurface,
-                          ),
+                          style: Theme.of(context).textTheme.titleMedium!
+                              .copyWith(
+                                color: Theme.of(context).colorScheme.onSurface,
+                              ),
                         ),
                       ),
                       Text(
                         '${visible.where((entry) => entry.group == group).length}',
-                        style: TextStyle(
-                          fontSize: 14,
-                          fontWeight: FontWeight.w700,
-                          color: Theme.of(context).colorScheme.onSurfaceVariant,
-                        ),
+                        style: Theme.of(context).textTheme.labelMedium!
+                            .copyWith(
+                              color: Theme.of(context)
+                                  .colorScheme
+                                  .onSurfaceVariant,
+                            ),
                       ),
                     ],
                   ),
@@ -457,7 +460,7 @@ class _WorkQueueScreenState extends ConsumerState<WorkQueueScreen> {
                 (entry) => entry.group == group,
               ))
                 Padding(
-                  padding: const EdgeInsets.only(bottom: 12),
+                  padding: const EdgeInsets.only(bottom: FiloSpacing.s12),
                   child: entry.type == WorkQueueItemType.quiz
                       ? StudentQuizRow(
                           key: ValueKey('quiz:${entry.postId}'),
@@ -521,13 +524,13 @@ class _WorkQueueScreenState extends ConsumerState<WorkQueueScreen> {
       onRefresh: _refresh,
       child: ListView(
         physics: const AlwaysScrollableScrollPhysics(),
-        padding: const EdgeInsets.all(24),
+        padding: const EdgeInsets.all(FiloSpacing.screen),
         children: [
           Text(
             widget.student ? 'To-do' : 'To review',
             style: Theme.of(context).textTheme.headlineMedium,
           ),
-          const SizedBox(height: 16),
+          const SizedBox(height: FiloSpacing.s16),
           if (!online) const OfflineBanner(),
           if (queue.failed)
             EmptyState(
@@ -558,7 +561,7 @@ class _WorkQueueScreenState extends ConsumerState<WorkQueueScreen> {
           for (final group in groups)
             if (queue.entries.any((e) => e.group == group)) ...[
               Padding(
-                padding: const EdgeInsets.symmetric(vertical: 16),
+                padding: const EdgeInsets.symmetric(vertical: FiloSpacing.s16),
                 child: Text(
                   group,
                   style: Theme.of(context).textTheme.titleLarge,
@@ -613,18 +616,20 @@ class _WorkQueueScreenState extends ConsumerState<WorkQueueScreen> {
                       ],
                     ),
                     onTap: () => Navigator.of(context).push(
-                      MaterialPageRoute<void>(
-                        builder: (_) => widget.student
-                            ? AssignmentDetailScreen(
+                      widget.student
+                          ? MaterialPageRoute<void>(
+                              builder: (_) => AssignmentDetailScreen(
                                 classId: entry.room.id,
                                 postId: entry.postId,
-                              )
-                            : GradeScreen(
+                              ),
+                            )
+                          : FiloInstantRoute<void>(
+                              builder: (_) => GradeScreen(
                                 classId: entry.room.id,
                                 postId: entry.postId,
                                 studentId: entry.studentId!,
                               ),
-                      ),
+                            ),
                     ),
                   ),
                 ),
@@ -671,6 +676,7 @@ class _WorkQueueScreenState extends ConsumerState<WorkQueueScreen> {
       }
       final confirmed = await showFiloDialog<bool>(
         context: context,
+        animate: false,
         builder: (dialog) => AlertDialog(
           title: Text('Return $count graded ${count == 1 ? 'work' : 'works'}?'),
           content: Text(

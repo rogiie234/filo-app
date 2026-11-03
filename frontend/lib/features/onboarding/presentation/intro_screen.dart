@@ -98,7 +98,12 @@ class _IntroScreenState extends State<IntroScreen> {
           child: Column(
             children: [
               Padding(
-                padding: const EdgeInsets.fromLTRB(24, 12, 16, 0),
+                padding: const EdgeInsets.fromLTRB(
+                  FiloSpacing.screen,
+                  FiloSpacing.s12,
+                  FiloSpacing.s16,
+                  0,
+                ),
                 child: Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
@@ -127,8 +132,8 @@ class _IntroScreenState extends State<IntroScreen> {
                           ),
                           child: Padding(
                             padding: const EdgeInsets.symmetric(
-                              horizontal: 24,
-                              vertical: 24,
+                              horizontal: FiloSpacing.screen,
+                              vertical: FiloSpacing.screen,
                             ),
                             child: Column(
                               mainAxisAlignment: MainAxisAlignment.start,
@@ -141,7 +146,7 @@ class _IntroScreenState extends State<IntroScreen> {
                                   bob: index == _index,
                                   size: entryMascotSize(context),
                                 ),
-                                const SizedBox(height: 20),
+                                const SizedBox(height: FiloSpacing.s20),
                                 ConstrainedBox(
                                   constraints: BoxConstraints(
                                     minHeight:
@@ -155,17 +160,12 @@ class _IntroScreenState extends State<IntroScreen> {
                                       textAlign: TextAlign.center,
                                       style: Theme.of(context)
                                           .textTheme
-                                          .headlineLarge
-                                          ?.copyWith(
-                                            fontSize: 34,
-                                            height: 1.2,
-                                            letterSpacing: -.7,
-                                          ),
+                                          .headlineMedium,
                                     ),
                                     index,
                                   ),
                                 ),
-                                const SizedBox(height: 16),
+                                const SizedBox(height: FiloSpacing.s16),
                                 _textEntrance(
                                   Text(
                                     slide.$2,
@@ -199,19 +199,26 @@ class _IntroScreenState extends State<IntroScreen> {
                     child: Container(
                       width: _index == index ? 36 : 8,
                       height: 8,
-                      margin: const EdgeInsets.symmetric(horizontal: 4),
+                      margin: const EdgeInsets.symmetric(
+                        horizontal: FiloSpacing.s4,
+                      ),
                       decoration: BoxDecoration(
                         color: _index == index
                             ? Theme.of(context).colorScheme.primary
                             : Theme.of(context).colorScheme.onSurfaceVariant,
-                        borderRadius: BorderRadius.circular(8),
+                        borderRadius: BorderRadius.circular(FiloRadii.small),
                       ),
                     ),
                   ),
                 ),
               ),
               Padding(
-                padding: const EdgeInsets.fromLTRB(24, 28, 24, 40),
+                padding: const EdgeInsets.fromLTRB(
+                  FiloSpacing.screen,
+                  FiloSpacing.s32,
+                  FiloSpacing.screen,
+                  FiloSpacing.s40,
+                ),
                 child: FiloButton(
                   label: _index == 2 ? 'Get started' : 'Next',
                   labelVariants: const ['Next', 'Get started'],

@@ -50,14 +50,23 @@ void main() {
           );
           await tester.pump();
           expect(find.byType(Mascot), findsNothing);
+          for (final element in find.byType(Scaffold).evaluate()) {
+            expect(MediaQuery.disableAnimationsOf(element), isTrue);
+          }
           snapshots.add(GradingData(userId: 'student', loaded: true));
           await tester.pump();
           await tester.pump();
           expect(find.byType(Mascot), findsNothing);
+          for (final element in find.byType(Scaffold).evaluate()) {
+            expect(MediaQuery.disableAnimationsOf(element), isTrue);
+          }
           snapshots.addError(StateError('Read failed'));
           await tester.pump();
           await tester.pump();
           expect(find.byType(Mascot), findsNothing);
+          for (final element in find.byType(Scaffold).evaluate()) {
+            expect(MediaQuery.disableAnimationsOf(element), isTrue);
+          }
           expect(tester.takeException(), isNull);
           await tester.pumpWidget(const SizedBox());
           await tester.pump();

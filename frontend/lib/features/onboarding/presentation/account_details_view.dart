@@ -77,8 +77,8 @@ class AccountDetailsView extends StatelessWidget {
       child: Tooltip(
         message: 'Change profile photo',
         child: Material(
-          color: Colors.transparent,
-          borderRadius: BorderRadius.circular(40),
+          color: FiloPaint.transparent,
+          borderRadius: BorderRadius.circular(FiloRadii.pill),
           // Clip only the photo below; the edit badge must keep its full circle.
           clipBehavior: Clip.none,
           child: InkWell(
@@ -120,7 +120,7 @@ class AccountDetailsView extends StatelessWidget {
                             photoBusy &&
                                 !MediaQuery.disableAnimationsOf(context)
                             ? Padding(
-                                padding: EdgeInsets.all(7),
+                                padding: EdgeInsets.all(FiloSpacing.s8),
                                 child: FiloCircularProgressIndicator(
                                   strokeWidth: 2,
                                   color: Theme.of(context)
@@ -154,10 +154,8 @@ class AccountDetailsView extends StatelessWidget {
               Expanded(
                 child: Text(
                   label,
-                  style: TextStyle(
+                  style: Theme.of(context).textTheme.bodySmall!.copyWith(
                     color: Theme.of(context).colorScheme.onSurfaceVariant,
-                    fontSize: 13,
-                    fontWeight: FontWeight.w700,
                   ),
                 ),
               ),
@@ -170,15 +168,11 @@ class AccountDetailsView extends StatelessWidget {
               ),
             ],
           ),
-          const SizedBox(height: 6),
+          const SizedBox(height: FiloSpacing.s8),
           Text(
             value,
-            style: TextStyle(
-              color: Theme.of(context).colorScheme.onSurface,
-              fontSize: 15,
-              fontWeight: FontWeight.w700,
-              height: 1.4,
-            ),
+            style: Theme.of(context).textTheme.labelLarge!
+                .copyWith(color: Theme.of(context).colorScheme.onSurface),
           ),
         ],
       );
@@ -194,7 +188,12 @@ class AccountDetailsView extends StatelessWidget {
               child: SingleChildScrollView(
                 keyboardDismissBehavior:
                     ScrollViewKeyboardDismissBehavior.onDrag,
-                padding: const EdgeInsets.fromLTRB(24, 16, 24, 24),
+                padding: const EdgeInsets.fromLTRB(
+                  FiloSpacing.screen,
+                  FiloSpacing.s16,
+                  FiloSpacing.screen,
+                  FiloSpacing.screen,
+                ),
                 child: Center(
                   child: ConstrainedBox(
                     constraints: const BoxConstraints(maxWidth: 520),
@@ -204,20 +203,20 @@ class AccountDetailsView extends StatelessWidget {
                         Row(
                           children: [
                             _photoPicker(context),
-                            const SizedBox(width: 16),
+                            const SizedBox(width: FiloSpacing.s16),
                             Expanded(
                               child: Semantics(
                                 header: true,
                                 child: Text(
                                   'Your details',
-                                  style: TextStyle(
-                                    fontSize: 28,
-                                    height: 1.2,
-                                    fontWeight: FontWeight.w800,
-                                    color: Theme.of(context)
-                                        .colorScheme
-                                        .onSurface,
-                                  ),
+                                  style: Theme.of(context)
+                                      .textTheme
+                                      .headlineMedium!
+                                      .copyWith(
+                                        color: Theme.of(context)
+                                            .colorScheme
+                                            .onSurface,
+                                      ),
                                 ),
                               ),
                             ),
@@ -234,19 +233,18 @@ class AccountDetailsView extends StatelessWidget {
                             ),
                           ),
                         if (photoError != null) ...[
-                          const SizedBox(height: 8),
+                          const SizedBox(height: FiloSpacing.s8),
                           Semantics(
                             liveRegion: true,
                             child: Text(
                               photoError!,
                               style: TextStyle(
                                 color: Theme.of(context).colorScheme.error,
-                                height: 1.4,
                               ),
                             ),
                           ),
                         ],
-                        const SizedBox(height: 28),
+                        const SizedBox(height: FiloSpacing.s32),
                         TextField(
                           controller: name,
                           enabled: !busy,
@@ -256,7 +254,7 @@ class AccountDetailsView extends StatelessWidget {
                           decoration: const InputDecoration(labelText: 'Name'),
                           onChanged: (_) => onEdited(),
                         ),
-                        const SizedBox(height: 12),
+                        const SizedBox(height: FiloSpacing.s12),
                         TextField(
                           controller: school,
                           enabled: !busy,
@@ -269,7 +267,7 @@ class AccountDetailsView extends StatelessWidget {
                           ),
                           onChanged: (_) => onEdited(),
                         ),
-                        const SizedBox(height: 16),
+                        const SizedBox(height: FiloSpacing.s16),
                         FiloPanel(
                           color: Theme.of(context).colorScheme.surfaceContainer,
                           child: Column(
@@ -277,7 +275,9 @@ class AccountDetailsView extends StatelessWidget {
                             children: [
                               _readOnlyValue(context, 'Email', email),
                               Padding(
-                                padding: EdgeInsets.symmetric(vertical: 14),
+                                padding: EdgeInsets.symmetric(
+                                  vertical: FiloSpacing.s16,
+                                ),
                                 child: Divider(
                                   height: 1,
                                   color: Theme.of(context).colorScheme.outline,
@@ -287,9 +287,14 @@ class AccountDetailsView extends StatelessWidget {
                             ],
                           ),
                         ),
-                        const SizedBox(height: 20),
+                        const SizedBox(height: FiloSpacing.s20),
                         FiloPanel(
-                          padding: const EdgeInsets.fromLTRB(12, 8, 16, 16),
+                          padding: const EdgeInsets.fromLTRB(
+                            FiloSpacing.s12,
+                            FiloSpacing.s8,
+                            FiloSpacing.s16,
+                            FiloSpacing.s16,
+                          ),
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.stretch,
                             children: [
@@ -297,12 +302,18 @@ class AccountDetailsView extends StatelessWidget {
                                 color: Theme.of(context)
                                     .colorScheme
                                     .surfaceContainer,
-                                borderRadius: BorderRadius.circular(16),
+                                borderRadius: BorderRadius.circular(
+                                  FiloRadii.medium,
+                                ),
                                 child: InkWell(
                                   onTap: onPrivacy,
-                                  borderRadius: BorderRadius.circular(16),
+                                  borderRadius: BorderRadius.circular(
+                                    FiloRadii.medium,
+                                  ),
                                   child: Padding(
-                                    padding: const EdgeInsets.all(12),
+                                    padding: const EdgeInsets.all(
+                                      FiloSpacing.s12,
+                                    ),
                                     child: Row(
                                       children: [
                                         ExcludeSemantics(
@@ -314,24 +325,24 @@ class AccountDetailsView extends StatelessWidget {
                                             size: 24,
                                           ),
                                         ),
-                                        const SizedBox(width: 12),
+                                        const SizedBox(width: FiloSpacing.s12),
                                         Expanded(
                                           child: Semantics(
                                             hint: 'Opens the Privacy Notice',
                                             child: Text(
                                               'Read Privacy Notice',
-                                              style: TextStyle(
-                                                fontSize: 15,
-                                                fontWeight: FontWeight.w800,
-                                                color: Theme.of(context)
-                                                    .colorScheme
-                                                    .primary,
-                                                height: 1.4,
-                                              ),
+                                              style: Theme.of(context)
+                                                  .textTheme
+                                                  .labelLarge!
+                                                  .copyWith(
+                                                    color: Theme.of(context)
+                                                        .colorScheme
+                                                        .primary,
+                                                  ),
                                             ),
                                           ),
                                         ),
-                                        const SizedBox(width: 8),
+                                        const SizedBox(width: FiloSpacing.s8),
                                         ExcludeSemantics(
                                           child: FiloIcon(
                                             FiloIcons.chevronRight,
@@ -346,7 +357,7 @@ class AccountDetailsView extends StatelessWidget {
                                   ),
                                 ),
                               ),
-                              const SizedBox(height: 8),
+                              const SizedBox(height: FiloSpacing.s8),
                               CheckboxListTile(
                                 contentPadding: EdgeInsets.zero,
                                 controlAffinity:
@@ -358,25 +369,24 @@ class AccountDetailsView extends StatelessWidget {
                                           onConsentChanged(value ?? false),
                                 title: Text(
                                   'I have read and agree to the Privacy Notice. I understand that using AI features sends my requests and relevant text to Google for processing.',
-                                  style: TextStyle(
-                                    fontSize: 14,
-                                    height: 1.5,
-                                    color: Theme.of(context)
-                                        .colorScheme
-                                        .onSurface,
-                                  ),
+                                  style: Theme.of(context).textTheme.bodyMedium!
+                                      .copyWith(
+                                        color: Theme.of(context)
+                                            .colorScheme
+                                            .onSurface,
+                                      ),
                                 ),
                               ),
                             ],
                           ),
                         ),
                         if (error != null) ...[
-                          const SizedBox(height: 16),
+                          const SizedBox(height: FiloSpacing.s16),
                           Semantics(
                             liveRegion: true,
                             child: FiloPanel(
                               color: FiloThemeTokens.of(context).warningTint,
-                              padding: const EdgeInsets.all(16),
+                              padding: const EdgeInsets.all(FiloSpacing.s16),
                               child: Row(
                                 crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [
@@ -385,7 +395,7 @@ class AccountDetailsView extends StatelessWidget {
                                     size: 20,
                                     color: FiloThemeTokens.of(context).warning,
                                   ),
-                                  const SizedBox(width: 10),
+                                  const SizedBox(width: FiloSpacing.s12),
                                   Expanded(
                                     child: Text(
                                       error!,
@@ -393,7 +403,6 @@ class AccountDetailsView extends StatelessWidget {
                                         color: Theme.of(context)
                                             .colorScheme
                                             .onSurface,
-                                        height: 1.4,
                                       ),
                                     ),
                                   ),

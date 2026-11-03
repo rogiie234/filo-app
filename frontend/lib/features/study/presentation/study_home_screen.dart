@@ -67,7 +67,7 @@ class _StudyHomeScreenState extends ConsumerState<StudyHomeScreen> {
       hasItems: notebooks.asData?.value.isNotEmpty ?? false,
       ready: notebooks.hasValue && !notebooks.isLoading && !notebooks.hasError,
       child: ListView(
-        padding: const EdgeInsets.all(24),
+        padding: const EdgeInsets.all(FiloSpacing.screen),
         children: [
           const StudyOfflineBanner(),
           Row(
@@ -90,7 +90,7 @@ class _StudyHomeScreenState extends ConsumerState<StudyHomeScreen> {
               ),
             ],
           ),
-          const SizedBox(height: 16),
+          const SizedBox(height: FiloSpacing.s16),
           FiloButton(
             label: 'New notebook',
             icon: FiloIcons.add,
@@ -102,7 +102,7 @@ class _StudyHomeScreenState extends ConsumerState<StudyHomeScreen> {
                 ? null
                 : _create,
           ),
-          const SizedBox(height: 24),
+          const SizedBox(height: FiloSpacing.screen),
           studyAsync(
             notebooks,
             (items) => Column(
@@ -138,9 +138,12 @@ class _NotebookTile extends ConsumerWidget {
     return FiloCardTap(
       enabled: true,
       child: Padding(
-        padding: const EdgeInsets.only(bottom: 12),
+        padding: const EdgeInsets.only(bottom: FiloSpacing.s12),
         child: FiloPanel(
-          padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 4),
+          padding: const EdgeInsets.symmetric(
+            vertical: FiloSpacing.s8,
+            horizontal: FiloSpacing.s4,
+          ),
           child: ListTile(
             leading: const FiloIcon(FiloIcons.folder),
             title: Text(notebook.name),

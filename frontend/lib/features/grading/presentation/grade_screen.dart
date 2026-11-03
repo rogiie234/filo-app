@@ -1,13 +1,10 @@
-import '../../../core/widgets/filo_validation.dart';
-import '../../../core/theme/filo_motion.dart';
-import '../../../core/feedback/filo_haptics.dart';
+import '../../../core/widgets/filo_widgets.dart';
 
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:url_launcher/url_launcher.dart';
 
-import '../../../core/widgets/filo_icon.dart';
 import '../../../core/connectivity/connectivity_provider.dart';
 import '../../../core/supabase/supabase_provider.dart';
 import '../../classes/application/class_providers.dart';
@@ -65,25 +62,15 @@ class _GradeScreenState extends ConsumerState<GradeScreen> {
     }
   }
 
-  Future<bool> _confirm(String title, String body) async =>
-      await showFiloDialog<bool>(
-        context: context,
-        builder: (context) => AlertDialog(
-          title: Text(title),
-          content: Text(body),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(context, false),
-              child: const Text('Cancel'),
-            ),
-            FilledButton(
-              onPressed: () => Navigator.pop(context, true),
-              child: Text(title.startsWith('Return') ? 'Return' : 'Save'),
-            ),
-          ],
-        ),
-      ) ==
-      true;
+  Future<bool> _confirm(String title, String body) => showFiloConfirmation(
+    context,
+    animate: false,
+    title: title,
+    message: body,
+    confirmLabel: title.startsWith('Return') ? 'Return' : 'Save',
+    cancelLabel: 'Cancel',
+    cancelIsPrimary: true,
+  );
   Future<void> _refresh() async {
     if (!_online) {
       return;
@@ -201,25 +188,37 @@ class _GradeScreenState extends ConsumerState<GradeScreen> {
     }
     final choice = await showFiloDialog<String>(
       context: context,
+      animate: false,
       builder: (context) => AlertDialog(
+        scrollable: true,
         title: const Text('Save changes before leaving?'),
         content: const Text(
           'Save your changes or discard them before opening another student.',
         ),
         actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context, 'cancel'),
-            child: const Text('Cancel'),
-          ),
-          TextButton(
-            onPressed: () => Navigator.pop(context, 'discard'),
-            child: const Text('Discard changes'),
-          ),
-          FilledButton(
-            onPressed: _online && !_archived && !_reconcile
-                ? () => Navigator.pop(context, 'save')
-                : null,
-            child: const Text('Save'),
+          Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              FiloButton(
+                label: 'Cancel',
+                onPressed: () => Navigator.pop(context, 'cancel'),
+              ),
+              const SizedBox(height: FiloSpacing.s8),
+              FiloButton(
+                label: 'Discard changes',
+                text: true,
+                onPressed: () => Navigator.pop(context, 'discard'),
+              ),
+              const SizedBox(height: FiloSpacing.s8),
+              FiloButton(
+                label: 'Save',
+                secondary: true,
+                onPressed: _online && !_archived && !_reconcile
+                    ? () => Navigator.pop(context, 'save')
+                    : null,
+              ),
+            ],
           ),
         ],
       ),
@@ -336,252 +335,263 @@ class _GradeScreenState extends ConsumerState<GradeScreen> {
           });
         }
       },
-      child: Scaffold(
-        appBar: AppBar(title: const Text('Grade work')),
-        body: state.when(
-          loading: () => const GradingSkeleton(),
-          error: (_, _) => Center(
-            child: TextButton(
-              onPressed: _refresh,
-              child: const Text("Couldn't load grades. Try again."),
+      child: FiloMotionScope(
+        enabled: false,
+        child: Scaffold(
+          appBar: AppBar(title: const Text('Grade work')),
+          body: state.when(
+            loading: () => const GradingSkeleton(),
+            error: (_, _) => Center(
+              child: TextButton(
+                onPressed: _refresh,
+                child: const Text("Couldn't load grades. Try again."),
+              ),
             ),
-          ),
-          data: (data) {
-            if (!data.loaded) {
-              return sync.isLoading
-                  ? const GradingSkeleton()
-                  : Center(
-                      child: TextButton(
-                        onPressed: _refresh,
-                        child: Text(
-                          online
-                              ? "Couldn't load grades. Try again."
-                              : 'Connect to the internet to load grades',
+            data: (data) {
+              if (!data.loaded) {
+                return sync.isLoading
+                    ? const GradingSkeleton()
+                    : Center(
+                        child: TextButton(
+                          onPressed: _refresh,
+                          child: Text(
+                            online
+                                ? "Couldn't load grades. Try again."
+                                : 'Connect to the internet to load grades',
+                          ),
                         ),
+                      );
+              }
+              final assignment = data.assignment(widget.postId);
+              if (assignment == null) {
+                return Center(
+                  child: Text(
+                    online
+                        ? 'This item is no longer available.'
+                        : 'Connect to the internet to load grades',
+                  ),
+                );
+              }
+              final matches = data.members.where(
+                (m) => m['student_id'] == _student,
+              );
+              final member = matches.isEmpty
+                  ? <String, dynamic>{}
+                  : matches.first;
+              final submission = data.submission(widget.postId, _student);
+              final grade = submission == null
+                  ? null
+                  : data.grade(submission['id'].toString());
+              if (_loaded != _student) {
+                _loaded = _student;
+                _score.text = grade?['score']?.toString() ?? '';
+                _feedback.text = grade?['feedback']?.toString() ?? '';
+                _originalScore = _score.text;
+                _originalFeedback = _feedback.text;
+              }
+              final status = data.status(widget.postId, _student);
+              final missing = submission == null && status == 'Missing';
+              final writable =
+                  online &&
+                  !_archived &&
+                  !_busy &&
+                  !_reconcile &&
+                  (submission != null || missing);
+              final students =
+                  data.members.where((m) {
+                      final s = data.submission(
+                        widget.postId,
+                        m['student_id'].toString(),
+                      );
+                      return m['status'] == 'active' &&
+                          s?['submitted_at'] != null;
+                    }).toList()
+                    ..sort((a, b) => gradingName(a).compareTo(gradingName(b)));
+              final index = students.indexWhere(
+                (m) => m['student_id'] == _student,
+              );
+              final items = submission?['items'] as List? ?? [];
+              final max = (assignment['points'] as num?)?.toInt() ?? 0;
+              return RefreshIndicator(
+                onRefresh: _refresh,
+                child: Form(
+                  key: _form,
+                  child: ListView(
+                    physics: const AlwaysScrollableScrollPhysics(),
+                    padding: const EdgeInsets.all(FiloSpacing.screen),
+                    children: [
+                      if (!online) const OfflineBanner(),
+                      if (sync.hasError)
+                        TextButton(
+                          onPressed: _refresh,
+                          child: const Text("Couldn't load grades. Try again."),
+                        ),
+                      if (_archived) const Text('This class is archived.'),
+                      Text(
+                        gradingName(member),
+                        style: Theme.of(context).textTheme.headlineSmall,
                       ),
-                    );
-            }
-            final assignment = data.assignment(widget.postId);
-            if (assignment == null) {
-              return Center(
-                child: Text(
-                  online
-                      ? 'This item is no longer available.'
-                      : 'Connect to the internet to load grades',
+                      Text('${assignment['title']}'),
+                      Align(
+                        alignment: Alignment.centerLeft,
+                        child: GradeStatusChip(status),
+                      ),
+                      if (submission?['submitted_at'] != null)
+                        Text(
+                          'Turned in ${gradingDate(submission!['submitted_at'])}',
+                        ),
+                      if (submission?['is_late'] == true)
+                        Text(
+                          'Late',
+                          style: Theme.of(context).textTheme.labelMedium!,
+                        ),
+                      if (submission == null ||
+                          submission['submitted_at'] == null)
+                        const Padding(
+                          padding: EdgeInsets.symmetric(
+                            vertical: FiloSpacing.s16,
+                          ),
+                          child: Text('No work turned in.'),
+                        ),
+                      ...items.map((raw) {
+                        final item = Map<String, dynamic>.from(raw as Map);
+                        if (item['kind'] == 'text') {
+                          return Padding(
+                            padding: const EdgeInsets.all(FiloSpacing.s12),
+                            child: SelectableText(
+                              '${item['text_content'] ?? ''}',
+                            ),
+                          );
+                        }
+                        final file = item['kind'] == 'file';
+                        return ListTile(
+                          leading: FiloIcon(
+                            file
+                                ? ('${item['mime_type']}'.startsWith('image/')
+                                      ? FiloIcons.image
+                                      : '${item['mime_type']}' ==
+                                            'application/pdf'
+                                      ? FiloIcons.pdf
+                                      : FiloIcons.file)
+                                : FiloIcons.link,
+                          ),
+                          title: Text(
+                            '${item['name'] ?? item['url'] ?? 'File'}',
+                          ),
+                          subtitle: Text(
+                            file
+                                ? '${item['size_bytes'] ?? 0} bytes · ${item['mime_type'] ?? 'File'}'
+                                : '${item['url']}',
+                          ),
+                          onTap: () => _open(item),
+                        );
+                      }),
+                      if ((submission?['comment'] ?? '').toString().isNotEmpty)
+                        ListTile(
+                          title: const Text('Private comment'),
+                          subtitle: Text('${submission!['comment']}'),
+                        ),
+                      const SizedBox(height: FiloSpacing.s16),
+                      TextFormField(
+                        controller: _score,
+                        enabled: writable,
+                        keyboardType: const TextInputType.numberWithOptions(
+                          signed: true,
+                        ),
+                        decoration: InputDecoration(
+                          labelText: 'Score',
+                          suffixText: '/ $max',
+                        ),
+                        onChanged: (_) => setState(() {}),
+                        validator: (v) {
+                          final score = int.tryParse(v ?? '');
+                          if (score == null ||
+                              !RegExp(r'^-?[0-9]+$').hasMatch(v ?? '')) {
+                            return 'Enter a whole-number score.';
+                          }
+                          if (score < 0 || score > max) {
+                            return 'Score must be between 0 and $max';
+                          }
+                          return null;
+                        },
+                      ),
+                      const SizedBox(height: FiloSpacing.s16),
+                      TextFormField(
+                        controller: _feedback,
+                        enabled: writable,
+                        maxLength: 2000,
+                        minLines: 3,
+                        maxLines: 6,
+                        decoration: const InputDecoration(
+                          labelText: 'Feedback',
+                        ),
+                        onChanged: (_) => setState(() {}),
+                      ),
+                      if (!online)
+                        const Text('Connect to the internet to save grades'),
+                      if (_error != null)
+                        ListTile(
+                          title: Text(_error!),
+                          trailing: TextButton(
+                            onPressed: _busy ? null : _refresh,
+                            child: const Text('Refresh'),
+                          ),
+                        ),
+                      FilledButton(
+                        onPressed: writable ? _save : null,
+                        child: Text(_busy ? 'Saving…' : 'Save'),
+                      ),
+                      OutlinedButton(
+                        onPressed:
+                            writable &&
+                                grade != null &&
+                                grade['returned_at'] == null &&
+                                !_dirty
+                            ? _returnGrade
+                            : null,
+                        child: const Text('Return'),
+                      ),
+                      if (!online)
+                        const Text('Connect to the internet to return grades'),
+                      if (_dirty) const Text('Unsaved changes'),
+                      const SizedBox(height: FiloSpacing.s16),
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          TextButton(
+                            onPressed: !_busy && index > 0
+                                ? () => _move(
+                                    students[index - 1]['student_id']
+                                        .toString(),
+                                  )
+                                : null,
+                            child: const Text('Previous'),
+                          ),
+                          Text(
+                            index < 0
+                                ? '${students.length} turned in'
+                                : '${index + 1} of ${students.length}',
+                          ),
+                          TextButton(
+                            onPressed:
+                                !_busy &&
+                                    index >= 0 &&
+                                    index < students.length - 1
+                                ? () => _move(
+                                    students[index + 1]['student_id']
+                                        .toString(),
+                                  )
+                                : null,
+                            child: const Text('Next'),
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
                 ),
               );
-            }
-            final matches = data.members.where(
-              (m) => m['student_id'] == _student,
-            );
-            final member = matches.isEmpty
-                ? <String, dynamic>{}
-                : matches.first;
-            final submission = data.submission(widget.postId, _student);
-            final grade = submission == null
-                ? null
-                : data.grade(submission['id'].toString());
-            if (_loaded != _student) {
-              _loaded = _student;
-              _score.text = grade?['score']?.toString() ?? '';
-              _feedback.text = grade?['feedback']?.toString() ?? '';
-              _originalScore = _score.text;
-              _originalFeedback = _feedback.text;
-            }
-            final status = data.status(widget.postId, _student);
-            final missing = submission == null && status == 'Missing';
-            final writable =
-                online &&
-                !_archived &&
-                !_busy &&
-                !_reconcile &&
-                (submission != null || missing);
-            final students =
-                data.members.where((m) {
-                  final s = data.submission(
-                    widget.postId,
-                    m['student_id'].toString(),
-                  );
-                  return m['status'] == 'active' && s?['submitted_at'] != null;
-                }).toList()..sort(
-                  (a, b) => gradingName(a).compareTo(gradingName(b)),
-                );
-            final index = students.indexWhere(
-              (m) => m['student_id'] == _student,
-            );
-            final items = submission?['items'] as List? ?? [];
-            final max = (assignment['points'] as num?)?.toInt() ?? 0;
-            return RefreshIndicator(
-              onRefresh: _refresh,
-              child: Form(
-                key: _form,
-                child: ListView(
-                  physics: const AlwaysScrollableScrollPhysics(),
-                  padding: const EdgeInsets.all(20),
-                  children: [
-                    if (!online) const OfflineBanner(),
-                    if (sync.hasError)
-                      TextButton(
-                        onPressed: _refresh,
-                        child: const Text("Couldn't load grades. Try again."),
-                      ),
-                    if (_archived) const Text('This class is archived.'),
-                    Text(
-                      gradingName(member),
-                      style: Theme.of(context).textTheme.headlineSmall,
-                    ),
-                    Text('${assignment['title']}'),
-                    Align(
-                      alignment: Alignment.centerLeft,
-                      child: GradeStatusChip(status),
-                    ),
-                    if (submission?['submitted_at'] != null)
-                      Text(
-                        'Turned in ${gradingDate(submission!['submitted_at'])}',
-                      ),
-                    if (submission?['is_late'] == true)
-                      const Text(
-                        'Late',
-                        style: TextStyle(fontWeight: FontWeight.bold),
-                      ),
-                    if (submission == null ||
-                        submission['submitted_at'] == null)
-                      const Padding(
-                        padding: EdgeInsets.symmetric(vertical: 16),
-                        child: Text('No work turned in.'),
-                      ),
-                    ...items.map((raw) {
-                      final item = Map<String, dynamic>.from(raw as Map);
-                      if (item['kind'] == 'text') {
-                        return Padding(
-                          padding: const EdgeInsets.all(12),
-                          child: SelectableText(
-                            '${item['text_content'] ?? ''}',
-                          ),
-                        );
-                      }
-                      final file = item['kind'] == 'file';
-                      return ListTile(
-                        leading: FiloIcon(
-                          file
-                              ? ('${item['mime_type']}'.startsWith('image/')
-                                    ? FiloIcons.image
-                                    : '${item['mime_type']}' ==
-                                          'application/pdf'
-                                    ? FiloIcons.pdf
-                                    : FiloIcons.file)
-                              : FiloIcons.link,
-                        ),
-                        title: Text('${item['name'] ?? item['url'] ?? 'File'}'),
-                        subtitle: Text(
-                          file
-                              ? '${item['size_bytes'] ?? 0} bytes · ${item['mime_type'] ?? 'File'}'
-                              : '${item['url']}',
-                        ),
-                        onTap: () => _open(item),
-                      );
-                    }),
-                    if ((submission?['comment'] ?? '').toString().isNotEmpty)
-                      ListTile(
-                        title: const Text('Private comment'),
-                        subtitle: Text('${submission!['comment']}'),
-                      ),
-                    const SizedBox(height: 16),
-                    TextFormField(
-                      controller: _score,
-                      enabled: writable,
-                      keyboardType: const TextInputType.numberWithOptions(
-                        signed: true,
-                      ),
-                      decoration: InputDecoration(
-                        labelText: 'Score',
-                        suffixText: '/ $max',
-                      ),
-                      onChanged: (_) => setState(() {}),
-                      validator: (v) {
-                        final score = int.tryParse(v ?? '');
-                        if (score == null ||
-                            !RegExp(r'^-?[0-9]+$').hasMatch(v ?? '')) {
-                          return 'Enter a whole-number score.';
-                        }
-                        if (score < 0 || score > max) {
-                          return 'Score must be between 0 and $max';
-                        }
-                        return null;
-                      },
-                    ),
-                    const SizedBox(height: 16),
-                    TextFormField(
-                      controller: _feedback,
-                      enabled: writable,
-                      maxLength: 2000,
-                      minLines: 3,
-                      maxLines: 6,
-                      decoration: const InputDecoration(labelText: 'Feedback'),
-                      onChanged: (_) => setState(() {}),
-                    ),
-                    if (!online)
-                      const Text('Connect to the internet to save grades'),
-                    if (_error != null)
-                      ListTile(
-                        title: Text(_error!),
-                        trailing: TextButton(
-                          onPressed: _busy ? null : _refresh,
-                          child: const Text('Refresh'),
-                        ),
-                      ),
-                    FilledButton(
-                      onPressed: writable ? _save : null,
-                      child: Text(_busy ? 'Saving…' : 'Save'),
-                    ),
-                    OutlinedButton(
-                      onPressed:
-                          writable &&
-                              grade != null &&
-                              grade['returned_at'] == null &&
-                              !_dirty
-                          ? _returnGrade
-                          : null,
-                      child: const Text('Return'),
-                    ),
-                    if (!online)
-                      const Text('Connect to the internet to return grades'),
-                    if (_dirty) const Text('Unsaved changes'),
-                    const SizedBox(height: 16),
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        TextButton(
-                          onPressed: !_busy && index > 0
-                              ? () => _move(
-                                  students[index - 1]['student_id'].toString(),
-                                )
-                              : null,
-                          child: const Text('Previous'),
-                        ),
-                        Text(
-                          index < 0
-                              ? '${students.length} turned in'
-                              : '${index + 1} of ${students.length}',
-                        ),
-                        TextButton(
-                          onPressed:
-                              !_busy &&
-                                  index >= 0 &&
-                                  index < students.length - 1
-                              ? () => _move(
-                                  students[index + 1]['student_id'].toString(),
-                                )
-                              : null,
-                          child: const Text('Next'),
-                        ),
-                      ],
-                    ),
-                  ],
-                ),
-              ),
-            );
-          },
+            },
+          ),
         ),
       ),
     );

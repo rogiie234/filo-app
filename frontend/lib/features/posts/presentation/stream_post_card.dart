@@ -60,38 +60,35 @@ class StreamPostCard extends StatelessWidget {
       shadowColor: Theme.of(context).colorScheme.onSurface
           .withValues(alpha: .08),
       shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(28),
+        borderRadius: BorderRadius.circular(FiloRadii.large),
         side: BorderSide(color: Theme.of(context).colorScheme.outline),
       ),
       clipBehavior: Clip.antiAlias,
       child: InkWell(
         onTap: onOpen,
         child: Padding(
-          padding: const EdgeInsets.all(20),
+          padding: const EdgeInsets.all(FiloSpacing.s20),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Row(
                 children: [
                   PostTypeIcon(type: post.postType),
-                  const SizedBox(width: 12),
+                  const SizedBox(width: FiloSpacing.s12),
                   Expanded(
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Text(
-                          type,
-                          style: const TextStyle(fontWeight: FontWeight.w800),
-                        ),
+                        Text(type, style: FiloTypography.strongLabel(context)),
                         if (post.createdAt != null)
                           Text(
                             _date(context, post.createdAt!),
-                            style: TextStyle(
-                              color: Theme.of(context)
-                                  .colorScheme
-                                  .onSurfaceVariant,
-                              fontSize: 12,
-                            ),
+                            style: Theme.of(context).textTheme.bodySmall!
+                                .copyWith(
+                                  color: Theme.of(context)
+                                      .colorScheme
+                                      .onSurfaceVariant,
+                                ),
                           ),
                       ],
                     ),
@@ -134,7 +131,7 @@ class StreamPostCard extends StatelessWidget {
                     ),
                 ],
               ),
-              const SizedBox(height: 16),
+              const SizedBox(height: FiloSpacing.s16),
               Text(
                 post.title,
                 style: Theme.of(context).textTheme.titleMedium,
@@ -142,14 +139,14 @@ class StreamPostCard extends StatelessWidget {
                 overflow: TextOverflow.ellipsis,
               ),
               if (post.message.isNotEmpty) ...[
-                const SizedBox(height: 8),
+                const SizedBox(height: FiloSpacing.s8),
                 Text(
                   post.message,
                   maxLines: 3,
                   overflow: TextOverflow.ellipsis,
                 ),
               ],
-              const SizedBox(height: 16),
+              const SizedBox(height: FiloSpacing.s16),
               Row(
                 children: [
                   FiloIcon(
@@ -157,7 +154,7 @@ class StreamPostCard extends StatelessWidget {
                     size: 18,
                     color: Theme.of(context).colorScheme.onSurfaceVariant,
                   ),
-                  const SizedBox(width: 6),
+                  const SizedBox(width: FiloSpacing.s8),
                   Text(
                     '${post.attachments.length} ${post.attachments.length == 1 ? 'attachment' : 'attachments'}',
                     style: TextStyle(
@@ -168,12 +165,12 @@ class StreamPostCard extends StatelessWidget {
               ),
               if (post.points != null) Text('${post.points} points'),
               if (post.assignment) ...[
-                const SizedBox(height: 12),
+                const SizedBox(height: FiloSpacing.s12),
                 Row(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     const FiloIcon(FiloIcons.clock, size: 18),
-                    const SizedBox(width: 6),
+                    const SizedBox(width: FiloSpacing.s8),
                     Expanded(child: Text(streamDueLabel(context, post))),
                   ],
                 ),
@@ -228,7 +225,7 @@ class _StreamPostSkeletonState extends State<StreamPostSkeleton>
           children: [
             for (var i = 0; i < 3; i++)
               Padding(
-                padding: const EdgeInsets.only(bottom: 16),
+                padding: const EdgeInsets.only(bottom: FiloSpacing.s16),
                 child: FiloPanel(
                   color: Theme.of(context).colorScheme.surfaceContainer,
                   child: Column(
@@ -237,15 +234,19 @@ class _StreamPostSkeletonState extends State<StreamPostSkeleton>
                       CircleAvatar(
                         backgroundColor: FiloThemeTokens.of(context).mint,
                       ),
-                      const SizedBox(height: 16),
+                      const SizedBox(height: FiloSpacing.s16),
                       for (final width in [180.0, double.infinity, 120.0])
                         Container(
                           height: 16,
                           width: width,
-                          margin: const EdgeInsets.only(bottom: 12),
+                          margin: const EdgeInsets.only(
+                            bottom: FiloSpacing.s12,
+                          ),
                           decoration: BoxDecoration(
                             color: FiloThemeTokens.of(context).mint,
-                            borderRadius: BorderRadius.circular(8),
+                            borderRadius: BorderRadius.circular(
+                              FiloRadii.small,
+                            ),
                           ),
                         ),
                     ],

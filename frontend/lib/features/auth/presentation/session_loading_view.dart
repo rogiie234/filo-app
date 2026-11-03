@@ -19,7 +19,12 @@ class SessionLoadingView extends StatelessWidget {
   Widget build(BuildContext context) => SafeArea(
     child: LayoutBuilder(
       builder: (context, viewport) => SingleChildScrollView(
-        padding: const EdgeInsets.fromLTRB(24, 24, 24, 32),
+        padding: const EdgeInsets.fromLTRB(
+          FiloSpacing.screen,
+          FiloSpacing.screen,
+          FiloSpacing.screen,
+          FiloSpacing.s32,
+        ),
         child: ConstrainedBox(
           constraints: BoxConstraints(
             minHeight: (viewport.maxHeight - 56)
@@ -38,26 +43,24 @@ class SessionLoadingView extends StatelessWidget {
                         .clamp(156.0, 240.0)
                         .toDouble(),
                   ),
-                  const SizedBox(height: 24),
+                  const SizedBox(height: FiloSpacing.screen),
                   Text(
                     'One moment\u2026',
                     textAlign: TextAlign.center,
                     style: Theme.of(context).textTheme.headlineMedium,
                   ),
-                  const SizedBox(height: 12),
+                  const SizedBox(height: FiloSpacing.s12),
                   Text(
                     statusText,
                     textAlign: TextAlign.center,
-                    style: TextStyle(
+                    style: Theme.of(context).textTheme.bodyLarge!.copyWith(
                       color: Theme.of(context).colorScheme.onSurfaceVariant,
-                      fontSize: 16,
-                      height: 1.5,
                     ),
                   ),
-                  const SizedBox(height: 28),
+                  const SizedBox(height: FiloSpacing.s32),
                   const _LoadingDots(),
                   if (message != null) ...[
-                    const SizedBox(height: 16),
+                    const SizedBox(height: FiloSpacing.s16),
                     Text(
                       message!,
                       textAlign: TextAlign.center,
@@ -136,7 +139,9 @@ class _LoadingDotsState extends State<_LoadingDots>
                     child: Container(
                       width: 8,
                       height: 8,
-                      margin: const EdgeInsets.symmetric(horizontal: 5),
+                      margin: const EdgeInsets.symmetric(
+                        horizontal: FiloSpacing.s4,
+                      ),
                       decoration: BoxDecoration(
                         shape: BoxShape.circle,
                         color: Theme.of(context).colorScheme.primary.withValues(

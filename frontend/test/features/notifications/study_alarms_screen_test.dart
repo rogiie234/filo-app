@@ -162,6 +162,7 @@ void main() {
         200,
         scrollable: find.byType(Scrollable).first,
       );
+      await tester.pumpAndSettle();
       await tester.tap(find.text('Save'));
       await tester.pumpAndSettle();
       await tester.scrollUntilVisible(
@@ -169,6 +170,7 @@ void main() {
         -200,
         scrollable: find.byType(Scrollable).first,
       );
+      await tester.pumpAndSettle();
       expect(find.text('Enter a subject.'), findsOneWidget);
       await tester.enterText(
         find.byType(TextFormField),
@@ -179,11 +181,13 @@ void main() {
         200,
         scrollable: find.byType(Scrollable).first,
       );
+      await tester.pumpAndSettle();
       await tester.tap(find.text('Save'));
       await tester.pumpAndSettle();
       expect(await repo.readAlarms(), hasLength(1));
       expect(find.byType(Switch), findsOneWidget);
       await tester.ensureVisible(find.byType(Switch));
+      await tester.pumpAndSettle();
       await tester.tap(find.byType(Switch));
       await tester.pumpAndSettle();
       await tester.pump(const Duration(milliseconds: 100));
@@ -195,6 +199,7 @@ void main() {
         200,
         scrollable: find.byType(Scrollable).first,
       );
+      await tester.pumpAndSettle();
       await tester.tap(find.text('Delete alarm'));
       await tester.pumpAndSettle();
       await tester.tap(find.text('Delete'));

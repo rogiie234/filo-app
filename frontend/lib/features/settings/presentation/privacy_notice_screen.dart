@@ -7,7 +7,7 @@ class PrivacyNoticeScreen extends StatelessWidget {
   const PrivacyNoticeScreen({super.key});
 
   Widget _section(BuildContext context, String heading, String body) => Padding(
-    padding: const EdgeInsets.only(bottom: 20),
+    padding: const EdgeInsets.only(bottom: FiloSpacing.s20),
     child: FiloPanel(
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -16,7 +16,7 @@ class PrivacyNoticeScreen extends StatelessWidget {
             header: true,
             child: Text(heading, style: Theme.of(context).textTheme.titleLarge),
           ),
-          const SizedBox(height: 12),
+          const SizedBox(height: FiloSpacing.s12),
           Text(body),
         ],
       ),
@@ -28,7 +28,7 @@ class PrivacyNoticeScreen extends StatelessWidget {
     appBar: AppBar(title: const Text('Privacy notice')),
     body: SafeArea(
       child: ListView(
-        padding: const EdgeInsets.all(24),
+        padding: const EdgeInsets.all(FiloSpacing.screen),
         children: [
           _section(context, 'Summary', privacySummary),
           for (final section in privacyNoticeSections)

@@ -77,7 +77,7 @@ final appRouterProvider = Provider<GoRouter>((ref) {
     errorBuilder: (context, state) => Scaffold(
       appBar: AppBar(title: const Text('Page unavailable')),
       body: Padding(
-        padding: const EdgeInsets.all(24),
+        padding: const EdgeInsets.all(FiloSpacing.screen),
         child: Center(
           child: FiloButton(
             label: 'Back to classes',

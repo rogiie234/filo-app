@@ -1023,7 +1023,7 @@ class _AssessmentFormScreenState extends ConsumerState<AssessmentFormScreen> {
   }
 
   Widget _hint(String text) => Padding(
-    padding: const EdgeInsets.only(top: 8),
+    padding: const EdgeInsets.only(top: FiloSpacing.s8),
     child: Text(text, style: Theme.of(context).textTheme.bodySmall),
   );
 
@@ -1048,19 +1048,21 @@ class _AssessmentFormScreenState extends ConsumerState<AssessmentFormScreen> {
       data: Theme.of(context).copyWith(
         inputDecorationTheme: inputTheme.copyWith(
           contentPadding: const EdgeInsets.symmetric(
-            horizontal: 16,
-            vertical: 14,
+            horizontal: FiloSpacing.s16,
+            vertical: FiloSpacing.s16,
           ),
-          border: OutlineInputBorder(borderRadius: BorderRadius.circular(14)),
+          border: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(FiloRadii.large),
+          ),
           enabledBorder: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(14),
+            borderRadius: BorderRadius.circular(FiloRadii.large),
             borderSide: BorderSide(
               color: FiloThemeTokens.of(context).controlBorder,
               width: 1.5,
             ),
           ),
           focusedBorder: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(14),
+            borderRadius: BorderRadius.circular(FiloRadii.large),
             borderSide: BorderSide(
               color: Theme.of(context).colorScheme.primary,
               width: 2,
@@ -1109,7 +1111,12 @@ class _AssessmentFormScreenState extends ConsumerState<AssessmentFormScreen> {
                     children: [
                       if (draft != null)
                         Padding(
-                          padding: const EdgeInsets.fromLTRB(24, 12, 24, 8),
+                          padding: const EdgeInsets.fromLTRB(
+                            FiloSpacing.screen,
+                            FiloSpacing.s12,
+                            FiloSpacing.screen,
+                            FiloSpacing.s8,
+                          ),
                           child: Row(
                             children: [
                               Expanded(
@@ -1122,7 +1129,7 @@ class _AssessmentFormScreenState extends ConsumerState<AssessmentFormScreen> {
                                           .textTheme
                                           .titleLarge,
                                     ),
-                                    const SizedBox(height: 4),
+                                    const SizedBox(height: FiloSpacing.s4),
                                     Text(
                                       'Step ${_step + 1} of 3',
                                       style: Theme.of(context)
@@ -1138,7 +1145,7 @@ class _AssessmentFormScreenState extends ConsumerState<AssessmentFormScreen> {
                                 ),
                               ),
                               if (draft.id != null) ...[
-                                const SizedBox(width: 12),
+                                const SizedBox(width: FiloSpacing.s12),
                                 Chip(
                                   label: Text(
                                     quizDisplayStatus(
@@ -1171,10 +1178,10 @@ class _AssessmentFormScreenState extends ConsumerState<AssessmentFormScreen> {
                                   slivers: [
                                     SliverPadding(
                                       padding: const EdgeInsets.fromLTRB(
-                                        24,
-                                        16,
-                                        24,
-                                        24,
+                                        FiloSpacing.screen,
+                                        FiloSpacing.s16,
+                                        FiloSpacing.screen,
+                                        FiloSpacing.screen,
                                       ),
                                       sliver: SliverToBoxAdapter(
                                         child: Column(
@@ -1185,7 +1192,7 @@ class _AssessmentFormScreenState extends ConsumerState<AssessmentFormScreen> {
                                             if (readOnly)
                                               const Padding(
                                                 padding: EdgeInsets.only(
-                                                  bottom: 16,
+                                                  bottom: FiloSpacing.s16,
                                                 ),
                                                 child: Text(
                                                   'This class is archived or unavailable. Assessments are read-only.',
@@ -1194,7 +1201,7 @@ class _AssessmentFormScreenState extends ConsumerState<AssessmentFormScreen> {
                                             if (draft?.locked == true)
                                               const Padding(
                                                 padding: EdgeInsets.only(
-                                                  bottom: 16,
+                                                  bottom: FiloSpacing.s16,
                                                 ),
                                                 child: Text(
                                                   'This quiz has already been started. Only the title and closing time can change.',
@@ -1203,7 +1210,7 @@ class _AssessmentFormScreenState extends ConsumerState<AssessmentFormScreen> {
                                             else if (_published)
                                               const Padding(
                                                 padding: EdgeInsets.only(
-                                                  bottom: 16,
+                                                  bottom: FiloSpacing.s16,
                                                 ),
                                                 child: Text(
                                                   'Students can already see this assessment. Your saved changes will affect it.',
@@ -1249,7 +1256,9 @@ class _AssessmentFormScreenState extends ConsumerState<AssessmentFormScreen> {
                                                         : 'Retry',
                                                   ),
                                                 ),
-                                              const SizedBox(height: 16),
+                                              const SizedBox(
+                                                height: FiloSpacing.s16,
+                                              ),
                                             ],
                                             if (draft != null) ...[
                                               if (page == 0) ...[
@@ -1278,14 +1287,18 @@ class _AssessmentFormScreenState extends ConsumerState<AssessmentFormScreen> {
                                                             value;
                                                       }),
                                                 ),
-                                                const SizedBox(height: 12),
+                                                const SizedBox(
+                                                  height: FiloSpacing.s12,
+                                                ),
                                                 Text(
                                                   'Quiz or Exam',
                                                   style: Theme.of(context)
                                                       .textTheme
                                                       .titleSmall,
                                                 ),
-                                                const SizedBox(height: 8),
+                                                const SizedBox(
+                                                  height: FiloSpacing.s8,
+                                                ),
                                                 Wrap(
                                                   spacing: 8,
                                                   children: [
@@ -1323,7 +1336,9 @@ class _AssessmentFormScreenState extends ConsumerState<AssessmentFormScreen> {
                                                 _hint(
                                                   'Quiz shows correct answers by default; Exam hides them. Both use the same rules.',
                                                 ),
-                                                const SizedBox(height: 16),
+                                                const SizedBox(
+                                                  height: FiloSpacing.s16,
+                                                ),
                                                 TextFormField(
                                                   key: ValueKey(
                                                     'minutes-$_revision',
@@ -1359,7 +1374,9 @@ class _AssessmentFormScreenState extends ConsumerState<AssessmentFormScreen> {
                                                 _hint(
                                                   'Choose 1 to 600 minutes; each attempt ends when time runs out or the assessment closes, whichever comes first.',
                                                 ),
-                                                const SizedBox(height: 20),
+                                                const SizedBox(
+                                                  height: FiloSpacing.s20,
+                                                ),
                                                 TextFormField(
                                                   key: ValueKey(
                                                     'instructions-$_revision',
@@ -1390,7 +1407,9 @@ class _AssessmentFormScreenState extends ConsumerState<AssessmentFormScreen> {
                                                 _hint(
                                                   'All dates and times use Philippine time.',
                                                 ),
-                                                const SizedBox(height: 16),
+                                                const SizedBox(
+                                                  height: FiloSpacing.s16,
+                                                ),
                                                 for (final field in [
                                                   'opens_at',
                                                   'closes_at',
@@ -1407,7 +1426,7 @@ class _AssessmentFormScreenState extends ConsumerState<AssessmentFormScreen> {
                                                           Alignment.centerLeft,
                                                       padding:
                                                           const EdgeInsets.all(
-                                                            16,
+                                                            FiloSpacing.s16,
                                                           ),
                                                       minimumSize: const Size(
                                                         0,
@@ -1501,7 +1520,9 @@ class _AssessmentFormScreenState extends ConsumerState<AssessmentFormScreen> {
                                                         ),
                                                       ),
                                                     ),
-                                                  const SizedBox(height: 8),
+                                                  const SizedBox(
+                                                    height: FiloSpacing.s8,
+                                                  ),
                                                 ],
                                                 for (final setting in const [
                                                   (
@@ -1532,7 +1553,7 @@ class _AssessmentFormScreenState extends ConsumerState<AssessmentFormScreen> {
                                                     subtitle: Padding(
                                                       padding:
                                                           const EdgeInsets.only(
-                                                            top: 8,
+                                                            top: FiloSpacing.s8,
                                                           ),
                                                       child: Text(
                                                         setting.$3,
@@ -1564,7 +1585,9 @@ class _AssessmentFormScreenState extends ConsumerState<AssessmentFormScreen> {
                                                           })
                                                         : null,
                                                   ),
-                                                  const SizedBox(height: 12),
+                                                  const SizedBox(
+                                                    height: FiloSpacing.s12,
+                                                  ),
                                                 ],
                                                 TextFormField(
                                                   key: ValueKey(
@@ -1678,7 +1701,9 @@ class _AssessmentFormScreenState extends ConsumerState<AssessmentFormScreen> {
                                                     const Text(
                                                       'Connect to the internet to generate questions.',
                                                     ),
-                                                  const SizedBox(height: 12),
+                                                  const SizedBox(
+                                                    height: FiloSpacing.s12,
+                                                  ),
                                                 ],
                                                 Text(
                                                   '${draft.questionCount} ${draft.questionCount == 1 ? 'question' : 'questions'} | ${draft.questions.any((q) {
@@ -1690,7 +1715,8 @@ class _AssessmentFormScreenState extends ConsumerState<AssessmentFormScreen> {
                                                   const Padding(
                                                     padding:
                                                         EdgeInsets.symmetric(
-                                                          vertical: 16,
+                                                          vertical:
+                                                              FiloSpacing.s16,
                                                         ),
                                                     child: Text(
                                                       'No questions yet.',
@@ -1705,10 +1731,10 @@ class _AssessmentFormScreenState extends ConsumerState<AssessmentFormScreen> {
                                     if (page == 2 && draft != null)
                                       SliverPadding(
                                         padding: const EdgeInsets.fromLTRB(
-                                          24,
+                                          FiloSpacing.screen,
                                           0,
-                                          24,
-                                          12,
+                                          FiloSpacing.screen,
+                                          FiloSpacing.s12,
                                         ),
                                         sliver: SliverToBoxAdapter(
                                           child: Column(
@@ -1739,9 +1765,9 @@ class _AssessmentFormScreenState extends ConsumerState<AssessmentFormScreen> {
                                     if (page == 2 && draft != null)
                                       SliverPadding(
                                         padding: const EdgeInsets.fromLTRB(
-                                          24,
-                                          12,
-                                          24,
+                                          FiloSpacing.screen,
+                                          FiloSpacing.s12,
+                                          FiloSpacing.screen,
                                           0,
                                         ),
                                         sliver: SliverReorderableList(
@@ -1810,10 +1836,10 @@ class _AssessmentFormScreenState extends ConsumerState<AssessmentFormScreen> {
                                     if (page == 2 && draft != null)
                                       SliverPadding(
                                         padding: const EdgeInsets.fromLTRB(
-                                          24,
+                                          FiloSpacing.screen,
                                           0,
-                                          24,
-                                          24,
+                                          FiloSpacing.screen,
+                                          FiloSpacing.screen,
                                         ),
                                         sliver: SliverToBoxAdapter(
                                           child: PopupMenuButton<String>(
@@ -1839,12 +1865,13 @@ class _AssessmentFormScreenState extends ConsumerState<AssessmentFormScreen> {
                                             ],
                                             child: Container(
                                               constraints: const BoxConstraints(
-                                                minHeight: 48,
+                                                minHeight:
+                                                    FiloControlSize.compact,
                                               ),
                                               padding:
                                                   const EdgeInsets.symmetric(
-                                                    horizontal: 16,
-                                                    vertical: 12,
+                                                    horizontal: FiloSpacing.s16,
+                                                    vertical: FiloSpacing.s12,
                                                   ),
                                               decoration: BoxDecoration(
                                                 color: Theme.of(context)
@@ -1856,7 +1883,9 @@ class _AssessmentFormScreenState extends ConsumerState<AssessmentFormScreen> {
                                                   ).controlBorder,
                                                 ),
                                                 borderRadius:
-                                                    BorderRadius.circular(14),
+                                                    BorderRadius.circular(
+                                                      FiloRadii.small,
+                                                    ),
                                               ),
                                               child: Row(
                                                 mainAxisSize: MainAxisSize.min,
@@ -1867,11 +1896,15 @@ class _AssessmentFormScreenState extends ConsumerState<AssessmentFormScreen> {
                                                         .colorScheme
                                                         .primary,
                                                   ),
-                                                  SizedBox(width: 8),
+                                                  SizedBox(
+                                                    width: FiloSpacing.s8,
+                                                  ),
                                                   Flexible(
                                                     child: Text('Add question'),
                                                   ),
-                                                  SizedBox(width: 8),
+                                                  SizedBox(
+                                                    width: FiloSpacing.s8,
+                                                  ),
                                                   Icon(
                                                     Icons.expand_more,
                                                     color: Theme.of(context)
@@ -1897,13 +1930,18 @@ class _AssessmentFormScreenState extends ConsumerState<AssessmentFormScreen> {
               ? null
               : SafeArea(
                   child: Padding(
-                    padding: const EdgeInsets.fromLTRB(24, 12, 24, 12),
+                    padding: const EdgeInsets.fromLTRB(
+                      FiloSpacing.screen,
+                      FiloSpacing.s12,
+                      FiloSpacing.screen,
+                      FiloSpacing.s12,
+                    ),
                     child: Column(
                       mainAxisSize: MainAxisSize.min,
                       children: [
                         if (!online && _step == 2 && !readOnly)
                           const Padding(
-                            padding: EdgeInsets.only(bottom: 8),
+                            padding: EdgeInsets.only(bottom: FiloSpacing.s8),
                             child: Text(
                               'Connect to the internet to save or publish.',
                             ),
@@ -1930,7 +1968,10 @@ class _AssessmentFormScreenState extends ConsumerState<AssessmentFormScreen> {
                               Expanded(
                                 child: TextButton(
                                   style: TextButton.styleFrom(
-                                    minimumSize: const Size(48, 48),
+                                    minimumSize: const Size(
+                                      FiloControlSize.compact,
+                                      FiloControlSize.compact,
+                                    ),
                                   ),
                                   onPressed: _busy
                                       ? null
@@ -1939,7 +1980,7 @@ class _AssessmentFormScreenState extends ConsumerState<AssessmentFormScreen> {
                                 ),
                               ),
                               if (!readOnly && !_published) ...[
-                                const SizedBox(width: 12),
+                                const SizedBox(width: FiloSpacing.s12),
                                 Expanded(
                                   child: FiloButton(
                                     label: 'Save draft',
@@ -1956,7 +1997,7 @@ class _AssessmentFormScreenState extends ConsumerState<AssessmentFormScreen> {
                               ],
                             ],
                           ),
-                          if (!readOnly) const SizedBox(height: 8),
+                          if (!readOnly) const SizedBox(height: FiloSpacing.s8),
                           if (!readOnly)
                             FiloButton(
                               label: _published ? 'Save changes' : 'Publish',

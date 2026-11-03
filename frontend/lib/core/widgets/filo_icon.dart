@@ -1,3 +1,4 @@
+import '../theme/filo_design_tokens.dart';
 import 'filo_icons.dart';
 
 import 'package:flutter/material.dart';
@@ -92,7 +93,7 @@ class FiloSelectionIndicator extends StatelessWidget {
           shape: BoxShape.circle,
           color: selected
               ? Theme.of(context).colorScheme.primary
-              : Colors.transparent,
+              : FiloPaint.transparent,
           border: Border.all(
             color: selected
                 ? Theme.of(context).colorScheme.primary

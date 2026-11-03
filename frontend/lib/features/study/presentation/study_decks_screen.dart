@@ -28,7 +28,7 @@ class StudyDecksScreen extends StatelessWidget {
         appBar: AppBar(title: const Text('Flashcards')),
         body: SafeArea(
           child: ListView(
-            padding: const EdgeInsets.all(24),
+            padding: const EdgeInsets.all(FiloSpacing.screen),
             children: [
               const StudyOfflineBanner(),
               studyAsync(
@@ -52,10 +52,10 @@ class StudyDecksScreen extends StatelessWidget {
                     ),
                     if (decks.length >= 10)
                       const Padding(
-                        padding: EdgeInsets.only(top: 12),
+                        padding: EdgeInsets.only(top: FiloSpacing.s12),
                         child: Text(studyDeckLimitMessage),
                       ),
-                    const SizedBox(height: 24),
+                    const SizedBox(height: FiloSpacing.screen),
                     if (decks.isEmpty)
                       const EmptyState(
                         title: 'Generate flashcards to review the main ideas.',
@@ -63,13 +63,13 @@ class StudyDecksScreen extends StatelessWidget {
                       ),
                     for (final deck in decks)
                       Padding(
-                        padding: const EdgeInsets.only(bottom: 12),
+                        padding: const EdgeInsets.only(bottom: FiloSpacing.s12),
                         child: FiloPanel(
                           padding: EdgeInsets.zero,
                           child: ListTile(
                             contentPadding: const EdgeInsets.symmetric(
-                              horizontal: 16,
-                              vertical: 8,
+                              horizontal: FiloSpacing.s16,
+                              vertical: FiloSpacing.s8,
                             ),
                             title: Text(deck.title),
                             subtitle: studyAsync(
@@ -333,12 +333,12 @@ class _DeckGenerateBodyState extends ConsumerState<_DeckGenerateBody> {
         appBar: AppBar(title: const Text('Generate flashcards')),
         body: SafeArea(
           child: ListView(
-            padding: const EdgeInsets.all(24),
+            padding: const EdgeInsets.all(FiloSpacing.screen),
             children: [
               const StudyOfflineBanner(),
               if (result == null) ...[
                 const Text('How many cards?'),
-                const SizedBox(height: 8),
+                const SizedBox(height: FiloSpacing.s8),
                 DropdownButtonFormField<int>(
                   initialValue: _count,
                   decoration: const InputDecoration(
@@ -352,7 +352,7 @@ class _DeckGenerateBodyState extends ConsumerState<_DeckGenerateBody> {
                       ? null
                       : (value) => setState(() => _count = value!),
                 ),
-                const SizedBox(height: 16),
+                const SizedBox(height: FiloSpacing.s16),
                 TextField(
                   controller: _topic,
                   enabled: !_session.working && !_authorizing,
@@ -367,7 +367,7 @@ class _DeckGenerateBodyState extends ConsumerState<_DeckGenerateBody> {
                   onChanged: (_) => setState(() {}),
                 ),
                 Text('${_topic.text.runes.length}/200 characters'),
-                const SizedBox(height: 24),
+                const SizedBox(height: FiloSpacing.screen),
               ],
               if (_session.working) ...[
                 if (!_session.saving) const Mascot(pose: 'thinking', size: 120),
@@ -381,7 +381,7 @@ class _DeckGenerateBodyState extends ConsumerState<_DeckGenerateBody> {
                 ),
                 if (!MediaQuery.disableAnimationsOf(context))
                   const Padding(
-                    padding: EdgeInsets.all(16),
+                    padding: EdgeInsets.all(FiloSpacing.s16),
                     child: Center(
                       child: FiloCircularProgressIndicator(
                         semanticsLabel: 'Preparing flashcards',
@@ -401,7 +401,7 @@ class _DeckGenerateBodyState extends ConsumerState<_DeckGenerateBody> {
                 ),
               if (reason != null && result == null)
                 Padding(
-                  padding: const EdgeInsets.only(top: 12),
+                  padding: const EdgeInsets.only(top: FiloSpacing.s12),
                   child: Text(reason),
                 ),
               if (sources.hasError || decks.hasError)
@@ -413,7 +413,7 @@ class _DeckGenerateBodyState extends ConsumerState<_DeckGenerateBody> {
                   child: const Text('Retry loading notebook'),
                 ),
               if (result != null) ...[
-                const SizedBox(height: 16),
+                const SizedBox(height: FiloSpacing.s16),
                 Text(
                   _session.savedId == null
                       ? 'Deck not confirmed saved'
@@ -435,7 +435,7 @@ class _DeckGenerateBodyState extends ConsumerState<_DeckGenerateBody> {
                     Text(
                       'Only the first ${usage.retainedCharacters} characters of ${usage.name} were used.',
                     ),
-                const SizedBox(height: 16),
+                const SizedBox(height: FiloSpacing.s16),
                 if (_session.hasUnsaved && !_session.working)
                   FiloButton(
                     label: 'Try saving again',
@@ -457,13 +457,13 @@ class _DeckGenerateBodyState extends ConsumerState<_DeckGenerateBody> {
               ],
               if (_session.error != null)
                 Padding(
-                  padding: const EdgeInsets.only(top: 16),
+                  padding: const EdgeInsets.only(top: FiloSpacing.s16),
                   child: Semantics(
                     liveRegion: true,
                     child: Text(_session.error!),
                   ),
                 ),
-              const SizedBox(height: 16),
+              const SizedBox(height: FiloSpacing.s16),
               const Text('AI can make mistakes. Check important answers.'),
             ],
           ),

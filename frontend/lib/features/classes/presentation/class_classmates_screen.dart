@@ -42,7 +42,7 @@ class ClassClassmatesScreen extends ConsumerWidget {
         onRefresh: refresh,
         child: ListView(
           physics: const AlwaysScrollableScrollPhysics(),
-          padding: const EdgeInsets.all(24),
+          padding: const EdgeInsets.all(FiloSpacing.screen),
           children: classmates.when(
             loading: () => [
               const Center(child: FiloCircularProgressIndicator()),

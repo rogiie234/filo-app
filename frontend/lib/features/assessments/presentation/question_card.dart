@@ -98,7 +98,7 @@ class _QuestionCardState extends State<QuestionCard> {
     int? maxLength,
     bool number = false,
   }) => Padding(
-    padding: const EdgeInsets.only(top: 12),
+    padding: const EdgeInsets.only(top: FiloSpacing.s12),
     child: TextFormField(
       key: ValueKey(
         '${widget.question.localId}-$name-${name.startsWith('option') ? _optionRevision : 0}',
@@ -124,12 +124,12 @@ class _QuestionCardState extends State<QuestionCard> {
     final e = widget.editor;
     final options = q.optionTexts;
     return Padding(
-      padding: const EdgeInsets.only(bottom: 12),
+      padding: const EdgeInsets.only(bottom: FiloSpacing.s12),
       child: FiloPanel(
         color: e.status == 'Added'
             ? Theme.of(context).colorScheme.primaryContainer
             : Theme.of(context).colorScheme.surface,
-        padding: const EdgeInsets.all(16),
+        padding: const EdgeInsets.all(FiloSpacing.s16),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
@@ -203,11 +203,16 @@ class _QuestionCardState extends State<QuestionCard> {
             TextButton(
               onPressed: widget.onToggle,
               style: TextButton.styleFrom(
-                padding: const EdgeInsets.symmetric(horizontal: 12),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: FiloSpacing.s12,
+                ),
                 backgroundColor: Theme.of(context).colorScheme.surfaceContainer,
-                minimumSize: const Size(48, 48),
+                minimumSize: const Size(
+                  FiloControlSize.compact,
+                  FiloControlSize.compact,
+                ),
                 shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(12),
+                  borderRadius: BorderRadius.circular(FiloRadii.small),
                 ),
               ),
               child: Row(
@@ -227,14 +232,14 @@ class _QuestionCardState extends State<QuestionCard> {
                 ],
               ),
             ),
-            const SizedBox(height: 12),
+            const SizedBox(height: FiloSpacing.s12),
             if (!widget.expanded)
               Text(
                 q.prompt.isEmpty ? 'Write your question' : q.prompt,
                 maxLines: 2,
                 overflow: TextOverflow.ellipsis,
               ),
-            const SizedBox(height: 8),
+            const SizedBox(height: FiloSpacing.s8),
             Wrap(
               spacing: 12,
               runSpacing: 8,
@@ -255,7 +260,7 @@ class _QuestionCardState extends State<QuestionCard> {
                           ? Theme.of(context).colorScheme.error
                           : Theme.of(context).colorScheme.onSurfaceVariant,
                     ),
-                    const SizedBox(width: 6),
+                    const SizedBox(width: FiloSpacing.s8),
                     Flexible(
                       child: Text(
                         e.status,
@@ -294,7 +299,7 @@ class _QuestionCardState extends State<QuestionCard> {
                 q.payload['points'] = int.tryParse(v) ?? 0;
               }, number: true),
               if (q.type == 'multiple_choice') ...[
-                const SizedBox(height: 12),
+                const SizedBox(height: FiloSpacing.s12),
                 const Text('Add answer options and pick one correct option.'),
                 for (var i = 0; i < options.length; i++)
                   Row(
@@ -367,7 +372,7 @@ class _QuestionCardState extends State<QuestionCard> {
                   ),
               ],
               if (q.type == 'identification') ...[
-                const SizedBox(height: 12),
+                const SizedBox(height: FiloSpacing.s12),
                 const Text(
                   'Add every spelling you accept. Capital letters and extra spaces are ignored.',
                 ),
@@ -418,7 +423,7 @@ class _QuestionCardState extends State<QuestionCard> {
               ],
               if (q.type == 'essay')
                 const Padding(
-                  padding: EdgeInsets.only(top: 12),
+                  padding: EdgeInsets.only(top: FiloSpacing.s12),
                   child: Text('You grade this by hand after the quiz.'),
                 ),
               if (e.errors['answer'] != null)

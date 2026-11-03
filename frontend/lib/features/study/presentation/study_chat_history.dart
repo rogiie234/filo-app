@@ -23,11 +23,11 @@ class _ChatHistory extends ConsumerWidget {
     child: Column(
       children: [
         const Padding(
-          padding: EdgeInsets.all(16),
+          padding: EdgeInsets.all(FiloSpacing.s16),
           child: Text('Chats are kept for 30 days.'),
         ),
         const Padding(
-          padding: EdgeInsets.symmetric(horizontal: 24),
+          padding: EdgeInsets.symmetric(horizontal: FiloSpacing.screen),
           child: StudyOfflineBanner(),
         ),
         Expanded(

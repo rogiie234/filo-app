@@ -36,7 +36,8 @@ class ResultStatusChip extends StatelessWidget {
         color: color,
       ),
       label: Text(label),
-      labelStyle: TextStyle(color: color, fontWeight: FontWeight.w700),
+      labelStyle: Theme.of(context).textTheme.labelMedium!
+          .copyWith(color: color),
       backgroundColor: success
           ? FiloThemeTokens.of(context).successTint
           : error
@@ -64,13 +65,16 @@ class ResultsListBody extends StatelessWidget {
     onRefresh: onRefresh,
     child: ListView(
       physics: const AlwaysScrollableScrollPhysics(),
-      padding: const EdgeInsets.all(24),
+      padding: const EdgeInsets.all(FiloSpacing.screen),
       children: [
-        if (offline) ...[const OfflineBanner(), const SizedBox(height: 16)],
+        if (offline) ...[
+          const OfflineBanner(),
+          const SizedBox(height: FiloSpacing.s16),
+        ],
         if (loading) const ResultsSkeleton(),
         if (error != null)
           Padding(
-            padding: const EdgeInsets.only(bottom: 16),
+            padding: const EdgeInsets.only(bottom: FiloSpacing.s16),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
@@ -99,14 +103,14 @@ class ResultsSkeleton extends StatelessWidget {
         children: [
           for (final width in [1.0, 0.65, 1.0])
             Padding(
-              padding: const EdgeInsets.only(bottom: 16),
+              padding: const EdgeInsets.only(bottom: FiloSpacing.s16),
               child: FractionallySizedBox(
                 widthFactor: width,
                 child: Container(
                   height: 64,
                   decoration: BoxDecoration(
                     color: Theme.of(context).colorScheme.surfaceContainer,
-                    borderRadius: BorderRadius.circular(20),
+                    borderRadius: BorderRadius.circular(FiloRadii.medium),
                   ),
                 ),
               ),
@@ -124,12 +128,12 @@ class ResultSummaryTile extends StatelessWidget {
   Widget build(BuildContext context) => SizedBox(
     width: 150,
     child: FiloPanel(
-      padding: const EdgeInsets.all(16),
+      padding: const EdgeInsets.all(FiloSpacing.s16),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(label),
-          const SizedBox(height: 4),
+          const SizedBox(height: FiloSpacing.s4),
           Text(value, style: Theme.of(context).textTheme.titleLarge),
         ],
       ),
@@ -196,7 +200,7 @@ class ResultQuestionCard extends StatelessWidget {
         ? 'Incorrect'
         : 'Not graded yet';
     return Padding(
-      padding: const EdgeInsets.only(bottom: 16),
+      padding: const EdgeInsets.only(bottom: FiloSpacing.s16),
       child: FiloPanel(
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -205,39 +209,39 @@ class ResultQuestionCard extends StatelessWidget {
               '$number. ${question['prompt']}',
               style: Theme.of(context).textTheme.titleMedium,
             ),
-            const SizedBox(height: 8),
+            const SizedBox(height: FiloSpacing.s8),
             Align(
               alignment: Alignment.centerLeft,
               child: ResultStatusChip(status),
             ),
-            const SizedBox(height: 8),
-            Text(answerLabel, style: TextStyle(fontWeight: FontWeight.w700)),
+            const SizedBox(height: FiloSpacing.s8),
+            Text(answerLabel, style: Theme.of(context).textTheme.labelMedium!),
             SelectableText(
               empty ? 'No answer' : resultAnswer(question['your_answer']),
             ),
             if (question['correct_answer'] != null) ...[
-              const SizedBox(height: 12),
-              const Text(
+              const SizedBox(height: FiloSpacing.s12),
+              Text(
                 'Correct answer',
-                style: TextStyle(fontWeight: FontWeight.w700),
+                style: Theme.of(context).textTheme.labelMedium!,
               ),
               SelectableText(resultAnswer(question['correct_answer'])),
             ],
-            const SizedBox(height: 12),
+            const SizedBox(height: FiloSpacing.s12),
             Text('Points: ${points ?? '—'}/${question['points']}'),
             for (final field in [
               ('explanation', 'Explanation'),
               ('feedback', 'Feedback'),
             ])
               if ((question[field.$1] as String? ?? '').isNotEmpty) ...[
-                const SizedBox(height: 12),
-                Text(
-                  field.$2,
-                  style: const TextStyle(fontWeight: FontWeight.w700),
-                ),
+                const SizedBox(height: FiloSpacing.s12),
+                Text(field.$2, style: Theme.of(context).textTheme.labelMedium!),
                 SelectableText(question[field.$1] as String),
               ],
-            if (editor != null) ...[const SizedBox(height: 16), editor!],
+            if (editor != null) ...[
+              const SizedBox(height: FiloSpacing.s16),
+              editor!,
+            ],
           ],
         ),
       ),
