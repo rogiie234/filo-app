@@ -14,6 +14,7 @@ import '../../../core/widgets/filo_widgets.dart';
 import '../application/class_providers.dart';
 import '../data/class_remote.dart';
 import '../domain/class_banner.dart';
+import 'class_banner.dart';
 
 class CreateClassScreen extends ConsumerStatefulWidget {
   const CreateClassScreen({super.key});
@@ -248,41 +249,26 @@ class _CreateClassScreenState extends ConsumerState<CreateClassScreen> {
                 ),
               ),
               const Text('JPG, PNG, or WebP · up to 2 MB'),
-              if (_bannerImage != null)
-                Padding(
-                  padding: const EdgeInsets.only(top: 12),
-                  child: ClipRRect(
-                    borderRadius: BorderRadius.circular(16),
-                    child: Image.memory(
-                      _bannerImage!,
-                      height: 150,
-                      width: double.infinity,
-                      fit: BoxFit.cover,
-                      errorBuilder: (_, _, _) => const SizedBox(
-                        height: 150,
-                        child: Center(child: Text('Image preview unavailable')),
-                      ),
-                    ),
+              const SizedBox(height: 16),
+              ClipRRect(
+                borderRadius: BorderRadius.circular(28),
+                child: ValueListenableBuilder<TextEditingValue>(
+                  valueListenable: _section,
+                  builder: (context, value, _) => ClassBanner(
+                    section: value.text.trim().isEmpty
+                        ? 'Your classroom'
+                        : value.text.trim(),
+                    instructor: 'Instructor',
+                    color: classBannerColor(_banner),
+                    image: _bannerImage == null
+                        ? null
+                        : MemoryImage(_bannerImage!),
                   ),
                 ),
-              const SizedBox(height: 16),
-              FiloPanel(
-                color: Color(classBannerColor(_banner)),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      'Your classroom',
-                      style: Theme.of(context).textTheme.titleLarge
-                          ?.copyWith(color: Colors.white),
-                    ),
-                    const SizedBox(height: 8),
-                    const Text(
-                      'A permanent join code is generated when you create the class.',
-                      style: TextStyle(color: Colors.white),
-                    ),
-                  ],
-                ),
+              ),
+              const SizedBox(height: 8),
+              const Text(
+                'A permanent join code is generated when you create the class.',
               ),
               if (_error != null)
                 Padding(

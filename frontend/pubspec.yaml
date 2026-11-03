@@ -50,6 +50,7 @@ flutter:
   uses-material-design: true
   assets:
     - assets/brand/
+    - assets/gallery/bright_banner.png
     # Keep this list in sync when adding mascot PNGs.
     - assets/mascots/waving.png
     - assets/mascots/curious.png

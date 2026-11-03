@@ -12,6 +12,7 @@ import '../../../core/supabase/supabase_provider.dart';
 import '../../../core/widgets/filo_widgets.dart';
 import '../application/class_providers.dart';
 import '../domain/class_banner.dart';
+import 'class_banner.dart';
 
 class ClassBannerScreen extends ConsumerStatefulWidget {
   const ClassBannerScreen({super.key, required this.classId});
@@ -173,24 +174,17 @@ class _ClassBannerState extends ConsumerState<ClassBannerScreen> {
               label: Text(_picking ? 'Opening photos…' : 'Upload banner image'),
             ),
             const Text('JPG, PNG, or WebP · up to 2 MB'),
-            if (_bannerImage != null)
-              Padding(
-                padding: const EdgeInsets.only(top: 12),
-                child: ClipRRect(
-                  borderRadius: BorderRadius.circular(16),
-                  child: Image.memory(
-                    _bannerImage!,
-                    height: 150,
-                    width: double.infinity,
-                    fit: BoxFit.cover,
-                    errorBuilder: (_, _, _) => const SizedBox(
-                      height: 150,
-                      child: Center(child: Text('Image preview unavailable')),
-                    ),
-                  ),
-                ),
+            const SizedBox(height: 16),
+            ClipRRect(
+              borderRadius: BorderRadius.circular(28),
+              child: ClassBanner(
+                section: 'Your classroom',
+                instructor: 'Instructor',
+                color: classBannerColor(_banner),
+                image: _bannerImage == null ? null : MemoryImage(_bannerImage!),
               ),
-
+            ),
+            const SizedBox(height: 16),
             if (_error != null) Text(_error!),
             if (!online)
               const Text('Connect to the internet to change the banner.'),

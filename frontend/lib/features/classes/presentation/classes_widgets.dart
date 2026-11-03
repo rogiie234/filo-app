@@ -10,6 +10,8 @@ import '../../../core/connectivity/connectivity_provider.dart';
 import '../../../core/supabase/supabase_provider.dart';
 import '../../../core/supabase/session_gate.dart';
 import '../domain/prototype_models.dart';
+import '../domain/class_banner.dart';
+import 'class_banner.dart';
 import '../../settings/application/profile_settings.dart';
 
 // Private Storage URLs are scoped to the current account and renewed on reconnect.
@@ -247,7 +249,7 @@ class ClassCardSkeleton extends StatelessWidget {
   );
 }
 
-class ClassCard extends StatelessWidget {
+class ClassCard extends ConsumerWidget {
   const ClassCard({
     super.key,
     required this.room,
@@ -258,7 +260,12 @@ class ClassCard extends StatelessWidget {
   final VoidCallback? onTap;
   final int pendingRequests;
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
+    final path = room.bannerPath;
+    final hasImage = path != null && path.isNotEmpty;
+    final url = hasImage
+        ? ref.watch(classImageProvider(('banners', path))).asData?.value
+        : null;
     final enabled = !room.pending && onTap != null;
     return Semantics(
       button: true,
@@ -286,105 +293,17 @@ class ClassCard extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                Stack(
-                  children: [
-                    Positioned.fill(
-                      child: ColoredBox(
-                        color: Color(room.color),
-                        child: ClassImage(
-                          path: room.bannerPath,
-                          bucket: 'banners',
-                          fallback: const SizedBox.expand(),
-                        ),
-                      ),
-                    ),
-                    // Keep text readable on custom colors and bright photos.
-                    const Positioned.fill(
-                      child: DecoratedBox(
-                        decoration: BoxDecoration(
-                          gradient: LinearGradient(
-                            begin: Alignment.topRight,
-                            end: Alignment.bottomLeft,
-                            colors: [FiloColors.bannerOverlay, FiloColors.ink],
-                          ),
-                        ),
-                      ),
-                    ),
-                    Padding(
-                      padding: const EdgeInsets.all(24),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Row(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Expanded(
-                                child: Text(
-                                  room.section,
-                                  style: const TextStyle(
-                                    color: FiloColors.onBanner,
-                                    fontSize: 26,
-                                    height: 1.25,
-                                    fontWeight: FontWeight.w900,
-                                  ),
-                                ),
-                              ),
-                              const SizedBox(width: 16),
-                              ExcludeSemantics(
-                                child: Container(
-                                  width: 44,
-                                  height: 44,
-                                  decoration: BoxDecoration(
-                                    color: const Color(0x1FFFFFFF),
-                                    borderRadius: BorderRadius.circular(15),
-                                    border: Border.all(
-                                      color: const Color(0x33FFFFFF),
-                                    ),
-                                  ),
-                                  child: const FiloIcon(
-                                    FiloIcons.book,
-                                    size: 25,
-                                    color: FiloColors.onBanner,
-                                  ),
-                                ),
-                              ),
-                            ],
-                          ),
-                          const SizedBox(height: 20),
-                          Row(
-                            crossAxisAlignment: CrossAxisAlignment.center,
-                            children: [
-                              Container(
-                                padding: const EdgeInsets.all(2),
-                                decoration: const BoxDecoration(
-                                  color: Color(0x66FFFFFF),
-                                  shape: BoxShape.circle,
-                                ),
-                                child: FiloAvatar(
-                                  name: room.instructor,
-                                  url: room.instructorPhotoUrl,
-                                  path: room.instructorAvatarPath,
-                                  size: 32,
-                                ),
-                              ),
-                              const SizedBox(width: 12),
-                              Expanded(
-                                child: Text(
-                                  room.instructor,
-                                  style: const TextStyle(
-                                    color: FiloColors.onBanner,
-                                    fontSize: 14,
-                                    height: 1.4,
-                                    fontWeight: FontWeight.w700,
-                                  ),
-                                ),
-                              ),
-                            ],
-                          ),
-                        ],
-                      ),
-                    ),
-                  ],
+                ClassBanner(
+                  section: room.section,
+                  instructor: room.instructor,
+                  color: hasImage ? classBannerColor(null) : room.color,
+                  image: url == null ? null : NetworkImage(url),
+                  avatar: FiloAvatar(
+                    name: room.instructor,
+                    url: room.instructorPhotoUrl,
+                    path: room.instructorAvatarPath,
+                    size: 32,
+                  ),
                 ),
                 Padding(
                   padding: const EdgeInsets.all(20),

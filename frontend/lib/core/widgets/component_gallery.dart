@@ -1,6 +1,12 @@
+import 'dart:async';
+import 'dart:typed_data';
+
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 
 import '../theme/app_theme.dart';
+import '../../features/classes/domain/class_banner.dart';
+import '../../features/classes/presentation/class_banner.dart';
 import 'filo_widgets.dart';
 
 class ComponentGallery extends StatefulWidget {
@@ -24,6 +30,8 @@ class ComponentGallery extends StatefulWidget {
 }
 
 class _ComponentGalleryState extends State<ComponentGallery> {
+  final _pendingBannerImage = _GalleryPendingBannerImage();
+  final _failedBannerImage = MemoryImage(Uint8List(0));
   bool _switch = true;
   bool _filter = true;
   bool _error = false;
@@ -446,6 +454,45 @@ class _ComponentGalleryState extends State<ComponentGallery> {
                 const FiloSkeleton(height: 80),
                 const FiloSkeleton(width: 160),
               ]),
+              _section('Class banner presets', [
+                for (final entry in classBannerColors.entries) ...[
+                  Text(
+                    '${entry.key[0].toUpperCase()}${entry.key.substring(1)}',
+                  ),
+                  ClipRRect(
+                    borderRadius: BorderRadius.circular(28),
+                    child: ClassBanner(
+                      color: entry.value,
+                      section: 'BSIT-3A',
+                      instructor: 'Alex Rivera',
+                    ),
+                  ),
+                ],
+                const Text('Default - nothing chosen'),
+                const ClassBanner(
+                  section: 'Your classroom',
+                  instructor: 'Instructor',
+                ),
+                const Text('Bright uploaded image preview'),
+                const ClassBanner(
+                  section: 'A long Section name that wraps on a narrow phone',
+                  instructor:
+                      'Instructor with a long display name for readability',
+                  image: AssetImage('assets/gallery/bright_banner.png'),
+                ),
+                const Text('Image loading - Forest fallback'),
+                ClassBanner(
+                  section: 'BSIT-3A',
+                  instructor: 'Alex Rivera',
+                  image: _pendingBannerImage,
+                ),
+                const Text('Image error - Forest fallback'),
+                ClassBanner(
+                  section: 'BSIT-3A',
+                  instructor: 'Alex Rivera',
+                  image: _failedBannerImage,
+                ),
+              ]),
               _section('Banners and retry', [
                 const FiloBanner(),
                 FiloBanner(
@@ -542,4 +589,19 @@ class _ComponentGalleryState extends State<ComponentGallery> {
         () => _result = confirmed ? 'Example confirmed.' : 'Example cancelled.',
       );
   }
+}
+
+// Keep the gallery offline while exercising the real image loading fallback.
+class _GalleryPendingBannerImage
+    extends ImageProvider<_GalleryPendingBannerImage> {
+  @override
+  Future<_GalleryPendingBannerImage> obtainKey(
+    ImageConfiguration configuration,
+  ) => SynchronousFuture(this);
+
+  @override
+  ImageStreamCompleter loadImage(
+    _GalleryPendingBannerImage key,
+    ImageDecoderCallback decode,
+  ) => OneFrameImageStreamCompleter(Completer<ImageInfo>().future);
 }

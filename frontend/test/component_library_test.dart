@@ -1,3 +1,4 @@
+import 'package:filo/features/classes/presentation/class_banner.dart';
 import 'package:filo/component_gallery_main.dart';
 import 'package:filo/core/theme/app_theme.dart';
 import 'package:filo/core/widgets/filo_widgets.dart';
@@ -193,6 +194,24 @@ void main() {
         await tester.tap(find.text(mode).last);
         await tester.pump();
         await tester.pump(const Duration(milliseconds: 400));
+        expect(find.byType(ClassBanner), findsNWidgets(12));
+        for (final label in [
+          'Class banner presets',
+          'Forest',
+          'Teal',
+          'Sage',
+          'Pine',
+          'Ocean',
+          'Slate',
+          'Olive',
+          'Plum',
+          'Default - nothing chosen',
+          'Bright uploaded image preview',
+          'Image loading - Forest fallback',
+          'Image error - Forest fallback',
+        ]) {
+          expect(find.text(label), findsOneWidget);
+        }
         expect(find.byType(FiloProgressBar), findsOneWidget);
         expect(find.byType(FiloPageIndicator), findsOneWidget);
         expect(find.byType(FiloSkeleton), findsNWidgets(2));
