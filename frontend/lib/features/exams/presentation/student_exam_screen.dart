@@ -723,12 +723,12 @@ class _StudentExamScreenState extends ConsumerState<StudentExamScreen> {
                 child: FiloButton(
                   label: r.submitting ? 'Submitting...' : 'Submit',
                   leading: r.submitting
-                      ? const SizedBox(
+                      ? SizedBox(
                           width: 20,
                           height: 20,
                           child: FiloCircularProgressIndicator(
                             strokeWidth: 2,
-                            color: Colors.white,
+                            color: Theme.of(context).colorScheme.onPrimary,
                           ),
                         )
                       : null,
@@ -771,8 +771,27 @@ class _ExamStatusBar extends ConsumerStatefulWidget {
   ConsumerState<_ExamStatusBar> createState() => _ExamStatusBarState();
 }
 
-class _ExamStatusBarState extends ConsumerState<_ExamStatusBar> {
-  final _announced = <int>{};
+class _ExamStatusBarState extends ConsumerState<_ExamStatusBar>
+    with WidgetsBindingObserver {
+  static final _attemptWarnings = Expando<Map<String, Set<int>>>();
+  int _level = 0;
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addObserver(this);
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (mounted) setState(() {});
+  }
+
+  @override
+  void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -792,18 +811,35 @@ class _ExamStatusBarState extends ConsumerState<_ExamStatusBar> {
         : level == 5
         ? 'Less than 5 minutes left'
         : null;
-    if (warning != null && _announced.add(level)) {
+    _level = level;
+    final session = widget.repository.active?.sessionId;
+    final attempts = _attemptWarnings[widget.repository] ??=
+        <String, Set<int>>{};
+    final announced = session == null
+        ? <int>{}
+        : attempts.putIfAbsent(session, () => <int>{});
+    if (warning != null && session != null && !announced.contains(level)) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
-        if (mounted) {
-          // Announce thresholds only; the ticking value is never a live region.
-          unawaited(
-            SemanticsService.sendAnnouncement(
-              View.of(context),
-              warning,
-              Directionality.of(context),
-            ),
-          );
+        if (!mounted ||
+            _level != level ||
+            ModalRoute.of(context)?.isCurrent == false ||
+            (WidgetsBinding.instance.lifecycleState != null &&
+                WidgetsBinding.instance.lifecycleState !=
+                    AppLifecycleState.resumed) ||
+            !widget.repository.clock.verified ||
+            widget.repository.active?.sessionId != session ||
+            !announced.add(level)) {
+          return;
         }
+        // A skipped five-minute warning must not replay after the one-minute warning.
+        if (level == 1) announced.add(5);
+        unawaited(
+          SemanticsService.sendAnnouncement(
+            View.of(context),
+            warning,
+            Directionality.of(context),
+          ).catchError((Object _) {}),
+        );
       });
     }
     final theme = Theme.of(context);
@@ -812,12 +848,14 @@ class _ExamStatusBarState extends ConsumerState<_ExamStatusBar> {
     final background = level == 1
         ? colors.errorContainer
         : level == 5
-        ? (dark ? const Color(0xFF493400) : FiloColors.warning)
+        ? (dark
+              ? const Color(0xFF493400)
+              : FiloThemeTokens.of(context).warningTint)
         : colors.surface;
     final foreground = level == 1
         ? colors.onErrorContainer
         : level == 5
-        ? (dark ? const Color(0xFFFFDDA0) : FiloColors.warningInk)
+        ? (dark ? const Color(0xFFFFDDA0) : FiloThemeTokens.of(context).warning)
         : colors.onSurface;
     return ColoredBox(
       key: const ValueKey('exam-status-bar'),

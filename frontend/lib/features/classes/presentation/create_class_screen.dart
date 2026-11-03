@@ -9,7 +9,6 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../../../core/connectivity/connectivity_provider.dart';
 import '../../../core/supabase/supabase_provider.dart';
-import '../../../core/theme/app_theme.dart';
 import '../../../core/widgets/filo_widgets.dart';
 import '../application/class_providers.dart';
 import '../data/class_remote.dart';
@@ -93,7 +92,7 @@ class _CreateClassScreenState extends ConsumerState<CreateClassScreen> {
         ref.read(connectivityProvider).asData?.value != true) {
       return;
     }
-    if (_created == null && !_form.currentState!.validate()) return;
+    if (_created == null && !validateFiloForm(_form)) return;
     setState(() {
       _busy = true;
       _error = null;
@@ -275,7 +274,9 @@ class _CreateClassScreenState extends ConsumerState<CreateClassScreen> {
                   padding: const EdgeInsets.only(top: 16),
                   child: Text(
                     _error!,
-                    style: const TextStyle(color: FiloColors.secondary),
+                    style: TextStyle(
+                      color: Theme.of(context).colorScheme.onSurfaceVariant,
+                    ),
                   ),
                 ),
             ],

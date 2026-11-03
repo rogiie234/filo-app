@@ -22,6 +22,10 @@ void main() {
     testWidgets(
       '${route.runtimeType} keeps loading, empty and failed reads neutral',
       (tester) async {
+        tester.view.physicalSize = const Size(320, 740);
+        tester.view.devicePixelRatio = 1;
+        addTearDown(tester.view.resetPhysicalSize);
+        addTearDown(tester.view.resetDevicePixelRatio);
         for (final theme in [AppTheme.light, AppTheme.dark]) {
           final snapshots = StreamController<GradingData>.broadcast();
           await tester.pumpWidget(
@@ -33,7 +37,15 @@ void main() {
                 gradingDataProvider('class')
                     .overrideWith((ref) => snapshots.stream),
               ],
-              child: MaterialApp(theme: theme, home: route),
+              child: MaterialApp(
+                theme: theme,
+                builder: (context, child) => MediaQuery(
+                  data: MediaQuery.of(context)
+                      .copyWith(textScaler: const TextScaler.linear(1.3)),
+                  child: child!,
+                ),
+                home: route,
+              ),
             ),
           );
           await tester.pump();

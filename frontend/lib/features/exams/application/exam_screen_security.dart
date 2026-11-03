@@ -1,3 +1,5 @@
+import '../../../core/orientation_policy.dart';
+
 import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
 
@@ -17,6 +19,8 @@ class ExamScreenSecurity {
     }
     try {
       await channel.invokeMethod<void>('protect', enabled);
+      FiloOrientationPolicy.examProtected = enabled;
+      await FiloOrientationPolicy.refresh();
     } on PlatformException {
       throw const ExamFailure("We couldn't complete that request. Try again.");
     } on MissingPluginException {

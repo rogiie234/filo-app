@@ -323,7 +323,7 @@ class _AccountSetupScreenState extends ConsumerState<AccountSetupScreen> {
                 padding: const EdgeInsets.all(24),
                 children: [
                   if (_stage == 'lookupError') ...[
-                    Text(_error!),
+                    Semantics(liveRegion: true, child: Text(_error!)),
                     FilledButton(onPressed: _load, child: const Text('Retry')),
                   ],
                 ],

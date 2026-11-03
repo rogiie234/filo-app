@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
-import '../../../core/theme/app_theme.dart';
 import '../../../core/widgets/filo_widgets.dart';
 import '../../classes/application/preview_controller.dart';
 import '../../classes/domain/prototype_models.dart';
@@ -52,9 +51,11 @@ class _NewAssessmentScreenState extends ConsumerState<NewAssessmentScreen> {
         child: ListView(
           padding: const EdgeInsets.all(24),
           children: [
-            const Text(
+            Text(
               'A little challenge. A lot to discover.',
-              style: TextStyle(color: FiloColors.secondary),
+              style: TextStyle(
+                color: Theme.of(context).colorScheme.onSurfaceVariant,
+              ),
             ),
             const SizedBox(height: 24),
             TextFormField(
@@ -104,7 +105,7 @@ class _NewAssessmentScreenState extends ConsumerState<NewAssessmentScreen> {
             ),
             const SizedBox(height: 12),
             FiloPanel(
-              color: FiloColors.lime,
+              color: Theme.of(context).colorScheme.primaryContainer,
               padding: const EdgeInsets.all(16),
               child: Row(
                 children: [
@@ -136,7 +137,9 @@ class _NewAssessmentScreenState extends ConsumerState<NewAssessmentScreen> {
                 ),
                 Text(
                   '${_questions.length} total',
-                  style: const TextStyle(color: FiloColors.secondary),
+                  style: TextStyle(
+                    color: Theme.of(context).colorScheme.onSurfaceVariant,
+                  ),
                 ),
               ],
             ),
@@ -160,9 +163,12 @@ class _NewAssessmentScreenState extends ConsumerState<NewAssessmentScreen> {
                 ),
               ),
             const SizedBox(height: 20),
-            const Text(
+            Text(
               'Drafts and published assessments stay in this preview session.',
-              style: TextStyle(color: FiloColors.secondary, fontSize: 12),
+              style: TextStyle(
+                color: Theme.of(context).colorScheme.onSurfaceVariant,
+                fontSize: 12,
+              ),
             ),
           ],
         ),
@@ -324,9 +330,11 @@ class _NewAssessmentScreenState extends ConsumerState<NewAssessmentScreen> {
                 : null,
           )
         else
-          const Text(
+          Text(
             'Essay answers are scored by the instructor.',
-            style: TextStyle(color: FiloColors.secondary),
+            style: TextStyle(
+              color: Theme.of(context).colorScheme.onSurfaceVariant,
+            ),
           ),
       ],
     ),
@@ -395,7 +403,7 @@ class _NewAssessmentScreenState extends ConsumerState<NewAssessmentScreen> {
         return;
       }
     } else {
-      final valid = _form.currentState!.validate();
+      final valid = validateFiloForm(_form);
       if (!valid ||
           _questions.any(
             (question) =>

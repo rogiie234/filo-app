@@ -1,3 +1,4 @@
+import '../../../core/widgets/filo_validation.dart';
 import '../../../core/theme/filo_motion.dart';
 import '../../../core/feedback/filo_haptics.dart';
 
@@ -124,7 +125,7 @@ class _GradeScreenState extends ConsumerState<GradeScreen> {
         _archived ||
         _busy ||
         _reconcile ||
-        !(_form.currentState?.validate() ?? false)) {
+        !validateFiloForm(_form)) {
       return false;
     }
     final data = ref.read(gradingDataProvider(widget.classId)).asData?.value;

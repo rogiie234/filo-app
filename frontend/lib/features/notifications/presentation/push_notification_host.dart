@@ -38,6 +38,7 @@ class PushNotificationHost extends ConsumerStatefulWidget {
 }
 
 class _PushNotificationHostState extends ConsumerState<PushNotificationHost> {
+  final _orientationObserver = RouteObserver<PageRoute<dynamic>>();
   final _navigator = GlobalKey<NavigatorState>();
   final _banners = <({PushEvent event, String title, String? body})>[];
   late final PushEvents _events;
@@ -373,7 +374,7 @@ class _PushNotificationHostState extends ConsumerState<PushNotificationHost> {
         children: [
           Navigator(
             key: _navigator,
-            observers: [_observer],
+            observers: [_observer, _orientationObserver],
             onGenerateRoute: (_) =>
                 MaterialPageRoute<void>(builder: (_) => widget.child),
           ),
@@ -417,7 +418,7 @@ class PushForegroundBanner extends StatelessWidget {
   final VoidCallback onOpen, onDismiss;
   @override
   Widget build(BuildContext context) => Material(
-    color: FiloColors.mint,
+    color: FiloThemeTokens.of(context).mint,
     elevation: 4,
     borderRadius: BorderRadius.circular(20),
     child: Padding(
@@ -431,8 +432,8 @@ class PushForegroundBanner extends StatelessWidget {
               title,
               maxLines: 2,
               overflow: TextOverflow.ellipsis,
-              style: const TextStyle(
-                color: FiloColors.ink,
+              style: TextStyle(
+                color: Theme.of(context).colorScheme.onSurface,
                 fontWeight: FontWeight.w800,
               ),
             ),
@@ -441,7 +442,9 @@ class PushForegroundBanner extends StatelessWidget {
                 body!,
                 maxLines: 3,
                 overflow: TextOverflow.ellipsis,
-                style: const TextStyle(color: FiloColors.ink),
+                style: TextStyle(
+                  color: Theme.of(context).colorScheme.onSurface,
+                ),
               ),
             Row(
               mainAxisAlignment: MainAxisAlignment.end,

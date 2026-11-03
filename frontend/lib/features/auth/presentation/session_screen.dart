@@ -243,13 +243,13 @@ class _SessionScreenState extends ConsumerState<SessionScreen> {
                       children: [
                         const Center(child: Mascot(pose: 'curious', size: 156)),
                         const SizedBox(height: 24),
-                        const Row(
+                        Row(
                           mainAxisAlignment: MainAxisAlignment.center,
                           children: [
                             FiloIcon(
                               FiloIcons.shield,
                               size: 18,
-                              color: FiloColors.primary,
+                              color: Theme.of(context).colorScheme.primary,
                             ),
                             SizedBox(width: 8),
                             Flexible(
@@ -257,7 +257,7 @@ class _SessionScreenState extends ConsumerState<SessionScreen> {
                                 'A quick security check',
                                 textAlign: TextAlign.center,
                                 style: TextStyle(
-                                  color: FiloColors.primary,
+                                  color: Theme.of(context).colorScheme.primary,
                                   fontSize: 14,
                                   fontWeight: FontWeight.w800,
                                 ),
@@ -268,14 +268,14 @@ class _SessionScreenState extends ConsumerState<SessionScreen> {
                         const SizedBox(height: 12),
                         Semantics(
                           header: true,
-                          child: const Text(
+                          child: Text(
                             'Let\u2019s make sure\nit\u2019s you.',
                             textAlign: TextAlign.center,
                             style: TextStyle(
                               fontSize: 28,
                               height: 1.2,
                               fontWeight: FontWeight.w800,
-                              color: FiloColors.ink,
+                              color: Theme.of(context).colorScheme.onSurface,
                             ),
                           ),
                         ),
@@ -285,8 +285,10 @@ class _SessionScreenState extends ConsumerState<SessionScreen> {
                               ? 'We sent a 6-digit code to $email. Enter it to verify this device. The code expires in 10 minutes.'
                               : 'One little check to keep your account safe. We\u2019ll send a 6-digit code to your Google email.',
                           textAlign: TextAlign.center,
-                          style: const TextStyle(
-                            color: FiloColors.secondary,
+                          style: TextStyle(
+                            color: Theme.of(context)
+                                .colorScheme
+                                .onSurfaceVariant,
                             fontSize: 15,
                             fontWeight: FontWeight.w500,
                             height: 1.5,
@@ -298,8 +300,10 @@ class _SessionScreenState extends ConsumerState<SessionScreen> {
                             liveRegion: true,
                             child: FiloPanel(
                               color: _error
-                                  ? FiloColors.warning
-                                  : FiloColors.tint,
+                                  ? FiloThemeTokens.of(context).warningTint
+                                  : Theme.of(context)
+                                        .colorScheme
+                                        .surfaceContainer,
                               padding: const EdgeInsets.all(16),
                               child: Row(
                                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -309,8 +313,8 @@ class _SessionScreenState extends ConsumerState<SessionScreen> {
                                         ? FiloIcons.info
                                         : FiloIcons.checkCircle,
                                     color: _error
-                                        ? FiloColors.warningInk
-                                        : FiloColors.primary,
+                                        ? FiloThemeTokens.of(context).warning
+                                        : Theme.of(context).colorScheme.primary,
                                     size: 20,
                                   ),
                                   const SizedBox(width: 10),
@@ -326,9 +330,9 @@ class _SessionScreenState extends ConsumerState<SessionScreen> {
                             child: Column(
                               crossAxisAlignment: CrossAxisAlignment.stretch,
                               children: [
-                                const FiloIcon(
+                                FiloIcon(
                                   FiloIcons.info,
-                                  color: FiloColors.primary,
+                                  color: Theme.of(context).colorScheme.primary,
                                   size: 28,
                                 ),
                                 const SizedBox(height: 12),
@@ -357,22 +361,28 @@ class _SessionScreenState extends ConsumerState<SessionScreen> {
                                         width: 44,
                                         height: 44,
                                         decoration: BoxDecoration(
-                                          color: FiloColors.tint,
+                                          color: Theme.of(context)
+                                              .colorScheme
+                                              .surfaceContainer,
                                           borderRadius: BorderRadius.circular(
                                             14,
                                           ),
                                         ),
-                                        child: const FiloIcon(
+                                        child: FiloIcon(
                                           FiloIcons.email,
-                                          color: FiloColors.primary,
+                                          color: Theme.of(context)
+                                              .colorScheme
+                                              .primary,
                                         ),
                                       ),
                                       const SizedBox(width: 12),
                                       Expanded(
                                         child: Text(
                                           email,
-                                          style: const TextStyle(
-                                            color: FiloColors.ink,
+                                          style: TextStyle(
+                                            color: Theme.of(context)
+                                                .colorScheme
+                                                .onSurface,
                                             fontSize: 14,
                                             fontWeight: FontWeight.w800,
                                           ),
@@ -391,11 +401,13 @@ class _SessionScreenState extends ConsumerState<SessionScreen> {
                                     onPressed: _busy ? null : _send,
                                   ),
                                 ] else ...[
-                                  const Text(
+                                  Text(
                                     'Verification code',
                                     style: TextStyle(
                                       fontWeight: FontWeight.w800,
-                                      color: FiloColors.ink,
+                                      color: Theme.of(context)
+                                          .colorScheme
+                                          .onSurface,
                                     ),
                                   ),
                                   const SizedBox(height: 12),
@@ -424,14 +436,16 @@ class _SessionScreenState extends ConsumerState<SessionScreen> {
                                       inputFormatters: [
                                         FilteringTextInputFormatter.digitsOnly,
                                       ],
-                                      decoration: const InputDecoration(
+                                      decoration: InputDecoration(
                                         labelText: 'Verification code',
                                         floatingLabelBehavior:
                                             FloatingLabelBehavior.never,
                                         hintText: '000000',
                                         counterText: '',
                                         hintStyle: TextStyle(
-                                          color: FiloColors.secondary,
+                                          color: Theme.of(context)
+                                              .colorScheme
+                                              .onSurfaceVariant,
                                         ),
                                       ),
                                       onSubmitted: (_) {
@@ -459,11 +473,13 @@ class _SessionScreenState extends ConsumerState<SessionScreen> {
                                     ),
                                   ),
                                   const SizedBox(height: 4),
-                                  const Text(
+                                  Text(
                                     'No email yet? Check your spam folder.',
                                     textAlign: TextAlign.center,
                                     style: TextStyle(
-                                      color: FiloColors.secondary,
+                                      color: Theme.of(context)
+                                          .colorScheme
+                                          .onSurfaceVariant,
                                       fontSize: 13,
                                       height: 1.4,
                                     ),

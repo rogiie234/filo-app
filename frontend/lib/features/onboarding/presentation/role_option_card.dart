@@ -3,7 +3,6 @@ import 'package:flutter/material.dart';
 import '../../../core/widgets/filo_icon.dart';
 import '../../../core/widgets/filo_motion_widgets.dart';
 import '../../../core/theme/animation_constants.dart';
-import '../../../core/theme/app_theme.dart';
 import '../data/profile_repository.dart';
 
 class RoleOptionCard extends StatefulWidget {
@@ -37,7 +36,9 @@ class _RoleOptionCardState extends State<RoleOptionCard> {
       builder: (_, value, child) => Transform.scale(scale: value, child: child),
       child: DecoratedBox(
         decoration: BoxDecoration(
-          color: selected ? FiloColors.primary : FiloColors.border,
+          color: selected
+              ? Theme.of(context).colorScheme.primary
+              : Theme.of(context).colorScheme.outline,
           borderRadius: BorderRadius.circular(24),
         ),
         child: Padding(
@@ -59,13 +60,13 @@ class _RoleOptionCardState extends State<RoleOptionCard> {
                     padding: const EdgeInsets.all(18),
                     decoration: BoxDecoration(
                       color: selected
-                          ? FiloColors.selected
-                          : FiloColors.surface,
+                          ? Theme.of(context).colorScheme.primaryContainer
+                          : Theme.of(context).colorScheme.surface,
                       borderRadius: BorderRadius.circular(24),
                       border: Border.all(
                         color: selected
-                            ? FiloColors.primary
-                            : FiloColors.border,
+                            ? Theme.of(context).colorScheme.primary
+                            : Theme.of(context).colorScheme.outline,
                         width: 2,
                       ),
                     ),
@@ -76,15 +77,17 @@ class _RoleOptionCardState extends State<RoleOptionCard> {
                           height: 48,
                           decoration: BoxDecoration(
                             color: selected
-                                ? FiloColors.surface
-                                : FiloColors.tint,
+                                ? Theme.of(context).colorScheme.surface
+                                : Theme.of(context)
+                                      .colorScheme
+                                      .surfaceContainer,
                             borderRadius: BorderRadius.circular(16),
                           ),
                           child: FiloIcon(
                             role == AccountRole.student
                                 ? FiloIcons.student
                                 : FiloIcons.book,
-                            color: FiloColors.primary,
+                            color: Theme.of(context).colorScheme.primary,
                             size: 26,
                           ),
                         ),
@@ -95,19 +98,23 @@ class _RoleOptionCardState extends State<RoleOptionCard> {
                             children: [
                               Text(
                                 role.label,
-                                style: const TextStyle(
+                                style: TextStyle(
                                   fontSize: 18,
                                   fontWeight: FontWeight.w800,
-                                  color: FiloColors.ink,
+                                  color: Theme.of(context)
+                                      .colorScheme
+                                      .onSurface,
                                 ),
                               ),
                               const SizedBox(height: 5),
                               Text(
                                 description,
-                                style: const TextStyle(
+                                style: TextStyle(
                                   fontSize: 14,
                                   height: 1.45,
-                                  color: FiloColors.secondary,
+                                  color: Theme.of(context)
+                                      .colorScheme
+                                      .onSurfaceVariant,
                                 ),
                               ),
                             ],

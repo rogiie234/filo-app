@@ -14,7 +14,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/connectivity/connectivity_provider.dart';
-import '../../../core/theme/app_theme.dart';
 import '../../../core/widgets/filo_widgets.dart';
 import '../../classes/domain/prototype_models.dart';
 import '../../classes/presentation/classes_widgets.dart' show OfflineBanner;
@@ -260,9 +259,11 @@ class _ClassworkListState extends ConsumerState<ClassworkList> {
       children: [
         Text('Classwork', style: Theme.of(context).textTheme.headlineMedium),
         const SizedBox(height: 8),
-        const Text(
+        Text(
           'Make space for your next small win.',
-          style: TextStyle(color: FiloColors.secondary),
+          style: TextStyle(
+            color: Theme.of(context).colorScheme.onSurfaceVariant,
+          ),
         ),
         const SizedBox(height: 20),
         if (live)
@@ -480,16 +481,16 @@ class AssignmentStatusChip extends StatelessWidget {
         color:
             status == AssignmentStatus.late ||
                 status == AssignmentStatus.missing
-            ? FiloColors.error
-            : FiloColors.primary,
+            ? Theme.of(context).colorScheme.error
+            : Theme.of(context).colorScheme.primary,
       ),
       label: Text(status?.label ?? 'Sync needed'),
       labelStyle: TextStyle(
         color:
             status == AssignmentStatus.late ||
                 status == AssignmentStatus.missing
-            ? FiloColors.error
-            : FiloColors.ink,
+            ? Theme.of(context).colorScheme.error
+            : Theme.of(context).colorScheme.onSurface,
         fontWeight: status == AssignmentStatus.graded
             ? FontWeight.w800
             : FontWeight.w600,
@@ -513,10 +514,10 @@ class AssignmentRow extends StatelessWidget {
   final VoidCallback onTap;
   @override
   Widget build(BuildContext context) => Material(
-    color: FiloColors.surface,
+    color: Theme.of(context).colorScheme.surface,
     shape: RoundedRectangleBorder(
       borderRadius: BorderRadius.circular(24),
-      side: const BorderSide(color: FiloColors.border),
+      side: BorderSide(color: Theme.of(context).colorScheme.outline),
     ),
     clipBehavior: Clip.antiAlias,
     child: InkWell(
@@ -525,9 +526,9 @@ class AssignmentRow extends StatelessWidget {
         padding: const EdgeInsets.all(20),
         child: Row(
           children: [
-            const FiloIcon(
+            FiloIcon(
               FiloIcons.assessment,
-              color: FiloColors.primary,
+              color: Theme.of(context).colorScheme.primary,
               size: 28,
             ),
             const SizedBox(width: 16),
@@ -542,11 +543,15 @@ class AssignmentRow extends StatelessWidget {
                   const SizedBox(height: 6),
                   Text(
                     streamDueLabel(context, post),
-                    style: const TextStyle(color: FiloColors.secondary),
+                    style: TextStyle(
+                      color: Theme.of(context).colorScheme.onSurfaceVariant,
+                    ),
                   ),
                   Text(
                     post.points == null ? 'No points' : '${post.points} points',
-                    style: const TextStyle(color: FiloColors.secondary),
+                    style: TextStyle(
+                      color: Theme.of(context).colorScheme.onSurfaceVariant,
+                    ),
                   ),
                   if (showStatus) AssignmentStatusChip(status: status),
                 ],

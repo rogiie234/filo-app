@@ -165,8 +165,9 @@ void main() {
     bool? notificationAccess,
     Stream<int>? unread,
     ThemeData? theme,
+    Size viewport = const Size(390, 844),
   }) async {
-    tester.view.physicalSize = const Size(390, 844);
+    tester.view.physicalSize = viewport;
     tester.view.devicePixelRatio = 1;
     addTearDown(tester.view.resetPhysicalSize);
     addTearDown(tester.view.resetDevicePixelRatio);
@@ -274,6 +275,29 @@ void main() {
       await closing;
     });
     return Harness(repo, network, cards, rooms, capture);
+  }
+
+  for (final theme in [AppTheme.light, AppTheme.dark]) {
+    for (final role in [AccountRole.student, AccountRole.instructor]) {
+      for (final empty in [false, true]) {
+        testClasses(
+          'classes ${role.name} ${theme.brightness.name} empty=$empty at 320dp / 130%',
+          (tester) async {
+            await launch(
+              tester,
+              role: role,
+              theme: theme,
+              empty: empty,
+              online: false,
+              scale: 1.3,
+              viewport: const Size(320, 740),
+            );
+            expect(tester.takeException(), isNull);
+            expect(find.byType(NavigationBar), findsOneWidget);
+          },
+        );
+      }
+    }
   }
 
   testClasses('notification bell follows the local unread count', (

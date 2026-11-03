@@ -1,8 +1,11 @@
+import '../../../core/orientation_policy.dart';
+
 import 'dart:convert';
 import 'dart:io';
 import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
+import 'package:flutter/semantics.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:open_filex/open_filex.dart';
 import 'package:path/path.dart' as p;
@@ -154,6 +157,12 @@ class _FileViewerScreenState extends ConsumerState<FileViewerScreen> {
     return utf8.decode(bytes.sublist(first, last), allowMalformed: true);
   }
 
+  void _toggleZoom() {
+    _imageTransform.value = _imageTransform.value.getMaxScaleOnAxis() > 1.1
+        ? Matrix4.identity()
+        : Matrix4.diagonal3Values(2.5, 2.5, 1);
+  }
+
   @override
   void dispose() {
     _imageTransform.dispose();
@@ -170,200 +179,212 @@ class _FileViewerScreenState extends ConsumerState<FileViewerScreen> {
     final text =
         ['.txt', '.md', '.csv', '.log'].contains(ext) ||
         _row.mimeType?.startsWith('text/plain') == true;
-    return Scaffold(
-      appBar: AppBar(
-        title: Text(_row.name),
-        actions: [
-          PopupMenuButton<String>(
-            onSelected: (action) async {
-              try {
-                if (action == 'external') {
-                  await openExternal(context, widget.repository, _row);
-                } else {
-                  await exportFile(context, widget.repository, _row);
-                }
-              } catch (_) {
-                if (context.mounted) {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(
-                      content: Text(
-                        'Could not open or export this file. Try again.',
+    return FiloFileViewerOrientation(
+      child: Scaffold(
+        appBar: AppBar(
+          title: Text(_row.name),
+          actions: [
+            PopupMenuButton<String>(
+              tooltip: 'File options',
+              onSelected: (action) async {
+                try {
+                  if (action == 'external') {
+                    await openExternal(context, widget.repository, _row);
+                  } else {
+                    await exportFile(context, widget.repository, _row);
+                  }
+                } catch (_) {
+                  if (context.mounted) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(
+                        content: Text(
+                          'Could not open or export this file. Try again.',
+                        ),
                       ),
-                    ),
-                  );
+                    );
+                  }
                 }
-              }
-            },
-            itemBuilder: (_) => const [
-              PopupMenuItem(
-                value: 'external',
-                child: Text('Open in another app'),
-              ),
-              PopupMenuItem(value: 'export', child: Text('Export a copy')),
-            ],
-          ),
-        ],
-      ),
-      body: FutureBuilder<bool>(
-        future: _exists,
-        builder: (context, snapshot) {
-          if (snapshot.hasError) {
-            return SingleChildScrollView(
-              padding: const EdgeInsets.all(24),
-              child: EmptyState(
-                title: 'This file is no longer on your device.',
-                pose: 'confused',
-                bob: false,
-                showMascot: widget.showMascot,
-              ),
-            );
-          }
-          if (!snapshot.hasData) {
-            return const Center(child: FiloCircularProgressIndicator());
-          }
-          if (snapshot.data != true) {
-            return SingleChildScrollView(
-              padding: const EdgeInsets.all(24),
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  EmptyState(
-                    title: 'This file is no longer on your device.',
-                    pose: 'confused',
-                    bob: false,
-                    showMascot: widget.showMascot,
-                  ),
-                  if (_row.sourceAttachmentId != null &&
-                      _row.classId != null &&
-                      _row.sourcePostId != null)
-                    TextButton(
-                      onPressed: _downloading ? null : _again,
-                      child: Text(
-                        _downloading ? 'Downloading…' : 'Download again',
-                      ),
-                    ),
-                ],
-              ),
-            );
-          }
-          if (pdf) {
-            return Column(
-              children: [
-                Padding(
-                  padding: const EdgeInsets.all(8),
-                  child: Text('Page $_page${_pages == 0 ? '' : ' of $_pages'}'),
+              },
+              itemBuilder: (_) => const [
+                PopupMenuItem(
+                  value: 'external',
+                  child: Text('Open in another app'),
                 ),
-                Expanded(
-                  child: PdfViewer.file(
-                    _local.path,
-                    params: PdfViewerParams(
-                      onViewerReady: (document, controller) {
-                        if (mounted) {
-                          setState(() => _pages = document.pages.length);
-                        }
-                      },
-                      onPageChanged: (page) {
-                        if (mounted) {
-                          setState(() => _page = page ?? 1);
-                        }
-                      },
-                    ),
-                  ),
-                ),
+                PopupMenuItem(value: 'export', child: Text('Export a copy')),
               ],
-            );
-          }
-          if (image) {
-            return GestureDetector(
-              onDoubleTap: () => _imageTransform.value =
-                  _imageTransform.value.getMaxScaleOnAxis() > 1.1
-                  ? Matrix4.identity()
-                  : Matrix4.diagonal3Values(2.5, 2.5, 1),
-              child: InteractiveViewer(
-                transformationController: _imageTransform,
-                minScale: 0.5,
-                maxScale: 8,
-                child: Center(
-                  child: Image.file(
-                    _local,
-                    errorBuilder: (_, _, _) => EmptyState(
-                      title: 'Could not open this image.',
+            ),
+          ],
+        ),
+        body: FutureBuilder<bool>(
+          future: _exists,
+          builder: (context, snapshot) {
+            if (snapshot.hasError) {
+              return SingleChildScrollView(
+                padding: const EdgeInsets.all(24),
+                child: EmptyState(
+                  title: 'This file is no longer on your device.',
+                  pose: 'confused',
+                  bob: false,
+                  showMascot: widget.showMascot,
+                ),
+              );
+            }
+            if (!snapshot.hasData) {
+              return const Center(child: FiloCircularProgressIndicator());
+            }
+            if (snapshot.data != true) {
+              return SingleChildScrollView(
+                padding: const EdgeInsets.all(24),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    EmptyState(
+                      title: 'This file is no longer on your device.',
                       pose: 'confused',
                       bob: false,
                       showMascot: widget.showMascot,
                     ),
+                    if (_row.sourceAttachmentId != null &&
+                        _row.classId != null &&
+                        _row.sourcePostId != null)
+                      TextButton(
+                        onPressed: _downloading ? null : _again,
+                        child: Text(
+                          _downloading ? 'Downloading…' : 'Download again',
+                        ),
+                      ),
+                  ],
+                ),
+              );
+            }
+            if (pdf) {
+              return Column(
+                children: [
+                  Padding(
+                    padding: const EdgeInsets.all(8),
+                    child: Text(
+                      'Page $_page${_pages == 0 ? '' : ' of $_pages'}',
+                    ),
+                  ),
+                  Expanded(
+                    child: PdfViewer.file(
+                      _local.path,
+                      params: PdfViewerParams(
+                        onViewerReady: (document, controller) {
+                          if (mounted) {
+                            setState(() => _pages = document.pages.length);
+                          }
+                        },
+                        onPageChanged: (page) {
+                          if (mounted) {
+                            setState(() => _page = page ?? 1);
+                          }
+                        },
+                      ),
+                    ),
+                  ),
+                ],
+              );
+            }
+            if (image) {
+              return Semantics(
+                label: 'Image: ${_row.name}',
+                customSemanticsActions: {
+                  const CustomSemanticsAction(label: 'Toggle image zoom'):
+                      _toggleZoom,
+                },
+                child: GestureDetector(
+                  excludeFromSemantics: true,
+                  onDoubleTap: _toggleZoom,
+                  child: InteractiveViewer(
+                    transformationController: _imageTransform,
+                    minScale: 0.5,
+                    maxScale: 8,
+                    child: Center(
+                      child: Image.file(
+                        _local,
+                        errorBuilder: (_, _, _) => EmptyState(
+                          title: 'Could not open this image.',
+                          pose: 'confused',
+                          bob: false,
+                          showMascot: widget.showMascot,
+                        ),
+                      ),
+                    ),
                   ),
                 ),
-              ),
-            );
-          }
-          if (text) {
-            return Column(
-              children: [
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    IconButton(
-                      onPressed: _textPart > 0
-                          ? () => setState(() => _textPart--)
-                          : null,
-                      icon: const FiloIcon(FiloIcons.chevronLeft),
+              );
+            }
+            if (text) {
+              return Column(
+                children: [
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      IconButton(
+                        tooltip: 'Previous text section',
+                        onPressed: _textPart > 0
+                            ? () => setState(() => _textPart--)
+                            : null,
+                        icon: const FiloIcon(FiloIcons.chevronLeft),
+                      ),
+                      Text('Text part ${_textPart + 1}'),
+                      IconButton(
+                        tooltip: 'Next text section',
+                        onPressed: (_textPart + 1) * 65536 < _row.size
+                            ? () => setState(() => _textPart++)
+                            : null,
+                        icon: const FiloIcon(FiloIcons.chevronRight),
+                      ),
+                    ],
+                  ),
+                  Expanded(
+                    child: FutureBuilder<String>(
+                      future: _text(),
+                      builder: (context, data) => data.hasError
+                          ? Center(
+                              child: EmptyState(
+                                title: 'Could not read this file.',
+                                pose: 'confused',
+                                bob: false,
+                                showMascot: widget.showMascot,
+                              ),
+                            )
+                          : !data.hasData
+                          ? const Center(child: FiloCircularProgressIndicator())
+                          : SingleChildScrollView(
+                              padding: const EdgeInsets.all(20),
+                              child: SelectableText(data.data!),
+                            ),
                     ),
-                    Text('Text part ${_textPart + 1}'),
-                    IconButton(
-                      onPressed: (_textPart + 1) * 65536 < _row.size
-                          ? () => setState(() => _textPart++)
-                          : null,
-                      icon: const FiloIcon(FiloIcons.chevronRight),
+                  ),
+                ],
+              );
+            }
+            return Center(
+              child: SingleChildScrollView(
+                padding: const EdgeInsets.all(24),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    const FiloIcon(FiloIcons.document, size: 64),
+                    Text(_row.name),
+                    Text(
+                      '${_row.size} bytes · ${ext.isEmpty ? 'File' : ext.substring(1).toUpperCase()}',
+                    ),
+                    const SizedBox(height: 16),
+                    const Text('Open this file in another app on your phone.'),
+                    FilledButton(
+                      onPressed: () =>
+                          openExternal(context, widget.repository, _row),
+                      child: const Text('Open in another app'),
                     ),
                   ],
                 ),
-                Expanded(
-                  child: FutureBuilder<String>(
-                    future: _text(),
-                    builder: (context, data) => data.hasError
-                        ? Center(
-                            child: EmptyState(
-                              title: 'Could not read this file.',
-                              pose: 'confused',
-                              bob: false,
-                              showMascot: widget.showMascot,
-                            ),
-                          )
-                        : !data.hasData
-                        ? const Center(child: FiloCircularProgressIndicator())
-                        : SingleChildScrollView(
-                            padding: const EdgeInsets.all(20),
-                            child: SelectableText(data.data!),
-                          ),
-                  ),
-                ),
-              ],
-            );
-          }
-          return Center(
-            child: Padding(
-              padding: const EdgeInsets.all(24),
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  const FiloIcon(FiloIcons.document, size: 64),
-                  Text(_row.name),
-                  Text(
-                    '${_row.size} bytes · ${ext.isEmpty ? 'File' : ext.substring(1).toUpperCase()}',
-                  ),
-                  const SizedBox(height: 16),
-                  const Text('Open this file in another app on your phone.'),
-                  FilledButton(
-                    onPressed: () =>
-                        openExternal(context, widget.repository, _row),
-                    child: const Text('Open in another app'),
-                  ),
-                ],
               ),
-            ),
-          );
-        },
+            );
+          },
+        ),
       ),
     );
   }

@@ -183,7 +183,7 @@ class _FiloButtonState extends State<FiloButton>
                           : disabled
                           ? BorderSide(color: tokens.disabledBorder)
                           : widget.secondary || widget.outlined
-                          ? BorderSide(color: colors.outline, width: 1.5)
+                          ? BorderSide(color: tokens.controlBorder, width: 1.5)
                           : null,
                       minimumSize: Size(double.infinity, flat ? 48 : 56 - edge),
                       padding: EdgeInsets.symmetric(

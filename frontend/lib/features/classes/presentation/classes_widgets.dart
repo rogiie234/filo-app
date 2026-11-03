@@ -120,7 +120,7 @@ class FiloAvatar extends ConsumerWidget {
                   fallback: ColoredBox(
                     color: Theme.of(context).brightness == Brightness.dark
                         ? Theme.of(context).colorScheme.primaryContainer
-                        : FiloColors.mint,
+                        : FiloThemeTokens.of(context).mint,
                     child: Center(
                       child: Text(
                         name.trim().isEmpty
@@ -147,7 +147,7 @@ class RedDotBadge extends StatelessWidget {
   @override
   Widget build(BuildContext context) => Badge(
     isLabelVisible: visible,
-    backgroundColor: FiloColors.error,
+    backgroundColor: Theme.of(context).colorScheme.error,
     child: child,
   );
 }
@@ -158,16 +158,16 @@ class ApprovalChip extends StatelessWidget {
   Widget build(BuildContext context) => Container(
     padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
     decoration: BoxDecoration(
-      color: FiloColors.warning,
+      color: FiloThemeTokens.of(context).warningTint,
       borderRadius: BorderRadius.circular(14),
     ),
-    child: const Row(
+    child: Row(
       children: [
         ExcludeSemantics(
           child: FiloIcon(
             FiloIcons.pending,
             size: 18,
-            color: FiloColors.warningInk,
+            color: FiloThemeTokens.of(context).warning,
           ),
         ),
         SizedBox(width: 8),
@@ -175,7 +175,7 @@ class ApprovalChip extends StatelessWidget {
           child: Text(
             'Waiting for approval',
             style: TextStyle(
-              color: FiloColors.warningInk,
+              color: FiloThemeTokens.of(context).warning,
               fontWeight: FontWeight.w700,
             ),
           ),
@@ -194,7 +194,7 @@ class OfflineBanner extends StatelessWidget {
     decoration: BoxDecoration(
       color: Theme.of(context).brightness == Brightness.dark
           ? Theme.of(context).colorScheme.primaryContainer
-          : FiloColors.selected,
+          : Theme.of(context).colorScheme.primaryContainer,
       borderRadius: BorderRadius.circular(20),
     ),
     child: Row(
@@ -220,23 +220,27 @@ class ClassCardSkeleton extends StatelessWidget {
         margin: const EdgeInsets.only(bottom: 16),
         clipBehavior: Clip.antiAlias,
         decoration: BoxDecoration(
-          color: FiloColors.surface,
+          color: Theme.of(context).colorScheme.surface,
           borderRadius: BorderRadius.circular(28),
         ),
         child: Column(
           children: [
-            Container(height: 148, color: FiloColors.mint),
+            Container(height: 148, color: FiloThemeTokens.of(context).mint),
             Padding(
               padding: const EdgeInsets.all(20),
               child: Row(
                 children: [
-                  const CircleAvatar(backgroundColor: FiloColors.tint),
+                  CircleAvatar(
+                    backgroundColor: Theme.of(context)
+                        .colorScheme
+                        .surfaceContainer,
+                  ),
                   const SizedBox(width: 16),
                   Expanded(
                     child: Container(
                       height: 18,
                       decoration: BoxDecoration(
-                        color: FiloColors.tint,
+                        color: Theme.of(context).colorScheme.surfaceContainer,
                         borderRadius: BorderRadius.circular(12),
                       ),
                     ),
@@ -286,10 +290,12 @@ class ClassCard extends ConsumerWidget {
             ],
           ),
           child: Material(
-            color: room.pending ? FiloColors.tint : FiloColors.surface,
+            color: room.pending
+                ? Theme.of(context).colorScheme.surfaceContainer
+                : Theme.of(context).colorScheme.surface,
             shape: RoundedRectangleBorder(
               borderRadius: BorderRadius.circular(28),
-              side: const BorderSide(color: FiloColors.border),
+              side: BorderSide(color: Theme.of(context).colorScheme.outline),
             ),
             clipBehavior: Clip.antiAlias,
             child: InkWell(
@@ -318,13 +324,15 @@ class ClassCard extends ConsumerWidget {
                             width: 40,
                             height: 40,
                             decoration: BoxDecoration(
-                              color: FiloColors.tint,
+                              color: Theme.of(context)
+                                  .colorScheme
+                                  .surfaceContainer,
                               borderRadius: BorderRadius.circular(14),
                             ),
-                            child: const FiloIcon(
+                            child: FiloIcon(
                               FiloIcons.book,
                               size: 22,
-                              color: FiloColors.primary,
+                              color: Theme.of(context).colorScheme.primary,
                             ),
                           ),
                         ),
@@ -332,11 +340,11 @@ class ClassCard extends ConsumerWidget {
                         Expanded(
                           child: Text(
                             room.course,
-                            style: const TextStyle(
+                            style: TextStyle(
                               fontSize: 18,
                               height: 1.35,
                               fontWeight: FontWeight.w800,
-                              color: FiloColors.ink,
+                              color: Theme.of(context).colorScheme.onSurface,
                             ),
                           ),
                         ),
@@ -350,8 +358,10 @@ class ClassCard extends ConsumerWidget {
                             child: Container(
                               width: 36,
                               height: 36,
-                              decoration: const BoxDecoration(
-                                color: FiloColors.selected,
+                              decoration: BoxDecoration(
+                                color: Theme.of(context)
+                                    .colorScheme
+                                    .primaryContainer,
                                 shape: BoxShape.circle,
                               ),
                               child: FiloIcon(
@@ -359,7 +369,7 @@ class ClassCard extends ConsumerWidget {
                                     ? FiloIcons.lock
                                     : FiloIcons.forward,
                                 size: 20,
-                                color: FiloColors.primary,
+                                color: Theme.of(context).colorScheme.primary,
                               ),
                             ),
                           ),
@@ -381,16 +391,18 @@ class ClassCard extends ConsumerWidget {
                           vertical: 10,
                         ),
                         decoration: BoxDecoration(
-                          color: FiloColors.tint,
+                          color: Theme.of(context).colorScheme.surfaceContainer,
                           borderRadius: BorderRadius.circular(14),
                         ),
-                        child: const Row(
+                        child: Row(
                           children: [
                             ExcludeSemantics(
                               child: FiloIcon(
                                 FiloIcons.archive,
                                 size: 18,
-                                color: FiloColors.secondary,
+                                color: Theme.of(context)
+                                    .colorScheme
+                                    .onSurfaceVariant,
                               ),
                             ),
                             SizedBox(width: 8),
@@ -398,7 +410,9 @@ class ClassCard extends ConsumerWidget {
                               child: Text(
                                 'Archived \u00b7 Read only',
                                 style: TextStyle(
-                                  color: FiloColors.secondary,
+                                  color: Theme.of(context)
+                                      .colorScheme
+                                      .onSurfaceVariant,
                                   fontSize: 13,
                                   fontWeight: FontWeight.w700,
                                 ),

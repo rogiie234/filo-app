@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 
-import '../../../core/theme/app_theme.dart';
 import '../../../core/widgets/filo_widgets.dart';
 import '../../classes/domain/prototype_models.dart';
 
@@ -26,9 +25,11 @@ class _PreviewClassFilesState extends State<PreviewClassFiles> {
       children: [
         Text('Class files', style: Theme.of(context).textTheme.headlineMedium),
         const SizedBox(height: 8),
-        const Text(
+        Text(
           'Good ideas, kept together.',
-          style: TextStyle(color: FiloColors.secondary),
+          style: TextStyle(
+            color: Theme.of(context).colorScheme.onSurfaceVariant,
+          ),
         ),
         const SizedBox(height: 24),
         TextField(
@@ -70,11 +71,13 @@ class _PreviewClassFilesState extends State<PreviewClassFiles> {
             child: FileCard(file: file),
           ),
         if (files.isNotEmpty)
-          const Padding(
+          Padding(
             padding: EdgeInsets.only(top: 12),
             child: Text(
               'Sample file previews. Downloads are not connected yet.',
-              style: TextStyle(color: FiloColors.secondary),
+              style: TextStyle(
+                color: Theme.of(context).colorScheme.onSurfaceVariant,
+              ),
             ),
           ),
       ],
@@ -112,7 +115,9 @@ class FileCard extends StatelessWidget {
                   ),
                   Text(
                     '${file.size} · Class material',
-                    style: const TextStyle(color: FiloColors.secondary),
+                    style: TextStyle(
+                      color: Theme.of(context).colorScheme.onSurfaceVariant,
+                    ),
                   ),
                 ],
               ),

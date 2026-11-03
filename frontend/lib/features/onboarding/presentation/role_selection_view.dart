@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 
 import '../../../core/theme/animation_constants.dart';
-import '../../../core/theme/app_theme.dart';
 import '../../../core/widgets/filo_widgets.dart';
 import '../data/profile_repository.dart';
 import 'role_option_card.dart';
@@ -66,11 +65,13 @@ class RoleSelectionView extends StatelessWidget {
                                     .headlineMedium,
                               ),
                               const SizedBox(height: 10),
-                              const Text(
+                              Text(
                                 'A place for curious minds and inspiring teachers.',
                                 textAlign: TextAlign.center,
                                 style: TextStyle(
-                                  color: FiloColors.secondary,
+                                  color: Theme.of(context)
+                                      .colorScheme
+                                      .onSurfaceVariant,
                                   fontSize: 16,
                                   height: 1.5,
                                 ),

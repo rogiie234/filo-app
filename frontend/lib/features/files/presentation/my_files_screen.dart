@@ -5,7 +5,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/widgets/filo_widgets.dart';
-import '../../../core/theme/app_theme.dart';
 import '../../../data/local/app_database.dart';
 import '../../../core/sync/sync_providers.dart';
 import '../../drive_backup/data/drive_backup_service.dart';
@@ -477,6 +476,7 @@ class _MyFilesScreenState extends ConsumerState<MyFilesScreen> {
             leading: _folder == null
                 ? null
                 : IconButton(
+                    tooltip: 'Up to parent folder',
                     onPressed: () => setState(
                       () => _folder = path.isEmpty ? null : path.last.parentId,
                     ),
@@ -489,6 +489,7 @@ class _MyFilesScreenState extends ConsumerState<MyFilesScreen> {
                 icon: const FiloIcon(FiloIcons.cloudUpload),
               ),
               PopupMenuButton<String>(
+                tooltip: 'Sort files',
                 initialValue: _sort,
                 onSelected: (value) => setState(() => _sort = value),
                 itemBuilder: (_) => [

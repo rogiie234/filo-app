@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 
-import '../../../core/theme/app_theme.dart';
 import '../../../core/widgets/filo_widgets.dart';
 import '../domain/quiz_draft.dart';
 import '../domain/quiz_helpers.dart';
@@ -32,9 +31,9 @@ class AssessmentTypeChip extends StatelessWidget {
   @override
   Widget build(BuildContext context) => Chip(
     label: Text(type == 'exam' ? 'Exam' : 'Quiz'),
-    backgroundColor: FiloColors.tint,
-    labelStyle: const TextStyle(
-      color: FiloColors.ink,
+    backgroundColor: Theme.of(context).colorScheme.surfaceContainer,
+    labelStyle: TextStyle(
+      color: Theme.of(context).colorScheme.onSurface,
       fontWeight: FontWeight.w700,
     ),
     visualDensity: VisualDensity.compact,
@@ -72,10 +71,10 @@ class AssessmentRow extends StatelessWidget {
       QuizDisplayStatus.closed => FiloIcons.lock,
     };
     return Material(
-      color: FiloColors.surface,
+      color: Theme.of(context).colorScheme.surface,
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(24),
-        side: const BorderSide(color: FiloColors.border),
+        side: BorderSide(color: Theme.of(context).colorScheme.outline),
       ),
       clipBehavior: Clip.antiAlias,
       child: Column(
@@ -94,13 +93,19 @@ class AssessmentRow extends StatelessWidget {
                     children: [
                       AssessmentTypeChip(type: quiz.type),
                       Chip(
-                        avatar: FiloIcon(icon, size: 18, color: FiloColors.ink),
+                        avatar: FiloIcon(
+                          icon,
+                          size: 18,
+                          color: Theme.of(context).colorScheme.onSurface,
+                        ),
                         label: Text(status.label),
-                        labelStyle: const TextStyle(
-                          color: FiloColors.ink,
+                        labelStyle: TextStyle(
+                          color: Theme.of(context).colorScheme.onSurface,
                           fontWeight: FontWeight.w700,
                         ),
-                        backgroundColor: FiloColors.tint,
+                        backgroundColor: Theme.of(context)
+                            .colorScheme
+                            .surfaceContainer,
                         visualDensity: VisualDensity.compact,
                       ),
                     ],
@@ -113,12 +118,16 @@ class AssessmentRow extends StatelessWidget {
                   const SizedBox(height: 12),
                   Text(
                     'Opens: ${assessmentDateLabel(quiz.opensAt)}',
-                    style: const TextStyle(color: FiloColors.secondary),
+                    style: TextStyle(
+                      color: Theme.of(context).colorScheme.onSurfaceVariant,
+                    ),
                   ),
                   const SizedBox(height: 4),
                   Text(
                     'Closes: ${assessmentDateLabel(quiz.closesAt)}',
-                    style: const TextStyle(color: FiloColors.secondary),
+                    style: TextStyle(
+                      color: Theme.of(context).colorScheme.onSurfaceVariant,
+                    ),
                   ),
                   const SizedBox(height: 12),
                   Text(

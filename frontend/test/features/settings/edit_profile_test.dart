@@ -221,150 +221,156 @@ void main() {
     (widget) => widget is FiloButton && widget.label == label,
   );
 
-  for (final role in ['student', 'instructor']) {
-    testWidgets(
-      '$role edits at Dark 130 percent, retains failed drafts, retries local cache offline, updates hub',
-      (tester) async {
-        final db = AppDatabase(NativeDatabase.memory());
-        final initial = profile(role);
-        final cache = FakeProfileCache(db, initial);
-        final client = (await tester.runAsync(
-          () async => SupabaseClient(
-            'https://example.invalid',
-            'fixture',
-            authOptions: const AuthClientOptions(autoRefreshToken: false),
-          ),
-        ))!;
-        final repository = FakeEditRepository(client, initial)..fail = true;
-        final network = StreamController<bool>.broadcast();
-        final photo = ProfilePhotoDraft.fromBytes(
-          (await tester.runAsync(
-            () => File('assets/brand/google-g.png').readAsBytes(),
-          ))!,
-        );
-        addTearDown(() async {
-          await tester.pumpWidget(const SizedBox.shrink());
-          await tester.pump();
-          await tester.runAsync(() async {
-            await network.close();
-            await cache.changes.close();
-            await db.close();
-            await client.dispose();
-          });
-        });
-        await tester.pumpWidget(
-          ProviderScope(
-            overrides: [
-              authUserIdProvider.overrideWith((ref) => Stream.value('user-1')),
-              profileCacheProvider.overrideWith((ref) async => cache),
-              profileRepositoryProvider.overrideWithValue(repository),
-              profilePhotoPickerProvider.overrideWithValue(() async => photo),
-              themeSettingsRepositoryProvider.overrideWith((ref) async => null),
-              connectivityProvider.overrideWith((ref) async* {
-                yield true;
-                yield* network.stream;
-              }),
-            ],
-            child: MaterialApp(
-              theme: AppTheme.dark,
-              builder: (context, child) => MediaQuery(
-                data: MediaQuery.of(context)
-                    .copyWith(textScaler: TextScaler.linear(1.3)),
-                child: child!,
-              ),
-              home: SettingsScreen(profile: initial),
+  for (final palette in [AppTheme.light, AppTheme.dark]) {
+    for (final role in ['student', 'instructor']) {
+      testWidgets(
+        '$role edits at ${palette.brightness.name} 130 percent, retains failed drafts, retries local cache offline, updates hub',
+        (tester) async {
+          final db = AppDatabase(NativeDatabase.memory());
+          final initial = profile(role);
+          final cache = FakeProfileCache(db, initial);
+          final client = (await tester.runAsync(
+            () async => SupabaseClient(
+              'https://example.invalid',
+              'fixture',
+              authOptions: const AuthClientOptions(autoRefreshToken: false),
             ),
-          ),
-        );
-        await tester.pumpAndSettle();
-        await tester.tap(find.text('Edit profile'));
-        await tester.pumpAndSettle();
-        expect(find.byType(TextFormField), findsNWidgets(2));
-        expect(
-          find.byWidgetPredicate(
-            (w) => w is FiloIcon && w.icon == FiloIcons.lock,
-          ),
-          findsNWidgets(2),
-        );
-        await tester.enterText(find.byType(TextFormField).at(0), ' Changed ');
-        await tester.enterText(
-          find.byType(TextFormField).at(1),
-          ' New school ',
-        );
-        network.add(false);
-        await tester.pumpAndSettle();
-        await reveal(tester, button('Save'));
-        expect(tester.widget<FiloButton>(button('Save')).onPressed, isNull);
-        expect(
-          find.text("You're offline. Connect to save your changes."),
-          findsOneWidget,
-        );
-        network.add(true);
-        await tester.pumpAndSettle();
-        await tester.scrollUntilVisible(
-          button('Choose photo'),
-          -250,
-          scrollable: find
-              .descendant(
-                of: find.byType(ListView).last,
-                matching: find.byType(Scrollable),
-              )
-              .first,
-        );
-        await tester.tap(button('Choose photo'));
-        await tester.pumpAndSettle();
-        await reveal(tester, button('Save'));
-        await tester.tap(button('Save'));
-        await tester.pumpAndSettle();
-        expect(
-          find.text("Couldn't save your changes. Try again."),
-          findsOneWidget,
-        );
-        expect(repository.lastPhoto!.id, photo.id);
-        expect(
-          tester
-              .widget<TextFormField>(find.byType(TextFormField).first)
-              .controller!
-              .text,
-          ' Changed ',
-        );
-        repository.fail = false;
-        cache.fail = true;
-        await reveal(tester, button('Retry'));
-        await tester.tap(button('Retry'));
-        await tester.pumpAndSettle();
-        expect(
-          find.text(
-            "Your profile was saved online, but Filo couldn't update its saved copy on this device. Try again.",
-          ),
-          findsOneWidget,
-        );
-        final container = ProviderScope.containerOf(
-          tester.element(find.byType(EditProfileScreen)),
-        );
-        expect(
-          container.read(accountProfileProvider('user-1'))!.name,
-          'Changed',
-        );
-        expect(repository.edits, 2);
-        network.add(false);
-        await tester.pumpAndSettle();
-        cache.fail = false;
-        await reveal(tester, button('Retry'));
-        await tester.tap(button('Retry'));
-        await tester.pumpAndSettle();
-        expect(repository.edits, 2);
-        expect(cache.saves, 2);
-        expect(find.text('Changes saved.'), findsOneWidget);
-        await tester.pageBack();
-        await tester.pumpAndSettle();
-        expect(find.text('Changed'), findsOneWidget);
-        expect(find.text('New school'), findsOneWidget);
-        expect(find.text('fixture@example.invalid'), findsOneWidget);
-        expect(cache.saved.role.name, role);
-        expect(cache.saved.row['privacy_version'], 'original');
-      },
-    );
+          ))!;
+          final repository = FakeEditRepository(client, initial)..fail = true;
+          final network = StreamController<bool>.broadcast();
+          final photo = ProfilePhotoDraft.fromBytes(
+            (await tester.runAsync(
+              () => File('assets/brand/google-g.png').readAsBytes(),
+            ))!,
+          );
+          addTearDown(() async {
+            await tester.pumpWidget(const SizedBox.shrink());
+            await tester.pump();
+            await tester.runAsync(() async {
+              await network.close();
+              await cache.changes.close();
+              await db.close();
+              await client.dispose();
+            });
+          });
+          await tester.pumpWidget(
+            ProviderScope(
+              overrides: [
+                authUserIdProvider.overrideWith(
+                  (ref) => Stream.value('user-1'),
+                ),
+                profileCacheProvider.overrideWith((ref) async => cache),
+                profileRepositoryProvider.overrideWithValue(repository),
+                profilePhotoPickerProvider.overrideWithValue(() async => photo),
+                themeSettingsRepositoryProvider.overrideWith(
+                  (ref) async => null,
+                ),
+                connectivityProvider.overrideWith((ref) async* {
+                  yield true;
+                  yield* network.stream;
+                }),
+              ],
+              child: MaterialApp(
+                theme: palette,
+                builder: (context, child) => MediaQuery(
+                  data: MediaQuery.of(context)
+                      .copyWith(textScaler: TextScaler.linear(1.3)),
+                  child: child!,
+                ),
+                home: SettingsScreen(profile: initial),
+              ),
+            ),
+          );
+          await tester.pumpAndSettle();
+          await tester.tap(find.text('Edit profile'));
+          await tester.pumpAndSettle();
+          expect(find.byType(TextFormField), findsNWidgets(2));
+          expect(
+            find.byWidgetPredicate(
+              (w) => w is FiloIcon && w.icon == FiloIcons.lock,
+            ),
+            findsNWidgets(2),
+          );
+          await tester.enterText(find.byType(TextFormField).at(0), ' Changed ');
+          await tester.enterText(
+            find.byType(TextFormField).at(1),
+            ' New school ',
+          );
+          network.add(false);
+          await tester.pumpAndSettle();
+          await reveal(tester, button('Save'));
+          expect(tester.widget<FiloButton>(button('Save')).onPressed, isNull);
+          expect(
+            find.text("You're offline. Connect to save your changes."),
+            findsOneWidget,
+          );
+          network.add(true);
+          await tester.pumpAndSettle();
+          await tester.scrollUntilVisible(
+            button('Choose photo'),
+            -250,
+            scrollable: find
+                .descendant(
+                  of: find.byType(ListView).last,
+                  matching: find.byType(Scrollable),
+                )
+                .first,
+          );
+          await tester.tap(button('Choose photo'));
+          await tester.pumpAndSettle();
+          await reveal(tester, button('Save'));
+          await tester.tap(button('Save'));
+          await tester.pumpAndSettle();
+          expect(
+            find.text("Couldn't save your changes. Try again."),
+            findsOneWidget,
+          );
+          expect(repository.lastPhoto!.id, photo.id);
+          expect(
+            tester
+                .widget<TextFormField>(find.byType(TextFormField).first)
+                .controller!
+                .text,
+            ' Changed ',
+          );
+          repository.fail = false;
+          cache.fail = true;
+          await reveal(tester, button('Retry'));
+          await tester.tap(button('Retry'));
+          await tester.pumpAndSettle();
+          expect(
+            find.text(
+              "Your profile was saved online, but Filo couldn't update its saved copy on this device. Try again.",
+            ),
+            findsOneWidget,
+          );
+          final container = ProviderScope.containerOf(
+            tester.element(find.byType(EditProfileScreen)),
+          );
+          expect(
+            container.read(accountProfileProvider('user-1'))!.name,
+            'Changed',
+          );
+          expect(repository.edits, 2);
+          network.add(false);
+          await tester.pumpAndSettle();
+          cache.fail = false;
+          await reveal(tester, button('Retry'));
+          await tester.tap(button('Retry'));
+          await tester.pumpAndSettle();
+          expect(repository.edits, 2);
+          expect(cache.saves, 2);
+          expect(find.text('Changes saved.'), findsOneWidget);
+          await tester.pageBack();
+          await tester.pumpAndSettle();
+          expect(find.text('Changed'), findsOneWidget);
+          expect(find.text('New school'), findsOneWidget);
+          expect(find.text('fixture@example.invalid'), findsOneWidget);
+          expect(cache.saved.role.name, role);
+          expect(cache.saved.row['privacy_version'], 'original');
+        },
+      );
+    }
   }
 
   testWidgets(

@@ -181,9 +181,9 @@ class _StudyBodyState extends ConsumerState<_StudyBody> {
                       FiloButton(
                         label: 'Still learning',
                         secondary: true,
-                        leading: const Icon(
+                        leading: Icon(
                           Icons.school_outlined,
-                          color: FiloColors.warningInk,
+                          color: FiloThemeTokens.of(context).warning,
                         ),
                         onPressed: enabled
                             ? () => _session.mark('learning')

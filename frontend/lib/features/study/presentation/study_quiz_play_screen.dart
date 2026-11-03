@@ -318,7 +318,7 @@ class _QuizPlayerState extends ConsumerState<_QuizPlayer> {
           minimumSize: const Size(double.infinity, 48),
           alignment: Alignment.centerLeft,
           backgroundColor: _session.answer == value
-              ? FiloColors.selected
+              ? Theme.of(context).colorScheme.primaryContainer
               : null,
         ),
         onPressed: _session.checked ? null : () => _session.select(value),
@@ -347,7 +347,7 @@ class QuizResultPanel extends StatelessWidget {
         padding: const EdgeInsets.all(16),
         decoration: BoxDecoration(
           color: correct
-              ? FiloColors.mint
+              ? FiloThemeTokens.of(context).mint
               : Theme.of(context).colorScheme.errorContainer,
           borderRadius: BorderRadius.circular(20),
         ),
@@ -358,7 +358,9 @@ class QuizResultPanel extends StatelessWidget {
               children: [
                 Icon(
                   correct ? Icons.check_circle_outline : Icons.info_outline,
-                  color: correct ? FiloColors.primary : FiloColors.error,
+                  color: correct
+                      ? Theme.of(context).colorScheme.primary
+                      : Theme.of(context).colorScheme.error,
                 ),
                 const SizedBox(width: 8),
                 Expanded(

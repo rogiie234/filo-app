@@ -38,10 +38,10 @@ class StudentQuizRow extends StatelessWidget {
   Widget build(BuildContext context) {
     final state = studentQuizState(quiz, now);
     return Material(
-      color: FiloColors.surface,
+      color: Theme.of(context).colorScheme.surface,
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(24),
-        side: const BorderSide(color: FiloColors.border),
+        side: BorderSide(color: Theme.of(context).colorScheme.outline),
       ),
       clipBehavior: Clip.antiAlias,
       child: InkWell(
@@ -55,7 +55,9 @@ class StudentQuizRow extends StatelessWidget {
               if (classLabel != null)
                 Text(
                   classLabel!,
-                  style: const TextStyle(color: FiloColors.secondary),
+                  style: TextStyle(
+                    color: Theme.of(context).colorScheme.onSurfaceVariant,
+                  ),
                 ),
               const SizedBox(height: 8),
               Wrap(
@@ -70,7 +72,9 @@ class StudentQuizRow extends StatelessWidget {
               Text('Closes: ${philippineQuizDate(quiz.closesAt)}'),
               Text(
                 '${quiz.points} points',
-                style: const TextStyle(color: FiloColors.secondary),
+                style: TextStyle(
+                  color: Theme.of(context).colorScheme.onSurfaceVariant,
+                ),
               ),
               if (state.pending)
                 const Text('Refresh to check your exam status.'),
@@ -98,7 +102,10 @@ class StudentQuizSkeleton extends StatelessWidget {
                 child: FractionallySizedBox(
                   widthFactor: width,
                   alignment: Alignment.centerLeft,
-                  child: Container(height: 20, color: FiloColors.mint),
+                  child: Container(
+                    height: 20,
+                    color: FiloThemeTokens.of(context).mint,
+                  ),
                 ),
               ),
           ],

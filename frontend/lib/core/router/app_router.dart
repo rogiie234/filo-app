@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
@@ -11,12 +12,12 @@ import '../../features/onboarding/presentation/intro_screen.dart';
 import '../../features/posts/presentation/create_post_screen.dart';
 import '../widgets/filo_widgets.dart';
 import '../theme/animation_constants.dart';
-import '../theme/app_theme.dart';
 import '../supabase/session_gate.dart';
 
 final appRouterProvider = Provider<GoRouter>((ref) {
   final router = GoRouter(
     initialLocation: '/',
+    observers: [RouteObserver<PageRoute<dynamic>>()],
     routes: [
       GoRoute(path: '/', builder: (context, state) => const IntroScreen()),
       GoRoute(

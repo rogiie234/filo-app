@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:go_router/go_router.dart';
 
-import '../../../core/theme/app_theme.dart';
 import '../../../core/widgets/filo_widgets.dart';
 import '../../../core/widgets/entry_artwork.dart';
 import 'animation_constants.dart';
@@ -172,7 +171,11 @@ class _IntroScreenState extends State<IntroScreen> {
                                     slide.$2,
                                     textAlign: TextAlign.center,
                                     style: Theme.of(context).textTheme.bodyLarge
-                                        ?.copyWith(color: FiloColors.secondary),
+                                        ?.copyWith(
+                                          color: Theme.of(context)
+                                              .colorScheme
+                                              .onSurfaceVariant,
+                                        ),
                                   ),
                                   index,
                                   subtitle: true,
@@ -199,8 +202,8 @@ class _IntroScreenState extends State<IntroScreen> {
                       margin: const EdgeInsets.symmetric(horizontal: 4),
                       decoration: BoxDecoration(
                         color: _index == index
-                            ? FiloAnimation.indicatorActive
-                            : FiloAnimation.indicatorInactive,
+                            ? Theme.of(context).colorScheme.primary
+                            : Theme.of(context).colorScheme.onSurfaceVariant,
                         borderRadius: BorderRadius.circular(8),
                       ),
                     ),

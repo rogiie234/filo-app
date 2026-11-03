@@ -329,24 +329,24 @@ class _WorkQueueScreenState extends ConsumerState<WorkQueueScreen> {
         children: [
           Semantics(
             header: true,
-            child: const Text(
+            child: Text(
               'To-do',
               style: TextStyle(
                 fontSize: 28,
                 fontWeight: FontWeight.w800,
                 height: 1.2,
-                color: FiloColors.ink,
+                color: Theme.of(context).colorScheme.onSurface,
               ),
             ),
           ),
           const SizedBox(height: 8),
-          const Text(
+          Text(
             'Assignments and quizzes, organized by due date.',
             style: TextStyle(
               fontSize: 15,
               fontWeight: FontWeight.w500,
               height: 1.5,
-              color: FiloColors.secondary,
+              color: Theme.of(context).colorScheme.onSurfaceVariant,
             ),
           ),
           const SizedBox(height: 20),
@@ -358,18 +358,18 @@ class _WorkQueueScreenState extends ConsumerState<WorkQueueScreen> {
                 FiloAnimatedChip(
                   label: Text(filter),
                   selected: _taskFilter == filter,
-                  selectedColor: FiloColors.selected,
-                  backgroundColor: FiloColors.surface,
+                  selectedColor: Theme.of(context).colorScheme.primaryContainer,
+                  backgroundColor: Theme.of(context).colorScheme.surface,
                   labelStyle: TextStyle(
                     color: _taskFilter == filter
-                        ? FiloColors.ink
-                        : FiloColors.secondary,
+                        ? Theme.of(context).colorScheme.onSurface
+                        : Theme.of(context).colorScheme.onSurfaceVariant,
                     fontWeight: FontWeight.w700,
                   ),
                   side: BorderSide(
                     color: _taskFilter == filter
-                        ? FiloColors.primary
-                        : FiloColors.border,
+                        ? Theme.of(context).colorScheme.primary
+                        : FiloThemeTokens.of(context).controlBorder,
                   ),
                   padding: const EdgeInsets.symmetric(
                     horizontal: 10,
@@ -434,19 +434,19 @@ class _WorkQueueScreenState extends ConsumerState<WorkQueueScreen> {
                       Expanded(
                         child: Text(
                           group,
-                          style: const TextStyle(
+                          style: TextStyle(
                             fontSize: 18,
                             fontWeight: FontWeight.w800,
-                            color: FiloColors.ink,
+                            color: Theme.of(context).colorScheme.onSurface,
                           ),
                         ),
                       ),
                       Text(
                         '${visible.where((entry) => entry.group == group).length}',
-                        style: const TextStyle(
+                        style: TextStyle(
                           fontSize: 14,
                           fontWeight: FontWeight.w700,
-                          color: FiloColors.secondary,
+                          color: Theme.of(context).colorScheme.onSurfaceVariant,
                         ),
                       ),
                     ],

@@ -5,7 +5,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:url_launcher/url_launcher.dart';
 
-import '../../../core/theme/app_theme.dart';
 import '../../../core/widgets/filo_widgets.dart';
 import '../data/drive_backup_service.dart';
 import '../../../core/sync/sync_providers.dart';
@@ -123,23 +122,23 @@ class DriveBackupScreen extends ConsumerWidget {
                       child: _BackupIcon(icon: FiloIcons.cloudUpload, size: 72),
                     ),
                     const SizedBox(height: 20),
-                    const Text(
+                    Text(
                       'Back up your files.',
                       style: TextStyle(
                         fontSize: 28,
                         height: 1.2,
                         fontWeight: FontWeight.w800,
-                        color: FiloColors.ink,
+                        color: Theme.of(context).colorScheme.onSurface,
                       ),
                     ),
                     const SizedBox(height: 10),
-                    const Text(
+                    Text(
                       'Save copies of files from this phone to your own Google '
                       'Drive, in a folder named Filo Backup. Backup is one-way.',
                       style: TextStyle(
                         fontSize: 15,
                         height: 1.5,
-                        color: FiloColors.secondary,
+                        color: Theme.of(context).colorScheme.onSurfaceVariant,
                         fontWeight: FontWeight.w500,
                       ),
                     ),
@@ -147,22 +146,22 @@ class DriveBackupScreen extends ConsumerWidget {
                     if (email != null && email.isNotEmpty) ...[
                       Text(
                         email,
-                        style: const TextStyle(
+                        style: TextStyle(
                           fontSize: 15,
                           height: 1.4,
                           fontWeight: FontWeight.w800,
-                          color: FiloColors.ink,
+                          color: Theme.of(context).colorScheme.onSurface,
                         ),
                       ),
                       const SizedBox(height: 8),
                     ],
-                    const Text(
+                    Text(
                       'Use your Google account to save copies of your files. '
                       'Google may ask you to allow Drive access.',
                       style: TextStyle(
                         fontSize: 14,
                         height: 1.5,
-                        color: FiloColors.secondary,
+                        color: Theme.of(context).colorScheme.onSurfaceVariant,
                       ),
                     ),
                     const SizedBox(height: 24),
@@ -190,17 +189,22 @@ class DriveBackupScreen extends ConsumerWidget {
                                     }
                                   },
                           ),
-                          const Divider(color: FiloColors.border, height: 16),
+                          Divider(
+                            color: Theme.of(context).colorScheme.outline,
+                            height: 16,
+                          ),
                           FiloSwitchListTile(
                             contentPadding: EdgeInsets.zero,
                             title: const Text(
                               'Back up on Wi-Fi only',
                               style: TextStyle(fontWeight: FontWeight.w700),
                             ),
-                            subtitle: const Text(
+                            subtitle: Text(
                               'Wait for Wi-Fi before uploading to save mobile data.',
                               style: TextStyle(
-                                color: FiloColors.secondary,
+                                color: Theme.of(context)
+                                    .colorScheme
+                                    .onSurfaceVariant,
                                 height: 1.4,
                               ),
                             ),
@@ -214,7 +218,7 @@ class DriveBackupScreen extends ConsumerWidget {
                     ),
                     const SizedBox(height: 16),
                     FiloPanel(
-                      color: FiloColors.tint,
+                      color: Theme.of(context).colorScheme.surfaceContainer,
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.stretch,
                         children: [
@@ -225,7 +229,7 @@ class DriveBackupScreen extends ConsumerWidget {
                                   service.enabled
                                       ? FiloIcons.cloudUpload
                                       : FiloIcons.drive,
-                                  color: FiloColors.primary,
+                                  color: Theme.of(context).colorScheme.primary,
                                   size: 22,
                                 ),
                               ),
@@ -259,7 +263,10 @@ class DriveBackupScreen extends ConsumerWidget {
                             ),
                           ],
                           const SizedBox(height: 16),
-                          const Divider(color: FiloColors.border, height: 1),
+                          Divider(
+                            color: Theme.of(context).colorScheme.outline,
+                            height: 1,
+                          ),
                           const SizedBox(height: 16),
                           Text(
                             lastLabel,
@@ -271,7 +278,11 @@ class DriveBackupScreen extends ConsumerWidget {
                           const SizedBox(height: 6),
                           Text(
                             '${service.pendingCount} files pending',
-                            style: const TextStyle(color: FiloColors.secondary),
+                            style: TextStyle(
+                              color: Theme.of(context)
+                                  .colorScheme
+                                  .onSurfaceVariant,
+                            ),
                           ),
                         ],
                       ),
@@ -300,14 +311,14 @@ class DriveBackupScreen extends ConsumerWidget {
                           : null,
                     ),
                     const SizedBox(height: 16),
-                    const Text(
+                    Text(
                       'Choose downloaded files with Android\u2019s file picker. '
                       'All files in My Files are backed up. Keep Filo open to '
                       'upload; pending files resume when you reopen it.',
                       style: TextStyle(
                         fontSize: 13,
                         height: 1.5,
-                        color: FiloColors.secondary,
+                        color: Theme.of(context).colorScheme.onSurfaceVariant,
                       ),
                     ),
                     if (service.jobs.isNotEmpty) ...[
@@ -363,9 +374,11 @@ class DriveBackupScreen extends ConsumerWidget {
                                       ? '${job['size']} bytes backed up'
                                             '${(job['elapsed_ms'] as int? ?? 0) > 0 ? ' \u00b7 ${((job['elapsed_ms'] as int) / 1000).toStringAsFixed(2)} s (latest upload attempt)' : ''}'
                                       : '${job['uploaded']} / ${job['size']} bytes',
-                                  style: const TextStyle(
+                                  style: TextStyle(
                                     fontSize: 13,
-                                    color: FiloColors.secondary,
+                                    color: Theme.of(context)
+                                        .colorScheme
+                                        .onSurfaceVariant,
                                     height: 1.4,
                                   ),
                                 ),
@@ -421,10 +434,14 @@ class _BackupIcon extends StatelessWidget {
       width: size,
       height: size,
       decoration: BoxDecoration(
-        color: FiloColors.selected,
+        color: Theme.of(context).colorScheme.primaryContainer,
         borderRadius: BorderRadius.circular(size * .32),
       ),
-      child: FiloIcon(icon, size: size * .5, color: FiloColors.primary),
+      child: FiloIcon(
+        icon,
+        size: size * .5,
+        color: Theme.of(context).colorScheme.primary,
+      ),
     ),
   );
 }

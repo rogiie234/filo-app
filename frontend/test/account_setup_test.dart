@@ -1,3 +1,6 @@
+import 'support/accessibility.dart';
+
+import 'package:filo/core/theme/app_theme.dart';
 import 'package:filo/core/widgets/filo_widgets.dart';
 import 'package:filo/features/classes/presentation/classes_screen.dart';
 import 'package:filo/features/classes/application/class_providers.dart';
@@ -73,182 +76,207 @@ class FakeNotifications extends NotificationPermission {
 }
 
 void main() {
-  final binding = TestWidgetsFlutterBinding.ensureInitialized();
-  setUp(() {
-    binding.platformDispatcher.accessibilityFeaturesTestValue =
-        const FakeAccessibilityFeatures(disableAnimations: true);
-  });
-  tearDown(() {
-    binding.platformDispatcher.clearAccessibilityFeaturesTestValue();
-  });
-  Future<FakeProfiles> makeRepository(WidgetTester tester) async =>
-      FakeProfiles(
-        (await tester.runAsync(
-          () async => SupabaseClient(
-            'https://example.supabase.co',
-            'test',
-            authOptions: const AuthClientOptions(autoRefreshToken: false),
-          ),
-        ))!,
+  for (final palette in [AppTheme.light, AppTheme.dark]) {
+    group('${palette.brightness.name} / 130%', () {
+      setUp(
+        () =>
+            TestWidgetsFlutterBinding.ensureInitialized()
+                    .platformDispatcher
+                    .platformBrightnessTestValue =
+                palette.brightness,
       );
-  Future<void> launch(
-    WidgetTester tester,
-    FakeProfiles repository,
-    FakeNotifications notifications,
-  ) async {
-    tester.view.physicalSize = const Size(800, 1600);
-    tester.view.devicePixelRatio = 1;
-    addTearDown(tester.view.resetPhysicalSize);
-    addTearDown(tester.view.resetDevicePixelRatio);
-    addTearDown(() => tester.runAsync(repository.client.dispose));
-    await tester.pumpWidget(
-      ProviderScope(
-        overrides: [
-          classRepositoryProvider.overrideWith((ref) async => null),
-          classCardsProvider.overrideWith((ref) => Stream.value([])),
-          classSyncLifecycleProvider.overrideWith((ref) {}),
-          syncLifecycleProvider.overrideWith((ref) {}),
-          driveBackupProvider.overrideWith((ref) async => null),
-          accountDatabaseProvider.overrideWith((ref) async => null),
-          supabaseClientProvider.overrideWithValue(repository.client),
-          pushRegistrationProvider.overrideWith((ref) {
-            final service = Fixture().service;
-            ref.onDispose(service.dispose);
-            return service;
-          }),
-          connectivityProvider.overrideWithValue(const AsyncData(true)),
-          profileRepositoryProvider.overrideWithValue(repository),
-          notificationPermissionProvider.overrideWithValue(notifications),
-          onboardingUserProvider.overrideWithValue(
-            User(
-              id: 'user-1',
-              appMetadata: {},
-              userMetadata: {'full_name': 'Alex'},
-              aud: 'authenticated',
-              createdAt: '',
-              email: 'alex@example.com',
+      tearDown(
+        () => TestWidgetsFlutterBinding.ensureInitialized().platformDispatcher
+            .clearPlatformBrightnessTestValue(),
+      );
+      final binding = TestWidgetsFlutterBinding.ensureInitialized();
+      setUp(() {
+        binding.platformDispatcher.accessibilityFeaturesTestValue =
+            const FakeAccessibilityFeatures(disableAnimations: true);
+      });
+      tearDown(() {
+        binding.platformDispatcher.clearAccessibilityFeaturesTestValue();
+      });
+      Future<FakeProfiles> makeRepository(WidgetTester tester) async =>
+          FakeProfiles(
+            (await tester.runAsync(
+              () async => SupabaseClient(
+                'https://example.supabase.co',
+                'test',
+                authOptions: const AuthClientOptions(autoRefreshToken: false),
+              ),
+            ))!,
+          );
+      Future<void> launch(
+        WidgetTester tester,
+        FakeProfiles repository,
+        FakeNotifications notifications,
+      ) async {
+        tester.view.physicalSize = const Size(320, 740);
+        tester.view.devicePixelRatio = 1;
+        addTearDown(tester.view.resetPhysicalSize);
+        addTearDown(tester.view.resetDevicePixelRatio);
+        addTearDown(() => tester.runAsync(repository.client.dispose));
+        await tester.pumpWidget(
+          ProviderScope(
+            overrides: [
+              classRepositoryProvider.overrideWith((ref) async => null),
+              classCardsProvider.overrideWith((ref) => Stream.value([])),
+              classSyncLifecycleProvider.overrideWith((ref) {}),
+              syncLifecycleProvider.overrideWith((ref) {}),
+              driveBackupProvider.overrideWith((ref) async => null),
+              accountDatabaseProvider.overrideWith((ref) async => null),
+              supabaseClientProvider.overrideWithValue(repository.client),
+              pushRegistrationProvider.overrideWith((ref) {
+                final service = Fixture().service;
+                ref.onDispose(service.dispose);
+                return service;
+              }),
+              connectivityProvider.overrideWithValue(const AsyncData(true)),
+              profileRepositoryProvider.overrideWithValue(repository),
+              notificationPermissionProvider.overrideWithValue(notifications),
+              onboardingUserProvider.overrideWithValue(
+                User(
+                  id: 'user-1',
+                  appMetadata: {},
+                  userMetadata: {'full_name': 'Alex'},
+                  aud: 'authenticated',
+                  createdAt: '',
+                  email: 'alex@example.com',
+                ),
+              ),
+            ],
+            child: MaterialApp(
+              theme: palette,
+              home: const AccountSetupScreen(),
             ),
           ),
-        ],
-        child: const MaterialApp(home: AccountSetupScreen()),
-      ),
-    );
-    await tester.pumpAndSettle();
-  }
-
-  Future<void> tap(WidgetTester tester, String text) async {
-    await tester.ensureVisible(find.text(text).last);
-    await tester.tap(find.text(text).last);
-    await tester.pumpAndSettle();
-  }
-
-  for (final role in AccountRole.values) {
-    testWidgets(
-      '${role.label} confirms consent, retries lost response, and reaches Home',
-      (tester) async {
-        final repository = (await makeRepository(tester))..loseResponse = true;
-        final notifications = FakeNotifications()..deny = true;
-        await launch(tester, repository, notifications);
-        expect(
-          tester
-              .widget<FilledButton>(
-                find.widgetWithText(FilledButton, 'Continue'),
-              )
-              .onPressed,
-          isNull,
         );
-        await tap(tester, role.label);
-        await tap(tester, 'Continue');
-        await tap(tester, 'Go back');
-        expect(find.text('Choose your role'), findsOneWidget);
-        await tap(tester, 'Continue');
-        await tap(tester, 'Confirm role');
-        expect(
-          tester.widget<CheckboxListTile>(find.byType(CheckboxListTile)).value,
-          false,
-        );
-        expect(
-          tester
-              .widget<FiloButton>(
-                find.byWidgetPredicate(
-                  (widget) =>
-                      widget is FiloButton && widget.label == 'Create account',
-                ),
-              )
-              .onPressed,
-          isNull,
-        );
-        await tap(tester, 'Read Privacy Notice');
-        expect(find.text('Privacy Notice'), findsOneWidget);
-        await tap(tester, 'Close');
-        await tester.ensureVisible(find.byType(CheckboxListTile));
-        await tester.tap(find.byType(CheckboxListTile));
         await tester.pumpAndSettle();
-        await tap(tester, 'Create account');
-        expect(
-          find.text(
-            'We couldn’t finish setting up your account. Please try again.',
-          ),
-          findsOneWidget,
-        );
-        expect(
-          tester
-              .widget<TextField>(find.byType(TextField).first)
-              .controller!
-              .text,
-          'Alex',
-        );
-        await tap(tester, 'Retry');
-        expect(repository.inserts, 1);
-        await tap(tester, 'Enable notifications');
-        expect(find.text('Your classes'), findsOneWidget);
-        expect(
-          tester
-              .widget<ClassesScreen>(find.byType(ClassesScreen))
-              .profile!
-              .role,
-          role,
-        );
-        expect(notifications.done, true);
-        expect(notifications.requests, 1);
-        expect(find.text('Choose your role'), findsNothing);
-        await tester.binding.handlePopRoute();
-        await tester.pumpAndSettle();
-        expect(find.text('Your classes'), findsOneWidget);
-      },
-    );
-  }
+      }
 
-  testWidgets(
-    'lookup failure retries without treating failure as a new account',
-    (tester) async {
-      final repository = (await makeRepository(tester))..failLookup = true;
-      final notifications = FakeNotifications()..done = true;
-      await launch(tester, repository, notifications);
-      expect(find.text('Choose your role'), findsNothing);
-      repository.failLookup = false;
-      repository.saved = profile(AccountRole.instructor);
-      await tap(tester, 'Retry');
-      expect(
-        tester.widget<ClassesScreen>(find.byType(ClassesScreen)).profile!.role,
-        AccountRole.instructor,
+      Future<void> tap(WidgetTester tester, String text) async {
+        await tester.ensureVisible(find.text(text).last);
+        await tester.tap(find.text(text).last);
+        await tester.pumpAndSettle();
+      }
+
+      for (final role in AccountRole.values) {
+        a11yScreenTest(
+          '${role.label} confirms consent, retries lost response, and reaches Home',
+          (tester) async {
+            final repository = (await makeRepository(tester))
+              ..loseResponse = true;
+            final notifications = FakeNotifications()..deny = true;
+            await launch(tester, repository, notifications);
+            expect(
+              tester
+                  .widget<FilledButton>(
+                    find.widgetWithText(FilledButton, 'Continue'),
+                  )
+                  .onPressed,
+              isNull,
+            );
+            await tap(tester, role.label);
+            await tap(tester, 'Continue');
+            await tap(tester, 'Go back');
+            expect(find.text('Choose your role'), findsOneWidget);
+            await tap(tester, 'Continue');
+            await tap(tester, 'Confirm role');
+            expect(
+              tester
+                  .widget<CheckboxListTile>(find.byType(CheckboxListTile))
+                  .value,
+              false,
+            );
+            expect(
+              tester
+                  .widget<FiloButton>(
+                    find.byWidgetPredicate(
+                      (widget) =>
+                          widget is FiloButton &&
+                          widget.label == 'Create account',
+                    ),
+                  )
+                  .onPressed,
+              isNull,
+            );
+            await tap(tester, 'Read Privacy Notice');
+            expect(find.text('Privacy Notice'), findsOneWidget);
+            await tap(tester, 'Close');
+            await tester.ensureVisible(find.byType(CheckboxListTile));
+            await tester.tap(find.byType(CheckboxListTile));
+            await tester.pumpAndSettle();
+            await tap(tester, 'Create account');
+            expect(
+              find.text(
+                'We couldn’t finish setting up your account. Please try again.',
+              ),
+              findsOneWidget,
+            );
+            expect(
+              tester
+                  .widget<TextField>(find.byType(TextField).first)
+                  .controller!
+                  .text,
+              'Alex',
+            );
+            await tap(tester, 'Retry');
+            expect(repository.inserts, 1);
+            await tap(tester, 'Enable notifications');
+            expect(find.text('Your classes'), findsOneWidget);
+            expect(
+              tester
+                  .widget<ClassesScreen>(find.byType(ClassesScreen))
+                  .profile!
+                  .role,
+              role,
+            );
+            expect(notifications.done, true);
+            expect(notifications.requests, 1);
+            expect(find.text('Choose your role'), findsNothing);
+            await tester.binding.handlePopRoute();
+            await tester.pumpAndSettle();
+            expect(find.text('Your classes'), findsOneWidget);
+          },
+        );
+      }
+
+      a11yScreenTest(
+        'lookup failure retries without treating failure as a new account',
+        (tester) async {
+          final repository = (await makeRepository(tester))..failLookup = true;
+          final notifications = FakeNotifications()..done = true;
+          await launch(tester, repository, notifications);
+          expect(find.text('Choose your role'), findsNothing);
+          repository.failLookup = false;
+          repository.saved = profile(AccountRole.instructor);
+          await tap(tester, 'Retry');
+          expect(
+            tester
+                .widget<ClassesScreen>(find.byType(ClassesScreen))
+                .profile!
+                .role,
+            AccountRole.instructor,
+          );
+          expect(find.text('Enable notifications'), findsNothing);
+        },
       );
-      expect(find.text('Enable notifications'), findsNothing);
-    },
-  );
 
-  testWidgets(
-    'saved profile resumes notification prompt and skip reaches Home',
-    (tester) async {
-      final repository = (await makeRepository(tester))
-        ..saved = profile(AccountRole.student);
-      final notifications = FakeNotifications();
-      await launch(tester, repository, notifications);
-      expect(find.text('Choose your role'), findsNothing);
-      await tap(tester, 'Not now');
-      expect(find.text('Your classes'), findsOneWidget);
-      expect(notifications.done, true);
-      expect(notifications.requests, 0);
-    },
-  );
+      a11yScreenTest(
+        'saved profile resumes notification prompt and skip reaches Home',
+        (tester) async {
+          final repository = (await makeRepository(tester))
+            ..saved = profile(AccountRole.student);
+          final notifications = FakeNotifications();
+          await launch(tester, repository, notifications);
+          expect(find.text('Choose your role'), findsNothing);
+          await tap(tester, 'Not now');
+          expect(find.text('Your classes'), findsOneWidget);
+          expect(notifications.done, true);
+          expect(notifications.requests, 0);
+        },
+      );
+    });
+  }
 }

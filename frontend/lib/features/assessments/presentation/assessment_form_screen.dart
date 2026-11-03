@@ -1054,11 +1054,17 @@ class _AssessmentFormScreenState extends ConsumerState<AssessmentFormScreen> {
           border: OutlineInputBorder(borderRadius: BorderRadius.circular(14)),
           enabledBorder: OutlineInputBorder(
             borderRadius: BorderRadius.circular(14),
-            borderSide: const BorderSide(color: FiloColors.border, width: 1.5),
+            borderSide: BorderSide(
+              color: FiloThemeTokens.of(context).controlBorder,
+              width: 1.5,
+            ),
           ),
           focusedBorder: OutlineInputBorder(
             borderRadius: BorderRadius.circular(14),
-            borderSide: const BorderSide(color: FiloColors.primary, width: 2),
+            borderSide: BorderSide(
+              color: Theme.of(context).colorScheme.primary,
+              width: 2,
+            ),
           ),
         ),
       ),
@@ -1123,7 +1129,9 @@ class _AssessmentFormScreenState extends ConsumerState<AssessmentFormScreen> {
                                           .textTheme
                                           .bodySmall
                                           ?.copyWith(
-                                            color: FiloColors.secondary,
+                                            color: Theme.of(context)
+                                                .colorScheme
+                                                .onSurfaceVariant,
                                           ),
                                     ),
                                   ],
@@ -1220,8 +1228,10 @@ class _AssessmentFormScreenState extends ConsumerState<AssessmentFormScreen> {
                                             if (_error != null) ...[
                                               Text(
                                                 _error!,
-                                                style: const TextStyle(
-                                                  color: FiloColors.error,
+                                                style: TextStyle(
+                                                  color: Theme.of(context)
+                                                      .colorScheme
+                                                      .error,
                                                 ),
                                               ),
                                               if (online &&
@@ -1390,8 +1400,9 @@ class _AssessmentFormScreenState extends ConsumerState<AssessmentFormScreen> {
                                                         ? _closingTimeKey
                                                         : null,
                                                     style: OutlinedButton.styleFrom(
-                                                      backgroundColor:
-                                                          FiloColors.surface,
+                                                      backgroundColor: Theme.of(
+                                                        context,
+                                                      ).colorScheme.surface,
                                                       alignment:
                                                           Alignment.centerLeft,
                                                       padding:
@@ -1402,9 +1413,11 @@ class _AssessmentFormScreenState extends ConsumerState<AssessmentFormScreen> {
                                                         0,
                                                         64,
                                                       ),
-                                                      side: const BorderSide(
+                                                      side: BorderSide(
                                                         color:
-                                                            FiloColors.border,
+                                                            FiloThemeTokens.of(
+                                                              context,
+                                                            ).controlBorder,
                                                         width: 1.5,
                                                       ),
                                                       shape: RoundedRectangleBorder(
@@ -1632,11 +1645,12 @@ class _AssessmentFormScreenState extends ConsumerState<AssessmentFormScreen> {
                                                 ],
                                                 if (!draft.locked) ...[
                                                   OutlinedButton.icon(
-                                                    style:
-                                                        OutlinedButton.styleFrom(
-                                                          backgroundColor:
-                                                              FiloColors.lime,
-                                                        ),
+                                                    style: OutlinedButton.styleFrom(
+                                                      backgroundColor:
+                                                          Theme.of(context)
+                                                              .colorScheme
+                                                              .primaryContainer,
+                                                    ),
                                                     onPressed:
                                                         contentEditing &&
                                                             !_published &&
@@ -1833,19 +1847,25 @@ class _AssessmentFormScreenState extends ConsumerState<AssessmentFormScreen> {
                                                     vertical: 12,
                                                   ),
                                               decoration: BoxDecoration(
-                                                color: FiloColors.tint,
+                                                color: Theme.of(context)
+                                                    .colorScheme
+                                                    .surfaceContainer,
                                                 border: Border.all(
-                                                  color: FiloColors.border,
+                                                  color: FiloThemeTokens.of(
+                                                    context,
+                                                  ).controlBorder,
                                                 ),
                                                 borderRadius:
                                                     BorderRadius.circular(14),
                                               ),
-                                              child: const Row(
+                                              child: Row(
                                                 mainAxisSize: MainAxisSize.min,
                                                 children: [
                                                   Icon(
                                                     Icons.add,
-                                                    color: FiloColors.primary,
+                                                    color: Theme.of(context)
+                                                        .colorScheme
+                                                        .primary,
                                                   ),
                                                   SizedBox(width: 8),
                                                   Flexible(
@@ -1854,7 +1874,9 @@ class _AssessmentFormScreenState extends ConsumerState<AssessmentFormScreen> {
                                                   SizedBox(width: 8),
                                                   Icon(
                                                     Icons.expand_more,
-                                                    color: FiloColors.primary,
+                                                    color: Theme.of(context)
+                                                        .colorScheme
+                                                        .primary,
                                                   ),
                                                 ],
                                               ),

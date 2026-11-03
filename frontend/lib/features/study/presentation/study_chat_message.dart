@@ -66,10 +66,15 @@ class StudyChatBubble extends StatelessWidget {
             borderRadius: BorderRadius.circular(24),
             child: Container(
               decoration: BoxDecoration(
-                color: ai ? FiloColors.surface : FiloColors.selected,
+                color: ai
+                    ? Theme.of(context).colorScheme.surface
+                    : Theme.of(context).colorScheme.primaryContainer,
                 border: ai
-                    ? const Border(
-                        left: BorderSide(color: FiloColors.limeDeep, width: 4),
+                    ? Border(
+                        left: BorderSide(
+                          color: FiloThemeTokens.of(context).limeDeep,
+                          width: 4,
+                        ),
                       )
                     : null,
               ),

@@ -185,7 +185,8 @@ class _ClassBannerState extends ConsumerState<ClassBannerScreen> {
               ),
             ),
             const SizedBox(height: 16),
-            if (_error != null) Text(_error!),
+            if (_error != null)
+              Semantics(liveRegion: true, child: Text(_error!)),
             if (!online)
               const Text('Connect to the internet to change the banner.'),
             FiloButton(

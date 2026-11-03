@@ -98,7 +98,7 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
             !_valid ||
             ref.read(connectivityProvider).asData?.value != true))
       return;
-    if (!_form.currentState!.validate()) return;
+    if (!validateFiloForm(_form)) return;
     FocusScope.of(context).unfocus();
     setState(() {
       _busy = true;

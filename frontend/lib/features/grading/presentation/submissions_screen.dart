@@ -53,7 +53,7 @@ class GradingSkeleton extends StatelessWidget {
         height: 76,
         margin: const EdgeInsets.all(12),
         decoration: BoxDecoration(
-          color: FiloColors.mint,
+          color: FiloThemeTokens.of(context).mint,
           borderRadius: BorderRadius.circular(16),
         ),
       ),

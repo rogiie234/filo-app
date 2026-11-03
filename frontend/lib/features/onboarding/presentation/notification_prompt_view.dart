@@ -17,7 +17,7 @@ class NotificationPromptView extends StatelessWidget {
   final VoidCallback onEnable;
   final VoidCallback onSkip;
 
-  Widget _benefit(IconData icon, String label) => Padding(
+  Widget _benefit(BuildContext context, IconData icon, String label) => Padding(
     padding: const EdgeInsets.symmetric(vertical: 8),
     child: Row(
       children: [
@@ -26,20 +26,24 @@ class NotificationPromptView extends StatelessWidget {
             width: 40,
             height: 40,
             decoration: BoxDecoration(
-              color: FiloColors.tint,
+              color: Theme.of(context).colorScheme.surfaceContainer,
               borderRadius: BorderRadius.circular(14),
             ),
-            child: FiloIcon(icon, size: 22, color: FiloColors.primary),
+            child: FiloIcon(
+              icon,
+              size: 22,
+              color: Theme.of(context).colorScheme.primary,
+            ),
           ),
         ),
         const SizedBox(width: 14),
         Expanded(
           child: Text(
             label,
-            style: const TextStyle(
+            style: TextStyle(
               fontSize: 15,
               fontWeight: FontWeight.w700,
-              color: FiloColors.ink,
+              color: Theme.of(context).colorScheme.onSurface,
             ),
           ),
         ),
@@ -57,14 +61,16 @@ class NotificationPromptView extends StatelessWidget {
               width: 112,
               height: 112,
               decoration: BoxDecoration(
-                color: FiloColors.mint,
+                color: FiloThemeTokens.of(context).mint,
                 borderRadius: BorderRadius.circular(36),
-                border: Border.all(color: FiloColors.border),
+                border: Border.all(
+                  color: Theme.of(context).colorScheme.outline,
+                ),
               ),
-              child: const FiloIcon(
+              child: FiloIcon(
                 FiloIcons.notifications,
                 size: 52,
-                color: FiloColors.primary,
+                color: Theme.of(context).colorScheme.primary,
               ),
             ),
           ),
@@ -72,26 +78,26 @@ class NotificationPromptView extends StatelessWidget {
         const SizedBox(height: 24),
         Semantics(
           header: true,
-          child: const Text(
+          child: Text(
             'Stay up to date',
             textAlign: TextAlign.center,
             style: TextStyle(
               fontSize: 28,
               height: 1.2,
               fontWeight: FontWeight.w800,
-              color: FiloColors.ink,
+              color: Theme.of(context).colorScheme.onSurface,
             ),
           ),
         ),
         const SizedBox(height: 12),
-        const Text(
+        Text(
           'Enable notifications for class updates, deadlines, and grades. You can change notification access in Android settings.',
           textAlign: TextAlign.center,
           style: TextStyle(
             fontSize: 15,
             height: 1.5,
             fontWeight: FontWeight.w500,
-            color: FiloColors.secondary,
+            color: Theme.of(context).colorScheme.onSurfaceVariant,
           ),
         ),
         const SizedBox(height: 24),
@@ -99,11 +105,11 @@ class NotificationPromptView extends StatelessWidget {
           padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
           child: Column(
             children: [
-              _benefit(FiloIcons.announcement, 'Class updates'),
-              const Divider(height: 1, color: FiloColors.border),
-              _benefit(FiloIcons.calendar, 'Deadlines'),
-              const Divider(height: 1, color: FiloColors.border),
-              _benefit(FiloIcons.grades, 'Grades'),
+              _benefit(context, FiloIcons.announcement, 'Class updates'),
+              Divider(height: 1, color: Theme.of(context).colorScheme.outline),
+              _benefit(context, FiloIcons.calendar, 'Deadlines'),
+              Divider(height: 1, color: Theme.of(context).colorScheme.outline),
+              _benefit(context, FiloIcons.grades, 'Grades'),
             ],
           ),
         ),

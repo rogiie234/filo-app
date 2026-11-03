@@ -3,7 +3,6 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/ai/ai_request_providers.dart';
 import '../../../core/connectivity/connectivity_provider.dart';
-import '../../../core/theme/app_theme.dart';
 import '../../../core/widgets/filo_widgets.dart';
 import '../../../data/local/database_providers.dart';
 import '../application/student_ai_providers.dart';
@@ -416,9 +415,11 @@ class _ChatBodyState extends ConsumerState<_ChatBody> {
                             ),
                           Container(
                             decoration: BoxDecoration(
-                              color: FiloColors.surface,
+                              color: Theme.of(context).colorScheme.surface,
                               borderRadius: BorderRadius.circular(32),
-                              border: Border.all(color: FiloColors.border),
+                              border: Border.all(
+                                color: Theme.of(context).colorScheme.outline,
+                              ),
                             ),
                             child: Row(
                               crossAxisAlignment: CrossAxisAlignment.end,

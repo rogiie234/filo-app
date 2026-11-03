@@ -21,6 +21,13 @@ class FiloNavigationBar extends StatelessWidget {
         Theme.of(context).colorScheme.surfaceContainer,
     child: LayoutBuilder(
       builder: (context, constraints) {
+        final height =
+            (80 +
+                    24 *
+                        (MediaQuery.textScalerOf(context).scale(14) / 14 - 1) /
+                        .3)
+                .clamp(80.0, 104.0)
+                .toDouble();
         final rtl = Directionality.of(context) == TextDirection.rtl;
         final cell = constraints.maxWidth / destinations.length;
         final target =
@@ -31,7 +38,7 @@ class FiloNavigationBar extends StatelessWidget {
         return Stack(
           children: [
             Positioned(
-              top: 12,
+              top: 12 + (height - 80) / 2,
               left: 0,
               child: ExcludeSemantics(
                 child: FiloMotionTween(
@@ -53,6 +60,7 @@ class FiloNavigationBar extends StatelessWidget {
               ),
             ),
             NavigationBar(
+              height: height,
               backgroundColor: Colors.transparent,
               surfaceTintColor: Colors.transparent,
               elevation: 0,

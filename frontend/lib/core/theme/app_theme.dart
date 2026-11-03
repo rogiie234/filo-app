@@ -151,6 +151,41 @@ class AppTheme {
         },
       ),
       useMaterial3: true,
+      disabledColor: tokens.disabledInk,
+      materialTapTargetSize: MaterialTapTargetSize.padded,
+      visualDensity: VisualDensity.standard,
+      iconButtonTheme: IconButtonThemeData(
+        style: IconButton.styleFrom(
+          minimumSize: const Size(48, 48),
+          tapTargetSize: MaterialTapTargetSize.padded,
+        ),
+      ),
+      filledButtonTheme: FilledButtonThemeData(
+        style: FilledButton.styleFrom(
+          minimumSize: const Size(48, 48),
+          disabledForegroundColor: tokens.disabledInk,
+        ),
+      ),
+      outlinedButtonTheme: OutlinedButtonThemeData(
+        style: OutlinedButton.styleFrom(
+          minimumSize: const Size(48, 48),
+          disabledForegroundColor: tokens.disabledInk,
+          side: BorderSide(color: tokens.controlBorder),
+        ),
+      ),
+      textButtonTheme: TextButtonThemeData(
+        style: TextButton.styleFrom(
+          minimumSize: const Size(48, 48),
+          disabledForegroundColor: tokens.disabledInk,
+        ),
+      ),
+      elevatedButtonTheme: ElevatedButtonThemeData(
+        style: ElevatedButton.styleFrom(
+          minimumSize: const Size(48, 48),
+          disabledForegroundColor: tokens.disabledInk,
+        ),
+      ),
+      listTileTheme: const ListTileThemeData(minTileHeight: 48),
       fontFamily: 'Nunito',
       colorScheme: colors,
       scaffoldBackgroundColor: background,
@@ -176,9 +211,19 @@ class AppTheme {
           vertical: 16,
         ),
         hintStyle: TextStyle(color: tokens.hint),
+        errorMaxLines: 8,
+        helperMaxLines: 8,
+        suffixIconConstraints: const BoxConstraints(
+          minWidth: 48,
+          minHeight: 48,
+        ),
+        prefixIconConstraints: const BoxConstraints(
+          minWidth: 48,
+          minHeight: 48,
+        ),
         labelStyle: TextStyle(color: colors.onSurfaceVariant),
-        border: border(colors.outline, 1.5),
-        enabledBorder: border(colors.outline, 1.5),
+        border: border(tokens.controlBorder, 1.5),
+        enabledBorder: border(tokens.controlBorder, 1.5),
         disabledBorder: border(tokens.disabledBorder, 1.5),
         focusedBorder: border(colors.primary, 2),
         errorBorder: border(colors.error, 1.5),
@@ -190,8 +235,9 @@ class AppTheme {
               ? tokens.disabledInk
               : states.contains(WidgetState.selected)
               ? colors.onPrimary
-              : colors.outline,
+              : tokens.controlBorder,
         ),
+        trackOutlineColor: WidgetStatePropertyAll(tokens.controlBorder),
         trackColor: WidgetStateProperty.resolveWith(
           (states) => states.contains(WidgetState.disabled)
               ? tokens.disabledFill
@@ -213,7 +259,7 @@ class AppTheme {
         backgroundColor: colors.surface,
         selectedColor: colors.primaryContainer,
         disabledColor: tokens.disabledFill,
-        side: BorderSide(color: colors.outline),
+        side: BorderSide(color: tokens.controlBorder),
         shape: const StadiumBorder(),
         labelStyle: text.labelMedium,
         padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
@@ -250,6 +296,11 @@ class FiloTextScale extends StatelessWidget {
   const FiloTextScale({super.key, required this.child});
   final Widget child;
   @override
-  Widget build(BuildContext context) =>
-      MediaQuery.withClampedTextScaling(maxScaleFactor: 1.3, child: child);
+  Widget build(BuildContext context) => MediaQuery.withClampedTextScaling(
+    maxScaleFactor: 1.3,
+    child: FocusTraversalGroup(
+      policy: ReadingOrderTraversalPolicy(),
+      child: child,
+    ),
+  );
 }

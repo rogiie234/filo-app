@@ -161,7 +161,7 @@ class _StudyAlarmsState extends ConsumerState<StudyAlarmsScreen>
             ),
             const SizedBox(height: 16),
             if (_error != null) ...[
-              Text(_error!),
+              Semantics(liveRegion: true, child: Text(_error!)),
               TextButton(onPressed: _refresh, child: const Text('Retry')),
             ],
             if (_status != null)
@@ -354,7 +354,7 @@ class _StudyAlarmEditorState extends ConsumerState<StudyAlarmEditor> {
   }
 
   Future<void> _save() async {
-    if (!_form.currentState!.validate()) return;
+    if (!validateFiloForm(_form)) return;
     setState(() => {_busy = true, _error = null});
     try {
       final repo = await ref.read(studyAlarmRepositoryProvider.future);
@@ -571,7 +571,7 @@ class _StudyAlarmEditorState extends ConsumerState<StudyAlarmEditor> {
                     : (v) => setState(() => _link = v == '' ? null : v),
               ),
               if (_error != null) ...[
-                Text(_error!),
+                Semantics(liveRegion: true, child: Text(_error!)),
                 TextButton(
                   onPressed: _busy ? null : _loadLinks,
                   child: const Text('Retry links'),

@@ -49,10 +49,10 @@ class AccountDetailsView extends StatelessWidget {
   final VoidCallback onSave;
 
   Widget _photoPicker(BuildContext context) {
-    const fallback = FiloIcon(
+    final fallback = FiloIcon(
       FiloIcons.person,
       size: 32,
-      color: FiloColors.primary,
+      color: Theme.of(context).colorScheme.primary,
     );
     final Widget image = photoBytes != null
         ? Image.memory(
@@ -95,7 +95,10 @@ class AccountDetailsView extends StatelessWidget {
                       right: 8,
                       bottom: 8,
                       child: ClipOval(
-                        child: ColoredBox(color: FiloColors.mint, child: image),
+                        child: ColoredBox(
+                          color: FiloThemeTokens.of(context).mint,
+                          child: image,
+                        ),
                       ),
                     ),
                     Positioned(
@@ -106,27 +109,29 @@ class AccountDetailsView extends StatelessWidget {
                         height: 32,
                         alignment: Alignment.center,
                         decoration: BoxDecoration(
-                          color: FiloColors.primary,
+                          color: Theme.of(context).colorScheme.primary,
                           shape: BoxShape.circle,
                           border: Border.all(
-                            color: FiloColors.background,
+                            color: Theme.of(context).scaffoldBackgroundColor,
                             width: 3,
                           ),
                         ),
                         child:
                             photoBusy &&
                                 !MediaQuery.disableAnimationsOf(context)
-                            ? const Padding(
+                            ? Padding(
                                 padding: EdgeInsets.all(7),
                                 child: FiloCircularProgressIndicator(
                                   strokeWidth: 2,
-                                  color: Colors.white,
+                                  color: Theme.of(context)
+                                      .colorScheme
+                                      .onPrimary,
                                 ),
                               )
-                            : const FiloIcon(
+                            : FiloIcon(
                                 FiloIcons.camera,
                                 size: 16,
-                                color: Colors.white,
+                                color: Theme.of(context).colorScheme.onPrimary,
                               ),
                       ),
                     ),
@@ -140,42 +145,43 @@ class AccountDetailsView extends StatelessWidget {
     );
   }
 
-  Widget _readOnlyValue(String label, String value) => Column(
-    crossAxisAlignment: CrossAxisAlignment.stretch,
-    children: [
-      Row(
+  Widget _readOnlyValue(BuildContext context, String label, String value) =>
+      Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          Expanded(
-            child: Text(
-              label,
-              style: const TextStyle(
-                color: FiloColors.secondary,
-                fontSize: 13,
-                fontWeight: FontWeight.w700,
+          Row(
+            children: [
+              Expanded(
+                child: Text(
+                  label,
+                  style: TextStyle(
+                    color: Theme.of(context).colorScheme.onSurfaceVariant,
+                    fontSize: 13,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
               ),
-            ),
+              ExcludeSemantics(
+                child: FiloIcon(
+                  FiloIcons.lock,
+                  size: 16,
+                  color: Theme.of(context).colorScheme.onSurfaceVariant,
+                ),
+              ),
+            ],
           ),
-          const ExcludeSemantics(
-            child: FiloIcon(
-              FiloIcons.lock,
-              size: 16,
-              color: FiloColors.secondary,
+          const SizedBox(height: 6),
+          Text(
+            value,
+            style: TextStyle(
+              color: Theme.of(context).colorScheme.onSurface,
+              fontSize: 15,
+              fontWeight: FontWeight.w700,
+              height: 1.4,
             ),
           ),
         ],
-      ),
-      const SizedBox(height: 6),
-      Text(
-        value,
-        style: const TextStyle(
-          color: FiloColors.ink,
-          fontSize: 15,
-          fontWeight: FontWeight.w700,
-          height: 1.4,
-        ),
-      ),
-    ],
-  );
+      );
 
   @override
   Widget build(BuildContext context) => PopScope(
@@ -202,13 +208,15 @@ class AccountDetailsView extends StatelessWidget {
                             Expanded(
                               child: Semantics(
                                 header: true,
-                                child: const Text(
+                                child: Text(
                                   'Your details',
                                   style: TextStyle(
                                     fontSize: 28,
                                     height: 1.2,
                                     fontWeight: FontWeight.w800,
-                                    color: FiloColors.ink,
+                                    color: Theme.of(context)
+                                        .colorScheme
+                                        .onSurface,
                                   ),
                                 ),
                               ),
@@ -231,8 +239,8 @@ class AccountDetailsView extends StatelessWidget {
                             liveRegion: true,
                             child: Text(
                               photoError!,
-                              style: const TextStyle(
-                                color: FiloColors.error,
+                              style: TextStyle(
+                                color: Theme.of(context).colorScheme.error,
                                 height: 1.4,
                               ),
                             ),
@@ -263,19 +271,19 @@ class AccountDetailsView extends StatelessWidget {
                         ),
                         const SizedBox(height: 16),
                         FiloPanel(
-                          color: FiloColors.tint,
+                          color: Theme.of(context).colorScheme.surfaceContainer,
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.stretch,
                             children: [
-                              _readOnlyValue('Email', email),
-                              const Padding(
+                              _readOnlyValue(context, 'Email', email),
+                              Padding(
                                 padding: EdgeInsets.symmetric(vertical: 14),
                                 child: Divider(
                                   height: 1,
-                                  color: FiloColors.border,
+                                  color: Theme.of(context).colorScheme.outline,
                                 ),
                               ),
-                              _readOnlyValue('Role', role),
+                              _readOnlyValue(context, 'Role', role),
                             ],
                           ),
                         ),
@@ -286,7 +294,9 @@ class AccountDetailsView extends StatelessWidget {
                             crossAxisAlignment: CrossAxisAlignment.stretch,
                             children: [
                               Material(
-                                color: FiloColors.tint,
+                                color: Theme.of(context)
+                                    .colorScheme
+                                    .surfaceContainer,
                                 borderRadius: BorderRadius.circular(16),
                                 child: InkWell(
                                   onTap: onPrivacy,
@@ -295,10 +305,12 @@ class AccountDetailsView extends StatelessWidget {
                                     padding: const EdgeInsets.all(12),
                                     child: Row(
                                       children: [
-                                        const ExcludeSemantics(
+                                        ExcludeSemantics(
                                           child: FiloIcon(
                                             FiloIcons.document,
-                                            color: FiloColors.primary,
+                                            color: Theme.of(context)
+                                                .colorScheme
+                                                .primary,
                                             size: 24,
                                           ),
                                         ),
@@ -306,22 +318,26 @@ class AccountDetailsView extends StatelessWidget {
                                         Expanded(
                                           child: Semantics(
                                             hint: 'Opens the Privacy Notice',
-                                            child: const Text(
+                                            child: Text(
                                               'Read Privacy Notice',
                                               style: TextStyle(
                                                 fontSize: 15,
                                                 fontWeight: FontWeight.w800,
-                                                color: FiloColors.primary,
+                                                color: Theme.of(context)
+                                                    .colorScheme
+                                                    .primary,
                                                 height: 1.4,
                                               ),
                                             ),
                                           ),
                                         ),
                                         const SizedBox(width: 8),
-                                        const ExcludeSemantics(
+                                        ExcludeSemantics(
                                           child: FiloIcon(
                                             FiloIcons.chevronRight,
-                                            color: FiloColors.primary,
+                                            color: Theme.of(context)
+                                                .colorScheme
+                                                .primary,
                                             size: 20,
                                           ),
                                         ),
@@ -340,12 +356,14 @@ class AccountDetailsView extends StatelessWidget {
                                     ? null
                                     : (value) =>
                                           onConsentChanged(value ?? false),
-                                title: const Text(
+                                title: Text(
                                   'I have read and agree to the Privacy Notice. I understand that using AI features sends my requests and relevant text to Google for processing.',
                                   style: TextStyle(
                                     fontSize: 14,
                                     height: 1.5,
-                                    color: FiloColors.ink,
+                                    color: Theme.of(context)
+                                        .colorScheme
+                                        .onSurface,
                                   ),
                                 ),
                               ),
@@ -357,22 +375,24 @@ class AccountDetailsView extends StatelessWidget {
                           Semantics(
                             liveRegion: true,
                             child: FiloPanel(
-                              color: FiloColors.warning,
+                              color: FiloThemeTokens.of(context).warningTint,
                               padding: const EdgeInsets.all(16),
                               child: Row(
                                 crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [
-                                  const FiloIcon(
+                                  FiloIcon(
                                     FiloIcons.info,
                                     size: 20,
-                                    color: FiloColors.warningInk,
+                                    color: FiloThemeTokens.of(context).warning,
                                   ),
                                   const SizedBox(width: 10),
                                   Expanded(
                                     child: Text(
                                       error!,
-                                      style: const TextStyle(
-                                        color: FiloColors.ink,
+                                      style: TextStyle(
+                                        color: Theme.of(context)
+                                            .colorScheme
+                                            .onSurface,
                                         height: 1.4,
                                       ),
                                     ),

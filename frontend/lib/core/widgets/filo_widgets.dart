@@ -1,3 +1,4 @@
+export 'filo_validation.dart';
 export '../theme/filo_motion.dart';
 export '../feedback/filo_haptics.dart';
 export 'filo_motion_widgets.dart';
@@ -130,36 +131,43 @@ class EmptyState extends StatelessWidget {
   final bool showMascot;
   final Widget? action;
   @override
-  Widget build(BuildContext context) => FiloPanel(
-    color: FiloThemeTokens.of(context).mint,
-    child: Column(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        if (showMascot) ...[
-          Mascot(pose: pose, size: 120, bob: bob),
-          const SizedBox(height: 20),
-        ],
-        Semantics(
-          header: true,
-          child: Text(
-            title,
-            style: Theme.of(context).textTheme.titleLarge,
-            textAlign: TextAlign.center,
-          ),
-        ),
-        if (message.isNotEmpty) ...[
-          const SizedBox(height: 8),
-          Text(
-            message,
-            textAlign: TextAlign.center,
-            style: TextStyle(
-              color: Theme.of(context).colorScheme.onSurfaceVariant,
+  Widget build(BuildContext context) => LayoutBuilder(
+    builder: (context, constraints) {
+      final panel = FiloPanel(
+        color: FiloThemeTokens.of(context).mint,
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            if (showMascot) ...[
+              Mascot(pose: pose, size: 120, bob: bob),
+              const SizedBox(height: 20),
+            ],
+            Semantics(
+              header: true,
+              child: Text(
+                title,
+                style: Theme.of(context).textTheme.titleLarge,
+                textAlign: TextAlign.center,
+              ),
             ),
-          ),
-        ],
-        if (action != null) ...[const SizedBox(height: 20), action!],
-      ],
-    ),
+            if (message.isNotEmpty) ...[
+              const SizedBox(height: 8),
+              Text(
+                message,
+                textAlign: TextAlign.center,
+                style: TextStyle(
+                  color: Theme.of(context).colorScheme.onSurfaceVariant,
+                ),
+              ),
+            ],
+            if (action != null) ...[const SizedBox(height: 20), action!],
+          ],
+        ),
+      );
+      return constraints.hasBoundedHeight
+          ? SingleChildScrollView(child: panel)
+          : panel;
+    },
   );
 }
 

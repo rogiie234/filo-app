@@ -389,7 +389,8 @@ class _BankEditorState extends ConsumerState<_BankEditor> {
             children: [
               if (!online)
                 const Text("You're offline. Connect to save changes."),
-              if (_error != null) Text(_error!),
+              if (_error != null)
+                Semantics(liveRegion: true, child: Text(_error!)),
               QuestionCard(
                 key: _cardKey,
                 question: _question,

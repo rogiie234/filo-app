@@ -198,6 +198,22 @@ void main() {
   testWidgets(
     'offline restart with estimated zero has disabled fields and no timeout',
     (tester) async {
+      final announcements = <String>[];
+      tester.binding.defaultBinaryMessenger
+          .setMockDecodedMessageHandler<dynamic>(SystemChannels.accessibility, (
+            message,
+          ) async {
+            if (message['type'] == 'announce')
+              announcements.add(message['data']['message'] as String);
+            return null;
+          });
+      addTearDown(
+        () => tester.binding.defaultBinaryMessenger
+            .setMockDecodedMessageHandler<dynamic>(
+              SystemChannels.accessibility,
+              null,
+            ),
+      );
       repository.dispose();
       final store = ExamStore(db);
       await store.cache(ExamAttempt(examPayload()), examEpoch, examEpoch);
@@ -217,6 +233,7 @@ void main() {
       );
       await mount(tester, sessionId: 'session');
       expect(find.text('Time left: awaiting verification'), findsOneWidget);
+      expect(announcements, isEmpty);
       expect(find.textContaining("Time's up"), findsNothing);
       final card = find.byKey(const ValueKey('session:q'));
       await _reveal(tester, card);
@@ -619,9 +636,16 @@ void main() {
     await unmount(tester);
   });
 
-  for (final dark in [false, true]) {
+  for (final scenario in [
+    (false, false),
+    (false, true),
+    (true, false),
+    (true, true),
+  ]) {
+    final dark = scenario.$1;
+    final skipFive = scenario.$2;
     testWidgets(
-      'timer thresholds announce once without rebuilding questions, dark=$dark',
+      'timer thresholds announce once without rebuilding questions, dark=$dark skipped=$skipFive',
       (tester) async {
         remote.currentSession = sessionPayload();
         final countdown = StreamController<Duration>();
@@ -647,46 +671,55 @@ void main() {
           tester,
           sessionId: 'session',
           countdown: countdown.stream,
-          theme: dark
-              ? ThemeData(brightness: Brightness.dark, fontFamily: 'Nunito')
-              : null,
+          theme: dark ? AppTheme.dark : null,
           textScale: 1.3,
         );
         final original = tester.widget<ExamQuestionCard>(
           find.byType(ExamQuestionCard).first,
         );
-        countdown.add(const Duration(minutes: 4, seconds: 59));
-        await tester.pumpAndSettle();
-        expect(find.text('Less than 5 minutes left'), findsOneWidget);
-        final amber = tester
+        if (!skipFive) {
+          countdown.add(const Duration(minutes: 4, seconds: 59));
+          await tester.pumpAndSettle();
+          expect(find.text('Less than 5 minutes left'), findsOneWidget);
+          countdown.add(const Duration(minutes: 4, seconds: 58));
+          await tester.pumpAndSettle();
+          expect(
+            identical(
+              original,
+              tester.widget<ExamQuestionCard>(
+                find.byType(ExamQuestionCard).first,
+              ),
+            ),
+            isTrue,
+          );
+        }
+        final beforeOneMinute = tester
             .widget<ColoredBox>(find.byKey(const ValueKey('exam-status-bar')))
             .color;
-        countdown.add(const Duration(minutes: 4, seconds: 58));
-        await tester.pumpAndSettle();
-        expect(
-          identical(
-            original,
-            tester.widget<ExamQuestionCard>(
-              find.byType(ExamQuestionCard).first,
-            ),
-          ),
-          isTrue,
+        tester.binding.handleAppLifecycleStateChanged(
+          AppLifecycleState.inactive,
         );
+        await tester.pump();
         countdown.add(const Duration(seconds: 59));
+        await tester.pumpAndSettle();
+        expect(announcements, [if (!skipFive) 'Less than 5 minutes left']);
+        tester.binding.handleAppLifecycleStateChanged(
+          AppLifecycleState.resumed,
+        );
         await tester.pumpAndSettle();
         expect(find.text('Less than 1 minute left'), findsOneWidget);
         expect(
           tester
               .widget<ColoredBox>(find.byKey(const ValueKey('exam-status-bar')))
               .color,
-          isNot(amber),
+          isNot(beforeOneMinute),
         );
         countdown.add(const Duration(seconds: 58));
         await tester.pumpAndSettle();
         countdown.add(const Duration(minutes: 2));
         await tester.pumpAndSettle();
         expect(announcements, [
-          'Less than 5 minutes left',
+          if (!skipFive) 'Less than 5 minutes left',
           'Less than 1 minute left',
         ]);
         expect(find.byType(Mascot), findsNothing);

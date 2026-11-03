@@ -7,7 +7,6 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/connectivity/connectivity_provider.dart';
 import '../../../core/supabase/supabase_provider.dart';
-import '../../../core/theme/app_theme.dart';
 import '../../../core/sync/sync_providers.dart';
 import '../../files/application/files_providers.dart';
 import '../../files/data/file_storage.dart';
@@ -396,6 +395,8 @@ class _AiQuizSheetState extends ConsumerState<AiQuizSheet> {
               child: Column(
                 children: [
                   TabBar(
+                    isScrollable: true,
+                    tabAlignment: TabAlignment.start,
                     tabs: [
                       Tab(
                         text: online
@@ -618,7 +619,7 @@ class _AiQuizSheetState extends ConsumerState<AiQuizSheet> {
                 : null,
             style: FilledButton.styleFrom(
               minimumSize: const Size(48, 48),
-              backgroundColor: FiloColors.primary,
+              backgroundColor: Theme.of(context).colorScheme.primary,
             ),
             child: Text(
               widget.regenerateType == null

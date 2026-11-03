@@ -12,7 +12,6 @@ import '../../../core/supabase/supabase_provider.dart';
 import '../../../core/connectivity/connectivity_provider.dart';
 import '../../../core/supabase/native_google_sign_in.dart';
 
-import '../../../core/theme/app_theme.dart';
 import '../../../core/theme/animation_constants.dart';
 import '../../../core/widgets/filo_widgets.dart';
 import '../../../core/widgets/entry_artwork.dart';
@@ -148,11 +147,11 @@ class _SignInScreenState extends ConsumerState<SignInScreen> {
                     ),
                     const SizedBox(height: 12),
                     _entrance(
-                      const Text(
+                      Text(
                         'A little curiosity goes a long way.\nLet\u2019s see where yours takes you.',
                         textAlign: TextAlign.center,
                         style: TextStyle(
-                          color: FiloColors.secondary,
+                          color: Theme.of(context).colorScheme.onSurfaceVariant,
                           fontSize: 16,
                         ),
                       ),

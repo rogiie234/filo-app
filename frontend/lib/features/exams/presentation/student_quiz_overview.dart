@@ -113,7 +113,7 @@ class StudentQuizOverview extends StatelessWidget {
             if (canAttempt && !resume) ...[
               const SizedBox(height: 24),
               FiloPanel(
-                color: FiloColors.warning,
+                color: FiloThemeTokens.of(context).warningTint,
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
@@ -144,7 +144,7 @@ class StudentQuizOverview extends StatelessWidget {
                             ExcludeSemantics(
                               child: FiloIcon(
                                 rule.$1,
-                                color: FiloColors.warningInk,
+                                color: FiloThemeTokens.of(context).warning,
                               ),
                             ),
                             const SizedBox(width: 12),
@@ -191,12 +191,12 @@ class StudentQuizOverview extends StatelessWidget {
                   ? const ['Continue', 'Please wait...']
                   : const ['Start now', 'Please wait...'],
               leading: busy
-                  ? const SizedBox(
+                  ? SizedBox(
                       width: 20,
                       height: 20,
                       child: FiloCircularProgressIndicator(
                         strokeWidth: 2,
-                        color: Colors.white,
+                        color: Theme.of(context).colorScheme.onPrimary,
                       ),
                     )
                   : null,
@@ -221,8 +221,12 @@ class StudentQuizOverview extends StatelessWidget {
   Widget _schedule(BuildContext context, String label, String value) => Row(
     crossAxisAlignment: CrossAxisAlignment.start,
     children: [
-      const ExcludeSemantics(
-        child: FiloIcon(FiloIcons.clock, color: FiloColors.secondary, size: 20),
+      ExcludeSemantics(
+        child: FiloIcon(
+          FiloIcons.clock,
+          color: Theme.of(context).colorScheme.onSurfaceVariant,
+          size: 20,
+        ),
       ),
       const SizedBox(width: 12),
       Expanded(

@@ -243,10 +243,7 @@ class _ClassesScreenState extends ConsumerState<ClassesScreen> {
                         enabledBorder: OutlineInputBorder(
                           borderRadius: BorderRadius.all(Radius.circular(999)),
                           borderSide: BorderSide(
-                            color:
-                                Theme.of(context).brightness == Brightness.dark
-                                ? Theme.of(context).colorScheme.outline
-                                : FiloColors.border,
+                            color: FiloThemeTokens.of(context).controlBorder,
                           ),
                         ),
                       ),
@@ -538,7 +535,9 @@ class _JoinSheetState extends ConsumerState<_JoinSheet> {
             widget.preview
                 ? 'Enter the code from your instructor.\nPreview code: FILO26'
                 : 'Enter the code from your instructor.',
-            style: TextStyle(color: FiloColors.secondary),
+            style: TextStyle(
+              color: Theme.of(context).colorScheme.onSurfaceVariant,
+            ),
           ),
           const SizedBox(height: 24),
           TextField(

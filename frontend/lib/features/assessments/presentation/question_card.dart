@@ -1,25 +1,10 @@
 import 'package:flutter/material.dart';
 
 import '../../../core/widgets/filo_widgets.dart';
-import '../../../core/theme/app_theme.dart';
 import '../domain/quiz_draft.dart';
 
-// Reveal the whole field/error, then let EditableText keep it above the keyboard.
-Future<void> revealAssessmentField(BuildContext target) async {
-  await WidgetsBinding.instance.endOfFrame;
-  if (!target.mounted) return;
-  EditableText? input;
-  void findInput(Element element) {
-    if (element.widget is EditableText) {
-      input ??= element.widget as EditableText;
-    }
-    element.visitChildren(findInput);
-  }
-
-  target.visitChildElements(findInput);
-  input?.focusNode.requestFocus();
-  await Scrollable.ensureVisible(target, alignment: 0.15);
-}
+Future<void> revealAssessmentField(BuildContext target) =>
+    revealFiloField(target);
 
 Future<void> revealQuestionError(
   BuildContext card,
@@ -128,7 +113,7 @@ class _QuestionCardState extends State<QuestionCard> {
         labelText: label,
         alignLabelWithHint: true,
         errorText: widget.editor.errors[name],
-        errorMaxLines: 3,
+        errorMaxLines: 8,
       ),
       onChanged: (v) => change(() => update(v)),
     ),
@@ -142,7 +127,7 @@ class _QuestionCardState extends State<QuestionCard> {
       padding: const EdgeInsets.only(bottom: 12),
       child: FiloPanel(
         color: e.status == 'Added'
-            ? FiloColors.lime
+            ? Theme.of(context).colorScheme.primaryContainer
             : Theme.of(context).colorScheme.surface,
         padding: const EdgeInsets.all(16),
         child: Column(
@@ -159,14 +144,14 @@ class _QuestionCardState extends State<QuestionCard> {
                 if (widget.enabled && widget.showActions)
                   ReorderableDragStartListener(
                     index: widget.index,
-                    child: const Tooltip(
+                    child: Tooltip(
                       message: 'Drag to reorder',
                       child: SizedBox(
                         width: 48,
                         height: 48,
                         child: Icon(
                           Icons.drag_handle,
-                          color: FiloColors.secondary,
+                          color: Theme.of(context).colorScheme.onSurfaceVariant,
                         ),
                       ),
                     ),
@@ -219,8 +204,8 @@ class _QuestionCardState extends State<QuestionCard> {
               onPressed: widget.onToggle,
               style: TextButton.styleFrom(
                 padding: const EdgeInsets.symmetric(horizontal: 12),
-                backgroundColor: FiloColors.tint,
-                minimumSize: const Size(0, 48),
+                backgroundColor: Theme.of(context).colorScheme.surfaceContainer,
+                minimumSize: const Size(48, 48),
                 shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(12),
                 ),
@@ -267,8 +252,8 @@ class _QuestionCardState extends State<QuestionCard> {
                           : Icons.edit_outlined,
                       size: 16,
                       color: e.status == 'Save not confirmed'
-                          ? FiloColors.error
-                          : FiloColors.secondary,
+                          ? Theme.of(context).colorScheme.error
+                          : Theme.of(context).colorScheme.onSurfaceVariant,
                     ),
                     const SizedBox(width: 6),
                     Flexible(
@@ -276,8 +261,8 @@ class _QuestionCardState extends State<QuestionCard> {
                         e.status,
                         style: Theme.of(context).textTheme.bodySmall?.copyWith(
                           color: e.status == 'Save not confirmed'
-                              ? FiloColors.error
-                              : FiloColors.secondary,
+                              ? Theme.of(context).colorScheme.error
+                              : Theme.of(context).colorScheme.onSurfaceVariant,
                         ),
                       ),
                     ),

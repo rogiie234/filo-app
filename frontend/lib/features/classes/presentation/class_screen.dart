@@ -3,7 +3,6 @@ import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
-import '../../../core/theme/app_theme.dart';
 import '../../../core/widgets/filo_widgets.dart';
 import '../../files/presentation/class_files.dart';
 import '../application/preview_controller.dart';
@@ -82,23 +81,25 @@ class _ClassScreenState extends ConsumerState<ClassScreen> {
       return Scaffold(
         appBar: AppBar(title: const Text('Class unavailable')),
         body: Center(
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              if (live)
+          child: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                if (live)
+                  TextButton(
+                    onPressed: () async {
+                      await ref.read(classSyncProvider.notifier).refresh();
+                      if (mounted) setState(() {});
+                    },
+                    child: const Text('Refresh'),
+                  ),
                 TextButton(
-                  onPressed: () async {
-                    await ref.read(classSyncProvider.notifier).refresh();
-                    if (mounted) setState(() {});
-                  },
-                  child: const Text('Refresh'),
+                  onPressed: () =>
+                      live ? Navigator.pop(context) : context.go('/classes'),
+                  child: const Text('Back to classes'),
                 ),
-              TextButton(
-                onPressed: () =>
-                    live ? Navigator.pop(context) : context.go('/classes'),
-                child: const Text('Back to classes'),
-              ),
-            ],
+              ],
+            ),
           ),
         ),
       );
@@ -115,6 +116,7 @@ class _ClassScreenState extends ConsumerState<ClassScreen> {
         : 0;
     return Scaffold(
       appBar: AppBar(
+        toolbarHeight: live && instructor ? 120 : 104,
         leading: IconButton(
           tooltip: 'Back to classes',
           icon: const FiloIcon(FiloIcons.back),
@@ -125,11 +127,16 @@ class _ClassScreenState extends ConsumerState<ClassScreen> {
           children: [
             Text(
               room.section,
+              maxLines: 2,
+              overflow: TextOverflow.ellipsis,
               style: const TextStyle(fontWeight: FontWeight.w900, fontSize: 22),
             ),
             Text(
               room.course,
-              style: const TextStyle(fontSize: 12, color: FiloColors.secondary),
+              style: TextStyle(
+                fontSize: 12,
+                color: Theme.of(context).colorScheme.onSurfaceVariant,
+              ),
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
             ),
@@ -145,7 +152,7 @@ class _ClassScreenState extends ConsumerState<ClassScreen> {
             tooltip: 'Class menu',
             icon: Badge(
               isLabelVisible: pendingCount > 0,
-              backgroundColor: Colors.red,
+              backgroundColor: Theme.of(context).colorScheme.error,
               child: const FiloIcon(FiloIcons.more),
             ),
             onPressed: () => _menu(room, live, instructor, pendingCount),
@@ -251,6 +258,14 @@ class _ClassScreenState extends ConsumerState<ClassScreen> {
               ),
             ),
           NavigationBar(
+            height:
+                (80 +
+                        24 *
+                            (MediaQuery.textScalerOf(context).scale(14) / 14 -
+                                1) /
+                            .3)
+                    .clamp(80.0, 104.0)
+                    .toDouble(),
             selectedIndex: _tab,
             onDestinationSelected: (value) => setState(() => _tab = value),
             destinations: const [
@@ -313,7 +328,7 @@ class _ClassScreenState extends ConsumerState<ClassScreen> {
               ListTile(
                 leading: Badge(
                   isLabelVisible: instructor && pendingCount > 0,
-                  backgroundColor: Colors.red,
+                  backgroundColor: Theme.of(context).colorScheme.error,
                   child: const FiloIcon(FiloIcons.people),
                 ),
                 title: Text(instructor ? 'Students' : 'Classmates'),
@@ -651,9 +666,9 @@ class _ClassScreenState extends ConsumerState<ClassScreen> {
     final headers = <Widget>[
       Text('Stream', style: Theme.of(context).textTheme.headlineMedium),
       const SizedBox(height: 8),
-      const Text(
+      Text(
         'What’s happening in your class.',
-        style: TextStyle(color: FiloColors.secondary),
+        style: TextStyle(color: Theme.of(context).colorScheme.onSurfaceVariant),
       ),
       const SizedBox(height: 24),
       if (live && ref.watch(connectivityProvider).asData?.value == false)

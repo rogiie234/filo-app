@@ -23,10 +23,10 @@ class TodoTaskCard extends StatelessWidget {
     final late = status == 'Late';
     final missing = status == 'Missing';
     final statusInk = missing
-        ? FiloColors.error
+        ? Theme.of(context).colorScheme.error
         : late
-        ? FiloColors.warningInk
-        : FiloColors.primary;
+        ? FiloThemeTokens.of(context).warning
+        : Theme.of(context).colorScheme.primary;
     final statusIcon = switch (status) {
       'Assigned' => FiloIcons.assessment,
       'Draft' => FiloIcons.edit,
@@ -35,10 +35,10 @@ class TodoTaskCard extends StatelessWidget {
       _ => FiloIcons.checkCircle,
     };
     return Material(
-      color: FiloColors.surface,
+      color: Theme.of(context).colorScheme.surface,
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(24),
-        side: const BorderSide(color: FiloColors.border),
+        side: BorderSide(color: Theme.of(context).colorScheme.outline),
       ),
       clipBehavior: Clip.antiAlias,
       child: InkWell(
@@ -56,13 +56,13 @@ class TodoTaskCard extends StatelessWidget {
                       width: 40,
                       height: 40,
                       decoration: BoxDecoration(
-                        color: FiloColors.tint,
+                        color: Theme.of(context).colorScheme.surfaceContainer,
                         borderRadius: BorderRadius.circular(14),
                       ),
-                      child: const FiloIcon(
+                      child: FiloIcon(
                         FiloIcons.assessment,
                         size: 22,
-                        color: FiloColors.primary,
+                        color: Theme.of(context).colorScheme.primary,
                       ),
                     ),
                   ),
@@ -73,32 +73,34 @@ class TodoTaskCard extends StatelessWidget {
                       children: [
                         Text(
                           title,
-                          style: const TextStyle(
+                          style: TextStyle(
                             fontSize: 17,
                             fontWeight: FontWeight.w800,
                             height: 1.3,
-                            color: FiloColors.ink,
+                            color: Theme.of(context).colorScheme.onSurface,
                           ),
                         ),
                         const SizedBox(height: 5),
                         Text(
                           classLabel,
-                          style: const TextStyle(
+                          style: TextStyle(
                             fontSize: 13,
                             fontWeight: FontWeight.w600,
                             height: 1.4,
-                            color: FiloColors.secondary,
+                            color: Theme.of(context)
+                                .colorScheme
+                                .onSurfaceVariant,
                           ),
                         ),
                       ],
                     ),
                   ),
                   const SizedBox(width: 8),
-                  const ExcludeSemantics(
+                  ExcludeSemantics(
                     child: FiloIcon(
                       FiloIcons.chevronRight,
                       size: 20,
-                      color: FiloColors.secondary,
+                      color: Theme.of(context).colorScheme.onSurfaceVariant,
                     ),
                   ),
                 ],
@@ -115,10 +117,14 @@ class TodoTaskCard extends StatelessWidget {
                       vertical: 6,
                     ),
                     decoration: BoxDecoration(
-                      color: late ? FiloColors.warning : FiloColors.tint,
+                      color: late
+                          ? FiloThemeTokens.of(context).warningTint
+                          : Theme.of(context).colorScheme.surfaceContainer,
                       borderRadius: BorderRadius.circular(12),
                       border: missing
-                          ? Border.all(color: FiloColors.error)
+                          ? Border.all(
+                              color: Theme.of(context).colorScheme.error,
+                            )
                           : null,
                     ),
                     child: Row(
@@ -148,9 +154,9 @@ class TodoTaskCard extends StatelessWidget {
                   if (points != null)
                     Text(
                       '$points points',
-                      style: const TextStyle(
+                      style: TextStyle(
                         fontSize: 13,
-                        color: FiloColors.secondary,
+                        color: Theme.of(context).colorScheme.onSurfaceVariant,
                       ),
                     ),
                 ],
@@ -159,21 +165,21 @@ class TodoTaskCard extends StatelessWidget {
               Row(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  const ExcludeSemantics(
+                  ExcludeSemantics(
                     child: FiloIcon(
                       FiloIcons.calendar,
                       size: 16,
-                      color: FiloColors.secondary,
+                      color: Theme.of(context).colorScheme.onSurfaceVariant,
                     ),
                   ),
                   const SizedBox(width: 8),
                   Expanded(
                     child: Text(
                       dueLabel,
-                      style: const TextStyle(
+                      style: TextStyle(
                         fontSize: 13,
                         height: 1.4,
-                        color: FiloColors.secondary,
+                        color: Theme.of(context).colorScheme.onSurfaceVariant,
                       ),
                     ),
                   ),
@@ -222,7 +228,7 @@ class TodoTaskSkeleton extends StatelessWidget {
                   child: Container(
                     height: 16,
                     decoration: BoxDecoration(
-                      color: FiloColors.mint,
+                      color: FiloThemeTokens.of(context).mint,
                       borderRadius: BorderRadius.circular(8),
                     ),
                   ),

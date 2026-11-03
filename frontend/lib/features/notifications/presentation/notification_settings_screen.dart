@@ -118,8 +118,8 @@ class _NotificationSettingsScreenState
             liveRegion: true,
             child: Text(
               enabled ? 'Notifications are on for Filo.' : 'Notifications are off for Filo. Turn them on in your phone settings.',
-              style: const TextStyle(
-                color: FiloColors.ink,
+              style: TextStyle(
+                color: Theme.of(context).colorScheme.onSurface,
                 fontSize: 16,
                 height: 1.5,
               ),
@@ -144,8 +144,8 @@ class _NotificationSettingsScreenState
             children: [
               FiloPanel(
                 color: access.asData?.value == false
-                    ? FiloColors.mint
-                    : Colors.white,
+                    ? FiloThemeTokens.of(context).mint
+                    : Theme.of(context).colorScheme.surface,
                 child: content,
               ),
               const SizedBox(height: 24),

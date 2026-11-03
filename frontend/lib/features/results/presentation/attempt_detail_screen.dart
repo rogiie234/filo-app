@@ -259,7 +259,7 @@ class _AttemptDetailScreenState extends ConsumerState<AttemptDetailScreen> {
           ),
           FilledButton(
             onPressed: () {
-              if (form.currentState!.validate())
+              if (validateFiloForm(form))
                 Navigator.pop(dialog, (
                   int.parse(points.text.trim()),
                   feedback.text,

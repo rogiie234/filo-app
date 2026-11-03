@@ -21,10 +21,10 @@ class ResultStatusChip extends StatelessWidget {
     final success = ['Correct', 'Passed', 'Graded'].contains(label);
     final error = ['Incorrect', 'Not passed'].contains(label);
     final color = success
-        ? const Color(0xFF1B6E45)
+        ? FiloThemeTokens.of(context).success
         : error
-        ? FiloColors.error
-        : FiloColors.ink;
+        ? Theme.of(context).colorScheme.error
+        : Theme.of(context).colorScheme.onSurface;
     return Chip(
       avatar: Icon(
         success
@@ -38,10 +38,10 @@ class ResultStatusChip extends StatelessWidget {
       label: Text(label),
       labelStyle: TextStyle(color: color, fontWeight: FontWeight.w700),
       backgroundColor: success
-          ? const Color(0xFFE2F2E8)
+          ? FiloThemeTokens.of(context).successTint
           : error
-          ? const Color(0xFFFBE4E0)
-          : FiloColors.tint,
+          ? Theme.of(context).colorScheme.errorContainer
+          : Theme.of(context).colorScheme.surfaceContainer,
     );
   }
 }
@@ -105,7 +105,7 @@ class ResultsSkeleton extends StatelessWidget {
                 child: Container(
                   height: 64,
                   decoration: BoxDecoration(
-                    color: FiloColors.tint,
+                    color: Theme.of(context).colorScheme.surfaceContainer,
                     borderRadius: BorderRadius.circular(20),
                   ),
                 ),

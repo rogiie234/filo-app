@@ -10,7 +10,6 @@ import '../application/post_providers.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import '../../../core/theme/app_theme.dart';
 import '../../../core/widgets/filo_widgets.dart';
 
 class CreatePostScreen extends ConsumerStatefulWidget {
@@ -136,9 +135,11 @@ class _CreatePostScreenState extends ConsumerState<CreatePostScreen> {
             child: ListView(
               padding: const EdgeInsets.all(24),
               children: [
-                const Text(
+                Text(
                   'Share something worth learning.',
-                  style: TextStyle(color: FiloColors.secondary),
+                  style: TextStyle(
+                    color: Theme.of(context).colorScheme.onSurfaceVariant,
+                  ),
                 ),
                 const SizedBox(height: 24),
                 TextFormField(
@@ -178,9 +179,12 @@ class _CreatePostScreenState extends ConsumerState<CreatePostScreen> {
                   ],
                 ),
                 const SizedBox(height: 12),
-                const Text(
+                Text(
                   'Up to 10 attachments · 25 MB per file',
-                  style: TextStyle(color: FiloColors.secondary, fontSize: 12),
+                  style: TextStyle(
+                    color: Theme.of(context).colorScheme.onSurfaceVariant,
+                    fontSize: 12,
+                  ),
                 ),
                 for (final attachment in _attachments)
                   Padding(
@@ -222,7 +226,7 @@ class _CreatePostScreenState extends ConsumerState<CreatePostScreen> {
                   ),
                 const SizedBox(height: 24),
                 FiloPanel(
-                  color: FiloColors.tint,
+                  color: Theme.of(context).colorScheme.surfaceContainer,
                   child: Column(
                     children: [
                       FiloSwitchListTile(
@@ -296,9 +300,12 @@ class _CreatePostScreenState extends ConsumerState<CreatePostScreen> {
                   ),
                 ),
                 const SizedBox(height: 24),
-                const Text(
+                Text(
                   "To share a video, add a link. Video links open in the browser and aren't downloaded.",
-                  style: TextStyle(color: FiloColors.secondary, fontSize: 12),
+                  style: TextStyle(
+                    color: Theme.of(context).colorScheme.onSurfaceVariant,
+                    fontSize: 12,
+                  ),
                 ),
               ],
             ),
@@ -323,7 +330,8 @@ class _CreatePostScreenState extends ConsumerState<CreatePostScreen> {
                       const Text(
                         'An open class owned by you is required to post.',
                       ),
-                    if (_error != null) Text(_error!),
+                    if (_error != null)
+                      Semantics(liveRegion: true, child: Text(_error!)),
                     if (_busy) const FiloLinearProgressIndicator(),
                     if (_postId != null)
                       for (final a in _attachments)
@@ -493,7 +501,7 @@ class _CreatePostScreenState extends ConsumerState<CreatePostScreen> {
   }
 
   Future<void> _post() async {
-    if (!_online || _busy || !_form.currentState!.validate()) return;
+    if (!_online || _busy || !validateFiloForm(_form)) return;
     if (_submission &&
         (_due == null ||
             (!_due!.isAfter(DateTime.now()) &&

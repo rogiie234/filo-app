@@ -193,7 +193,7 @@ class _DeleteAccountScreenState extends ConsumerState<DeleteAccountScreen> {
                     labelText: 'Type DELETE',
                     helperText:
                         'Enter DELETE exactly to enable account deletion.',
-                    helperMaxLines: 3,
+                    helperMaxLines: 8,
                   ),
                   onChanged: (value) {
                     ref

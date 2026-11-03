@@ -13,7 +13,6 @@ import '../../../core/connectivity/connectivity_provider.dart';
 import '../../../core/picked_image_file.dart';
 import '../../files/data/account_temporary_file.dart';
 import '../../../core/supabase/supabase_provider.dart';
-import '../../../core/theme/app_theme.dart';
 import '../../../core/widgets/filo_widgets.dart';
 import '../../../data/local/app_database.dart';
 import '../../classes/application/class_providers.dart';
@@ -962,7 +961,7 @@ class _AssignmentDetailScreenState
                           ),
                         ),
                       Card(
-                        color: FiloColors.tint,
+                        color: Theme.of(context).colorScheme.surfaceContainer,
                         child: Padding(
                           padding: const EdgeInsets.all(20),
                           child: Column(
@@ -1020,6 +1019,7 @@ class _AssignmentDetailScreenState
                                       ? const FiloCircularProgressIndicator()
                                       : editable
                                       ? PopupMenuButton<String>(
+                                          tooltip: 'Attachment options',
                                           enabled: canWrite,
                                           onSelected: (value) {
                                             if (value == 'edit') {

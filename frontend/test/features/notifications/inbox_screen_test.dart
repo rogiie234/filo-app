@@ -112,6 +112,7 @@ void main() {
     bool offline = true,
     String userId = account,
     double scale = 1,
+    ThemeData? theme,
   }) async {
     final db = AppDatabase(NativeDatabase.memory());
     final repo = FakeInbox(db);
@@ -133,7 +134,7 @@ void main() {
           pushEventsProvider.overrideWithValue(events),
         ],
         child: MaterialApp(
-          theme: AppTheme.light,
+          theme: theme ?? AppTheme.light,
           builder: (context, child) => MediaQuery(
             data: MediaQuery.of(context)
                 .copyWith(textScaler: TextScaler.linear(scale)),
@@ -154,6 +155,29 @@ void main() {
       await db.close();
     });
     return (repo: repo, events: events, rows: rows);
+  }
+
+  for (final theme in [AppTheme.light, AppTheme.dark]) {
+    for (final state in ['loaded', 'empty', 'loading', 'error']) {
+      testWidgets('inbox $state ${theme.brightness.name} at 320dp / 130%', (
+        tester,
+      ) async {
+        tester.view.physicalSize = const Size(320, 740);
+        tester.view.devicePixelRatio = 1;
+        addTearDown(tester.view.resetPhysicalSize);
+        addTearDown(tester.view.resetDevicePixelRatio);
+        await launch(
+          tester,
+          theme: theme,
+          scale: 1.3,
+          loading: state == 'loading',
+          error: state == 'error',
+          initial: state == 'loaded' ? [row()] : [],
+        );
+        await tester.pump(const Duration(milliseconds: 500));
+        expect(tester.takeException(), isNull);
+      });
+    }
   }
 
   testWidgets(

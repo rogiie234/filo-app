@@ -71,18 +71,20 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
       return Scaffold(
         body: SafeArea(
           child: Center(
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                const Text('Could not load your theme setting.'),
-                TextButton(
-                  onPressed: () {
-                    ref.invalidate(themeSettingsRepositoryProvider);
-                    ref.invalidate(themeSettingsProvider);
-                  },
-                  child: const Text('Retry'),
-                ),
-              ],
+            child: SingleChildScrollView(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  const Text('Could not load your theme setting.'),
+                  TextButton(
+                    onPressed: () {
+                      ref.invalidate(themeSettingsRepositoryProvider);
+                      ref.invalidate(themeSettingsProvider);
+                    },
+                    child: const Text('Retry'),
+                  ),
+                ],
+              ),
             ),
           ),
         ),

@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 
 import '../../../core/theme/animation_constants.dart';
-import '../../../core/theme/app_theme.dart';
 import '../../../core/widgets/filo_widgets.dart';
 
 /// Presentation only: SessionScreen owns verification and its next destination.
@@ -49,8 +48,8 @@ class SessionLoadingView extends StatelessWidget {
                   Text(
                     statusText,
                     textAlign: TextAlign.center,
-                    style: const TextStyle(
-                      color: FiloColors.secondary,
+                    style: TextStyle(
+                      color: Theme.of(context).colorScheme.onSurfaceVariant,
                       fontSize: 16,
                       height: 1.5,
                     ),
@@ -63,7 +62,9 @@ class SessionLoadingView extends StatelessWidget {
                       message!,
                       textAlign: TextAlign.center,
                       style: TextStyle(
-                        color: error ? FiloColors.error : FiloColors.secondary,
+                        color: error
+                            ? Theme.of(context).colorScheme.error
+                            : Theme.of(context).colorScheme.onSurfaceVariant,
                       ),
                     ),
                   ],
@@ -138,7 +139,7 @@ class _LoadingDotsState extends State<_LoadingDots>
                       margin: const EdgeInsets.symmetric(horizontal: 5),
                       decoration: BoxDecoration(
                         shape: BoxShape.circle,
-                        color: FiloAnimation.loadingDotColor.withValues(
+                        color: Theme.of(context).colorScheme.primary.withValues(
                           alpha:
                               FiloAnimation.loadingDotOpacity +
                               (1 - FiloAnimation.loadingDotOpacity) * lift,

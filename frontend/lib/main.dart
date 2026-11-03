@@ -14,12 +14,15 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import 'app.dart';
+import 'core/orientation_policy.dart';
+import 'core/theme/app_theme.dart';
 import 'firebase_options.dart';
 import 'core/config/app_config.dart';
 import 'core/sync/background_sync.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  await FiloOrientationPolicy.refresh();
   LicenseRegistry.addLicense(() async* {
     yield LicenseEntryWithLineBreaks([
       'Nunito',
@@ -76,10 +79,13 @@ class StartupErrorApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => MaterialApp(
+    theme: AppTheme.light,
+    darkTheme: AppTheme.dark,
+    builder: (context, child) => FiloTextScale(child: child!),
     home: Scaffold(
       body: SafeArea(
         child: Center(
-          child: Padding(
+          child: SingleChildScrollView(
             padding: const EdgeInsets.all(24),
             child: Column(
               mainAxisSize: MainAxisSize.min,

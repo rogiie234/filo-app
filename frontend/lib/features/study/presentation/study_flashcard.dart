@@ -91,11 +91,14 @@ class _StudyFlashcardState extends State<StudyFlashcard> {
                 decoration: BoxDecoration(
                   borderRadius: BorderRadius.circular(28),
                   color: _drag == 0
-                      ? FiloColors.surface
+                      ? Theme.of(context).colorScheme.surface
                       : _drag > 0
-                      ? FiloColors.selected
-                      : FiloColors.warning,
-                  border: Border.all(color: FiloColors.border, width: 1.5),
+                      ? Theme.of(context).colorScheme.primaryContainer
+                      : FiloThemeTokens.of(context).warningTint,
+                  border: Border.all(
+                    color: Theme.of(context).colorScheme.outline,
+                    width: 1.5,
+                  ),
                 ),
                 padding: const EdgeInsets.all(24),
                 child: AnimatedSwitcher(

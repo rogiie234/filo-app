@@ -217,6 +217,7 @@ class _GradebookScreenState extends ConsumerState<GradebookScreen> {
         title: const Text('Gradebook'),
         actions: [
           PopupMenuButton<String>(
+            tooltip: 'Gradebook options',
             enabled: data != null && data.loaded && !_exporting,
             onSelected: (_) => _export(data!),
             itemBuilder: (_) => [
@@ -522,16 +523,18 @@ class _GradebookTableState extends State<_GradebookTable> {
     width: 140,
     height: 72 * MediaQuery.textScalerOf(context).scale(1),
     child: Material(
-      color: mint ? FiloColors.mint : FiloColors.surface,
+      color: mint
+          ? FiloThemeTokens.of(context).mint
+          : Theme.of(context).colorScheme.surface,
       child: InkWell(
         onTap: tap,
         child: Container(
           alignment: Alignment.centerLeft,
           padding: const EdgeInsets.symmetric(horizontal: 10),
-          decoration: const BoxDecoration(
+          decoration: BoxDecoration(
             border: Border(
-              bottom: BorderSide(color: FiloColors.border),
-              right: BorderSide(color: FiloColors.border),
+              bottom: BorderSide(color: Theme.of(context).colorScheme.outline),
+              right: BorderSide(color: Theme.of(context).colorScheme.outline),
             ),
           ),
           child: Text(text, maxLines: 3, overflow: TextOverflow.ellipsis),
@@ -622,7 +625,7 @@ class GradebookOfflineBanner extends StatelessWidget {
   @override
   Widget build(BuildContext context) => Container(
     width: double.infinity,
-    color: FiloColors.warning,
+    color: FiloThemeTokens.of(context).warningTint,
     padding: const EdgeInsets.all(12),
     child: const Text('Offline · Showing cached grades. Read-only.'),
   );
@@ -656,7 +659,7 @@ class GradebookSkeleton extends StatelessWidget {
       height: 64,
       margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
       decoration: BoxDecoration(
-        color: FiloColors.mint,
+        color: FiloThemeTokens.of(context).mint,
         borderRadius: BorderRadius.circular(12),
       ),
     ),

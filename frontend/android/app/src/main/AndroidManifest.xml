@@ -16,6 +16,7 @@
         <meta-data android:name="firebase_messaging_auto_init_enabled" android:value="false" />
         <activity
             android:name=".MainActivity"
+            android:screenOrientation="portrait"
             android:exported="true"
             android:resizeableActivity="false"
             android:launchMode="singleTop"
