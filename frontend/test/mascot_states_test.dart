@@ -30,9 +30,10 @@ void main() {
         for (final size in [120.0, 240.0]) {
           await tester.pumpWidget(app(Mascot(pose: pose, size: size)));
           final image = tester.widget<Image>(find.byType(Image));
-          expect((image.image as ResizeImage).image, isA<AssetImage>());
+          expect((image.image as ResizeImage).imageProvider, isA<AssetImage>());
           final asset =
-              ((image.image as ResizeImage).image as AssetImage).assetName;
+              ((image.image as ResizeImage).imageProvider as AssetImage)
+                  .assetName;
           expect(
             asset,
             'assets/mascots/${size == 120 ? 'empty/' : ''}$pose.png',

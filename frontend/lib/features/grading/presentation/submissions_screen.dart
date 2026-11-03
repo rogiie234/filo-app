@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import '../../../core/widgets/filo_icon.dart';
+import '../../../core/widgets/filo_widgets.dart';
 import '../../../core/connectivity/connectivity_provider.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../classes/application/class_providers.dart';
@@ -25,19 +25,22 @@ class GradeStatusChip extends StatelessWidget {
   const GradeStatusChip(this.status, {super.key});
   final String status;
   @override
-  Widget build(BuildContext context) => Chip(
-    avatar: FiloIcon(
-      status.startsWith('Graded')
-          ? FiloIcons.checkCircle
-          : status == 'Late'
-          ? FiloIcons.clock
-          : status == 'Missing'
-          ? FiloIcons.error
-          : FiloIcons.assessment,
-      size: 18,
-    ),
-    label: Text(status),
-  );
+  Widget build(BuildContext context) {
+    final preset = status.startsWith('Graded')
+        ? FiloStatusPreset.graded
+        : switch (status) {
+            'Turned in' => FiloStatusPreset.turnedIn,
+            'Late' => FiloStatusPreset.late,
+            'Missing' => FiloStatusPreset.missing,
+            'In progress' => FiloStatusPreset.inProgress,
+            'Not started' => FiloStatusPreset.notStarted,
+            'Assigned' => FiloStatusPreset.assigned,
+            _ => null,
+          };
+    return preset == null
+        ? FiloStatusChip(label: status, icon: FiloIcons.assessment)
+        : FiloStatusChip.preset(preset, label: status);
+  }
 }
 
 class GradingSkeleton extends StatelessWidget {

@@ -299,32 +299,72 @@ class _ComponentGalleryState extends State<ComponentGallery> {
                 Wrap(
                   spacing: 8,
                   children: [
-                    for (final (label, status, icon) in [
-                      ('Assigned', FiloStatus.assigned, FiloIcons.checklist),
-                      ('Turned in', FiloStatus.success, FiloIcons.check),
-                      ('Graded', FiloStatus.success, FiloIcons.checkCircle),
-                      ('Late', FiloStatus.error, FiloIcons.clock),
-                      ('Missing', FiloStatus.missing, FiloIcons.error),
-                      ('In progress', FiloStatus.warning, FiloIcons.clock),
-                      ('Not started', FiloStatus.neutral, FiloIcons.circle),
-                      ('Draft', FiloStatus.neutral, FiloIcons.document),
-                      (
-                        'Waiting for approval',
-                        FiloStatus.warning,
-                        FiloIcons.pending,
-                      ),
-                      (
-                        'Available offline',
-                        FiloStatus.success,
-                        FiloIcons.cloudReady,
-                      ),
-                      ('Cloud only', FiloStatus.neutral, FiloIcons.offline),
-                      ('Info', FiloStatus.info, FiloIcons.info),
-                      ('AI', FiloStatus.ai, FiloIcons.sparkle),
-                    ])
-                      FiloStatusChip(label: label, icon: icon, status: status),
+                    for (final preset in FiloStatusPreset.values)
+                      FiloStatusChip.preset(preset),
+                    const FiloStatusChip(
+                      label: 'Info',
+                      icon: FiloIcons.info,
+                      status: FiloStatus.info,
+                    ),
                   ],
                 ),
+              ]),
+              _section('File types and AI badge', [
+                const FiloAiBadge(),
+                for (final (name, mime, kind) in [
+                  ('Handout.pdf', 'application/pdf', 'file'),
+                  ('Photo.png', 'image/png', 'file'),
+                  ('Photo.JPEG', 'image/jpeg', 'file'),
+                  ('Notes.doc', 'application/msword', 'file'),
+                  ('Notes.docx', null, 'file'),
+                  ('Slides.ppt', null, 'file'),
+                  ('Slides.pptx', null, 'file'),
+                  ('Workbook.xls', null, 'file'),
+                  ('Workbook.xlsx', null, 'file'),
+                  ('Data.csv', null, 'file'),
+                  ('Notes.txt', 'text/plain', 'file'),
+                  ('Course website', null, 'link'),
+                  ('Pasted text', null, 'text'),
+                  ('Archive.zip', null, 'file'),
+                  ('Readme', null, 'file'),
+                  (
+                    'An extensionless PDF with a long descriptive filename',
+                    'application/pdf',
+                    'file',
+                  ),
+                ])
+                  Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      FiloFileTypeTile(
+                        details: FiloFileDetails.fromName(
+                          name,
+                          mimeType: mime,
+                          kind: kind,
+                        ),
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              name,
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                            FiloFileTypeLabel(
+                              details: FiloFileDetails.fromName(
+                                name,
+                                mimeType: mime,
+                                kind: kind,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
               ]),
               _section('Cards and empty states', [
                 FiloCard(

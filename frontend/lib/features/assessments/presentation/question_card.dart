@@ -284,29 +284,12 @@ class _QuestionCardState extends State<QuestionCard> {
                   ],
                 ),
                 if (q.aiGenerated)
-                  Tooltip(
+                  const Tooltip(
                     message: 'AI-generated. Check it before publishing.',
-                    child: Semantics(
-                      label: 'AI-generated. Check it before publishing.',
-                      child: Container(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 10,
-                          vertical: 6,
-                        ),
-                        decoration: BoxDecoration(
-                          color: FiloColors.lime,
-                          border: Border.all(color: const Color(0xFF526D1E)),
-                          borderRadius: BorderRadius.circular(20),
-                        ),
-                        child: const Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            Icon(Icons.auto_awesome, size: 18),
-                            SizedBox(width: 4),
-                            Text('AI'),
-                          ],
-                        ),
-                      ),
+                    excludeFromSemantics: true,
+                    child: FiloAiBadge(
+                      semanticLabel:
+                          'AI-generated. Check it before publishing.',
                     ),
                   ),
               ],

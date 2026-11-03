@@ -129,19 +129,41 @@ class _StudyNotebookScreenState extends ConsumerState<StudyNotebookScreen> {
                                   Tooltip(
                                     message: 'Remove source ${source.name}',
                                     child: ActionChip(
-                                      avatar: Icon(
-                                        studyFileIcon(source.name),
-                                        size: 20,
-                                      ),
                                       label: ConstrainedBox(
                                         constraints: BoxConstraints(
                                           maxWidth:
                                               MediaQuery.sizeOf(context).width -
                                               160,
                                         ),
-                                        child: Text(
-                                          source.name,
-                                          overflow: TextOverflow.ellipsis,
+                                        child: Row(
+                                          mainAxisSize: MainAxisSize.min,
+                                          children: [
+                                            FiloFileTypeTile(
+                                              details: FiloFileDetails.fromName(
+                                                source.name,
+                                              ),
+                                            ),
+                                            const SizedBox(width: 8),
+                                            Flexible(
+                                              child: Column(
+                                                crossAxisAlignment:
+                                                    CrossAxisAlignment.start,
+                                                children: [
+                                                  Text(
+                                                    source.name,
+                                                    overflow:
+                                                        TextOverflow.ellipsis,
+                                                  ),
+                                                  FiloFileTypeLabel(
+                                                    details:
+                                                        FiloFileDetails.fromName(
+                                                          source.name,
+                                                        ),
+                                                  ),
+                                                ],
+                                              ),
+                                            ),
+                                          ],
                                         ),
                                       ),
                                       materialTapTargetSize:

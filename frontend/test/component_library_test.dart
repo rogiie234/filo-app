@@ -196,7 +196,31 @@ void main() {
         expect(find.byType(FiloProgressBar), findsOneWidget);
         expect(find.byType(FiloPageIndicator), findsOneWidget);
         expect(find.byType(FiloSkeleton), findsNWidgets(2));
-        expect(find.byType(FiloStatusChip), findsNWidgets(13));
+        expect(find.byType(FiloStatusChip), findsNWidgets(14));
+        expect(find.byType(FiloFileTypeTile), findsNWidgets(16));
+        for (final preset in FiloStatusPreset.values) {
+          expect(find.text(preset.label), findsWidgets);
+        }
+        for (final label in [
+          'PDF',
+          'PNG',
+          'JPEG',
+          'DOC',
+          'DOCX',
+          'PPT',
+          'PPTX',
+          'XLS',
+          'XLSX',
+          'CSV',
+          'TXT',
+          'Link',
+          'Text',
+          'ZIP',
+          'No extension',
+          'PDF - No extension',
+        ]) {
+          expect(find.text(label), findsOneWidget);
+        }
         expect(find.byType(EmptyState), findsNWidgets(5));
         expect(find.byType(MascotIdle), findsOneWidget);
         for (final pose in Mascot.poses) {

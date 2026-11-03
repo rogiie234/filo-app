@@ -85,8 +85,14 @@ void main() {
   testWidgets(
     'unavailable clock check preserves login error and shows a hint, not a diagnosis',
     (tester) async {
-      final client = SupabaseClient('https://example.supabase.co', 'key');
-      addTearDown(client.dispose);
+      final client = (await tester.runAsync(
+        () async => SupabaseClient(
+          'https://example.supabase.co',
+          'key',
+          authOptions: const AuthClientOptions(autoRefreshToken: false),
+        ),
+      ))!;
+      addTearDown(() => tester.runAsync(client.dispose));
       await tester.pumpWidget(
         ProviderScope(
           overrides: [

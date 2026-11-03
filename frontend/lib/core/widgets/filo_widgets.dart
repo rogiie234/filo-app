@@ -6,6 +6,7 @@ import 'filo_components.dart';
 import 'mascot_idle.dart';
 export 'mascot_idle.dart';
 export 'filo_components.dart';
+export 'filo_file_type.dart';
 
 export 'filo_button.dart';
 export 'filo_bottom_sheet.dart';

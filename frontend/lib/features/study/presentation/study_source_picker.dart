@@ -230,10 +230,26 @@ class _StudySourcePickerState extends ConsumerState<StudySourcePicker> {
         );
         final detail = _status[file.id] ?? (existing ? 'Ready' : null);
         return CheckboxListTile(
-          secondary: Icon(studyFileIcon(file.name)),
+          secondary: FiloFileTypeTile(
+            details: FiloFileDetails.fromName(
+              file.name,
+              mimeType: file.mimeType,
+            ),
+          ),
           title: Text(file.name),
-          subtitle: Text(
-            '${(file.size / (1024 * 1024)).toStringAsFixed(2)} MB · ${file.name.split('.').last.toUpperCase()}${detail == null ? '' : '\n$detail'}',
+          subtitle: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              FiloFileTypeLabel(
+                details: FiloFileDetails.fromName(
+                  file.name,
+                  mimeType: file.mimeType,
+                ),
+              ),
+              Text(
+                '${(file.size / (1024 * 1024)).toStringAsFixed(2)} MB${detail == null ? '' : '\n$detail'}',
+              ),
+            ],
           ),
           value: existing || _selected.containsKey(file.id),
           onChanged: _reading || existing

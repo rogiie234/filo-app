@@ -79,14 +79,15 @@ class StudyChatBubble extends StatelessWidget {
                 children: [
                   Row(
                     children: [
-                      if (ai) ...[
-                        const FiloIcon(FiloIcons.sparkle, size: 20),
-                        const SizedBox(width: 8),
-                      ],
                       Expanded(
-                        child: Text(
-                          ai ? 'AI' : 'You',
-                          style: Theme.of(context).textTheme.labelLarge,
+                        child: Align(
+                          alignment: Alignment.centerLeft,
+                          child: ai
+                              ? const FiloAiBadge()
+                              : Text(
+                                  'You',
+                                  style: Theme.of(context).textTheme.labelLarge,
+                                ),
                         ),
                       ),
                       if (ai)

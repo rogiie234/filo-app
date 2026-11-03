@@ -5,7 +5,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:supabase_flutter/supabase_flutter.dart' show PostgrestException;
 import 'package:url_launcher/url_launcher.dart';
 
-import '../../../core/widgets/filo_icon.dart';
+import '../../../core/widgets/filo_widgets.dart';
 import '../../../core/connectivity/connectivity_provider.dart';
 import '../../../core/supabase/supabase_provider.dart';
 import '../../../data/local/app_database.dart';
@@ -22,19 +22,7 @@ String fileSize(int? size) => size == null
     ? '${(size / 1024).toStringAsFixed(1)} KB'
     : '${(size / 1048576).toStringAsFixed(1)} MB';
 IconData fileIcon(String name, [String? mime]) =>
-    mime?.startsWith('image/') == true ||
-        RegExp(
-          r'\.(jpe?g|png|webp|gif|bmp)$',
-          caseSensitive: false,
-        ).hasMatch(name)
-    ? FiloIcons.image
-    : name.toLowerCase().endsWith('.pdf')
-    ? FiloIcons.pdf
-    : RegExp(r'\.(xlsx?|csv)$', caseSensitive: false).hasMatch(name)
-    ? FiloIcons.spreadsheet
-    : RegExp(r'\.(pptx?)$', caseSensitive: false).hasMatch(name)
-    ? FiloIcons.slides
-    : FiloIcons.document;
+    FiloFileDetails.fromName(name, mimeType: mime).type.icon;
 
 class DownloadFileCard extends ConsumerStatefulWidget {
   const DownloadFileCard({
@@ -193,10 +181,8 @@ class _DownloadFileCardState extends ConsumerState<DownloadFileCard> {
   Widget build(BuildContext context) {
     final a = widget.attachment;
     final manager = ref.watch(downloadManagerProvider).asData?.value;
-    final local = ref
-        .watch(localFilesProvider)
-        .asData
-        ?.value
+    final localFiles = ref.watch(localFilesProvider);
+    final local = localFiles.asData?.value
         .where((f) => f.sourceAttachmentId == a.id)
         .firstOrNull;
     final online = ref.watch(connectivityProvider).asData?.value == true;
@@ -214,17 +200,30 @@ class _DownloadFileCardState extends ConsumerState<DownloadFileCard> {
             children: [
               Row(
                 children: [
-                  FiloIcon(
-                    a.kind == 'link'
-                        ? FiloIcons.link
-                        : fileIcon(a.name, a.mimeType),
-                    size: 32,
+                  FiloFileTypeTile(
+                    details: FiloFileDetails.fromName(
+                      a.name,
+                      mimeType: a.mimeType,
+                      kind: a.kind,
+                    ),
                   ),
                   const SizedBox(width: 12),
                   Expanded(
-                    child: Text(
-                      a.name,
-                      style: Theme.of(context).textTheme.titleMedium,
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          a.name,
+                          style: Theme.of(context).textTheme.titleMedium,
+                        ),
+                        FiloFileTypeLabel(
+                          details: FiloFileDetails.fromName(
+                            a.name,
+                            mimeType: a.mimeType,
+                            kind: a.kind,
+                          ),
+                        ),
+                      ],
                     ),
                   ),
                 ],
@@ -235,13 +234,7 @@ class _DownloadFileCardState extends ConsumerState<DownloadFileCard> {
               ),
               if (widget.postTitle != null) Text(widget.postTitle!),
               if (exists && local != null) ...[
-                const Row(
-                  children: [
-                    FiloIcon(FiloIcons.checkCircle, size: 18),
-                    SizedBox(width: 6),
-                    Text('Available offline'),
-                  ],
-                ),
+                FiloStatusChip.preset(FiloStatusPreset.availableOffline),
                 TextButton(
                   onPressed: () => Navigator.of(context).push(
                     MaterialPageRoute<void>(
@@ -277,6 +270,14 @@ class _DownloadFileCardState extends ConsumerState<DownloadFileCard> {
                   ],
                 )
               else ...[
+                if (downloadable &&
+                    manager != null &&
+                    localFiles.hasValue &&
+                    !localFiles.isLoading &&
+                    !localFiles.hasError &&
+                    local == null &&
+                    state.error == null)
+                  FiloStatusChip.preset(FiloStatusPreset.cloudOnly),
                 if (local != null)
                   const Text('This file is no longer on your device.'),
                 if (state.error != null) Text(state.error!.message),

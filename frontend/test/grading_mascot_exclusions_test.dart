@@ -23,7 +23,7 @@ void main() {
       '${route.runtimeType} keeps loading, empty and failed reads neutral',
       (tester) async {
         for (final theme in [AppTheme.light, AppTheme.dark]) {
-          final snapshots = StreamController<GradingData>();
+          final snapshots = StreamController<GradingData>.broadcast();
           await tester.pumpWidget(
             ProviderScope(
               overrides: [
@@ -48,7 +48,8 @@ void main() {
           expect(find.byType(Mascot), findsNothing);
           expect(tester.takeException(), isNull);
           await tester.pumpWidget(const SizedBox());
-          await snapshots.close();
+          await tester.pump();
+          await tester.runAsync(snapshots.close);
         }
       },
     );

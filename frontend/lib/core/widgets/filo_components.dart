@@ -14,16 +14,57 @@ enum FiloStatus {
   ai,
 }
 
+enum FiloStatusPreset {
+  assigned('Assigned', FiloIcons.assessment, FiloStatus.assigned),
+  turnedIn('Turned in', FiloIcons.check, FiloStatus.success),
+  graded('Graded', FiloIcons.checkCircle, FiloStatus.success),
+  late('Late', FiloIcons.clock, FiloStatus.error),
+  missing('Missing', FiloIcons.error, FiloStatus.missing),
+  inProgress('In progress', FiloIcons.clock, FiloStatus.warning),
+  notStarted('Not started', FiloIcons.circle, FiloStatus.neutral),
+  draft('Draft', FiloIcons.edit, FiloStatus.neutral),
+  waitingForApproval(
+    'Waiting for approval',
+    FiloIcons.pending,
+    FiloStatus.warning,
+  ),
+  availableOffline(
+    'Available offline',
+    FiloIcons.checkCircle,
+    FiloStatus.success,
+  ),
+  cloudOnly('Cloud only', FiloIcons.cloud, FiloStatus.neutral),
+  ai('AI', FiloIcons.sparkle, FiloStatus.ai);
+
+  const FiloStatusPreset(this.label, this.icon, this.tone);
+  final String label;
+  final IconData icon;
+  final FiloStatus tone;
+}
+
 class FiloStatusChip extends StatelessWidget {
   const FiloStatusChip({
     super.key,
     required this.label,
     required this.icon,
     this.status = FiloStatus.neutral,
+    this.fontWeight,
   });
+  factory FiloStatusChip.preset(
+    FiloStatusPreset preset, {
+    Key? key,
+    String? label,
+  }) => FiloStatusChip(
+    key: key,
+    label: label ?? preset.label,
+    icon: preset.icon,
+    status: preset.tone,
+    fontWeight: preset == FiloStatusPreset.graded ? FontWeight.w800 : null,
+  );
   final String label;
   final IconData icon;
   final FiloStatus status;
+  final FontWeight? fontWeight;
   @override
   Widget build(BuildContext context) {
     final c = Theme.of(context).colorScheme;
@@ -38,11 +79,22 @@ class FiloStatusChip extends StatelessWidget {
       FiloStatus.assigned => (c.onPrimaryContainer, c.primaryContainer),
       FiloStatus.neutral => (c.onSurfaceVariant, c.surface),
     };
+    final textStyle =
+        (Theme.of(context).textTheme.labelMedium ?? const TextStyle()).copyWith(
+          color: ink,
+          fontWeight: fontWeight,
+        );
     return Chip(
-      label: Text(label),
-      avatar: FiloIcon(icon, size: 18, color: ink),
+      // Chip otherwise forces one line and fades long status qualifiers.
+      label: DefaultTextStyle(
+        style: textStyle,
+        softWrap: true,
+        overflow: TextOverflow.visible,
+        child: Text(label),
+      ),
+      avatar: ExcludeSemantics(child: FiloIcon(icon, size: 18, color: ink)),
       backgroundColor: fill,
-      labelStyle: Theme.of(context).textTheme.labelMedium?.copyWith(color: ink),
+      labelStyle: textStyle,
       side: BorderSide(
         color: status == FiloStatus.ai
             ? t.limeDeep
@@ -51,6 +103,18 @@ class FiloStatusChip extends StatelessWidget {
             : c.outline,
       ),
     );
+  }
+}
+
+class FiloAiBadge extends StatelessWidget {
+  const FiloAiBadge({super.key, this.semanticLabel});
+  final String? semanticLabel;
+  @override
+  Widget build(BuildContext context) {
+    final badge = FiloStatusChip.preset(FiloStatusPreset.ai);
+    return semanticLabel == null
+        ? badge
+        : Semantics(label: semanticLabel, excludeSemantics: true, child: badge);
   }
 }
 

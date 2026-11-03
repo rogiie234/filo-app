@@ -105,6 +105,11 @@ abstract final class FiloIcons {
     fontFamily: 'FiloPhosphorRegular',
     matchTextDirection: false,
   );
+  static const cloud = IconData(
+    0xe1aa,
+    fontFamily: 'FiloPhosphorRegular',
+    matchTextDirection: false,
+  );
   static const cloudReady = IconData(
     0xe1b0,
     fontFamily: 'FiloPhosphorRegular',

@@ -93,23 +93,7 @@ class FileCard extends StatelessWidget {
         Row(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Container(
-              width: 48,
-              height: 48,
-              decoration: BoxDecoration(
-                color: file.type == 'PDFs'
-                    ? const Color(0xFFFBE4E0)
-                    : FiloColors.selected,
-                borderRadius: BorderRadius.circular(12),
-              ),
-              child: FiloIcon(
-                file.type == 'PDFs'
-                    ? FiloIcons.pdf
-                    : file.type == 'Images'
-                    ? FiloIcons.image
-                    : FiloIcons.document,
-              ),
-            ),
+            FiloFileTypeTile(details: FiloFileDetails.fromName(file.name)),
             const SizedBox(width: 12),
             Expanded(
               child: Column(
@@ -123,6 +107,9 @@ class FileCard extends StatelessWidget {
                     ),
                   ),
                   const SizedBox(height: 4),
+                  FiloFileTypeLabel(
+                    details: FiloFileDetails.fromName(file.name),
+                  ),
                   Text(
                     '${file.size} · Class material',
                     style: const TextStyle(color: FiloColors.secondary),

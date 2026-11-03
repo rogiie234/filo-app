@@ -157,13 +157,4 @@ Future<bool> editNotebook(
   return false;
 }
 
-IconData studyFileIcon(String name) {
-  final extension = name.split('.').last.toLowerCase();
-  return switch (extension) {
-    'pdf' => Icons.picture_as_pdf_outlined,
-    'docx' => Icons.description_outlined,
-    'pptx' => Icons.slideshow_outlined,
-    'txt' => Icons.text_snippet_outlined,
-    _ => Icons.image_outlined,
-  };
-}
+IconData studyFileIcon(String name) => FiloFileDetails.fromName(name).type.icon;

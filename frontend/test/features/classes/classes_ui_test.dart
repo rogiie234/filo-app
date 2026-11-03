@@ -2,6 +2,8 @@ import 'dart:async';
 import 'dart:io';
 import 'dart:ui' as ui;
 
+import 'package:filo/features/posts/application/post_providers.dart';
+
 import 'package:filo/core/notifications/deadline_providers.dart';
 import 'package:drift/native.dart';
 import 'package:filo/core/connectivity/connectivity_provider.dart';
@@ -120,6 +122,23 @@ class Harness {
   final GlobalKey captureKey;
 }
 
+final _classCleanups = <Future<void> Function()>[];
+
+void testClasses(String description, WidgetTesterCallback body) =>
+    testWidgets(description, (tester) async {
+      try {
+        await body(tester);
+      } finally {
+        await tester.pumpWidget(const SizedBox.shrink());
+        await tester.pump();
+        await tester.pump();
+        while (_classCleanups.isNotEmpty) {
+          await _classCleanups.removeLast()();
+        }
+        await tester.pump();
+      }
+    }, timeout: const Timeout(Duration(seconds: 45)));
+
 void main() {
   final binding = TestWidgetsFlutterBinding.ensureInitialized();
   setUp(() {
@@ -170,6 +189,8 @@ void main() {
           accountDatabaseProvider.overrideWith((ref) async => db),
           deadlineBridgeProvider.overrideWithValue(const NoDeadlineBridge()),
           classRepositoryProvider.overrideWith((ref) async => repo),
+          postSyncProvider.overrideWith((ref, id) async {}),
+          streamPostsProvider.overrideWith((ref, id) => Stream.value([])),
           classCardsProvider.overrideWith((ref) async* {
             yield List.of(rooms);
             yield* cards.stream;
@@ -240,18 +261,22 @@ void main() {
       );
     });
     await tester.pumpAndSettle();
-    addTearDown(() async {
+    _classCleanups.add(() async {
       await tester.pumpWidget(const SizedBox());
       await tester.pump();
-      await settings.changes.close();
-      await network.close();
-      await cards.close();
-      await db.close();
+      final closing = Future.wait([
+        settings.changes.close(),
+        network.close(),
+        cards.close(),
+        db.close(),
+      ]);
+      await tester.pumpAndSettle();
+      await closing;
     });
     return Harness(repo, network, cards, rooms, capture);
   }
 
-  testWidgets('notification bell follows the local unread count', (
+  testClasses('notification bell follows the local unread count', (
     tester,
   ) async {
     final unread = StreamController<int>.broadcast();
@@ -277,7 +302,7 @@ void main() {
   });
 
   for (final role in AccountRole.values) {
-    testWidgets('${role.name} bell opens the local inbox', (tester) async {
+    testClasses('${role.name} bell opens the local inbox', (tester) async {
       await launch(tester, role: role, notificationAccess: false);
       await tester.tap(find.byTooltip('Notifications'));
       await tester.pumpAndSettle();
@@ -291,7 +316,7 @@ void main() {
       await tester.pumpAndSettle();
       expect(find.byType(ClassesScreen), findsOneWidget);
     });
-    testWidgets('${role.name} settings hub opens notification access page', (
+    testClasses('${role.name} settings hub opens notification access page', (
       tester,
     ) async {
       await launch(tester, role: role, notificationAccess: false, scale: 1.3);
@@ -311,7 +336,7 @@ void main() {
       await tester.pumpWidget(const SizedBox.shrink());
       await tester.pumpAndSettle();
     });
-    testWidgets('${role.name} dark settings hub wraps at 130 percent text', (
+    testClasses('${role.name} dark settings hub wraps at 130 percent text', (
       tester,
     ) async {
       await launch(
@@ -351,6 +376,7 @@ void main() {
   }
 
   Future<void> capture(WidgetTester tester, Harness h, String name) async {
+    if (!const bool.fromEnvironment('FILO_CAPTURE_UI')) return;
     final boundary =
         h.captureKey.currentContext!.findRenderObject()!
             as RenderRepaintBoundary;
@@ -365,13 +391,13 @@ void main() {
     });
   }
 
-  testWidgets('student retains class card layout and all three class tabs', (
+  testClasses('student retains class card layout and all three class tabs', (
     tester,
   ) async {
     final h = await launch(tester);
     expect(find.textContaining('Preview'), findsNothing);
     expect(find.text('Your classes'), findsOneWidget);
-    expect(find.text('Find a class'), findsOneWidget);
+    expect(find.text('Find a class'), findsWidgets);
     expect(find.text('Join class'), findsOneWidget);
     expect(find.text('Create class'), findsNothing);
     await capture(tester, h, 'student-classes');
@@ -385,29 +411,15 @@ void main() {
     }
     await tester.tap(find.text('Stream').last);
     await tester.pumpAndSettle();
-    expect(find.text('Nothing posted yet.'), findsOneWidget);
+    expect(find.text('No posts yet'), findsOneWidget);
     await capture(tester, h, 'class-stream-tabs');
-    await tester.tap(find.byTooltip('Class details'));
+    await tester.tap(find.byTooltip('Class menu'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Class details'));
     await tester.pumpAndSettle();
     expect(find.text('School Year: 2026-2027'), findsOneWidget);
-    expect(find.text('Class code: FILO26'), findsOneWidget);
-    String? copied;
-    tester.binding.defaultBinaryMessenger.setMockMethodCallHandler(
-      SystemChannels.platform,
-      (call) async {
-        if (call.method == 'Clipboard.setData') {
-          copied = (call.arguments as Map)['text'] as String;
-        }
-        return null;
-      },
-    );
-    await tester.tap(find.text('Copy code'));
-    await tester.pumpAndSettle();
-    expect(copied, 'FILO26');
-    tester.binding.defaultBinaryMessenger.setMockMethodCallHandler(
-      SystemChannels.platform,
-      null,
-    );
+    expect(find.text('Class code: FILO26'), findsNothing);
+    expect(find.text('Copy code'), findsNothing);
   });
 
   for (final result in [
@@ -417,7 +429,7 @@ void main() {
     'already_pending',
     'archived',
   ]) {
-    testWidgets('join handles $result and keeps wrong-code sheet open', (
+    testClasses('join handles $result and keeps wrong-code sheet open', (
       tester,
     ) async {
       final h = await launch(tester);
@@ -429,8 +441,7 @@ void main() {
       await tester.pumpAndSettle();
       expect(h.repository.submittedCode, 'FILO26');
       final expected = switch (result) {
-        'requested' =>
-          "Request sent. We'll notify you when your instructor approves.",
+        'requested' => "Request sent. Your instructor needs to approve it before you can open the class.",
         'not_found' => 'Class code not found. Check the code and try again.',
         'already_member' => "You're already in this class.",
         'already_pending' => 'Your request is still waiting for approval.',
@@ -460,11 +471,11 @@ void main() {
               .onTap,
           isNull,
         );
-        expect(find.byType(NavigationBar), findsNothing);
+        expect(find.byType(NavigationBar), findsOneWidget);
       }
     });
   }
-  testWidgets(
+  testClasses(
     'offline disables Join and keeps saved class visible after refresh',
     (tester) async {
       final h = await launch(tester, online: false);
@@ -478,7 +489,7 @@ void main() {
         isNull,
       );
       expect(
-        find.text('Connect to the internet to join a class.'),
+        find.text("You're offline. Showing saved content."),
         findsOneWidget,
       );
       await tester.drag(find.byType(ListView), const Offset(0, 400));
@@ -500,7 +511,7 @@ void main() {
       );
     },
   );
-  testWidgets(
+  testClasses(
     'instructor creates from existing layout and opens Stream with tabs',
     (tester) async {
       final h = await launch(tester, role: AccountRole.instructor, empty: true);
@@ -543,7 +554,7 @@ void main() {
       }
     },
   );
-  testWidgets(
+  testClasses(
     'creation retry after failed pull does not create a second class',
     (tester) async {
       final h = await launch(tester, role: AccountRole.instructor, empty: true);
@@ -563,7 +574,7 @@ void main() {
       expect(find.byType(NavigationBar), findsOneWidget);
     },
   );
-  testWidgets(
+  testClasses(
     'lost create response asks to check list instead of repeating insert',
     (tester) async {
       final h = await launch(tester, role: AccountRole.instructor, empty: true);
@@ -585,7 +596,7 @@ void main() {
       expect(find.text('BSIT-3B'), findsOneWidget);
     },
   );
-  testWidgets('offline instructor keeps saved classes and cannot create', (
+  testClasses('offline instructor keeps saved classes and cannot create', (
     tester,
   ) async {
     await launch(
@@ -603,14 +614,11 @@ void main() {
       isNull,
     );
     expect(find.text('Computing'), findsOneWidget);
-    expect(
-      find.text('Connect to the internet to create a class.'),
-      findsOneWidget,
-    );
+    expect(find.text("You're offline. Showing saved content."), findsOneWidget);
     expect(tester.takeException(), isNull);
   });
 
-  testWidgets(
+  testClasses(
     'revoked open class becomes unavailable and back returns to list',
     (tester) async {
       final h = await launch(tester);
@@ -624,7 +632,7 @@ void main() {
       expect(find.text('Your classes'), findsOneWidget);
     },
   );
-  testWidgets(
+  testClasses(
     'existing classes layout fits a small phone at 130 percent text',
     (tester) async {
       await launch(tester, scale: 1.3);

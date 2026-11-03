@@ -575,10 +575,26 @@ class _MyFilesScreenState extends ConsumerState<MyFilesScreen> {
                     ),
                   for (final file in visibleFiles)
                     ListTile(
-                      leading: FiloIcon(fileIcon(file.name, file.mimeType)),
+                      leading: FiloFileTypeTile(
+                        details: FiloFileDetails.fromName(
+                          file.name,
+                          mimeType: file.mimeType,
+                        ),
+                      ),
                       title: Text(file.name),
-                      subtitle: Text(
-                        '${fileSize(file.size)} · ${MaterialLocalizations.of(context).formatMediumDate(file.updatedAt.toLocal())}',
+                      subtitle: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          FiloFileTypeLabel(
+                            details: FiloFileDetails.fromName(
+                              file.name,
+                              mimeType: file.mimeType,
+                            ),
+                          ),
+                          Text(
+                            '${fileSize(file.size)} · ${MaterialLocalizations.of(context).formatMediumDate(file.updatedAt.toLocal())}',
+                          ),
+                        ],
                       ),
                       onTap: () => Navigator.of(context).push(
                         MaterialPageRoute<void>(

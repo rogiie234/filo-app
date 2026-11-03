@@ -1,3 +1,4 @@
+import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:filo/app.dart';
 import 'package:filo/core/connectivity/connectivity_provider.dart';
 import 'package:filo/core/supabase/auth_providers.dart';
@@ -27,6 +28,7 @@ class _NewAccountProfiles extends ProfileRepository {
 void main() {
   final binding = TestWidgetsFlutterBinding.ensureInitialized();
   setUp(() {
+    FlutterSecureStorage.setMockInitialValues({});
     binding.platformDispatcher.accessibilityFeaturesTestValue =
         const FakeAccessibilityFeatures(disableAnimations: true);
   });
