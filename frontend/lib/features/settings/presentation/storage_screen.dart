@@ -93,7 +93,9 @@ class _StorageScreenState extends ConsumerState<StorageScreen> {
         WidgetsBinding.instance.addPostFrameCallback((_) {
           if (mounted) Navigator.of(context).popUntil((route) => route.isFirst);
         });
-      return const Scaffold(body: Center(child: CircularProgressIndicator()));
+      return const Scaffold(
+        body: Center(child: FiloCircularProgressIndicator()),
+      );
     }
     final usage = ref.watch(storageSettingsProvider);
     return Scaffold(
@@ -120,7 +122,7 @@ class _StorageScreenState extends ConsumerState<StorageScreen> {
                   padding: const EdgeInsets.all(24),
                   child: Column(
                     children: [
-                      const CircularProgressIndicator(),
+                      const FiloCircularProgressIndicator(),
                       const SizedBox(height: 16),
                       Text(
                         _clearing

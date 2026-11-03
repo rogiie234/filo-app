@@ -360,6 +360,7 @@ abstract final class FiloIcons {
     fontFamily: 'FiloPhosphorRegular',
     matchTextDirection: false,
   );
+  static const chevronUp = IconData(0xe13c, fontFamily: 'FiloPhosphorRegular');
   static const chevronDown = IconData(
     0xe136,
     fontFamily: 'FiloPhosphorRegular',

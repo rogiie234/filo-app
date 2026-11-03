@@ -240,7 +240,7 @@ class _AccountSetupScreenState extends ConsumerState<AccountSetupScreen> {
     }
   }
 
-  void _privacy() => showDialog<void>(
+  void _privacy() => showFiloDialog<void>(
     context: context,
     builder: (context) => const FiloNoticeDialog(
       title: 'Privacy Notice',

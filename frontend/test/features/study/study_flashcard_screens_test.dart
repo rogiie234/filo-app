@@ -290,14 +290,23 @@ void main() {
         find.bySemanticsLabel('Card 1 of 3. Answer. Answer 1'),
         findsOneWidget,
       );
-      final container = tester.widget<AnimatedContainer>(
+      final face = tester.widget<AnimatedSwitcher>(
         find.descendant(
           of: find.byType(StudyFlashcard),
-          matching: find.byType(AnimatedContainer),
+          matching: find.byType(AnimatedSwitcher),
         ),
       );
-      expect(container.duration, Duration.zero);
-      expect(container.transform, Matrix4.identity());
+      expect(face.duration, Duration.zero);
+      final transforms = tester.widgetList<Transform>(
+        find.descendant(
+          of: find.byType(StudyFlashcard),
+          matching: find.byType(Transform),
+        ),
+      );
+      expect(
+        transforms.every((t) => t.transform == Matrix4.identity()),
+        isTrue,
+      );
       semantics.dispose();
       await close(tester);
     },

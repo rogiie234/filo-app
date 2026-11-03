@@ -168,7 +168,7 @@ class _InboxScreenState extends ConsumerState<InboxScreen> {
       content = const Padding(
         padding: EdgeInsets.all(32),
         child: Center(
-          child: CircularProgressIndicator(
+          child: FiloCircularProgressIndicator(
             semanticsLabel: 'Loading notifications',
           ),
         ),
@@ -178,107 +178,120 @@ class _InboxScreenState extends ConsumerState<InboxScreen> {
     } else {
       content = const SizedBox.shrink();
     }
-    return Scaffold(
-      appBar: AppBar(
-        leading: const BackButton(),
-        title: const Text('Notifications'),
-      ),
-      body: SafeArea(
-        top: false,
-        child: Column(
-          children: [
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 24),
-              child: Align(
-                alignment: AlignmentDirectional.centerEnd,
-                child: TextButton(
-                  style: TextButton.styleFrom(minimumSize: const Size(48, 48)),
-                  onPressed: current && unread && !_marking ? _markAll : null,
-                  child: Text(
-                    _marking ? 'Saving…' : 'Mark all as read',
-                    textAlign: TextAlign.end,
+    return FiloFirstListLoad(
+      id: 'inbox',
+      hasItems: rows?.isNotEmpty ?? false,
+      ready: current && inbox.hasValue && !inbox.isLoading && !inbox.hasError,
+      child: Scaffold(
+        appBar: AppBar(
+          leading: const BackButton(),
+          title: const Text('Notifications'),
+        ),
+        body: SafeArea(
+          top: false,
+          child: Column(
+            children: [
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 24),
+                child: Align(
+                  alignment: AlignmentDirectional.centerEnd,
+                  child: TextButton(
+                    style: TextButton.styleFrom(
+                      minimumSize: const Size(48, 48),
+                    ),
+                    onPressed: current && unread && !_marking ? _markAll : null,
+                    child: Text(
+                      _marking ? 'Saving…' : 'Mark all as read',
+                      textAlign: TextAlign.end,
+                    ),
                   ),
                 ),
               ),
-            ),
-            Expanded(
-              child: RefreshIndicator(
-                onRefresh: _refresh,
-                child: CustomScrollView(
-                  key: const PageStorageKey('notification-inbox'),
-                  physics: const AlwaysScrollableScrollPhysics(),
-                  slivers: [
-                    SliverPadding(
-                      padding: const EdgeInsets.symmetric(horizontal: 24),
-                      sliver: SliverList.list(
-                        children: [
-                          if (offline) const OfflineBanner(),
-                          if (refresh.isLoading && !offline)
-                            const LinearProgressIndicator(
-                              semanticsLabel: 'Refreshing notifications',
-                            ),
-                          if (refresh.hasError && !offline)
-                            _notice(
-                              'Could not refresh notifications. Showing saved content.',
-                              _refresh,
-                            ),
-                          if (_writeError != null)
-                            _notice(_writeError!, _markAll),
-                          if (rows == null || rows.isEmpty) content,
-                        ],
-                      ),
-                    ),
-                    if (rows != null && rows.isNotEmpty)
+              Expanded(
+                child: RefreshIndicator(
+                  onRefresh: _refresh,
+                  child: CustomScrollView(
+                    key: const PageStorageKey('notification-inbox'),
+                    physics: const AlwaysScrollableScrollPhysics(),
+                    slivers: [
                       SliverPadding(
-                        padding: const EdgeInsets.fromLTRB(24, 8, 24, 24),
-                        sliver: SliverList.builder(
-                          itemCount: rows.length,
-                          itemBuilder: (context, index) {
-                            final row = rows[index];
-                            final header =
-                                index == 0 ||
-                                inboxDay(rows[index - 1].createdAt) !=
-                                    inboxDay(row.createdAt);
-                            return Column(
-                              crossAxisAlignment: CrossAxisAlignment.stretch,
-                              children: [
-                                if (header)
-                                  Padding(
-                                    padding: const EdgeInsets.only(
-                                      top: 16,
-                                      bottom: 12,
-                                    ),
-                                    child: Semantics(
-                                      header: true,
-                                      child: Text(
-                                        inboxDayLabel(
-                                          context,
-                                          row.createdAt,
-                                          _now,
-                                        ),
-                                        style: theme.textTheme.titleMedium,
-                                      ),
-                                    ),
-                                  ),
-                                Padding(
-                                  padding: const EdgeInsets.only(bottom: 12),
-                                  child: _InboxRow(
-                                    row: row,
-                                    onTap: _opening
-                                        ? null
-                                        : () => _open(row.id),
-                                  ),
-                                ),
-                              ],
-                            );
-                          },
+                        padding: const EdgeInsets.symmetric(horizontal: 24),
+                        sliver: SliverList.list(
+                          children: [
+                            if (offline) const OfflineBanner(),
+                            if (refresh.isLoading && !offline)
+                              const FiloLinearProgressIndicator(
+                                semanticsLabel: 'Refreshing notifications',
+                              ),
+                            if (refresh.hasError && !offline)
+                              _notice(
+                                'Could not refresh notifications. Showing saved content.',
+                                _refresh,
+                              ),
+                            if (_writeError != null)
+                              _notice(_writeError!, _markAll),
+                            if (rows == null || rows.isEmpty) content,
+                          ],
                         ),
                       ),
-                  ],
+                      if (rows != null && rows.isNotEmpty)
+                        SliverPadding(
+                          padding: const EdgeInsets.fromLTRB(24, 8, 24, 24),
+                          sliver: SliverList.builder(
+                            itemCount: rows.length,
+                            itemBuilder: (context, index) {
+                              final row = rows[index];
+                              final header =
+                                  index == 0 ||
+                                  inboxDay(rows[index - 1].createdAt) !=
+                                      inboxDay(row.createdAt);
+                              return FiloListItem(
+                                index: index,
+                                child: Column(
+                                  crossAxisAlignment:
+                                      CrossAxisAlignment.stretch,
+                                  children: [
+                                    if (header)
+                                      Padding(
+                                        padding: const EdgeInsets.only(
+                                          top: 16,
+                                          bottom: 12,
+                                        ),
+                                        child: Semantics(
+                                          header: true,
+                                          child: Text(
+                                            inboxDayLabel(
+                                              context,
+                                              row.createdAt,
+                                              _now,
+                                            ),
+                                            style: theme.textTheme.titleMedium,
+                                          ),
+                                        ),
+                                      ),
+                                    Padding(
+                                      padding: const EdgeInsets.only(
+                                        bottom: 12,
+                                      ),
+                                      child: _InboxRow(
+                                        row: row,
+                                        onTap: _opening
+                                            ? null
+                                            : () => _open(row.id),
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              );
+                            },
+                          ),
+                        ),
+                    ],
+                  ),
                 ),
               ),
-            ),
-          ],
+            ],
+          ),
         ),
       ),
     );

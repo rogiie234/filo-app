@@ -346,7 +346,7 @@ class _QuizGenerateBodyState extends ConsumerState<_QuizGenerateBody> {
                   const Padding(
                     padding: EdgeInsets.all(16),
                     child: Center(
-                      child: CircularProgressIndicator(
+                      child: FiloCircularProgressIndicator(
                         semanticsLabel: 'Preparing practice quiz',
                       ),
                     ),

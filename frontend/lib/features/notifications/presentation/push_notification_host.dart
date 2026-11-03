@@ -1,3 +1,5 @@
+import '../../../core/theme/filo_motion.dart';
+
 import 'dart:async';
 
 import 'package:flutter/material.dart';
@@ -298,13 +300,21 @@ class _PushNotificationHostState extends ConsumerState<PushNotificationHost> {
     // Push above the current page; never pop away an unsaved form.
     unawaited(
       _navigator.currentState!.push(
-        MaterialPageRoute<void>(
-          settings: RouteSettings(
-            name:
-                'notification:${destination.screen.name}:${destination.targetId}',
-          ),
-          builder: (_) => page,
-        ),
+        page is StudentResultsScreen
+            ? FiloInstantRoute<void>(
+                settings: RouteSettings(
+                  name:
+                      'notification:${destination.screen.name}:${destination.targetId}',
+                ),
+                builder: (_) => page,
+              )
+            : MaterialPageRoute<void>(
+                settings: RouteSettings(
+                  name:
+                      'notification:${destination.screen.name}:${destination.targetId}',
+                ),
+                builder: (_) => page,
+              ),
       ),
     );
   }

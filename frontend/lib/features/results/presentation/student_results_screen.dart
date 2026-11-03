@@ -20,46 +20,53 @@ class StudentResultsScreen extends ConsumerWidget {
       ref.invalidate(studentResultProvider(quizId));
     }
 
-    return Scaffold(
-      appBar: AppBar(title: Text('${quiz?['title'] ?? 'Results'}')),
-      body: SafeArea(
-        child: ResultsListBody(
-          onRefresh: refresh,
-          offline: ref.watch(connectivityProvider).asData?.value != true,
-          loading:
-              state.isLoading || data?.refreshing == true && data?.data == null,
-          error:
-              data?.error ??
-              (state.hasError ? "Couldn't load results. Try again." : null),
-          children: [
-            if (result != null) ...[
-              Semantics(
-                header: true,
-                child: Text(
-                  '${result.score} of ${result.totalPoints} ${result.totalPoints == 1 ? 'point' : 'points'}',
-                  style: Theme.of(context).textTheme.headlineMedium,
-                ),
-              ),
-              Text(
-                '${result.percent}%',
-                style: Theme.of(context).textTheme.headlineSmall,
-              ),
-              if (quiz?['passing_percent'] != null && result.passed != null)
-                Align(
-                  alignment: Alignment.centerLeft,
-                  child: ResultStatusChip(
-                    result.passed! ? 'Passed' : 'Not passed',
+    return FiloMotionScope(
+      enabled: false,
+      child: Scaffold(
+        appBar: AppBar(title: Text('${quiz?['title'] ?? 'Results'}')),
+        body: SafeArea(
+          child: ResultsListBody(
+            onRefresh: refresh,
+            offline: ref.watch(connectivityProvider).asData?.value != true,
+            loading:
+                state.isLoading ||
+                data?.refreshing == true && data?.data == null,
+            error:
+                data?.error ??
+                (state.hasError ? "Couldn't load results. Try again." : null),
+            children: [
+              if (result != null) ...[
+                Semantics(
+                  header: true,
+                  child: Text(
+                    '${result.score} of ${result.totalPoints} ${result.totalPoints == 1 ? 'point' : 'points'}',
+                    style: Theme.of(context).textTheme.headlineMedium,
                   ),
                 ),
-              const SizedBox(height: 24),
-              if (result.review == null)
-                const Text(resultsScoreOnly)
-              else
-                for (final entry in result.review!.indexed)
-                  ResultQuestionCard(question: entry.$2, number: entry.$1 + 1),
-            ] else if (data?.data != null)
-              Text(studentResultMessage(data!.data!)),
-          ],
+                Text(
+                  '${result.percent}%',
+                  style: Theme.of(context).textTheme.headlineSmall,
+                ),
+                if (quiz?['passing_percent'] != null && result.passed != null)
+                  Align(
+                    alignment: Alignment.centerLeft,
+                    child: ResultStatusChip(
+                      result.passed! ? 'Passed' : 'Not passed',
+                    ),
+                  ),
+                const SizedBox(height: 24),
+                if (result.review == null)
+                  const Text(resultsScoreOnly)
+                else
+                  for (final entry in result.review!.indexed)
+                    ResultQuestionCard(
+                      question: entry.$2,
+                      number: entry.$1 + 1,
+                    ),
+              ] else if (data?.data != null)
+                Text(studentResultMessage(data!.data!)),
+            ],
+          ),
         ),
       ),
     );
@@ -86,7 +93,7 @@ class StudentResultsEntry extends ConsumerWidget {
       return FiloButton(
         label: 'View results',
         onPressed: () => Navigator.of(context).push(
-          MaterialPageRoute<void>(
+          FiloInstantRoute<void>(
             builder: (_) => StudentResultsScreen(quizId: quizId),
           ),
         ),

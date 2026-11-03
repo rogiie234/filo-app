@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 
 import 'filo_icon.dart';
+import 'filo_motion_widgets.dart';
+import '../theme/filo_motion.dart';
 import '../theme/app_theme.dart';
 import '../theme/animation_constants.dart';
 
@@ -99,7 +101,7 @@ class _FiloButtonState extends State<FiloButton>
 
   @override
   Widget build(BuildContext context) {
-    final reduced = MediaQuery.disableAnimationsOf(context);
+    final reduced = !FiloMotion.enabled(context);
     // Busy is a temporary guard: preserve its active palette while unavailable
     // actions use a distinct, reusable disabled design.
     final disabled = widget.onPressed == null && !widget.busy;
@@ -134,43 +136,37 @@ class _FiloButtonState extends State<FiloButton>
       builder: (context, states, _) {
         final pressed =
             states.contains(WidgetState.pressed) && !disabled && !widget.busy;
-        final button = AnimatedScale(
-          scale: 1,
-          duration: reduced ? Duration.zero : FiloAnimation.pressDuration,
-          curve: FiloAnimation.uiCurve,
-          child: AnimatedContainer(
-            duration: reduced ? Duration.zero : FiloAnimation.pressDuration,
-            curve: FiloAnimation.uiCurve,
-            decoration: BoxDecoration(
-              color: disabled || flat
-                  ? Colors.transparent
-                  : widget.destructive
-                  ? tokens.destructiveEdge
-                  : widget.secondary
-                  ? tokens.mint
-                  : tokens.primaryEdge,
-              borderRadius: BorderRadius.circular(32),
-              boxShadow: disabled || flat
-                  ? const []
-                  : [
-                      BoxShadow(
-                        color: FiloAnimation.shadowColor,
-                        blurRadius: pressed
-                            ? FiloAnimation.pressedShadowBlur
-                            : FiloAnimation.shadowBlur,
-                        offset: pressed
-                            ? FiloAnimation.pressedShadowOffset
-                            : FiloAnimation.shadowOffset,
-                      ),
-                    ],
-            ),
-            child: AnimatedPadding(
-              duration: reduced ? Duration.zero : FiloAnimation.pressDuration,
-              curve: FiloAnimation.uiCurve,
-              padding: EdgeInsets.only(
-                top: pressed && !flat ? edge - 1 : 0,
-                bottom: pressed && !flat ? 1 : edge,
-              ),
+        final button = DecoratedBox(
+          decoration: BoxDecoration(
+            color: disabled || flat
+                ? Colors.transparent
+                : widget.destructive
+                ? tokens.destructiveEdge
+                : widget.secondary
+                ? tokens.mint
+                : tokens.primaryEdge,
+            borderRadius: BorderRadius.circular(32),
+            boxShadow: disabled || flat
+                ? const []
+                : const [
+                    BoxShadow(
+                      color: FiloAnimation.shadowColor,
+                      blurRadius: FiloAnimation.shadowBlur,
+                      offset: FiloAnimation.shadowOffset,
+                    ),
+                  ],
+          ),
+          child: Padding(
+            padding: EdgeInsets.only(bottom: edge),
+            child: FiloMotionTween(
+              value: pressed && !flat ? 3 : 0,
+              duration: disabled || reduced
+                  ? Duration.zero
+                  : pressed
+                  ? FiloAnimation.pressDuration
+                  : FiloAnimation.releaseDuration,
+              builder: (_, value, child) =>
+                  Transform.translate(offset: Offset(0, value), child: child),
               child: FilledButton(
                 statesController: _states,
                 onPressed: widget.busy ? null : widget.onPressed,
@@ -197,6 +193,7 @@ class _FiloButtonState extends State<FiloButton>
                       shape: const StadiumBorder(),
                       textStyle: Theme.of(context).textTheme.labelLarge,
                     ).copyWith(
+                      animationDuration: Duration.zero,
                       foregroundColor: WidgetStatePropertyAll(foreground),
                       iconColor: WidgetStatePropertyAll(foreground),
                       overlayColor: WidgetStateProperty.resolveWith(
@@ -216,7 +213,7 @@ class _FiloButtonState extends State<FiloButton>
                         liveRegion: true,
                         child: SizedBox.square(
                           dimension: 20,
-                          child: CircularProgressIndicator(
+                          child: FiloCircularProgressIndicator(
                             strokeWidth: 2,
                             color: foreground,
                           ),
@@ -235,6 +232,7 @@ class _FiloButtonState extends State<FiloButton>
                             ],
                             Flexible(
                               child: AnimatedSwitcher(
+                                key: ValueKey(reduced),
                                 switchInCurve: FiloAnimation.labelInCurve,
                                 switchOutCurve: FiloAnimation.labelOutCurve,
                                 duration: reduced
@@ -290,17 +288,13 @@ class _FiloButtonState extends State<FiloButton>
                             ),
                             if (widget.icon != null) ...[
                               const SizedBox(width: 12),
-                              TweenAnimationBuilder<double>(
-                                tween: Tween(
-                                  begin: 0,
-                                  end: pressed && widget.animateArrow
-                                      ? FiloAnimation.arrowNudge
-                                      : 0,
-                                ),
+                              FiloMotionTween(
+                                value: pressed && widget.animateArrow
+                                    ? FiloAnimation.arrowNudge
+                                    : 0,
                                 duration: reduced
                                     ? Duration.zero
                                     : FiloAnimation.pressDuration,
-                                curve: FiloAnimation.uiCurve,
                                 builder: (context, offset, child) =>
                                     Transform.translate(
                                       offset: Offset(offset, 0),

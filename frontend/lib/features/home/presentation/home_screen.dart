@@ -1,3 +1,5 @@
+import '../../../core/widgets/filo_motion_widgets.dart';
+
 import 'dart:async';
 
 import 'package:flutter/material.dart';
@@ -61,7 +63,9 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
         ref.watch(accountProfileProvider(widget.profile.id)) ?? widget.profile;
     final appearance = ref.watch(themeSettingsProvider);
     if (appearance.isLoading) {
-      return const Scaffold(body: Center(child: CircularProgressIndicator()));
+      return const Scaffold(
+        body: Center(child: FiloCircularProgressIndicator()),
+      );
     }
     if (appearance.hasError) {
       return Scaffold(

@@ -62,12 +62,26 @@ Future<void> _reveal(WidgetTester tester, Finder target) =>
 
 void main() {
   final binding = TestWidgetsFlutterBinding.ensureInitialized();
+  final haptics = <String>[];
   setUp(() {
+    haptics.clear();
+    binding.defaultBinaryMessenger.setMockMethodCallHandler(
+      SystemChannels.platform,
+      (call) async {
+        if (call.method == 'HapticFeedback.vibrate')
+          haptics.add(call.arguments as String);
+        return null;
+      },
+    );
     binding.platformDispatcher.accessibilityFeaturesTestValue =
         const FakeAccessibilityFeatures(disableAnimations: true);
   });
   tearDown(() {
     binding.platformDispatcher.clearAccessibilityFeaturesTestValue();
+    binding.defaultBinaryMessenger.setMockMethodCallHandler(
+      SystemChannels.platform,
+      null,
+    );
   });
   late AppDatabase db;
   late FakeExamRemote remote;
@@ -384,6 +398,7 @@ void main() {
         isFalse,
       );
       expect(remote.calls, isNot(contains('submit:session')));
+      expect(haptics, isEmpty);
       await tester.tap(find.text('Keep answering'));
       await tester.pumpAndSettle();
       await tester.tap(submit);
@@ -398,6 +413,8 @@ void main() {
         ),
         findsOneWidget,
       );
+      expect(haptics, ['HapticFeedbackType.lightImpact']);
+      expect(find.byType(FiloSuccessMoment), findsNothing);
       await unmount(tester);
     },
   );
@@ -424,6 +441,8 @@ void main() {
         findsOneWidget,
       );
       expect(find.byType(ExamQuestionCard), findsNothing);
+      expect(haptics, isEmpty);
+      expect(find.byType(FiloSuccessMoment), findsNothing);
       await unmount(tester);
     },
   );

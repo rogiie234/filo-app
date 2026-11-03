@@ -95,18 +95,16 @@ void main() {
               theme.extension<FiloThemeTokens>()!.destructive,
             );
           }
+          final restingTop = tester.getTopLeft(find.byType(FilledButton)).dy;
           final gesture = await tester.startGesture(
             tester.getCenter(find.byType(FilledButton)),
           );
           await tester.pump(const Duration(milliseconds: 100));
-          final padding = tester.widget<AnimatedPadding>(
-            find.descendant(
-              of: find.byType(FiloButton),
-              matching: find.byType(AnimatedPadding),
-            ),
-          );
           if (variant == 'primary' || variant == 'destructive') {
-            expect(padding.padding, const EdgeInsets.only(top: 3, bottom: 1));
+            expect(
+              tester.getTopLeft(find.byType(FilledButton)).dy,
+              restingTop + 3,
+            );
           }
           await gesture.up();
           await tester.pumpWidget(app(true));

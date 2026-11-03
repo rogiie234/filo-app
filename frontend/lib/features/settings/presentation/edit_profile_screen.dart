@@ -194,7 +194,9 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
                       widget.profile.id))
             Navigator.of(context).popUntil((route) => route.isFirst);
         });
-      return const Scaffold(body: Center(child: CircularProgressIndicator()));
+      return const Scaffold(
+        body: Center(child: FiloCircularProgressIndicator()),
+      );
     }
     final online = ref.watch(connectivityProvider).asData?.value == true;
     final locked = _busy || _picking || _confirmed != null;

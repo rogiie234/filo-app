@@ -159,7 +159,7 @@ class _PhoneLimitsGuideState extends ConsumerState<PhoneLimitsGuideScreen> {
               if (!current) ...[
                 if (repository.isLoading)
                   const Center(
-                    child: CircularProgressIndicator(
+                    child: FiloCircularProgressIndicator(
                       semanticsLabel: 'Loading alarm setup',
                     ),
                   )
@@ -206,7 +206,7 @@ class _PhoneLimitsGuideState extends ConsumerState<PhoneLimitsGuideScreen> {
                   const Padding(
                     padding: EdgeInsets.all(24),
                     child: Center(
-                      child: CircularProgressIndicator(
+                      child: FiloCircularProgressIndicator(
                         semanticsLabel: 'Checking phone setup steps',
                       ),
                     ),

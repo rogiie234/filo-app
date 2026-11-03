@@ -60,7 +60,7 @@ class _MyFilesScreenState extends ConsumerState<MyFilesScreen> {
                 const Text(
                   'Filo needs permission to create and manage its backup files in your Google Drive. This does not give Filo access to all your Drive files.',
                 ),
-                SwitchListTile(
+                FiloSwitchListTile(
                   contentPadding: EdgeInsets.zero,
                   title: const Text('Turn on Drive backup'),
                   value: service.enabled,
@@ -74,7 +74,7 @@ class _MyFilesScreenState extends ConsumerState<MyFilesScreen> {
                           }
                         },
                 ),
-                SwitchListTile(
+                FiloSwitchListTile(
                   title: const Text('Back up on Wi-Fi only'),
                   value: service.wifiOnly,
                   onChanged: service.busy ? null : service.setWifiOnly,
@@ -89,7 +89,7 @@ class _MyFilesScreenState extends ConsumerState<MyFilesScreen> {
                         },
                   child: const Text('Back up now'),
                 ),
-                if (service.busy) const LinearProgressIndicator(),
+                if (service.busy) const FiloLinearProgressIndicator(),
                 Text(service.message),
                 Text(
                   service.lastSuccess == null
@@ -134,13 +134,13 @@ class _MyFilesScreenState extends ConsumerState<MyFilesScreen> {
   }
 
   Future<String?> _name(String title, [String value = '']) =>
-      showDialog<String>(
+      showFiloDialog<String>(
         context: context,
         builder: (_) => _NameDialog(title: title, value: value),
       );
 
   Future<bool> _confirm(String title, String text, String action) async =>
-      await showDialog<bool>(
+      await showFiloDialog<bool>(
         context: context,
         builder: (context) => AlertDialog(
           title: Text(title),
@@ -450,171 +450,200 @@ class _MyFilesScreenState extends ConsumerState<MyFilesScreen> {
           ? b.size.compareTo(a.size)
           : a.name.toLowerCase().compareTo(b.name.toLowerCase()),
     );
-    return PopScope(
-      canPop: _folder == null,
-      onPopInvokedWithResult: (didPop, _) {
-        if (!didPop) {
-          setState(() => _folder = path.isEmpty ? null : path.last.parentId);
-        }
-      },
-      child: Scaffold(
-        appBar: AppBar(
-          automaticallyImplyLeading: false,
-          title: const Text('Files'),
-          leading: _folder == null
-              ? null
-              : IconButton(
-                  onPressed: () => setState(
-                    () => _folder = path.isEmpty ? null : path.last.parentId,
+    return FiloFirstListLoad(
+      id: 'files',
+      hasItems: visibleFolders.isNotEmpty || visibleFiles.isNotEmpty,
+      ready:
+          repository.hasValue &&
+          fileData.hasValue &&
+          folderData.hasValue &&
+          !repository.isLoading &&
+          !fileData.isLoading &&
+          !folderData.isLoading &&
+          !repository.hasError &&
+          !fileData.hasError &&
+          !folderData.hasError,
+      child: PopScope(
+        canPop: _folder == null,
+        onPopInvokedWithResult: (didPop, _) {
+          if (!didPop) {
+            setState(() => _folder = path.isEmpty ? null : path.last.parentId);
+          }
+        },
+        child: Scaffold(
+          appBar: AppBar(
+            automaticallyImplyLeading: false,
+            title: const Text('Files'),
+            leading: _folder == null
+                ? null
+                : IconButton(
+                    onPressed: () => setState(
+                      () => _folder = path.isEmpty ? null : path.last.parentId,
+                    ),
+                    icon: const FiloIcon(FiloIcons.back),
                   ),
-                  icon: const FiloIcon(FiloIcons.back),
-                ),
-          actions: [
-            IconButton(
-              tooltip: 'Drive backup',
-              onPressed: _backupMenu,
-              icon: const FiloIcon(FiloIcons.cloudUpload),
-            ),
-            PopupMenuButton<String>(
-              initialValue: _sort,
-              onSelected: (value) => setState(() => _sort = value),
-              itemBuilder: (_) => [
-                for (final value in ['Name', 'Date', 'Size'])
-                  PopupMenuItem(value: value, child: Text('Sort by $value')),
-              ],
-            ),
-          ],
-        ),
-        floatingActionButtonLocation: FloatingActionButtonLocation.centerFloat,
-        floatingActionButtonAnimator: FloatingActionButtonAnimator.noAnimation,
-        floatingActionButton: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 24),
-          child: FiloButton(
-            label: _busy ? 'Please wait\u2026' : 'Add files',
-            icon: _busy ? null : FiloIcons.add,
-            busy: _busy,
-            onPressed: repo == null || _busy ? null : () => _add(repo),
+            actions: [
+              IconButton(
+                tooltip: 'Drive backup',
+                onPressed: _backupMenu,
+                icon: const FiloIcon(FiloIcons.cloudUpload),
+              ),
+              PopupMenuButton<String>(
+                initialValue: _sort,
+                onSelected: (value) => setState(() => _sort = value),
+                itemBuilder: (_) => [
+                  for (final value in ['Name', 'Date', 'Size'])
+                    PopupMenuItem(value: value, child: Text('Sort by $value')),
+                ],
+              ),
+            ],
           ),
-        ),
-        body: repository.isLoading || fileData.isLoading || folderData.isLoading
-            ? const Center(child: CircularProgressIndicator())
-            : repo == null || fileData.hasError || folderData.hasError
-            ? Center(
-                child: SingleChildScrollView(
-                  padding: const EdgeInsets.all(24),
-                  child: EmptyState(
-                    title: "Couldn't load files. Try again.",
-                    pose: 'confused',
-                    bob: false,
-                    action: TextButton(
-                      onPressed: () {
-                        ref.invalidate(filesRepositoryProvider);
-                        ref.invalidate(localFilesProvider);
-                        ref.invalidate(localFoldersProvider);
-                      },
-                      child: const Text('Retry'),
-                    ),
-                  ),
-                ),
-              )
-            : ListView(
-                padding: const EdgeInsets.fromLTRB(20, 8, 20, 96),
-                children: [
-                  TextField(
-                    controller: _search,
-                    decoration: const InputDecoration(
-                      hintText: 'Search files and folders',
-                      prefixIcon: FiloIcon(FiloIcons.search),
-                    ),
-                    onChanged: (value) => setState(() => _query = value),
-                  ),
-                  Wrap(
-                    children: [
-                      TextButton(
-                        onPressed: () => setState(() => _folder = null),
-                        child: const Text('My Files'),
+          floatingActionButtonLocation:
+              FloatingActionButtonLocation.centerFloat,
+          floatingActionButtonAnimator:
+              FloatingActionButtonAnimator.noAnimation,
+          floatingActionButton: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 24),
+            child: FiloButton(
+              label: _busy ? 'Please wait\u2026' : 'Add files',
+              icon: _busy ? null : FiloIcons.add,
+              busy: _busy,
+              onPressed: repo == null || _busy ? null : () => _add(repo),
+            ),
+          ),
+          body:
+              repository.isLoading || fileData.isLoading || folderData.isLoading
+              ? const Center(child: FiloCircularProgressIndicator())
+              : repo == null || fileData.hasError || folderData.hasError
+              ? Center(
+                  child: SingleChildScrollView(
+                    padding: const EdgeInsets.all(24),
+                    child: EmptyState(
+                      title: "Couldn't load files. Try again.",
+                      pose: 'confused',
+                      bob: false,
+                      action: TextButton(
+                        onPressed: () {
+                          ref.invalidate(filesRepositoryProvider);
+                          ref.invalidate(localFilesProvider);
+                          ref.invalidate(localFoldersProvider);
+                        },
+                        child: const Text('Retry'),
                       ),
-                      for (final folder in path)
+                    ),
+                  ),
+                )
+              : ListView(
+                  padding: const EdgeInsets.fromLTRB(20, 8, 20, 96),
+                  children: [
+                    TextField(
+                      controller: _search,
+                      decoration: const InputDecoration(
+                        hintText: 'Search files and folders',
+                        prefixIcon: FiloIcon(FiloIcons.search),
+                      ),
+                      onChanged: (value) => setState(() => _query = value),
+                    ),
+                    Wrap(
+                      children: [
                         TextButton(
-                          onPressed: () => setState(() => _folder = folder.id),
-                          child: Text('› ${folder.name}'),
+                          onPressed: () => setState(() => _folder = null),
+                          child: const Text('My Files'),
                         ),
-                    ],
-                  ),
-                  if (_busy) const LinearProgressIndicator(),
-                  if (visibleFolders.isEmpty && visibleFiles.isEmpty)
-                    EmptyState(
-                      pose: query.isNotEmpty ? 'curious' : 'folder',
-                      title: query.isNotEmpty
-                          ? 'No matching files.'
-                          : 'No files yet.',
-                      message: query.isNotEmpty
-                          ? 'Try another file or folder name.'
-                          : 'Download class materials or add your own.',
+                        for (final folder in path)
+                          TextButton(
+                            onPressed: () =>
+                                setState(() => _folder = folder.id),
+                            child: Text('› ${folder.name}'),
+                          ),
+                      ],
                     ),
-                  for (final folder in visibleFolders)
-                    ListTile(
-                      leading: const FiloIcon(FiloIcons.folder),
-                      title: Text(folder.name),
-                      subtitle: Text(
-                        '${folder.classId == null ? '' : 'Class folder · '}${fileSize(folderSize(folder))}',
+                    if (_busy) const FiloLinearProgressIndicator(),
+                    if (visibleFolders.isEmpty && visibleFiles.isEmpty)
+                      EmptyState(
+                        pose: query.isNotEmpty ? 'curious' : 'folder',
+                        title: query.isNotEmpty
+                            ? 'No matching files.'
+                            : 'No files yet.',
+                        message: query.isNotEmpty
+                            ? 'Try another file or folder name.'
+                            : 'Download class materials or add your own.',
                       ),
-                      onTap: () => setState(() {
-                        _folder = folder.id;
-                        _query = '';
-                        _search.clear();
-                      }),
-                      trailing: IconButton(
-                        tooltip: 'Folder actions',
-                        onPressed: _busy
-                            ? null
-                            : () =>
-                                  _folderActions(repo, folder, folders, files),
-                        icon: const FiloIcon(FiloIcons.moreVertical),
-                      ),
-                    ),
-                  for (final file in visibleFiles)
-                    ListTile(
-                      leading: FiloFileTypeTile(
-                        details: FiloFileDetails.fromName(
-                          file.name,
-                          mimeType: file.mimeType,
+                    for (final folder in visibleFolders)
+                      FiloListItem(
+                        index: visibleFolders.indexOf(folder),
+                        child: ListTile(
+                          leading: const FiloIcon(FiloIcons.folder),
+                          title: Text(folder.name),
+                          subtitle: Text(
+                            '${folder.classId == null ? '' : 'Class folder · '}${fileSize(folderSize(folder))}',
+                          ),
+                          onTap: () => setState(() {
+                            _folder = folder.id;
+                            _query = '';
+                            _search.clear();
+                          }),
+                          trailing: IconButton(
+                            tooltip: 'Folder actions',
+                            onPressed: _busy
+                                ? null
+                                : () => _folderActions(
+                                    repo,
+                                    folder,
+                                    folders,
+                                    files,
+                                  ),
+                            icon: const FiloIcon(FiloIcons.moreVertical),
+                          ),
                         ),
                       ),
-                      title: Text(file.name),
-                      subtitle: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          FiloFileTypeLabel(
+                    for (final file in visibleFiles)
+                      FiloListItem(
+                        index:
+                            visibleFolders.length + visibleFiles.indexOf(file),
+                        child: ListTile(
+                          leading: FiloFileTypeTile(
                             details: FiloFileDetails.fromName(
                               file.name,
                               mimeType: file.mimeType,
                             ),
                           ),
-                          Text(
-                            '${fileSize(file.size)} · ${MaterialLocalizations.of(context).formatMediumDate(file.updatedAt.toLocal())}',
+                          title: Text(file.name),
+                          subtitle: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              FiloFileTypeLabel(
+                                details: FiloFileDetails.fromName(
+                                  file.name,
+                                  mimeType: file.mimeType,
+                                ),
+                              ),
+                              Text(
+                                '${fileSize(file.size)} · ${MaterialLocalizations.of(context).formatMediumDate(file.updatedAt.toLocal())}',
+                              ),
+                            ],
                           ),
-                        ],
-                      ),
-                      onTap: () => Navigator.of(context).push(
-                        MaterialPageRoute<void>(
-                          builder: (_) => FileViewerScreen(
-                            showMascot: true,
-                            file: file,
-                            repository: repo,
+                          onTap: () => Navigator.of(context).push(
+                            MaterialPageRoute<void>(
+                              builder: (_) => FileViewerScreen(
+                                showMascot: true,
+                                file: file,
+                                repository: repo,
+                              ),
+                            ),
+                          ),
+                          trailing: IconButton(
+                            tooltip: 'File actions',
+                            onPressed: _busy
+                                ? null
+                                : () => _fileActions(repo, file, folders),
+                            icon: const FiloIcon(FiloIcons.moreVertical),
                           ),
                         ),
                       ),
-                      trailing: IconButton(
-                        tooltip: 'File actions',
-                        onPressed: _busy
-                            ? null
-                            : () => _fileActions(repo, file, folders),
-                        icon: const FiloIcon(FiloIcons.moreVertical),
-                      ),
-                    ),
-                ],
-              ),
+                  ],
+                ),
+        ),
       ),
     );
   }

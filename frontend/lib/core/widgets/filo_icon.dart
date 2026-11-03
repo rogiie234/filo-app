@@ -3,6 +3,8 @@ import 'filo_icons.dart';
 import 'package:flutter/material.dart';
 
 import '../theme/animation_constants.dart';
+import '../theme/filo_motion.dart';
+import 'filo_motion_widgets.dart';
 
 export 'filo_icons.dart';
 
@@ -33,7 +35,7 @@ class FiloIcon extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final reduced = MediaQuery.disableAnimationsOf(context);
+    final reduced = !FiloMotion.enabled(context);
     final child = Icon(
       icon,
       key: ValueKey(icon),
@@ -79,15 +81,13 @@ class FiloSelectionIndicator extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final duration = MediaQuery.disableAnimationsOf(context)
+    final duration = !FiloMotion.enabled(context)
         ? Duration.zero
-        : FiloAnimation.iconDuration;
+        : FiloAnimation.chipDuration;
     return ExcludeSemantics(
-      child: AnimatedContainer(
+      child: Container(
         width: FiloIcon.controlSize,
         height: FiloIcon.controlSize,
-        duration: duration,
-        curve: FiloAnimation.uiCurve,
         decoration: BoxDecoration(
           shape: BoxShape.circle,
           color: selected
@@ -100,19 +100,17 @@ class FiloSelectionIndicator extends StatelessWidget {
             width: 2,
           ),
         ),
-        child: AnimatedOpacity(
-          opacity: selected ? 1 : 0,
+        child: FiloMotionTween(
+          value: selected ? 1 : 0,
           duration: duration,
-          curve: FiloAnimation.uiCurve,
-          child: AnimatedScale(
-            scale: selected ? 1 : FiloAnimation.iconSelectionScale,
-            duration: duration,
-            curve: FiloAnimation.uiCurve,
-            child: FiloIcon(
-              FiloIcons.check,
-              color: Theme.of(context).colorScheme.onPrimary,
-              size: 16,
-            ),
+          builder: (_, value, child) => Opacity(
+            opacity: value,
+            child: Transform.scale(scale: .75 + .25 * value, child: child),
+          ),
+          child: FiloIcon(
+            FiloIcons.check,
+            color: Theme.of(context).colorScheme.onPrimary,
+            size: 16,
           ),
         ),
       ),
@@ -147,29 +145,27 @@ class _FiloExpansionTileState extends State<FiloExpansionTile> {
 
   @override
   Widget build(BuildContext context) {
-    final duration = MediaQuery.disableAnimationsOf(context)
+    final duration = !FiloMotion.enabled(context)
         ? Duration.zero
         : FiloAnimation.iconDuration;
     return ExpansionTile(
       controller: _controller,
       title: widget.title,
       tilePadding: widget.tilePadding,
-      expansionAnimationStyle: AnimationStyle(
-        duration: duration,
-        reverseDuration: duration,
-        curve: FiloAnimation.uiCurve,
-        reverseCurve: FiloAnimation.uiCurve,
-      ),
+      expansionAnimationStyle: AnimationStyle.noAnimation,
       trailing: ExcludeSemantics(
         child: AnimatedBuilder(
           animation: _controller,
-          builder: (context, child) => AnimatedRotation(
-            turns: _controller.isExpanded ? .5 : 0,
+          builder: (context, child) => AnimatedSwitcher(
+            key: ValueKey(!FiloMotion.enabled(context)),
             duration: duration,
-            curve: FiloAnimation.uiCurve,
-            child: child,
+            child: FiloIcon(
+              _controller.isExpanded
+                  ? FiloIcons.chevronUp
+                  : FiloIcons.chevronDown,
+              key: ValueKey(_controller.isExpanded),
+            ),
           ),
-          child: const FiloIcon(FiloIcons.chevronDown),
         ),
       ),
       children: widget.children,

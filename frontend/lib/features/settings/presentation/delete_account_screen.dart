@@ -130,7 +130,7 @@ class _DeleteAccountScreenState extends ConsumerState<DeleteAccountScreen> {
                 if (eligibility.isLoading && online)
                   const Padding(
                     padding: EdgeInsets.all(16),
-                    child: Center(child: CircularProgressIndicator()),
+                    child: Center(child: FiloCircularProgressIndicator()),
                   ),
                 if (blocked) ...[
                   Semantics(
@@ -160,7 +160,7 @@ class _DeleteAccountScreenState extends ConsumerState<DeleteAccountScreen> {
               if (busy)
                 const Padding(
                   padding: EdgeInsets.all(16),
-                  child: Center(child: CircularProgressIndicator()),
+                  child: Center(child: FiloCircularProgressIndicator()),
                 ),
               if (cleanup && !busy && message == null)
                 const Text(

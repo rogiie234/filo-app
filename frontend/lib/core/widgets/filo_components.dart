@@ -1,3 +1,7 @@
+import 'filo_motion_widgets.dart';
+import '../theme/animation_constants.dart';
+import '../theme/filo_motion.dart';
+
 import 'package:flutter/material.dart';
 
 import '../theme/app_theme.dart';
@@ -133,7 +137,31 @@ class FiloFilterChip extends StatelessWidget {
     label: Text(label),
     selected: selected,
     onSelected: onSelected,
-    showCheckmark: true,
+    showCheckmark: false,
+    avatar: SizedBox.square(
+      dimension: 18,
+      child: ExcludeSemantics(
+        child: FiloMotionTween(
+          value: selected ? 1 : 0,
+          duration: FiloAnimation.chipDuration,
+          builder: (_, value, child) => Opacity(
+            opacity: value,
+            child: Transform.scale(scale: value, child: child),
+          ),
+          child: Icon(
+            FiloIcons.check,
+            size: 18,
+            color: Theme.of(context).colorScheme.primary,
+          ),
+        ),
+      ),
+    ),
+    chipAnimationStyle: ChipAnimationStyle(
+      selectAnimation: AnimationStyle.noAnimation,
+      enableAnimation: AnimationStyle.noAnimation,
+      avatarDrawerAnimation: AnimationStyle.noAnimation,
+      deleteDrawerAnimation: AnimationStyle.noAnimation,
+    ),
     materialTapTargetSize: MaterialTapTargetSize.padded,
     labelStyle: Theme.of(context).textTheme.labelMedium?.copyWith(
       color: onSelected == null
@@ -157,21 +185,25 @@ class FiloCard extends StatelessWidget {
   final VoidCallback? onTap;
   final bool tinted;
   @override
-  Widget build(BuildContext context) => Card(
-    margin: EdgeInsets.zero,
-    elevation: 1,
-    shadowColor: Theme.of(context).colorScheme.onSurface.withValues(alpha: .08),
-    color: tinted
-        ? Theme.of(context).colorScheme.surfaceContainerHighest
-        : Theme.of(context).colorScheme.surface,
-    shape: RoundedRectangleBorder(
-      borderRadius: BorderRadius.circular(28),
-      side: BorderSide(color: Theme.of(context).colorScheme.outline),
-    ),
-    clipBehavior: Clip.antiAlias,
-    child: InkWell(
-      onTap: onTap,
-      child: Padding(padding: const EdgeInsets.all(20), child: child),
+  Widget build(BuildContext context) => FiloCardTap(
+    enabled: onTap != null,
+    child: Card(
+      margin: EdgeInsets.zero,
+      elevation: 1,
+      shadowColor: Theme.of(context).colorScheme.onSurface
+          .withValues(alpha: .08),
+      color: tinted
+          ? Theme.of(context).colorScheme.surfaceContainerHighest
+          : Theme.of(context).colorScheme.surface,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(28),
+        side: BorderSide(color: Theme.of(context).colorScheme.outline),
+      ),
+      clipBehavior: Clip.antiAlias,
+      child: InkWell(
+        onTap: onTap,
+        child: Padding(padding: const EdgeInsets.all(20), child: child),
+      ),
     ),
   );
 }
@@ -205,6 +237,9 @@ void showFiloToast(
         ],
       ),
     ),
+    snackBarAnimationStyle: FiloMotion.enabled(context)
+        ? null
+        : AnimationStyle.noAnimation,
   );
 }
 
@@ -213,20 +248,14 @@ class FiloProgressBar extends StatelessWidget {
   final double value;
   final String label;
   @override
-  Widget build(BuildContext context) => TweenAnimationBuilder<double>(
-    tween: Tween<double>(begin: 0, end: value.clamp(0.0, 1.0).toDouble()),
-    duration: MediaQuery.disableAnimationsOf(context)
-        ? Duration.zero
-        : const Duration(milliseconds: 300),
-    builder: (context, progress, _) => LinearProgressIndicator(
-      value: progress,
-      minHeight: 10,
-      borderRadius: BorderRadius.circular(5),
-      backgroundColor: FiloThemeTokens.of(context).mint,
-      color: Theme.of(context).colorScheme.primary,
-      semanticsLabel: label,
-      semanticsValue: '${(progress * 100).round()}%',
-    ),
+  Widget build(BuildContext context) => FiloLinearProgressIndicator(
+    value: value.clamp(0.0, 1.0).toDouble(),
+    minHeight: 10,
+    borderRadius: BorderRadius.circular(5),
+    backgroundColor: FiloThemeTokens.of(context).mint,
+    color: Theme.of(context).colorScheme.primary,
+    semanticsLabel: label,
+    semanticsValue: '${(value.clamp(0.0, 1.0) * 100).round()}%',
   );
 }
 
@@ -244,10 +273,7 @@ class FiloPageIndicator extends StatelessWidget {
         spacing: 8,
         children: [
           for (var i = 0; i < count; i++)
-            AnimatedContainer(
-              duration: MediaQuery.disableAnimationsOf(context)
-                  ? Duration.zero
-                  : const Duration(milliseconds: 200),
+            Container(
               width: i == index ? 36 : 8,
               height: 8,
               decoration: BoxDecoration(

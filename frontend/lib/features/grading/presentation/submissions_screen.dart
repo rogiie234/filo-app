@@ -119,7 +119,7 @@ class _SubmissionsScreenState extends ConsumerState<SubmissionsScreen> {
         _message('No grades to return.');
         return;
       }
-      final confirmed = await showDialog<bool>(
+      final confirmed = await showFiloDialog<bool>(
         context: context,
         builder: (context) => AlertDialog(
           title: Text('Return $count graded ${count == 1 ? 'work' : 'works'}?'),
@@ -148,6 +148,7 @@ class _SubmissionsScreenState extends ConsumerState<SubmissionsScreen> {
         throw StateError('No account');
       }
       final changed = await repo.returnAll(widget.classId, widget.postId);
+      if (mounted && changed > 0) FiloHaptics.confirmed(context);
       await _refresh();
       _message(
         changed == 0
@@ -291,7 +292,7 @@ class _SubmissionsScreenState extends ConsumerState<SubmissionsScreen> {
                   spacing: 8,
                   children: ['All', 'To grade', 'Late', 'Missing', 'Graded']
                       .map(
-                        (s) => FilterChip(
+                        (s) => FiloAnimatedChip.filter(
                           label: Text(s),
                           selected: _filter == s,
                           onSelected: (_) => setState(() => _filter = s),

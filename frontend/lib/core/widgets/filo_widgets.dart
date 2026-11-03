@@ -1,3 +1,8 @@
+export '../theme/filo_motion.dart';
+export '../feedback/filo_haptics.dart';
+export 'filo_motion_widgets.dart';
+export 'filo_navigation_bar.dart';
+
 import 'package:flutter/material.dart';
 
 import '../theme/app_theme.dart';

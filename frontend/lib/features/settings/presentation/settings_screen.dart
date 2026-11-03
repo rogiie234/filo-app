@@ -124,7 +124,9 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
           }
         });
       }
-      return const Scaffold(body: Center(child: CircularProgressIndicator()));
+      return const Scaffold(
+        body: Center(child: FiloCircularProgressIndicator()),
+      );
     }
     final appearance = ref.watch(themeSettingsProvider);
     final mode = appearance.asData?.value;
@@ -285,7 +287,9 @@ class _ThemeSettingsScreenState extends ConsumerState<ThemeSettingsScreen> {
           }
         });
       }
-      return const Scaffold(body: Center(child: CircularProgressIndicator()));
+      return const Scaffold(
+        body: Center(child: FiloCircularProgressIndicator()),
+      );
     }
     final appearance = ref.watch(themeSettingsProvider);
     final selected = appearance.asData?.value;
@@ -300,7 +304,7 @@ class _ThemeSettingsScreenState extends ConsumerState<ThemeSettingsScreen> {
             ),
             const SizedBox(height: 24),
             if (appearance.isLoading)
-              const Center(child: CircularProgressIndicator()),
+              const Center(child: FiloCircularProgressIndicator()),
             if (appearance.hasError) ...[
               const Text('Could not load your theme setting.'),
               TextButton(

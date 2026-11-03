@@ -198,7 +198,7 @@ class _StudyAlarmsState extends ConsumerState<StudyAlarmsScreen>
             const SizedBox(height: 16),
             if (alarms.isLoading || repo.isLoading)
               const Center(
-                child: CircularProgressIndicator(
+                child: FiloCircularProgressIndicator(
                   semanticsLabel: 'Loading study alarms',
                 ),
               )
@@ -261,7 +261,7 @@ class _StudyAlarmsState extends ConsumerState<StudyAlarmsScreen>
                         Semantics(
                           label:
                               '${alarm.subject}, ${alarm.enabled ? 'on' : 'off'}',
-                          child: Switch(
+                          child: FiloSwitch(
                             value: alarm.enabled,
                             onChanged: _busy ? null : (v) => _toggle(alarm, v),
                           ),
@@ -415,7 +415,7 @@ class _StudyAlarmEditorState extends ConsumerState<StudyAlarmEditor> {
   }
 
   Future<void> _delete() async {
-    final confirmed = await showDialog<bool>(
+    final confirmed = await showFiloDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
         title: const Text('Delete alarm?'),
@@ -458,7 +458,7 @@ class _StudyAlarmEditorState extends ConsumerState<StudyAlarmEditor> {
               ? const Text(
                   'Student account unavailable. Return and sign in again.',
                 )
-              : const CircularProgressIndicator(),
+              : const FiloCircularProgressIndicator(),
         ),
       );
     _boundDb ??= account.requireValue.db;
@@ -530,7 +530,7 @@ class _StudyAlarmEditorState extends ConsumerState<StudyAlarmEditor> {
                 spacing: 8,
                 children: [
                   for (var day = 1; day <= 7; day++)
-                    FilterChip(
+                    FiloAnimatedChip.filter(
                       label: Text(locale.narrowWeekdays[day % 7]),
                       tooltip: const [
                         'Monday',

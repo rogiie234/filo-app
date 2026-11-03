@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
 import 'core/theme/app_theme.dart';
+import 'core/theme/filo_motion.dart';
 import 'core/widgets/component_gallery.dart';
 
 Future<void> main() async {
@@ -44,7 +45,7 @@ class _ComponentGalleryAppState extends State<ComponentGalleryApp> {
             ? MediaQuery.textScalerOf(context)
             : TextScaler.linear(_scale!),
       ),
-      child: FiloTextScale(child: child!),
+      child: FiloMotionScope(child: FiloTextScale(child: child!)),
     ),
     home: ComponentGallery(
       mode: _mode,

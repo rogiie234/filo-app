@@ -1,3 +1,5 @@
+import '../../../core/theme/filo_motion.dart';
+
 import 'dart:async';
 
 import 'package:flutter/material.dart';
@@ -184,7 +186,7 @@ class _MyGradesScreenState extends ConsumerState<MyGradesScreen> {
                                           TextButton(
                                             onPressed: () =>
                                                 Navigator.of(context).push(
-                                                  MaterialPageRoute<void>(
+                                                  FiloInstantRoute<void>(
                                                     builder: (_) =>
                                                         StudentResultsScreen(
                                                           quizId:

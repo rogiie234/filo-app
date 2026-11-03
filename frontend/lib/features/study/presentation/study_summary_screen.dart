@@ -232,7 +232,7 @@ class _SummaryBodyState extends ConsumerState<_SummaryBody> {
                       const Padding(
                         padding: EdgeInsets.all(16),
                         child: Center(
-                          child: CircularProgressIndicator(
+                          child: FiloCircularProgressIndicator(
                             semanticsLabel: 'Preparing summary',
                           ),
                         ),

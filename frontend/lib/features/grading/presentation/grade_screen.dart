@@ -1,3 +1,6 @@
+import '../../../core/theme/filo_motion.dart';
+import '../../../core/feedback/filo_haptics.dart';
+
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -62,7 +65,7 @@ class _GradeScreenState extends ConsumerState<GradeScreen> {
   }
 
   Future<bool> _confirm(String title, String body) async =>
-      await showDialog<bool>(
+      await showFiloDialog<bool>(
         context: context,
         builder: (context) => AlertDialog(
           title: Text(title),
@@ -158,6 +161,7 @@ class _GradeScreenState extends ConsumerState<GradeScreen> {
         int.parse(_score.text),
         _feedback.text,
       );
+      if (mounted) FiloHaptics.confirmed(context);
       _originalScore = _score.text;
       _originalFeedback = _feedback.text;
       await _refresh();
@@ -194,7 +198,7 @@ class _GradeScreenState extends ConsumerState<GradeScreen> {
     if (!_dirty) {
       return true;
     }
-    final choice = await showDialog<String>(
+    final choice = await showFiloDialog<String>(
       context: context,
       builder: (context) => AlertDialog(
         title: const Text('Save changes before leaving?'),
@@ -261,6 +265,7 @@ class _GradeScreenState extends ConsumerState<GradeScreen> {
         widget.classId,
         submission['id'].toString(),
       );
+      if (mounted && count > 0) FiloHaptics.confirmed(context);
       await _refresh();
       _message(count == 0 ? 'No grades to return.' : 'Grade returned.');
     } on PostgrestException {

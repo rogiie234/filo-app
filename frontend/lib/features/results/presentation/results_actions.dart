@@ -51,7 +51,7 @@ Future<void> openSecondChance(
   String quizId,
   String studentId,
 ) => Navigator.of(context).push<void>(
-  MaterialPageRoute<void>(
+  FiloInstantRoute<void>(
     builder: (_) => SecondChanceScreen(quizId: quizId, studentId: studentId),
   ),
 );
@@ -201,76 +201,78 @@ class _SecondChanceScreenState extends ConsumerState<SecondChanceScreen> {
     final archived = (data?.quiz['class'] as Map?)?['archived_at'] != null;
     return PopScope(
       canPop: !_busy,
-      child: Scaffold(
-        appBar: AppBar(title: const Text('Grant second chance')),
-        body: SafeArea(
-          child: ResultsListBody(
-            loading: _busy && data == null,
-            offline: !online,
-            error: _error,
-            onRefresh: _refresh,
-            children: [
-              if (data != null)
-                if (released)
-                  const Text(
-                    'Results are already released. Create a new quiz instead.',
-                  )
-                else if (attempt == null)
-                  const Text('This student has no attempt to reset.')
-                else if (archived)
-                  const Text('This class is archived.')
-                else ...[
-                  Text(
-                    attempt.studentName,
-                    style: Theme.of(context).textTheme.titleLarge,
-                  ),
-                  const SizedBox(height: 16),
-                  if (closed) ...[
+      child: FiloMotionScope(
+        enabled: false,
+        child: Scaffold(
+          appBar: AppBar(title: const Text('Grant second chance')),
+          body: SafeArea(
+            child: ResultsListBody(
+              loading: _busy && data == null,
+              offline: !online,
+              error: _error,
+              onRefresh: _refresh,
+              children: [
+                if (data != null)
+                  if (released)
                     const Text(
-                      'Extend the closing time first so the student can retake it.',
+                      'Results are already released. Create a new quiz instead.',
+                    )
+                  else if (attempt == null)
+                    const Text('This student has no attempt to reset.')
+                  else if (archived)
+                    const Text('This class is archived.')
+                  else ...[
+                    Text(
+                      attempt.studentName,
+                      style: Theme.of(context).textTheme.titleLarge,
                     ),
-                    TextButton(
-                      onPressed: online && !_busy ? _extend : null,
-                      child: const Text('Extend closing time'),
+                    const SizedBox(height: 16),
+                    if (closed) ...[
+                      const Text(
+                        'Extend the closing time first so the student can retake it.',
+                      ),
+                      TextButton(
+                        onPressed: online && !_busy ? _extend : null,
+                        child: const Text('Extend closing time'),
+                      ),
+                    ],
+                    TextField(
+                      controller: _reason,
+                      enabled: !_busy,
+                      minLines: 2,
+                      maxLines: 4,
+                      onChanged: (_) => setState(() {}),
+                      decoration: InputDecoration(
+                        labelText: 'Reason',
+                        hintText:
+                            'At least 10 characters. Describe what happened.',
+                        counterText: '${_reason.text.runes.length} characters',
+                      ),
+                    ),
+                    const SizedBox(height: 16),
+                    TextField(
+                      controller: _proof,
+                      enabled: !_busy,
+                      minLines: 2,
+                      maxLines: 4,
+                      maxLength: 1000,
+                      decoration: const InputDecoration(
+                        labelText: 'Proof note',
+                        hintText: 'Optional. For example: showed the phone in person.',
+                      ),
+                    ),
+                    const SizedBox(height: 16),
+                    if (!online)
+                      const Text(
+                        'Connect to the internet to allow another attempt.',
+                      ),
+                    FiloButton(
+                      label: _busy ? 'Please wait...' : 'Continue',
+                      onPressed: online && !_busy && !closed ? _grant : null,
                     ),
                   ],
-                  TextField(
-                    controller: _reason,
-                    enabled: !_busy,
-                    minLines: 2,
-                    maxLines: 4,
-                    onChanged: (_) => setState(() {}),
-                    decoration: InputDecoration(
-                      labelText: 'Reason',
-                      hintText:
-                          'At least 10 characters. Describe what happened.',
-                      counterText: '${_reason.text.runes.length} characters',
-                    ),
-                  ),
-                  const SizedBox(height: 16),
-                  TextField(
-                    controller: _proof,
-                    enabled: !_busy,
-                    minLines: 2,
-                    maxLines: 4,
-                    maxLength: 1000,
-                    decoration: const InputDecoration(
-                      labelText: 'Proof note',
-                      hintText:
-                          'Optional. For example: showed the phone in person.',
-                    ),
-                  ),
-                  const SizedBox(height: 16),
-                  if (!online)
-                    const Text(
-                      'Connect to the internet to allow another attempt.',
-                    ),
-                  FiloButton(
-                    label: _busy ? 'Please wait...' : 'Continue',
-                    onPressed: online && !_busy && !closed ? _grant : null,
-                  ),
-                ],
-            ],
+              ],
+            ),
           ),
         ),
       ),

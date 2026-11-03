@@ -62,60 +62,69 @@ class _StudyHomeScreenState extends ConsumerState<StudyHomeScreen> {
   @override
   Widget build(BuildContext context) {
     final notebooks = ref.watch(studyNotebooksProvider);
-    return ListView(
-      padding: const EdgeInsets.all(24),
-      children: [
-        const StudyOfflineBanner(),
-        Row(
-          children: [
-            Expanded(
-              child: Text(
-                'AI Study',
-                style: Theme.of(context).textTheme.headlineMedium,
-              ),
-            ),
-            IconButton(
-              tooltip: 'Study alarms',
-              onPressed: () => Navigator.push(
-                context,
-                MaterialPageRoute<void>(
-                  builder: (_) => const StudyAlarmsScreen(),
-                ),
-              ),
-              icon: const Icon(Icons.alarm),
-            ),
-          ],
-        ),
-        const SizedBox(height: 16),
-        FiloButton(
-          label: 'New notebook',
-          icon: FiloIcons.add,
-          onPressed:
-              _creating ||
-                  notebooks.isLoading ||
-                  !notebooks.hasValue ||
-                  notebooks.hasError
-              ? null
-              : _create,
-        ),
-        const SizedBox(height: 24),
-        studyAsync(
-          notebooks,
-          (items) => Column(
+    return FiloFirstListLoad(
+      id: 'study',
+      hasItems: notebooks.asData?.value.isNotEmpty ?? false,
+      ready: notebooks.hasValue && !notebooks.isLoading && !notebooks.hasError,
+      child: ListView(
+        padding: const EdgeInsets.all(24),
+        children: [
+          const StudyOfflineBanner(),
+          Row(
             children: [
-              if (items.isEmpty)
-                const EmptyState(
-                  pose: 'reading',
-                  title: 'Start your first notebook.',
-                  message: 'Keep your files and study tools together.',
+              Expanded(
+                child: Text(
+                  'AI Study',
+                  style: Theme.of(context).textTheme.headlineMedium,
                 ),
-              for (final notebook in items) _NotebookTile(notebook: notebook),
+              ),
+              IconButton(
+                tooltip: 'Study alarms',
+                onPressed: () => Navigator.push(
+                  context,
+                  MaterialPageRoute<void>(
+                    builder: (_) => const StudyAlarmsScreen(),
+                  ),
+                ),
+                icon: const Icon(Icons.alarm),
+              ),
             ],
           ),
-          retry: () => ref.invalidate(studyNotebooksProvider),
-          showMascot: true,
-        ),
-      ],
+          const SizedBox(height: 16),
+          FiloButton(
+            label: 'New notebook',
+            icon: FiloIcons.add,
+            onPressed:
+                _creating ||
+                    notebooks.isLoading ||
+                    !notebooks.hasValue ||
+                    notebooks.hasError
+                ? null
+                : _create,
+          ),
+          const SizedBox(height: 24),
+          studyAsync(
+            notebooks,
+            (items) => Column(
+              children: [
+                if (items.isEmpty)
+                  const EmptyState(
+                    pose: 'reading',
+                    title: 'Start your first notebook.',
+                    message: 'Keep your files and study tools together.',
+                  ),
+                for (final notebook in items)
+                  FiloListItem(
+                    index: items.indexOf(notebook),
+                    child: _NotebookTile(notebook: notebook),
+                  ),
+              ],
+            ),
+            retry: () => ref.invalidate(studyNotebooksProvider),
+            showMascot: true,
+          ),
+        ],
+      ),
     );
   }
 }
@@ -126,32 +135,35 @@ class _NotebookTile extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final sources = ref.watch(studySourcesProvider(notebook.id));
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 12),
-      child: FiloPanel(
-        padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 4),
-        child: ListTile(
-          leading: const FiloIcon(FiloIcons.folder),
-          title: Text(notebook.name),
-          subtitle: Text(
-            '${sources.isLoading
-                ? 'Loading sources...'
-                : sources.hasError
-                ? 'Sources unavailable'
-                : studyCount(sources.requireValue.length, 'source')}\nLast opened ${MaterialLocalizations.of(context).formatMediumDate(notebook.lastOpenedAt.toLocal())}',
-          ),
-          trailing: PopupMenuButton<String>(
-            tooltip: 'Notebook options',
-            onSelected: (action) =>
-                editNotebook(context, ref, notebook, action),
-            itemBuilder: (_) => const [
-              PopupMenuItem(value: 'rename', child: Text('Rename')),
-              PopupMenuItem(value: 'delete', child: Text('Delete')),
-            ],
-          ),
-          onTap: () => Navigator.of(context).push(
-            MaterialPageRoute<void>(
-              builder: (_) => StudyNotebookScreen(notebookId: notebook.id),
+    return FiloCardTap(
+      enabled: true,
+      child: Padding(
+        padding: const EdgeInsets.only(bottom: 12),
+        child: FiloPanel(
+          padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 4),
+          child: ListTile(
+            leading: const FiloIcon(FiloIcons.folder),
+            title: Text(notebook.name),
+            subtitle: Text(
+              '${sources.isLoading
+                  ? 'Loading sources...'
+                  : sources.hasError
+                  ? 'Sources unavailable'
+                  : studyCount(sources.requireValue.length, 'source')}\nLast opened ${MaterialLocalizations.of(context).formatMediumDate(notebook.lastOpenedAt.toLocal())}',
+            ),
+            trailing: PopupMenuButton<String>(
+              tooltip: 'Notebook options',
+              onSelected: (action) =>
+                  editNotebook(context, ref, notebook, action),
+              itemBuilder: (_) => const [
+                PopupMenuItem(value: 'rename', child: Text('Rename')),
+                PopupMenuItem(value: 'delete', child: Text('Delete')),
+              ],
+            ),
+            onTap: () => Navigator.of(context).push(
+              MaterialPageRoute<void>(
+                builder: (_) => StudyNotebookScreen(notebookId: notebook.id),
+              ),
             ),
           ),
         ),

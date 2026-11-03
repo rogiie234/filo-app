@@ -180,7 +180,7 @@ class _QuestionBankScreenState extends ConsumerState<QuestionBankScreen> {
                           ),
                         ),
                       ),
-                    if (_loading || _busy) const LinearProgressIndicator(),
+                    if (_loading || _busy) const FiloLinearProgressIndicator(),
                   ],
                 );
               }

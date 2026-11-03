@@ -398,7 +398,7 @@ class _ClassworkListState extends ConsumerState<ClassworkList> {
                   quiz: entry.quiz!,
                   now: now,
                   onTap: () => Navigator.of(context).push(
-                    MaterialPageRoute<void>(
+                    FiloInstantRoute<void>(
                       builder: (_) => StudentQuizDetailScreen(
                         classId: id,
                         quizId: entry.quiz!.id,
@@ -450,7 +450,7 @@ class ClassworkFilterChip extends StatelessWidget {
   final bool selected;
   final VoidCallback onSelected;
   @override
-  Widget build(BuildContext context) => ChoiceChip(
+  Widget build(BuildContext context) => FiloAnimatedChip(
     label: Text(label),
     selected: selected,
     showCheckmark: true,

@@ -70,7 +70,7 @@ class _NewAssessmentScreenState extends ConsumerState<NewAssessmentScreen> {
               spacing: 12,
               children: [
                 for (final type in ['Quiz', 'Exam'])
-                  ChoiceChip(
+                  FiloAnimatedChip(
                     label: Text(type),
                     selected: _type == type,
                     onSelected: (_) => setState(() => _type = type),
@@ -290,7 +290,7 @@ class _NewAssessmentScreenState extends ConsumerState<NewAssessmentScreen> {
                     padding: const EdgeInsets.only(bottom: 8),
                     child: Row(
                       children: [
-                        Radio<int>(value: option),
+                        FiloRadio<int>(value: option),
                         Expanded(
                           child: question.type == 'True or false'
                               ? Text(option == 0 ? 'True' : 'False')

@@ -138,7 +138,7 @@ class _StudyBodyState extends ConsumerState<_StudyBody> {
                     const StudyOfflineBanner(),
                     if (_session.loading)
                       const Center(
-                        child: CircularProgressIndicator(
+                        child: FiloCircularProgressIndicator(
                           semanticsLabel: 'Opening deck',
                         ),
                       )
@@ -147,7 +147,7 @@ class _StudyBodyState extends ConsumerState<_StudyBody> {
                         label: 'Study progress',
                         value:
                             '${_session.completed} of ${_session.total} cards reviewed',
-                        child: LinearProgressIndicator(
+                        child: FiloLinearProgressIndicator(
                           value: _session.progress,
                           minHeight: 10,
                           borderRadius: BorderRadius.circular(10),

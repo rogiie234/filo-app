@@ -219,7 +219,7 @@ class _FileViewerScreenState extends ConsumerState<FileViewerScreen> {
             );
           }
           if (!snapshot.hasData) {
-            return const Center(child: CircularProgressIndicator());
+            return const Center(child: FiloCircularProgressIndicator());
           }
           if (snapshot.data != true) {
             return SingleChildScrollView(
@@ -331,7 +331,7 @@ class _FileViewerScreenState extends ConsumerState<FileViewerScreen> {
                             ),
                           )
                         : !data.hasData
-                        ? const Center(child: CircularProgressIndicator())
+                        ? const Center(child: FiloCircularProgressIndicator())
                         : SingleChildScrollView(
                             padding: const EdgeInsets.all(20),
                             child: SelectableText(data.data!),

@@ -118,7 +118,7 @@ class AccountDetailsView extends StatelessWidget {
                                 !MediaQuery.disableAnimationsOf(context)
                             ? const Padding(
                                 padding: EdgeInsets.all(7),
-                                child: CircularProgressIndicator(
+                                child: FiloCircularProgressIndicator(
                                   strokeWidth: 2,
                                   color: Colors.white,
                                 ),

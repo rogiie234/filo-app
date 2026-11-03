@@ -81,7 +81,7 @@ class _ClassStudentsScreenState extends ConsumerState<ClassStudentsScreen> {
 
   Future<void> _remove(ClassStudent student, String section) async {
     if (_busy || ref.read(connectivityProvider).asData?.value != true) return;
-    final confirmed = await showDialog<bool>(
+    final confirmed = await showFiloDialog<bool>(
       context: context,
       builder: (dialog) => AlertDialog(
         title: Text('Remove ${student.name} from $section?'),
@@ -180,7 +180,7 @@ class _ClassStudentsScreenState extends ConsumerState<ClassStudentsScreen> {
                 child: Text('This class is no longer available.'),
               ),
             if (students.isLoading || sync.isLoading || _busy)
-              const LinearProgressIndicator(),
+              const FiloLinearProgressIndicator(),
             if (students.hasError || (online && sync.hasError))
               FiloPanel(
                 child: Column(

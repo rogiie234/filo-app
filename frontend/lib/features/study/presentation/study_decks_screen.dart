@@ -165,7 +165,7 @@ class StudyDecksScreen extends StatelessWidget {
 }
 
 Future<String?> showStudyDeckName(BuildContext context, String initial) =>
-    showDialog<String>(
+    showFiloDialog<String>(
       context: context,
       builder: (_) => _DeckName(initial: initial),
     );
@@ -383,7 +383,7 @@ class _DeckGenerateBodyState extends ConsumerState<_DeckGenerateBody> {
                   const Padding(
                     padding: EdgeInsets.all(16),
                     child: Center(
-                      child: CircularProgressIndicator(
+                      child: FiloCircularProgressIndicator(
                         semanticsLabel: 'Preparing flashcards',
                       ),
                     ),

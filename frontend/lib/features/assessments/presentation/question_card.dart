@@ -320,7 +320,7 @@ class _QuestionCardState extends State<QuestionCard> {
                         height: 60,
                         child: Semantics(
                           label: 'Mark option ${i + 1} correct',
-                          child: Radio<int>(
+                          child: FiloRadio<int>(
                             value: i,
                             groupValue: q.answerKey?.correctOptionIndex,
                             onChanged: widget.enabled
@@ -371,7 +371,7 @@ class _QuestionCardState extends State<QuestionCard> {
                   'Choose whether the correct answer is True or False.',
                 ),
                 for (final value in [true, false])
-                  RadioListTile<bool>(
+                  FiloRadioListTile<bool>(
                     contentPadding: EdgeInsets.zero,
                     title: Text(value ? 'True' : 'False'),
                     value: value,

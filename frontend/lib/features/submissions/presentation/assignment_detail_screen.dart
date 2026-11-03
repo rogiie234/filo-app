@@ -62,6 +62,7 @@ class AssignmentDetailScreen extends ConsumerStatefulWidget {
 
 class _AssignmentDetailScreenState
     extends ConsumerState<AssignmentDetailScreen> {
+  String? _celebratedSubmission;
   final _comment = TextEditingController();
   final _pending = <_PendingFile>[];
   final _pickedCopies = <AccountTemporaryFile>{};
@@ -251,7 +252,7 @@ class _AssignmentDetailScreenState
     bool multiline = false,
   }) async {
     final controller = TextEditingController(text: initial);
-    final result = await showDialog<String>(
+    final result = await showFiloDialog<String>(
       context: context,
       builder: (dialog) => AlertDialog(
         title: Text(title),
@@ -521,7 +522,7 @@ class _AssignmentDetailScreenState
 
   Future<void> _openItem(CacheSubmissionItem item) async {
     if (item.kind == 'text') {
-      await showDialog<void>(
+      await showFiloDialog<void>(
         context: context,
         builder: (c) => AlertDialog(
           title: const Text('Your text'),
@@ -593,7 +594,7 @@ class _AssignmentDetailScreenState
       return;
     }
     final late = _overdue;
-    final confirmed = await showDialog<bool>(
+    final confirmed = await showFiloDialog<bool>(
       context: context,
       builder: (dialog) => AlertDialog(
         title: const Text('Turn in your work?'),
@@ -631,7 +632,25 @@ class _AssignmentDetailScreenState
         throw StateError(_fileRestriction!);
       }
       final repository = await ref.read(submissionRepositoryProvider.future);
-      await repository!.turnIn(_submission!.id, comment: _comment.text.trim());
+      final confirmed = await repository!.turnIn(
+        _submission!.id,
+        comment: _comment.text.trim(),
+      );
+      if (mounted &&
+          ModalRoute.of(context)?.isCurrent != false &&
+          TickerMode.of(context) &&
+          (WidgetsBinding.instance.lifecycleState == null ||
+              WidgetsBinding.instance.lifecycleState ==
+                  AppLifecycleState.resumed) &&
+          confirmed.status == 'turned_in' &&
+          confirmed.submittedAt != null &&
+          _grade == null) {
+        setState(
+          () => _celebratedSubmission =
+              '${confirmed.id}:${confirmed.submittedAt!.microsecondsSinceEpoch}',
+        );
+        FiloHaptics.confirmed(context);
+      }
       _commentDirty = false;
     });
   }
@@ -650,6 +669,7 @@ class _AssignmentDetailScreenState
     }
     final repository = await ref.read(submissionRepositoryProvider.future);
     await repository!.unsubmit(_submission!.id);
+    if (mounted) setState(() => _celebratedSubmission = null);
   });
 
   @override
@@ -741,7 +761,7 @@ class _AssignmentDetailScreenState
           !_busy,
       onPopInvokedWithResult: (didPop, result) async {
         if (didPop || _busy) return;
-        final leave = await showDialog<bool>(
+        final leave = await showFiloDialog<bool>(
           context: context,
           builder: (dialog) => AlertDialog(
             title: const Text('Leave this assignment?'),
@@ -783,7 +803,7 @@ class _AssignmentDetailScreenState
             }
           }
           if (cleanupFailed && mounted) {
-            final leaveAnyway = await showDialog<bool>(
+            final leaveAnyway = await showFiloDialog<bool>(
               context: context,
               builder: (dialog) => AlertDialog(
                 title: const Text('Leave with unfinished uploads?'),
@@ -874,7 +894,7 @@ class _AssignmentDetailScreenState
                     ],
                     if (_post == null)
                       if (loading || sync.isLoading)
-                        const Center(child: CircularProgressIndicator())
+                        const Center(child: FiloCircularProgressIndicator())
                       else
                         const Text(
                           'No saved assignment on this device. Connect and refresh to load it.',
@@ -898,7 +918,7 @@ class _AssignmentDetailScreenState
                       SelectableText(_post!.body ?? ''),
                       const SizedBox(height: 16),
                       if (attachments.isLoading)
-                        const LinearProgressIndicator(),
+                        const FiloLinearProgressIndicator(),
                       if (attachments.hasError)
                         TextButton(
                           onPressed: () => ref.invalidate(
@@ -952,15 +972,21 @@ class _AssignmentDetailScreenState
                                 'Your work',
                                 style: Theme.of(context).textTheme.titleLarge,
                               ),
-                              if (loading) const LinearProgressIndicator(),
+                              if (loading) const FiloLinearProgressIndicator(),
                               if (_turnedIn &&
                                   _submission?.submittedAt != null &&
                                   _grade == null)
-                                const Center(
-                                  child: Mascot(
-                                    pose: 'cheerful_note',
-                                    size: 96,
-                                  ),
+                                Center(
+                                  child:
+                                      _celebratedSubmission ==
+                                          '${_submission!.id}:${_submission!.submittedAt!.microsecondsSinceEpoch}'
+                                      ? FiloSuccessMoment(
+                                          key: ValueKey(_celebratedSubmission),
+                                        )
+                                      : const Mascot(
+                                          pose: 'cheerful_note',
+                                          size: 96,
+                                        ),
                                 ),
                               if (_turnedIn && _submission?.submittedAt != null)
                                 Text(
@@ -991,7 +1017,7 @@ class _AssignmentDetailScreenState
                                       : null,
                                   onTap: () => _openItem(item),
                                   trailing: _opening.contains(item.id)
-                                      ? const CircularProgressIndicator()
+                                      ? const FiloCircularProgressIndicator()
                                       : editable
                                       ? PopupMenuButton<String>(
                                           enabled: canWrite,
@@ -1022,7 +1048,7 @@ class _AssignmentDetailScreenState
                                   children: [
                                     Text(file.name),
                                     if (file.uploading)
-                                      LinearProgressIndicator(
+                                      FiloLinearProgressIndicator(
                                         value: file.progress,
                                       ),
                                     if (file.error != null) Text(file.error!),

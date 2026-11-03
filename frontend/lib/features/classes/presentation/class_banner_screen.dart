@@ -142,7 +142,7 @@ class _ClassBannerState extends ConsumerState<ClassBannerScreen> {
               spacing: 8,
               runSpacing: 8,
               children: [
-                ChoiceChip(
+                FiloAnimatedChip(
                   label: const Text('Default'),
                   selected: _banner == null && _bannerImage == null,
                   onSelected: editable
@@ -153,7 +153,7 @@ class _ClassBannerState extends ConsumerState<ClassBannerScreen> {
                       : null,
                 ),
                 for (final entry in classBannerColors.entries)
-                  ChoiceChip(
+                  FiloAnimatedChip(
                     label: Text(
                       '${entry.key[0].toUpperCase()}${entry.key.substring(1)}',
                     ),

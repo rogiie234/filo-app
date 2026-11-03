@@ -225,7 +225,7 @@ class _CreatePostScreenState extends ConsumerState<CreatePostScreen> {
                   color: FiloColors.tint,
                   child: Column(
                     children: [
-                      SwitchListTile.adaptive(
+                      FiloSwitchListTile(
                         contentPadding: EdgeInsets.zero,
                         title: const Text(
                           'Require submission',
@@ -266,13 +266,13 @@ class _CreatePostScreenState extends ConsumerState<CreatePostScreen> {
                             _due == null ? 'Set due date and time' : _dueLabel,
                           ),
                         ),
-                        SwitchListTile.adaptive(
+                        FiloSwitchListTile(
                           contentPadding: EdgeInsets.zero,
                           title: const Text('Accept late submissions'),
                           value: _late,
                           onChanged: (value) => setState(() => _late = value),
                         ),
-                        SwitchListTile.adaptive(
+                        FiloSwitchListTile(
                           title: const Text('Allow file uploads'),
                           value: _allowFiles,
                           onChanged: (value) =>
@@ -324,7 +324,7 @@ class _CreatePostScreenState extends ConsumerState<CreatePostScreen> {
                         'An open class owned by you is required to post.',
                       ),
                     if (_error != null) Text(_error!),
-                    if (_busy) const LinearProgressIndicator(),
+                    if (_busy) const FiloLinearProgressIndicator(),
                     if (_postId != null)
                       for (final a in _attachments)
                         ListTile(
@@ -341,7 +341,8 @@ class _CreatePostScreenState extends ConsumerState<CreatePostScreen> {
                                     ? 'Uploading...'
                                     : 'Waiting',
                               ),
-                              if (a.uploading) const LinearProgressIndicator(),
+                              if (a.uploading)
+                                const FiloLinearProgressIndicator(),
                             ],
                           ),
                           trailing: a.failed
@@ -475,7 +476,7 @@ class _CreatePostScreenState extends ConsumerState<CreatePostScreen> {
   }
 
   Future<void> _addLink() async {
-    final link = await showDialog<String>(
+    final link = await showFiloDialog<String>(
       context: context,
       builder: (context) => const _LinkDialog(),
     );
@@ -699,7 +700,7 @@ class _CreatePostScreenState extends ConsumerState<CreatePostScreen> {
   }
 
   Future<void> _deletePost() async {
-    final confirm = await showDialog<bool>(
+    final confirm = await showFiloDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
         title: const Text('Delete this post?'),

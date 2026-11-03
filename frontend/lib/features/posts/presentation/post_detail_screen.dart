@@ -1,3 +1,5 @@
+import '../../../core/widgets/filo_motion_widgets.dart';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
@@ -120,7 +122,7 @@ class _PostDetailScreenState extends ConsumerState<PostDetailScreen> {
                   ),
                 if (post == null)
                   if (posts.isLoading || sync.isLoading)
-                    const Center(child: CircularProgressIndicator())
+                    const Center(child: FiloCircularProgressIndicator())
                   else
                     const Text('Connect and refresh to load this post.')
                 else ...[
@@ -141,7 +143,8 @@ class _PostDetailScreenState extends ConsumerState<PostDetailScreen> {
                   const SizedBox(height: 24),
                   SelectableText(post.body ?? ''),
                   const SizedBox(height: 24),
-                  if (attachments.isLoading) const LinearProgressIndicator(),
+                  if (attachments.isLoading)
+                    const FiloLinearProgressIndicator(),
                   if (attachments.hasError)
                     TextButton(
                       onPressed: () => ref.invalidate(

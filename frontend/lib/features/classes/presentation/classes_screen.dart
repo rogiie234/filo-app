@@ -73,286 +73,306 @@ class _ClassesScreenState extends ConsumerState<ClassesScreen> {
               .contains(_query.trim().toLowerCase()),
         )
         .toList();
+    final entranceRooms = [
+      ...rooms.where((r) => !r.archived),
+      ...rooms.where((r) => r.archived),
+    ];
     final loading =
         cards.isLoading ||
         (live &&
             online &&
             sync.isLoading &&
             (cards.asData?.value.isEmpty ?? true));
-    return Scaffold(
-      appBar: AppBar(
-        automaticallyImplyLeading: false,
-        title: const Brand(),
-        toolbarHeight: 76,
-        actions: [
-          if (live && student && examDevEnabled)
+    return FiloFirstListLoad(
+      id: 'classes',
+      hasItems: cards.asData?.value.isNotEmpty ?? false,
+      ready: !loading && !cards.hasError,
+      child: Scaffold(
+        appBar: AppBar(
+          automaticallyImplyLeading: false,
+          title: const Brand(),
+          toolbarHeight: 76,
+          actions: [
+            if (live && student && examDevEnabled)
+              IconButton(
+                tooltip: 'DEV exam data',
+                icon: const Icon(Icons.science_outlined),
+                onPressed: () => Navigator.of(context).push(
+                  MaterialPageRoute<void>(
+                    builder: (_) => const ExamDevScreen(),
+                  ),
+                ),
+              ),
             IconButton(
-              tooltip: 'DEV exam data',
-              icon: const Icon(Icons.science_outlined),
-              onPressed: () => Navigator.of(context).push(
-                MaterialPageRoute<void>(builder: (_) => const ExamDevScreen()),
+              tooltip: 'Notifications',
+              icon: RedDotBadge(
+                visible: unread > 0,
+                child: Semantics(
+                  label: unread > 0 ? '$unread unread notifications' : null,
+                  child: const FiloIcon(FiloIcons.notifications),
+                ),
               ),
-            ),
-          IconButton(
-            tooltip: 'Notifications',
-            icon: RedDotBadge(
-              visible: unread > 0,
-              child: Semantics(
-                label: unread > 0 ? '$unread unread notifications' : null,
-                child: const FiloIcon(FiloIcons.notifications),
-              ),
-            ),
-            onPressed: live
-                ? () => Navigator.of(context).push(
-                    MaterialPageRoute<void>(
-                      builder: (_) => InboxScreen(userId: widget.profile!.id),
-                    ),
-                  )
-                : null,
-          ),
-          Padding(
-            padding: const EdgeInsets.only(right: 16),
-            child: IconButton(
-              tooltip: live ? 'Your account' : 'Change preview role',
-              onPressed: _roleMenu,
-              icon: FiloAvatar(
-                userId: widget.profile?.id,
-                name:
-                    widget.profile?.name ??
-                    (student ? 'Student' : 'Instructor'),
-                url: widget.profile?.photoUrl,
-                path: widget.profile?.avatarPath,
-              ),
-            ),
-          ),
-        ],
-      ),
-      body: live && student && _destination == 3
-          ? const StudyHomeScreen()
-          : live && _destination == 2
-          ? const MyFilesScreen()
-          : live && _destination == 1
-          ? WorkQueueScreen(student: student, embedded: true)
-          : _refresh(
-              ListView(
-                physics: const AlwaysScrollableScrollPhysics(),
-                keyboardDismissBehavior:
-                    ScrollViewKeyboardDismissBehavior.onDrag,
-                padding: const EdgeInsets.fromLTRB(24, 16, 24, 112),
-                children: [
-                  if (live && !online) ...const [
-                    OfflineBanner(),
-                    SizedBox(height: 16),
-                  ],
-                  if (live && sync.hasError)
-                    EmptyState(
-                      title: 'Could not refresh your classes. Showing saved content.',
-                      pose: 'confused',
-                      showMascot: (cards.asData?.value.isEmpty ?? true),
-                      bob: false,
-                      action: TextButton(
-                        onPressed: online
-                            ? () =>
-                                  ref.read(classSyncProvider.notifier).refresh()
-                            : null,
-                        child: const Text('Retry'),
+              onPressed: live
+                  ? () => Navigator.of(context).push(
+                      MaterialPageRoute<void>(
+                        builder: (_) => InboxScreen(userId: widget.profile!.id),
                       ),
-                    ),
-
-                  if (cards.hasError)
-                    const EmptyState(
-                      title: 'Could not read saved classes. Try reopening the app.',
-                      pose: 'confused',
-                      bob: false,
-                    ),
-                  if ((live && sync.hasError) || cards.hasError)
-                    const SizedBox(height: 16),
-                  Row(
-                    children: [
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              'Your classes',
-                              style: TextStyle(
-                                fontSize: 28,
-                                fontWeight: FontWeight.w800,
-                                height: 1.2,
-                                color: Theme.of(context).colorScheme.onSurface,
-                              ),
-                            ),
-                            const SizedBox(height: 8),
-                            Text(
-                              'A good place to grow.',
-                              style: TextStyle(
-                                color: Theme.of(context)
-                                    .colorScheme
-                                    .onSurfaceVariant,
-                                fontSize: 15,
-                                fontWeight: FontWeight.w500,
-                                height: 1.5,
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                      if (rooms.isNotEmpty || loading) ...[
-                        const SizedBox(width: 16),
-                        const Mascot(size: 72),
-                      ],
+                    )
+                  : null,
+            ),
+            Padding(
+              padding: const EdgeInsets.only(right: 16),
+              child: IconButton(
+                tooltip: live ? 'Your account' : 'Change preview role',
+                onPressed: _roleMenu,
+                icon: FiloAvatar(
+                  userId: widget.profile?.id,
+                  name:
+                      widget.profile?.name ??
+                      (student ? 'Student' : 'Instructor'),
+                  url: widget.profile?.photoUrl,
+                  path: widget.profile?.avatarPath,
+                ),
+              ),
+            ),
+          ],
+        ),
+        body: live && student && _destination == 3
+            ? const StudyHomeScreen()
+            : live && _destination == 2
+            ? const MyFilesScreen()
+            : live && _destination == 1
+            ? WorkQueueScreen(student: student, embedded: true)
+            : _refresh(
+                ListView(
+                  physics: const AlwaysScrollableScrollPhysics(),
+                  keyboardDismissBehavior:
+                      ScrollViewKeyboardDismissBehavior.onDrag,
+                  padding: const EdgeInsets.fromLTRB(24, 16, 24, 112),
+                  children: [
+                    if (live && !online) ...const [
+                      OfflineBanner(),
+                      SizedBox(height: 16),
                     ],
-                  ),
-                  const SizedBox(height: 24),
-                  TextField(
-                    controller: _search,
-                    textInputAction: TextInputAction.search,
-                    onSubmitted: (_) => FocusScope.of(context).unfocus(),
-                    decoration: InputDecoration(
-                      hintText: 'Find a class',
-                      labelText: 'Find a class',
-                      floatingLabelBehavior: FloatingLabelBehavior.never,
-                      prefixIcon: const FiloIcon(FiloIcons.search),
-                      prefixIconColor: Theme.of(context).colorScheme.primary,
-                      suffixIcon: _query.isEmpty
-                          ? null
-                          : IconButton(
-                              tooltip: 'Clear search',
-                              icon: const FiloIcon(FiloIcons.close),
-                              onPressed: () {
-                                _search.clear();
-                                setState(() => _query = '');
-                              },
-                            ),
-                      border: const OutlineInputBorder(
-                        borderRadius: BorderRadius.all(Radius.circular(999)),
-                      ),
-                      enabledBorder: OutlineInputBorder(
-                        borderRadius: BorderRadius.all(Radius.circular(999)),
-                        borderSide: BorderSide(
-                          color: Theme.of(context).brightness == Brightness.dark
-                              ? Theme.of(context).colorScheme.outline
-                              : FiloColors.border,
+                    if (live && sync.hasError)
+                      EmptyState(
+                        title: 'Could not refresh your classes. Showing saved content.',
+                        pose: 'confused',
+                        showMascot: (cards.asData?.value.isEmpty ?? true),
+                        bob: false,
+                        action: TextButton(
+                          onPressed: online
+                              ? () => ref
+                                    .read(classSyncProvider.notifier)
+                                    .refresh()
+                              : null,
+                          child: const Text('Retry'),
                         ),
                       ),
+
+                    if (cards.hasError)
+                      const EmptyState(
+                        title: 'Could not read saved classes. Try reopening the app.',
+                        pose: 'confused',
+                        bob: false,
+                      ),
+                    if ((live && sync.hasError) || cards.hasError)
+                      const SizedBox(height: 16),
+                    Row(
+                      children: [
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                'Your classes',
+                                style: TextStyle(
+                                  fontSize: 28,
+                                  fontWeight: FontWeight.w800,
+                                  height: 1.2,
+                                  color: Theme.of(context)
+                                      .colorScheme
+                                      .onSurface,
+                                ),
+                              ),
+                              const SizedBox(height: 8),
+                              Text(
+                                'A good place to grow.',
+                                style: TextStyle(
+                                  color: Theme.of(context)
+                                      .colorScheme
+                                      .onSurfaceVariant,
+                                  fontSize: 15,
+                                  fontWeight: FontWeight.w500,
+                                  height: 1.5,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                        if (rooms.isNotEmpty || loading) ...[
+                          const SizedBox(width: 16),
+                          const Mascot(size: 72),
+                        ],
+                      ],
                     ),
-                    onChanged: (value) => setState(() => _query = value),
-                  ),
-                  const SizedBox(height: 24),
-                  if (rooms.isEmpty &&
-                      !loading &&
-                      !cards.hasError &&
-                      !sync.hasError)
-                    ClassesEmptyState(
-                      pose: _query.trim().isNotEmpty
-                          ? 'curious'
-                          : !online
-                          ? 'sleepy'
-                          : 'waving',
-                      bob: online,
-                      title: _query.trim().isNotEmpty
-                          ? 'No classes found.'
-                          : !online
-                          ? 'No saved classes found.'
-                          : 'No classes yet.',
-                      message: _query.trim().isNotEmpty
-                          ? 'Try another course, section, or instructor.'
-                          : !online
-                          ? 'Connect to the internet to refresh your classes.'
-                          : student
-                          ? 'Join a class using the code from your instructor.'
-                          : 'Create a class to get started.',
-                    ),
-                  if (loading) ...const [
-                    ClassCardSkeleton(),
-                    ClassCardSkeleton(),
-                    ClassCardSkeleton(),
-                  ],
-                  for (final room in rooms.where((room) => !room.archived))
-                    _classTile(room),
-                  if (rooms.any((room) => room.archived)) ...[
-                    Text(
-                      'Archived',
-                      style: Theme.of(context).textTheme.titleLarge,
-                    ),
-                    const SizedBox(height: 16),
-                    for (final room in rooms.where((room) => room.archived))
-                      _classTile(room),
-                  ],
-                  if (live && !student)
-                    ListTile(
-                      leading: const FiloIcon(FiloIcons.delete),
-                      title: const Text('Recently deleted'),
-                      subtitle: const Text('Restore classes within 14 days'),
-                      onTap: () => Navigator.of(context).push(
-                        MaterialPageRoute<void>(
-                          builder: (_) => const RecentlyDeletedScreen(),
+                    const SizedBox(height: 24),
+                    TextField(
+                      controller: _search,
+                      textInputAction: TextInputAction.search,
+                      onSubmitted: (_) => FocusScope.of(context).unfocus(),
+                      decoration: InputDecoration(
+                        hintText: 'Find a class',
+                        labelText: 'Find a class',
+                        floatingLabelBehavior: FloatingLabelBehavior.never,
+                        prefixIcon: const FiloIcon(FiloIcons.search),
+                        prefixIconColor: Theme.of(context).colorScheme.primary,
+                        suffixIcon: _query.isEmpty
+                            ? null
+                            : IconButton(
+                                tooltip: 'Clear search',
+                                icon: const FiloIcon(FiloIcons.close),
+                                onPressed: () {
+                                  _search.clear();
+                                  setState(() => _query = '');
+                                },
+                              ),
+                        border: const OutlineInputBorder(
+                          borderRadius: BorderRadius.all(Radius.circular(999)),
+                        ),
+                        enabledBorder: OutlineInputBorder(
+                          borderRadius: BorderRadius.all(Radius.circular(999)),
+                          borderSide: BorderSide(
+                            color:
+                                Theme.of(context).brightness == Brightness.dark
+                                ? Theme.of(context).colorScheme.outline
+                                : FiloColors.border,
+                          ),
                         ),
                       ),
+                      onChanged: (value) => setState(() => _query = value),
                     ),
-                ],
-              ),
-            ),
-      floatingActionButtonAnimator: FloatingActionButtonAnimator.noAnimation,
-      floatingActionButtonLocation: FloatingActionButtonLocation.centerFloat,
-      floatingActionButton: _destination != 0
-          ? null
-          : Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 24),
-              child: FiloButton(
-                label: student ? 'Join class' : 'Create class',
-                icon: FiloIcons.add,
-                onPressed: !online
-                    ? null
-                    : student
-                    ? _join
-                    : live
-                    ? _create
-                    : () => context.push('/classes/it119'),
-              ),
-            ),
-      bottomNavigationBar: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          if (live) _SyncErrorStatus(),
-          NavigationBar(
-            animationDuration: Duration.zero,
-            selectedIndex: !student && _destination == 3 ? 0 : _destination,
-            onDestinationSelected: (index) {
-              if (live && (index <= 2 || (student && index == 3))) {
-                setState(() => _destination = index);
-              } else if (index != 0) {
-                showMessage(context, 'This area will be available soon.');
-              }
-            },
-            destinations: [
-              const NavigationDestination(
-                icon: FiloIcon(FiloIcons.student),
-                selectedIcon: FiloIcon(FiloIcons.studentSelected),
-                label: 'Classes',
-              ),
-              NavigationDestination(
-                icon: _ReviewBadge(live: live && !student, selected: false),
-                selectedIcon: _ReviewBadge(
-                  live: live && !student,
-                  selected: true,
+                    const SizedBox(height: 24),
+                    if (rooms.isEmpty &&
+                        !loading &&
+                        !cards.hasError &&
+                        !sync.hasError)
+                      ClassesEmptyState(
+                        pose: _query.trim().isNotEmpty
+                            ? 'curious'
+                            : !online
+                            ? 'sleepy'
+                            : 'waving',
+                        bob: online,
+                        title: _query.trim().isNotEmpty
+                            ? 'No classes found.'
+                            : !online
+                            ? 'No saved classes found.'
+                            : 'No classes yet.',
+                        message: _query.trim().isNotEmpty
+                            ? 'Try another course, section, or instructor.'
+                            : !online
+                            ? 'Connect to the internet to refresh your classes.'
+                            : student
+                            ? 'Join a class using the code from your instructor.'
+                            : 'Create a class to get started.',
+                      ),
+                    if (loading) ...const [
+                      ClassCardSkeleton(),
+                      ClassCardSkeleton(),
+                      ClassCardSkeleton(),
+                    ],
+                    for (final room in rooms.where((room) => !room.archived))
+                      FiloListItem(
+                        index: entranceRooms.indexOf(room),
+                        child: _classTile(room),
+                      ),
+                    if (rooms.any((room) => room.archived)) ...[
+                      Text(
+                        'Archived',
+                        style: Theme.of(context).textTheme.titleLarge,
+                      ),
+                      const SizedBox(height: 16),
+                      for (final room in rooms.where((room) => room.archived))
+                        FiloListItem(
+                          index: entranceRooms.indexOf(room),
+                          child: _classTile(room),
+                        ),
+                    ],
+                    if (live && !student)
+                      ListTile(
+                        leading: const FiloIcon(FiloIcons.delete),
+                        title: const Text('Recently deleted'),
+                        subtitle: const Text('Restore classes within 14 days'),
+                        onTap: () => Navigator.of(context).push(
+                          MaterialPageRoute<void>(
+                            builder: (_) => const RecentlyDeletedScreen(),
+                          ),
+                        ),
+                      ),
+                  ],
                 ),
-                label: student ? 'To-do' : 'To review',
               ),
-              const NavigationDestination(
-                icon: FiloIcon(FiloIcons.folder),
-                selectedIcon: FiloIcon(FiloIcons.folderSelected),
-                label: 'Files',
+        floatingActionButtonAnimator: FloatingActionButtonAnimator.noAnimation,
+        floatingActionButtonLocation: FloatingActionButtonLocation.centerFloat,
+        floatingActionButton: _destination != 0
+            ? null
+            : Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 24),
+                child: FiloButton(
+                  label: student ? 'Join class' : 'Create class',
+                  icon: FiloIcons.add,
+                  onPressed: !online
+                      ? null
+                      : student
+                      ? _join
+                      : live
+                      ? _create
+                      : () => context.push('/classes/it119'),
+                ),
               ),
-              if (student)
+        bottomNavigationBar: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            if (live) _SyncErrorStatus(),
+            FiloNavigationBar(
+              selectedIndex: !student && _destination == 3 ? 0 : _destination,
+              onDestinationSelected: (index) {
+                if (live && (index <= 2 || (student && index == 3))) {
+                  setState(() => _destination = index);
+                } else if (index != 0) {
+                  showMessage(context, 'This area will be available soon.');
+                }
+              },
+              destinations: [
                 const NavigationDestination(
-                  icon: FiloIcon(FiloIcons.sparkle),
-                  selectedIcon: FiloIcon(FiloIcons.sparkleSelected),
-                  label: 'AI Study',
+                  icon: FiloIcon(FiloIcons.student),
+                  selectedIcon: FiloIcon(FiloIcons.studentSelected),
+                  label: 'Classes',
                 ),
-            ],
-          ),
-        ],
+                NavigationDestination(
+                  icon: _ReviewBadge(live: live && !student, selected: false),
+                  selectedIcon: _ReviewBadge(
+                    live: live && !student,
+                    selected: true,
+                  ),
+                  label: student ? 'To-do' : 'To review',
+                ),
+                const NavigationDestination(
+                  icon: FiloIcon(FiloIcons.folder),
+                  selectedIcon: FiloIcon(FiloIcons.folderSelected),
+                  label: 'Files',
+                ),
+                if (student)
+                  const NavigationDestination(
+                    icon: FiloIcon(FiloIcons.sparkle),
+                    selectedIcon: FiloIcon(FiloIcons.sparkleSelected),
+                    label: 'AI Study',
+                  ),
+              ],
+            ),
+          ],
+        ),
       ),
     );
   }

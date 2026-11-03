@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import 'filo_icon.dart';
+import '../theme/filo_motion.dart';
 import 'filo_button.dart';
 
 /// Returns false for cancellation, the system back action, or barrier dismissal.
@@ -13,8 +14,11 @@ Future<bool> showFiloConfirmation(
   bool cancelIsPrimary = false,
   IconData icon = FiloIcons.checkCircle,
 }) async =>
-    await showDialog<bool>(
+    await showFiloDialog<bool>(
       context: context,
+      animationStyle: FiloMotion.enabled(context)
+          ? null
+          : AnimationStyle.noAnimation,
       builder: (context) => FiloConfirmationDialog(
         title: title,
         message: message,

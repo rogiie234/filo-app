@@ -24,19 +24,16 @@ final appRouterProvider = Provider<GoRouter>((ref) {
         // Sign-in is a separate auth step, not a fourth intro/hero morph.
         pageBuilder: (context, state) => CustomTransitionPage<void>(
           key: state.pageKey,
-          transitionDuration: FiloAnimation.signInTransitionDuration,
-          reverseTransitionDuration: FiloAnimation.signInTransitionDuration,
+          transitionDuration: FiloMotion.enabled(context)
+              ? FiloAnimation.pageDuration
+              : Duration.zero,
+          reverseTransitionDuration: FiloMotion.enabled(context)
+              ? FiloAnimation.pageDuration
+              : Duration.zero,
           child: const SignInScreen(),
           transitionsBuilder: (context, animation, secondaryAnimation, child) {
-            if (MediaQuery.disableAnimationsOf(context)) return child;
-            return ColoredBox(
-              color: FiloColors.background,
-              child: FadeTransition(
-                opacity: animation.drive(
-                  CurveTween(curve: FiloAnimation.signInTransitionCurve),
-                ),
-                child: child,
-              ),
+            return FiloMotionScope(
+              child: FiloPageTransitions.transition(context, animation, child),
             );
           },
         ),

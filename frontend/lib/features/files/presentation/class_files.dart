@@ -61,7 +61,7 @@ class _ClassFilesState extends ConsumerState<ClassFiles> {
                 for (final name in ['All', 'Images', 'PDFs', 'Documents'])
                   Padding(
                     padding: const EdgeInsets.only(right: 8),
-                    child: ChoiceChip(
+                    child: FiloAnimatedChip(
                       label: Text(name),
                       selected: filter == name,
                       onSelected: (_) => setState(() => filter = name),
@@ -77,7 +77,7 @@ class _ClassFilesState extends ConsumerState<ClassFiles> {
             const Card(
               child: SizedBox(
                 height: 104,
-                child: Center(child: LinearProgressIndicator()),
+                child: Center(child: FiloLinearProgressIndicator()),
               ),
             ),
         ] else if ((data.hasError || sync.hasError) && rows.isNotEmpty)

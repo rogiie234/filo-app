@@ -374,7 +374,7 @@ class _InstructorClassworkListState
                   if (_refreshing)
                     const Padding(
                       padding: EdgeInsets.only(bottom: 12),
-                      child: LinearProgressIndicator(
+                      child: FiloLinearProgressIndicator(
                         semanticsLabel: 'Refreshing classwork',
                       ),
                     ),
@@ -458,7 +458,7 @@ class _InstructorClassworkListState
                           onEdit: () => _open(quiz),
                           onResults: quiz.status == 'published'
                               ? () => Navigator.of(context).push(
-                                  MaterialPageRoute<void>(
+                                  FiloInstantRoute<void>(
                                     builder: (_) => InstructorResultsScreen(
                                       quizId: quiz.id,
                                     ),
@@ -472,7 +472,7 @@ class _InstructorClassworkListState
                                   DateTime.now().toUtc(),
                                 )) {
                               Navigator.of(context).push(
-                                MaterialPageRoute<void>(
+                                FiloInstantRoute<void>(
                                   builder: (_) =>
                                       InstructorResultsScreen(quizId: quiz.id),
                                 ),

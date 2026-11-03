@@ -1,3 +1,5 @@
+import '../../../core/theme/filo_motion.dart';
+
 import 'dart:async';
 
 import 'package:flutter/material.dart';
@@ -59,7 +61,7 @@ void openGradebookItem(
   final attempt = data.quizAttempt(item['id'] as String, studentId);
   if (attempt != null)
     Navigator.of(context).push(
-      MaterialPageRoute<void>(
+      FiloInstantRoute<void>(
         builder: (_) => AttemptDetailScreen(
           quizId: item['id'] as String,
           sessionId: attempt['id'] as String,

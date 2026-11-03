@@ -73,7 +73,7 @@ class DriveBackupScreen extends ConsumerWidget {
         top: false,
         child: backup.when(
           loading: () => const Center(
-            child: CircularProgressIndicator(
+            child: FiloCircularProgressIndicator(
               semanticsLabel: 'Loading Drive backup',
             ),
           ),
@@ -173,7 +173,7 @@ class DriveBackupScreen extends ConsumerWidget {
                       ),
                       child: Column(
                         children: [
-                          SwitchListTile(
+                          FiloSwitchListTile(
                             contentPadding: EdgeInsets.zero,
                             title: const Text(
                               'Turn on Drive backup',
@@ -191,7 +191,7 @@ class DriveBackupScreen extends ConsumerWidget {
                                   },
                           ),
                           const Divider(color: FiloColors.border, height: 16),
-                          SwitchListTile(
+                          FiloSwitchListTile(
                             contentPadding: EdgeInsets.zero,
                             title: const Text(
                               'Back up on Wi-Fi only',
@@ -253,7 +253,7 @@ class DriveBackupScreen extends ConsumerWidget {
                           ),
                           if (service.busy) ...[
                             const SizedBox(height: 16),
-                            const LinearProgressIndicator(
+                            const FiloLinearProgressIndicator(
                               semanticsLabel: 'Drive backup in progress',
                               minHeight: 4,
                             ),

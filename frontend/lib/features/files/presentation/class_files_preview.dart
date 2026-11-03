@@ -46,7 +46,7 @@ class _PreviewClassFilesState extends State<PreviewClassFiles> {
               for (final filter in ['All', 'Images', 'PDFs', 'Documents'])
                 Padding(
                   padding: const EdgeInsets.only(right: 8),
-                  child: ChoiceChip(
+                  child: FiloAnimatedChip(
                     label: Text(filter),
                     selected: _filter == filter,
                     onSelected: (_) => setState(() => _filter = filter),

@@ -1,3 +1,5 @@
+import '../../../core/widgets/filo_motion_widgets.dart';
+
 import 'dart:async';
 import 'dart:typed_data';
 
@@ -267,142 +269,147 @@ class ClassCard extends ConsumerWidget {
         ? ref.watch(classImageProvider(('banners', path))).asData?.value
         : null;
     final enabled = !room.pending && onTap != null;
-    return Semantics(
-      button: true,
+    return FiloCardTap(
       enabled: enabled,
-      child: Container(
-        decoration: BoxDecoration(
-          borderRadius: BorderRadius.circular(28),
-          boxShadow: const [
-            BoxShadow(
-              color: Color(0x1014423A),
-              blurRadius: 12,
-              offset: Offset(0, 4),
-            ),
-          ],
-        ),
-        child: Material(
-          color: room.pending ? FiloColors.tint : FiloColors.surface,
-          shape: RoundedRectangleBorder(
+      child: Semantics(
+        button: true,
+        enabled: enabled,
+        child: Container(
+          decoration: BoxDecoration(
             borderRadius: BorderRadius.circular(28),
-            side: const BorderSide(color: FiloColors.border),
+            boxShadow: const [
+              BoxShadow(
+                color: Color(0x1014423A),
+                blurRadius: 12,
+                offset: Offset(0, 4),
+              ),
+            ],
           ),
-          clipBehavior: Clip.antiAlias,
-          child: InkWell(
-            onTap: enabled ? onTap : null,
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                ClassBanner(
-                  section: room.section,
-                  instructor: room.instructor,
-                  color: hasImage ? classBannerColor(null) : room.color,
-                  image: url == null ? null : NetworkImage(url),
-                  avatar: FiloAvatar(
-                    name: room.instructor,
-                    url: room.instructorPhotoUrl,
-                    path: room.instructorAvatarPath,
-                    size: 32,
+          child: Material(
+            color: room.pending ? FiloColors.tint : FiloColors.surface,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(28),
+              side: const BorderSide(color: FiloColors.border),
+            ),
+            clipBehavior: Clip.antiAlias,
+            child: InkWell(
+              onTap: enabled ? onTap : null,
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  ClassBanner(
+                    section: room.section,
+                    instructor: room.instructor,
+                    color: hasImage ? classBannerColor(null) : room.color,
+                    image: url == null ? null : NetworkImage(url),
+                    avatar: FiloAvatar(
+                      name: room.instructor,
+                      url: room.instructorPhotoUrl,
+                      path: room.instructorAvatarPath,
+                      size: 32,
+                    ),
                   ),
-                ),
-                Padding(
-                  padding: const EdgeInsets.all(20),
-                  child: Row(
-                    children: [
-                      ExcludeSemantics(
-                        child: Container(
-                          width: 40,
-                          height: 40,
-                          decoration: BoxDecoration(
-                            color: FiloColors.tint,
-                            borderRadius: BorderRadius.circular(14),
-                          ),
-                          child: const FiloIcon(
-                            FiloIcons.book,
-                            size: 22,
-                            color: FiloColors.primary,
-                          ),
-                        ),
-                      ),
-                      const SizedBox(width: 12),
-                      Expanded(
-                        child: Text(
-                          room.course,
-                          style: const TextStyle(
-                            fontSize: 18,
-                            height: 1.35,
-                            fontWeight: FontWeight.w800,
-                            color: FiloColors.ink,
-                          ),
-                        ),
-                      ),
-                      const SizedBox(width: 12),
-                      Semantics(
-                        label: pendingRequests > 0
-                            ? 'Pending join requests'
-                            : null,
-                        child: RedDotBadge(
-                          visible: pendingRequests > 0,
+                  Padding(
+                    padding: const EdgeInsets.all(20),
+                    child: Row(
+                      children: [
+                        ExcludeSemantics(
                           child: Container(
-                            width: 36,
-                            height: 36,
-                            decoration: const BoxDecoration(
-                              color: FiloColors.selected,
-                              shape: BoxShape.circle,
+                            width: 40,
+                            height: 40,
+                            decoration: BoxDecoration(
+                              color: FiloColors.tint,
+                              borderRadius: BorderRadius.circular(14),
                             ),
-                            child: FiloIcon(
-                              room.pending ? FiloIcons.lock : FiloIcons.forward,
-                              size: 20,
+                            child: const FiloIcon(
+                              FiloIcons.book,
+                              size: 22,
                               color: FiloColors.primary,
                             ),
                           ),
                         ),
-                      ),
-                    ],
-                  ),
-                ),
-                if (room.pending)
-                  const Padding(
-                    padding: EdgeInsets.fromLTRB(20, 0, 20, 20),
-                    child: ApprovalChip(),
-                  ),
-                if (room.archived)
-                  Padding(
-                    padding: const EdgeInsets.fromLTRB(20, 0, 20, 20),
-                    child: Container(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 12,
-                        vertical: 10,
-                      ),
-                      decoration: BoxDecoration(
-                        color: FiloColors.tint,
-                        borderRadius: BorderRadius.circular(14),
-                      ),
-                      child: const Row(
-                        children: [
-                          ExcludeSemantics(
-                            child: FiloIcon(
-                              FiloIcons.archive,
-                              size: 18,
-                              color: FiloColors.secondary,
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: Text(
+                            room.course,
+                            style: const TextStyle(
+                              fontSize: 18,
+                              height: 1.35,
+                              fontWeight: FontWeight.w800,
+                              color: FiloColors.ink,
                             ),
                           ),
-                          SizedBox(width: 8),
-                          Expanded(
-                            child: Text(
-                              'Archived \u00b7 Read only',
-                              style: TextStyle(
-                                color: FiloColors.secondary,
-                                fontSize: 13,
-                                fontWeight: FontWeight.w700,
+                        ),
+                        const SizedBox(width: 12),
+                        Semantics(
+                          label: pendingRequests > 0
+                              ? 'Pending join requests'
+                              : null,
+                          child: RedDotBadge(
+                            visible: pendingRequests > 0,
+                            child: Container(
+                              width: 36,
+                              height: 36,
+                              decoration: const BoxDecoration(
+                                color: FiloColors.selected,
+                                shape: BoxShape.circle,
+                              ),
+                              child: FiloIcon(
+                                room.pending
+                                    ? FiloIcons.lock
+                                    : FiloIcons.forward,
+                                size: 20,
+                                color: FiloColors.primary,
                               ),
                             ),
                           ),
-                        ],
-                      ),
+                        ),
+                      ],
                     ),
                   ),
-              ],
+                  if (room.pending)
+                    const Padding(
+                      padding: EdgeInsets.fromLTRB(20, 0, 20, 20),
+                      child: ApprovalChip(),
+                    ),
+                  if (room.archived)
+                    Padding(
+                      padding: const EdgeInsets.fromLTRB(20, 0, 20, 20),
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 12,
+                          vertical: 10,
+                        ),
+                        decoration: BoxDecoration(
+                          color: FiloColors.tint,
+                          borderRadius: BorderRadius.circular(14),
+                        ),
+                        child: const Row(
+                          children: [
+                            ExcludeSemantics(
+                              child: FiloIcon(
+                                FiloIcons.archive,
+                                size: 18,
+                                color: FiloColors.secondary,
+                              ),
+                            ),
+                            SizedBox(width: 8),
+                            Expanded(
+                              child: Text(
+                                'Archived \u00b7 Read only',
+                                style: TextStyle(
+                                  color: FiloColors.secondary,
+                                  fontSize: 13,
+                                  fontWeight: FontWeight.w700,
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                ],
+              ),
             ),
           ),
         ),

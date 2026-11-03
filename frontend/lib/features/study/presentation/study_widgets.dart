@@ -26,7 +26,7 @@ Widget studyAsync<T>(
     return const Padding(
       padding: EdgeInsets.all(24),
       child: Center(
-        child: CircularProgressIndicator(
+        child: FiloCircularProgressIndicator(
           semanticsLabel: 'Loading saved study content',
         ),
       ),
@@ -68,7 +68,7 @@ class StudyOfflineBanner extends ConsumerWidget {
 }
 
 Future<String?> notebookName(BuildContext context, {String? initial}) =>
-    showDialog<String>(
+    showFiloDialog<String>(
       context: context,
       builder: (_) => _NotebookNameDialog(initial: initial),
     );

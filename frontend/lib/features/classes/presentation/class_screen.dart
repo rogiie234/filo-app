@@ -50,7 +50,7 @@ class _ClassScreenState extends ConsumerState<ClassScreen> {
     if (live && cards!.isLoading && !cards.hasValue && !cards.hasError) {
       return Scaffold(
         appBar: AppBar(title: const Text('Class')),
-        body: const Center(child: CircularProgressIndicator()),
+        body: const Center(child: FiloCircularProgressIndicator()),
       );
     }
     final state = !live
@@ -468,7 +468,7 @@ class _ClassScreenState extends ConsumerState<ClassScreen> {
       return;
     }
     final input = TextEditingController();
-    final confirmed = await showDialog<bool>(
+    final confirmed = await showFiloDialog<bool>(
       context: context,
       builder: (dialog) => StatefulBuilder(
         builder: (dialog, update) => AlertDialog(
@@ -554,7 +554,7 @@ class _ClassScreenState extends ConsumerState<ClassScreen> {
     final label = archive
         ? (room.archived ? 'Restore class' : 'Archive class')
         : 'Leave class';
-    final confirmed = await showDialog<bool>(
+    final confirmed = await showFiloDialog<bool>(
       context: context,
       builder: (dialog) => AlertDialog(
         title: Text(
@@ -774,7 +774,7 @@ class _ClassScreenState extends ConsumerState<ClassScreen> {
     if (!_deletingPosts.add(post.id)) return;
     setState(() {});
     try {
-      final confirmed = await showDialog<bool>(
+      final confirmed = await showFiloDialog<bool>(
         context: context,
         builder: (dialogContext) => AlertDialog(
           title: const Text('Delete this post?'),

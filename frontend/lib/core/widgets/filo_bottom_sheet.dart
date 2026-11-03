@@ -47,6 +47,10 @@ Future<T?> showFiloBottomSheet<T>({
             .toDouble();
     final content = MediaQuery(
       data: MediaQuery.of(sheetContext)
+          .copyWith(
+            disableAnimations:
+                !animate || MediaQuery.disableAnimationsOf(context),
+          )
           .removeViewInsets(removeBottom: true)
           .removePadding(removeBottom: true),
       child: Theme(

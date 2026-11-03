@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import 'filo_theme_tokens.dart';
+import 'filo_motion.dart';
 export 'filo_theme_tokens.dart';
 
 class FiloColors {
@@ -139,6 +140,16 @@ class AppTheme {
       borderSide: BorderSide(color: color, width: width),
     );
     return ThemeData(
+      pageTransitionsTheme: const PageTransitionsTheme(
+        builders: {
+          TargetPlatform.android: FiloPageTransitions(),
+          TargetPlatform.iOS: FiloPageTransitions(),
+          TargetPlatform.linux: FiloPageTransitions(),
+          TargetPlatform.macOS: FiloPageTransitions(),
+          TargetPlatform.windows: FiloPageTransitions(),
+          TargetPlatform.fuchsia: FiloPageTransitions(),
+        },
+      ),
       useMaterial3: true,
       fontFamily: 'Nunito',
       colorScheme: colors,

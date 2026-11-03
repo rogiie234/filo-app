@@ -355,7 +355,7 @@ class _WorkQueueScreenState extends ConsumerState<WorkQueueScreen> {
             runSpacing: 8,
             children: [
               for (final filter in ['All', 'To do', 'Done'])
-                ChoiceChip(
+                FiloAnimatedChip(
                   label: Text(filter),
                   selected: _taskFilter == filter,
                   selectedColor: FiloColors.selected,
@@ -468,7 +468,7 @@ class _WorkQueueScreenState extends ConsumerState<WorkQueueScreen> {
                           classLabel:
                               '${entry.room.section} \u00b7 ${entry.room.course}',
                           onTap: () => Navigator.of(context).push(
-                            MaterialPageRoute<void>(
+                            FiloInstantRoute<void>(
                               builder: (_) => StudentQuizDetailScreen(
                                 classId: entry.room.id,
                                 quizId: entry.postId,
@@ -669,7 +669,7 @@ class _WorkQueueScreenState extends ConsumerState<WorkQueueScreen> {
         showMessage(context, 'No grades to return.');
         return;
       }
-      final confirmed = await showDialog<bool>(
+      final confirmed = await showFiloDialog<bool>(
         context: context,
         builder: (dialog) => AlertDialog(
           title: Text('Return $count graded ${count == 1 ? 'work' : 'works'}?'),
@@ -695,6 +695,7 @@ class _WorkQueueScreenState extends ConsumerState<WorkQueueScreen> {
         return;
       }
       final returned = await repository.returnAll(entry.room.id, entry.postId);
+      if (mounted && returned > 0) FiloHaptics.confirmed(context);
       if (mounted) {
         showMessage(
           context,

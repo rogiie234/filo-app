@@ -182,7 +182,7 @@ class _AssessmentFormScreenState extends ConsumerState<AssessmentFormScreen> {
       return false;
     if ((_draft!.settings['title'] as String).trim().isEmpty) {
       final controller = TextEditingController();
-      final title = await showDialog<String>(
+      final title = await showFiloDialog<String>(
         context: context,
         builder: (c) => AlertDialog(
           title: const Text('Name your assessment'),
@@ -1098,7 +1098,7 @@ class _AssessmentFormScreenState extends ConsumerState<AssessmentFormScreen> {
           ),
           body: SafeArea(
             child: _loading && draft == null
-                ? const Center(child: CircularProgressIndicator())
+                ? const Center(child: FiloCircularProgressIndicator())
                 : Column(
                     children: [
                       if (draft != null)
@@ -1283,7 +1283,7 @@ class _AssessmentFormScreenState extends ConsumerState<AssessmentFormScreen> {
                                                       'quiz',
                                                       'exam',
                                                     ])
-                                                      ChoiceChip(
+                                                      FiloAnimatedChip(
                                                         label: Text(
                                                           type == 'quiz'
                                                               ? 'Quiz'
@@ -1507,7 +1507,7 @@ class _AssessmentFormScreenState extends ConsumerState<AssessmentFormScreen> {
                                                     'Let students see correct answers when their results are released.',
                                                   ),
                                                 ]) ...[
-                                                  SwitchListTile(
+                                                  FiloSwitchListTile(
                                                     contentPadding:
                                                         EdgeInsets.zero,
                                                     title: Text(

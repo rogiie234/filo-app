@@ -92,7 +92,7 @@ class _DownloadFileCardState extends ConsumerState<DownloadFileCard> {
       if (!await manager.files.needsStorageNotice() || !mounted) {
         return;
       }
-      final backup = await showDialog<bool>(
+      final backup = await showFiloDialog<bool>(
         context: context,
         barrierDismissible: false,
         builder: (context) => AlertDialog(
@@ -129,7 +129,7 @@ class _DownloadFileCardState extends ConsumerState<DownloadFileCard> {
     if (_reporting) {
       return;
     }
-    final yes = await showDialog<bool>(
+    final yes = await showFiloDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
         title: const Text('Notify your instructor?'),
@@ -253,7 +253,9 @@ class _DownloadFileCardState extends ConsumerState<DownloadFileCard> {
                     SizedBox(
                       width: 32,
                       height: 32,
-                      child: CircularProgressIndicator(value: state.progress),
+                      child: FiloCircularProgressIndicator(
+                        value: state.progress,
+                      ),
                     ),
                     const SizedBox(width: 12),
                     Expanded(

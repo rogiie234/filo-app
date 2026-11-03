@@ -193,11 +193,7 @@ class _IntroScreenState extends State<IntroScreen> {
                   (index) => Semantics(
                     label: 'Page ${index + 1} of 3',
                     selected: _index == index,
-                    child: AnimatedContainer(
-                      duration: MediaQuery.disableAnimationsOf(context)
-                          ? Duration.zero
-                          : FiloAnimation.indicatorDuration,
-                      curve: FiloAnimation.uiCurve,
+                    child: Container(
                       width: _index == index ? 36 : 8,
                       height: 8,
                       margin: const EdgeInsets.symmetric(horizontal: 4),

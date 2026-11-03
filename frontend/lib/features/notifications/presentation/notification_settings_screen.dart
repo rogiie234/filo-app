@@ -93,7 +93,7 @@ class _NotificationSettingsScreenState
     if (access.isLoading) {
       content = const Column(
         children: [
-          CircularProgressIndicator(
+          FiloCircularProgressIndicator(
             semanticsLabel: 'Checking notification access',
           ),
           SizedBox(height: 16),
@@ -408,7 +408,7 @@ class _NotificationPreferenceControlsState
             ),
           ),
         if (refreshing.isLoading && online)
-          const LinearProgressIndicator(
+          const FiloLinearProgressIndicator(
             semanticsLabel: 'Refreshing notification preferences',
           ),
         if (refreshing.hasError)
@@ -427,7 +427,7 @@ class _NotificationPreferenceControlsState
             const Padding(
               padding: EdgeInsets.all(24),
               child: Center(
-                child: CircularProgressIndicator(
+                child: FiloCircularProgressIndicator(
                   semanticsLabel: 'Loading notification preferences',
                 ),
               ),
@@ -446,7 +446,7 @@ class _NotificationPreferenceControlsState
             child: Column(
               children: [
                 for (final entry in notificationTypes.entries) ...[
-                  SwitchListTile(
+                  FiloSwitchListTile(
                     contentPadding: EdgeInsets.zero,
                     title: Text(entry.value),
                     subtitle: _saving.containsKey('type:${entry.key}')
@@ -477,7 +477,7 @@ class _NotificationPreferenceControlsState
             retryLoad('Could not load classes. Try again.', reloadClasses: true)
           else if (rooms == null)
             const Center(
-              child: CircularProgressIndicator(
+              child: FiloCircularProgressIndicator(
                 semanticsLabel: 'Loading classes',
               ),
             )
@@ -495,7 +495,7 @@ class _NotificationPreferenceControlsState
                 child: FiloPanel(
                   child: Column(
                     children: [
-                      SwitchListTile(
+                      FiloSwitchListTile(
                         contentPadding: EdgeInsets.zero,
                         title: Text('${room.section} · ${room.course}'),
                         subtitle: Text(

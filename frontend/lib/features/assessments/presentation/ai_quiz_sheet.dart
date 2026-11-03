@@ -1,3 +1,6 @@
+import '../../../core/theme/filo_motion.dart';
+import '../../../core/widgets/filo_motion_widgets.dart';
+
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -105,7 +108,7 @@ class _AiQuizSheetState extends ConsumerState<AiQuizSheet> {
   }
 
   Future<void> _privacy() async {
-    final accepted = await showDialog<bool>(
+    final accepted = await showFiloDialog<bool>(
       context: context,
       barrierDismissible: false,
       builder: (c) => AlertDialog(
@@ -330,7 +333,7 @@ class _AiQuizSheetState extends ConsumerState<AiQuizSheet> {
         currentPrompts: widget.currentPrompts,
       );
       if (!mounted || token.isCancelled) return;
-      await showDialog<void>(
+      await showFiloDialog<void>(
         context: context,
         builder: (c) => AlertDialog(
           title: Text('${result.questions.length} questions generated'),
@@ -456,7 +459,7 @@ class _AiQuizSheetState extends ConsumerState<AiQuizSheet> {
                               ],
                             ),
                             loading: () => const Center(
-                              child: CircularProgressIndicator(),
+                              child: FiloCircularProgressIndicator(),
                             ),
                             error: (_, _) => Center(
                               child: TextButton(
@@ -545,7 +548,7 @@ class _AiQuizSheetState extends ConsumerState<AiQuizSheet> {
               spacing: 8,
               children: [
                 for (final level in ['easy', 'medium', 'hard'])
-                  ChoiceChip(
+                  FiloAnimatedChip(
                     label: Text(
                       '${level[0].toUpperCase()}${level.substring(1)}',
                     ),

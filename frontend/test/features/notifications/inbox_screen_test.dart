@@ -306,6 +306,7 @@ void main() {
       expect(h.repo.marks, 2);
       h.rows.add([row(read: true)]);
       await tester.pump();
+      await tester.pump();
       expect(
         tester
             .widget<TextButton>(

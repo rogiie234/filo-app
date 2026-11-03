@@ -4,6 +4,13 @@ import 'app_theme.dart';
 
 /// Shared Filo component and entry motion tokens. Smaller opacity/distance/scale deltas mean less motion.
 abstract final class FiloAnimation {
+  static const releaseDuration = Duration(milliseconds: 120);
+  static const cardDuration = Duration(milliseconds: 100);
+  static const pageDuration = Duration(milliseconds: 250);
+  static const navigationDuration = Duration(milliseconds: 200);
+  static const chipDuration = Duration(milliseconds: 150);
+  static const successDuration = Duration(milliseconds: 600);
+  static const listDuration = Duration(milliseconds: 400);
   static const sheetDuration = Duration(milliseconds: 300);
   static const sheetReverseDuration = Duration(milliseconds: 300);
   static const iconDuration = Duration(milliseconds: 300);

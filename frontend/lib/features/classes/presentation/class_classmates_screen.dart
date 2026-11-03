@@ -44,7 +44,9 @@ class ClassClassmatesScreen extends ConsumerWidget {
           physics: const AlwaysScrollableScrollPhysics(),
           padding: const EdgeInsets.all(24),
           children: classmates.when(
-            loading: () => [const Center(child: CircularProgressIndicator())],
+            loading: () => [
+              const Center(child: FiloCircularProgressIndicator()),
+            ],
             error: (_, _) => [
               EmptyState(
                 title: online

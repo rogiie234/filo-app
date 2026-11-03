@@ -194,7 +194,7 @@ class StudentQuizOverview extends StatelessWidget {
                   ? const SizedBox(
                       width: 20,
                       height: 20,
-                      child: CircularProgressIndicator(
+                      child: FiloCircularProgressIndicator(
                         strokeWidth: 2,
                         color: Colors.white,
                       ),

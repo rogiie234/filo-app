@@ -87,7 +87,9 @@ class _RecentlyDeletedState extends ConsumerState<RecentlyDeletedScreen> {
               child: const Text('Refresh'),
             ),
             ...rooms.when(
-              loading: () => [const Center(child: CircularProgressIndicator())],
+              loading: () => [
+                const Center(child: FiloCircularProgressIndicator()),
+              ],
               error: (_, _) => [
                 const Text(
                   'Could not load deleted classes. Reopen this page to retry.',

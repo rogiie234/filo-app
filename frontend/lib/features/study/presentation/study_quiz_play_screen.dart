@@ -166,7 +166,7 @@ class _QuizPlayerState extends ConsumerState<_QuizPlayer> {
               const StudyOfflineBanner(),
               if (s.loading)
                 const Center(
-                  child: CircularProgressIndicator(
+                  child: FiloCircularProgressIndicator(
                     semanticsLabel: 'Loading practice quiz',
                   ),
                 )
@@ -231,7 +231,7 @@ class _QuizPlayerState extends ConsumerState<_QuizPlayer> {
                   ),
                 ),
                 const SizedBox(height: 8),
-                LinearProgressIndicator(
+                FiloLinearProgressIndicator(
                   value: s.results.length / s.questions.length,
                   semanticsLabel: 'Quiz progress',
                 ),
@@ -273,12 +273,10 @@ class _QuizPlayerState extends ConsumerState<_QuizPlayer> {
                         : null,
                   ),
                 if (s.checked) ...[
-                  TweenAnimationBuilder<double>(
+                  FiloMotionTween(
                     key: ValueKey('feedback-${q.id}'),
-                    tween: Tween(
-                      begin: MediaQuery.disableAnimationsOf(context) ? 1 : 0,
-                      end: 1,
-                    ),
+                    initialValue: 0,
+                    value: 1,
                     duration: MediaQuery.disableAnimationsOf(context)
                         ? Duration.zero
                         : const Duration(milliseconds: 150),

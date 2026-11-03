@@ -70,7 +70,10 @@ class _ExamDevScreenState extends ConsumerState<ExamDevScreen> {
   @override
   Widget build(BuildContext context) {
     if (!examDevEnabled)
-      return const Scaffold(body: Center(child: Text('Page unavailable')));
+      return const FiloMotionScope(
+        enabled: false,
+        child: Scaffold(body: Center(child: Text('Page unavailable'))),
+      );
     ref.watch(examLifecycleProvider);
     ref.watch(examUpdatesProvider);
     final repositoryState = ref.watch(studentExamRepositoryProvider);
@@ -94,160 +97,167 @@ class _ExamDevScreenState extends ConsumerState<ExamDevScreen> {
       for (final saved in answers.asData?.value ?? [])
         saved.answer.questionId: saved.answer,
     };
-    return Scaffold(
-      appBar: AppBar(title: const Text('DEV exam data')),
-      body: SafeArea(
-        child: ListView(
-          padding: const EdgeInsets.all(24),
-          children: [
-            const Text(
-              'Development harness — starts a real DEV attempt. Production exam screens are separate.',
-            ),
-            if (repositoryState.isLoading) const LinearProgressIndicator(),
-            if (repositoryState.hasError)
+    return FiloMotionScope(
+      enabled: false,
+      child: Scaffold(
+        appBar: AppBar(title: const Text('DEV exam data')),
+        body: SafeArea(
+          child: ListView(
+            padding: const EdgeInsets.all(24),
+            children: [
               const Text(
-                'Could not open exam storage. Reopen this screen to retry.',
+                'Development harness — starts a real DEV attempt. Production exam screens are separate.',
               ),
-            if (repositoryState.asData != null && repository == null)
-              const Text('A verified student account is required.'),
-            if (_message != null) Text(_message!, semanticsLabel: _message),
-            if (repository?.error != null) Text(repository!.error!.message),
-            if (repository?.completion != null) Text(repository!.completion!),
-            const SizedBox(height: 16),
-            FiloButton(
-              label: 'Reload / detect attempt',
-              onPressed: _busy ? null : () => _perform((r) => r.recover()),
-            ),
-            if (attempt == null) ...[
-              const SizedBox(height: 16),
-              TextField(
-                controller: _quizId,
-                decoration: const InputDecoration(labelText: 'DEV quiz UUID'),
-              ),
-              const SizedBox(height: 12),
-              FiloButton(
-                label: 'Start / load quiz',
-                onPressed: _busy
-                    ? null
-                    : () => _perform((r) => r.start(_quizId.text.trim())),
-              ),
-              const SizedBox(height: 16),
-              ref
-                  .watch(studentQuizzesProvider)
-                  .when(
-                    loading: () =>
-                        const Center(child: CircularProgressIndicator()),
-                    error: (_, _) => FiloButton(
-                      label: 'Retry quiz list',
-                      onPressed: () => ref.invalidate(studentQuizzesProvider),
-                    ),
-                    data: (quizzes) => Column(
-                      children: [
-                        if (quizzes.isEmpty)
-                          const Text('No published quizzes in active classes.'),
-                        for (final quiz in quizzes)
-                          ListTile(
-                            title: Text(quiz.title),
-                            subtitle: Text(
-                              quiz.session?.status ?? 'No attempt',
-                            ),
-                            onTap: _busy
-                                ? null
-                                : () => _perform((r) => r.start(quiz.id)),
-                          ),
-                      ],
-                    ),
-                  ),
-            ] else ...[
-              const SizedBox(height: 16),
-              Text(
-                repository!.clock.verified
-                    ? 'Time left: ${remaining.inMinutes}:${(remaining.inSeconds % 60).toString().padLeft(2, '0')}'
-                    : 'Time left: awaiting verification',
-              ),
-              if (!repository!.clock.verified)
+              if (repositoryState.isLoading)
+                const FiloLinearProgressIndicator(),
+              if (repositoryState.hasError)
                 const Text(
-                  'Reconnect to verify your remaining time before continuing.',
+                  'Could not open exam storage. Reopen this screen to retry.',
                 ),
-              Text(ref.watch(examSavingStateProvider)),
-              if (repository.clock.expired)
-                Text(repository.clock.timeoutMessage),
-              if (answers.isLoading && !answers.hasValue)
-                const LinearProgressIndicator(),
-              for (final question in attempt.questions) ...[
-                const SizedBox(height: 24),
-                Text(question.prompt),
-                const SizedBox(height: 8),
-                if (question.type == 'multiple_choice')
-                  for (final option in question.options)
-                    CheckboxListTile(
-                      title: Text(option['text'] as String),
-                      value: byQuestion[question.id]?.optionId == option['id'],
-                      onChanged: !editable
-                          ? null
-                          : (_) => unawaited(
-                              _answer(
-                                ExamAnswer(
-                                  questionId: question.id,
-                                  optionId: option['id'] as String,
-                                ),
-                              ),
-                            ),
-                    ),
-                if (question.type == 'true_false')
-                  for (final value in [true, false])
-                    CheckboxListTile(
-                      title: Text(value ? 'True' : 'False'),
-                      value: byQuestion[question.id]?.boolean == value,
-                      onChanged: !editable
-                          ? null
-                          : (_) => unawaited(
-                              _answer(
-                                ExamAnswer(
-                                  questionId: question.id,
-                                  boolean: value,
-                                ),
-                              ),
-                            ),
-                    ),
-                if (question.type == 'identification' ||
-                    question.type == 'essay')
-                  if (answers.asData != null)
-                    TextField(
-                      controller: _text.putIfAbsent(
-                        question.id,
-                        () => TextEditingController(
-                          text: byQuestion[question.id]?.text ?? '',
-                        ),
-                      ),
-                      enabled: editable,
-                      maxLines: question.type == 'essay' ? 5 : 1,
-                      decoration: const InputDecoration(labelText: 'Answer'),
-                      onChanged: (value) => unawaited(
-                        _answer(
-                          ExamAnswer(questionId: question.id, text: value),
-                        ),
-                      ),
-                    ),
-              ],
-              const SizedBox(height: 24),
+              if (repositoryState.asData != null && repository == null)
+                const Text('A verified student account is required.'),
+              if (_message != null) Text(_message!, semanticsLabel: _message),
+              if (repository?.error != null) Text(repository!.error!.message),
+              if (repository?.completion != null) Text(repository!.completion!),
+              const SizedBox(height: 16),
               FiloButton(
-                label: 'Submit',
-                onPressed: _busy || !repository.clock.verified
-                    ? null
-                    : () async {
-                        final confirmed = await showFiloConfirmation(
-                          context,
-                          title: 'Submit your answers?',
-                          message: "You can't change them afterward.",
-                          confirmLabel: 'Submit',
-                        );
-                        if (confirmed == true && mounted)
-                          await _perform((r) => r.submit());
-                      },
+                label: 'Reload / detect attempt',
+                onPressed: _busy ? null : () => _perform((r) => r.recover()),
               ),
+              if (attempt == null) ...[
+                const SizedBox(height: 16),
+                TextField(
+                  controller: _quizId,
+                  decoration: const InputDecoration(labelText: 'DEV quiz UUID'),
+                ),
+                const SizedBox(height: 12),
+                FiloButton(
+                  label: 'Start / load quiz',
+                  onPressed: _busy
+                      ? null
+                      : () => _perform((r) => r.start(_quizId.text.trim())),
+                ),
+                const SizedBox(height: 16),
+                ref
+                    .watch(studentQuizzesProvider)
+                    .when(
+                      loading: () =>
+                          const Center(child: FiloCircularProgressIndicator()),
+                      error: (_, _) => FiloButton(
+                        label: 'Retry quiz list',
+                        onPressed: () => ref.invalidate(studentQuizzesProvider),
+                      ),
+                      data: (quizzes) => Column(
+                        children: [
+                          if (quizzes.isEmpty)
+                            const Text(
+                              'No published quizzes in active classes.',
+                            ),
+                          for (final quiz in quizzes)
+                            ListTile(
+                              title: Text(quiz.title),
+                              subtitle: Text(
+                                quiz.session?.status ?? 'No attempt',
+                              ),
+                              onTap: _busy
+                                  ? null
+                                  : () => _perform((r) => r.start(quiz.id)),
+                            ),
+                        ],
+                      ),
+                    ),
+              ] else ...[
+                const SizedBox(height: 16),
+                Text(
+                  repository!.clock.verified
+                      ? 'Time left: ${remaining.inMinutes}:${(remaining.inSeconds % 60).toString().padLeft(2, '0')}'
+                      : 'Time left: awaiting verification',
+                ),
+                if (!repository!.clock.verified)
+                  const Text(
+                    'Reconnect to verify your remaining time before continuing.',
+                  ),
+                Text(ref.watch(examSavingStateProvider)),
+                if (repository.clock.expired)
+                  Text(repository.clock.timeoutMessage),
+                if (answers.isLoading && !answers.hasValue)
+                  const FiloLinearProgressIndicator(),
+                for (final question in attempt.questions) ...[
+                  const SizedBox(height: 24),
+                  Text(question.prompt),
+                  const SizedBox(height: 8),
+                  if (question.type == 'multiple_choice')
+                    for (final option in question.options)
+                      CheckboxListTile(
+                        title: Text(option['text'] as String),
+                        value:
+                            byQuestion[question.id]?.optionId == option['id'],
+                        onChanged: !editable
+                            ? null
+                            : (_) => unawaited(
+                                _answer(
+                                  ExamAnswer(
+                                    questionId: question.id,
+                                    optionId: option['id'] as String,
+                                  ),
+                                ),
+                              ),
+                      ),
+                  if (question.type == 'true_false')
+                    for (final value in [true, false])
+                      CheckboxListTile(
+                        title: Text(value ? 'True' : 'False'),
+                        value: byQuestion[question.id]?.boolean == value,
+                        onChanged: !editable
+                            ? null
+                            : (_) => unawaited(
+                                _answer(
+                                  ExamAnswer(
+                                    questionId: question.id,
+                                    boolean: value,
+                                  ),
+                                ),
+                              ),
+                      ),
+                  if (question.type == 'identification' ||
+                      question.type == 'essay')
+                    if (answers.asData != null)
+                      TextField(
+                        controller: _text.putIfAbsent(
+                          question.id,
+                          () => TextEditingController(
+                            text: byQuestion[question.id]?.text ?? '',
+                          ),
+                        ),
+                        enabled: editable,
+                        maxLines: question.type == 'essay' ? 5 : 1,
+                        decoration: const InputDecoration(labelText: 'Answer'),
+                        onChanged: (value) => unawaited(
+                          _answer(
+                            ExamAnswer(questionId: question.id, text: value),
+                          ),
+                        ),
+                      ),
+                ],
+                const SizedBox(height: 24),
+                FiloButton(
+                  label: 'Submit',
+                  onPressed: _busy || !repository.clock.verified
+                      ? null
+                      : () async {
+                          final confirmed = await showFiloConfirmation(
+                            context,
+                            title: 'Submit your answers?',
+                            message: "You can't change them afterward.",
+                            confirmLabel: 'Submit',
+                          );
+                          if (confirmed == true && mounted)
+                            await _perform((r) => r.submit());
+                        },
+                ),
+              ],
             ],
-          ],
+          ),
         ),
       ),
     );

@@ -297,7 +297,7 @@ class _ChatBodyState extends ConsumerState<_ChatBody> {
                   Expanded(
                     child: _session.loading
                         ? const Center(
-                            child: CircularProgressIndicator(
+                            child: FiloCircularProgressIndicator(
                               semanticsLabel: 'Opening saved chat',
                             ),
                           )
@@ -347,7 +347,7 @@ class _ChatBodyState extends ConsumerState<_ChatBody> {
                                         child: SizedBox(
                                           width: 20,
                                           height: 20,
-                                          child: CircularProgressIndicator(
+                                          child: FiloCircularProgressIndicator(
                                             strokeWidth: 2,
                                           ),
                                         ),

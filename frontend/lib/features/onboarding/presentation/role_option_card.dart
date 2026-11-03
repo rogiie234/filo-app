@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../../../core/widgets/filo_icon.dart';
+import '../../../core/widgets/filo_motion_widgets.dart';
 import '../../../core/theme/animation_constants.dart';
 import '../../../core/theme/app_theme.dart';
 import '../data/profile_repository.dart';
@@ -27,28 +28,20 @@ class _RoleOptionCardState extends State<RoleOptionCard> {
     final role = widget.role;
     final selected = widget.selected;
     final onPressed = widget.onPressed;
-    final duration = MediaQuery.disableAnimationsOf(context)
-        ? Duration.zero
-        : FiloAnimation.pressDuration;
     final description = role == AccountRole.student
         ? 'Join classes, submit work, and view your grades.'
         : 'Create classes, post activities, and manage assessments.';
-    return AnimatedScale(
-      scale: _pressed ? FiloAnimation.roleCardPressScale : 1,
-      duration: duration,
-      curve: FiloAnimation.uiCurve,
+    return FiloMotionTween(
+      value: _pressed ? .98 : 1,
+      duration: FiloAnimation.cardDuration,
+      builder: (_, value, child) => Transform.scale(scale: value, child: child),
       child: DecoratedBox(
         decoration: BoxDecoration(
           color: selected ? FiloColors.primary : FiloColors.border,
           borderRadius: BorderRadius.circular(24),
         ),
-        child: AnimatedPadding(
-          duration: duration,
-          curve: FiloAnimation.uiCurve,
-          padding: EdgeInsets.only(
-            top: _pressed ? 2 : 0,
-            bottom: _pressed ? 1 : FiloAnimation.roleCardEdge,
-          ),
+        child: Padding(
+          padding: const EdgeInsets.only(bottom: FiloAnimation.roleCardEdge),
           child: Semantics(
             label: '${role.label}. $description',
             checked: selected,
@@ -62,11 +55,7 @@ class _RoleOptionCardState extends State<RoleOptionCard> {
                 },
                 borderRadius: BorderRadius.circular(24),
                 child: ExcludeSemantics(
-                  child: AnimatedContainer(
-                    duration: MediaQuery.disableAnimationsOf(context)
-                        ? Duration.zero
-                        : FiloAnimation.pressDuration,
-                    curve: FiloAnimation.uiCurve,
+                  child: Container(
                     padding: const EdgeInsets.all(18),
                     decoration: BoxDecoration(
                       color: selected

@@ -120,7 +120,7 @@ class _InstructorResultsScreenState
   }
 
   void _open(ResultSession session) => Navigator.of(context).push(
-    MaterialPageRoute<void>(
+    FiloInstantRoute<void>(
       builder: (_) =>
           AttemptDetailScreen(quizId: widget.quizId, sessionId: session.id),
     ),
@@ -141,175 +141,182 @@ class _InstructorResultsScreenState
             filter: _filter,
             sort: _sort,
           );
-    return Scaffold(
-      appBar: AppBar(
-        title: Text('${data?.quiz['title'] ?? 'Quiz results'}'),
-        actions: [
-          PopupMenuButton<String>(
-            tooltip: 'Results options',
-            onSelected: (_) {
-              if (data != null) unawaited(_export(data, rows));
-            },
-            itemBuilder: (_) => [
-              PopupMenuItem(
-                value: 'csv',
-                height: 48,
-                enabled: data != null && rows.isNotEmpty && !_exporting,
-                child: Text(_exporting ? 'Exporting...' : 'Export CSV'),
-              ),
+    return FiloMotionScope(
+      enabled: false,
+      child: Scaffold(
+        appBar: AppBar(
+          title: Text('${data?.quiz['title'] ?? 'Quiz results'}'),
+          actions: [
+            PopupMenuButton<String>(
+              tooltip: 'Results options',
+              onSelected: (_) {
+                if (data != null) unawaited(_export(data, rows));
+              },
+              itemBuilder: (_) => [
+                PopupMenuItem(
+                  value: 'csv',
+                  height: 48,
+                  enabled: data != null && rows.isNotEmpty && !_exporting,
+                  child: Text(_exporting ? 'Exporting...' : 'Export CSV'),
+                ),
+              ],
+            ),
+          ],
+        ),
+        body: SafeArea(
+          child: ResultsListBody(
+            onRefresh: _refresh,
+            loading:
+                async.isLoading || state?.refreshing == true && data == null,
+            offline: !online,
+            error:
+                state?.error ??
+                (async.hasError ? "Couldn't load results. Try again." : null),
+            children: [
+              if (data != null) ...[
+                Text(releasedLine(data.quiz)),
+                const SizedBox(height: 20),
+                Wrap(
+                  spacing: 12,
+                  runSpacing: 12,
+                  children: [
+                    ResultSummaryTile(
+                      'Submitted',
+                      '${data.submittedCount} of ${data.members.length}',
+                    ),
+                    ResultSummaryTile('In progress', '${data.inProgressCount}'),
+                    ResultSummaryTile(
+                      'Not started',
+                      '${data.notStarted.length}',
+                    ),
+                    ResultSummaryTile(
+                      'Average score',
+                      data.average.points == null
+                          ? '—'
+                          : '${data.average.points!.toStringAsFixed(1).replaceFirst(RegExp(r'\.0$'), '')} points',
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 12),
+                if (data.average.points == null)
+                  Text(
+                    data.submittedCount == 0
+                        ? 'No submitted scores yet.'
+                        : 'Refresh to load submitted scores.',
+                  ),
+                if (data.average.provisional)
+                  const Text(
+                    'Average includes scores with essay answers not graded yet.',
+                  ),
+                Text(
+                  data.pendingEssays == null
+                      ? 'Refresh to load the essay count.'
+                      : '${data.pendingEssays} ${data.pendingEssays == 1 ? 'essay' : 'essays'} to grade',
+                ),
+                if ((data.quiz['class'] as Map?)?['archived_at'] != null)
+                  const Text('This class is archived.'),
+                if (data.quiz['results_released_at'] == null) ...[
+                  const SizedBox(height: 16),
+                  FiloButton(
+                    label: _busy ? 'Please wait...' : 'Release results',
+                    onPressed:
+                        readOnly || blocked != null || state?.refreshing == true
+                        ? null
+                        : _release,
+                  ),
+                  if (!online)
+                    const Text('Connect to the internet to release results.')
+                  else if (blocked != null)
+                    Text(blocked),
+                ],
+                const SizedBox(height: 24),
+                TextField(
+                  decoration: const InputDecoration(
+                    labelText: 'Search students',
+                    prefixIcon: Icon(Icons.search),
+                  ),
+                  onChanged: (value) => setState(() => _search = value),
+                ),
+                const SizedBox(height: 12),
+                Wrap(
+                  spacing: 8,
+                  runSpacing: 4,
+                  children: [
+                    for (final label in [
+                      'All',
+                      'To grade',
+                      'In progress',
+                      'Not started',
+                      'Submitted',
+                    ])
+                      FiloAnimatedChip.filter(
+                        label: Text(label),
+                        selected: _filter == label,
+                        onSelected: (_) => setState(() => _filter = label),
+                      ),
+                  ],
+                ),
+                const SizedBox(height: 12),
+                DropdownButtonFormField<String>(
+                  initialValue: _sort,
+                  decoration: const InputDecoration(labelText: 'Sort'),
+                  items: [
+                    for (final label in ['Name', 'Score', 'Most leaves first'])
+                      DropdownMenuItem(value: label, child: Text(label)),
+                  ],
+                  onChanged: (value) => setState(() => _sort = value ?? 'Name'),
+                ),
+                const SizedBox(height: 16),
+                if (rows.isEmpty)
+                  Text(
+                    data.members.isEmpty
+                        ? 'No active students in this class.'
+                        : 'No students match your search or filter.',
+                  ),
+                for (final member in rows)
+                  Builder(
+                    builder: (_) {
+                      final id = member['student_id'] as String;
+                      final attempt = data.attemptFor(id);
+                      final old =
+                          data.history.where((s) => s.studentId == id).toList()
+                            ..sort((a, b) => b.attempt.compareTo(a.attempt));
+                      final name =
+                          ((member['profile'] as Map?)?['display_name'] ?? id)
+                              .toString();
+                      return ResultStudentRow(
+                        name: name,
+                        status: quizResultStatus(
+                          attempt,
+                          hasEssay: data.quiz['has_essay'] == true,
+                        ).label,
+                        score: attempt?.submitted == true
+                            ? '${attempt?.score ?? '—'}/${data.quiz['total_points']}'
+                            : '—',
+                        leaves: attempt?.leaves,
+                        unreleased:
+                            data.quiz['results_released_at'] == null &&
+                            attempt?.submitted == true,
+                        provisional:
+                            attempt?.submitted == true &&
+                            attempt?.gradingComplete != true,
+                        history: data.hasHistory(id),
+                        onTap: attempt != null
+                            ? () => _open(attempt)
+                            : old.isNotEmpty
+                            ? () => _open(old.first)
+                            : null,
+                        actionsEnabled: !readOnly,
+                        onSecondChance: () =>
+                            openSecondChance(context, widget.quizId, id),
+                      );
+                    },
+                  ),
+                const SizedBox(height: 16),
+                const Text(resultsLeaveNote),
+              ],
             ],
           ),
-        ],
-      ),
-      body: SafeArea(
-        child: ResultsListBody(
-          onRefresh: _refresh,
-          loading: async.isLoading || state?.refreshing == true && data == null,
-          offline: !online,
-          error:
-              state?.error ??
-              (async.hasError ? "Couldn't load results. Try again." : null),
-          children: [
-            if (data != null) ...[
-              Text(releasedLine(data.quiz)),
-              const SizedBox(height: 20),
-              Wrap(
-                spacing: 12,
-                runSpacing: 12,
-                children: [
-                  ResultSummaryTile(
-                    'Submitted',
-                    '${data.submittedCount} of ${data.members.length}',
-                  ),
-                  ResultSummaryTile('In progress', '${data.inProgressCount}'),
-                  ResultSummaryTile('Not started', '${data.notStarted.length}'),
-                  ResultSummaryTile(
-                    'Average score',
-                    data.average.points == null
-                        ? '—'
-                        : '${data.average.points!.toStringAsFixed(1).replaceFirst(RegExp(r'\.0$'), '')} points',
-                  ),
-                ],
-              ),
-              const SizedBox(height: 12),
-              if (data.average.points == null)
-                Text(
-                  data.submittedCount == 0
-                      ? 'No submitted scores yet.'
-                      : 'Refresh to load submitted scores.',
-                ),
-              if (data.average.provisional)
-                const Text(
-                  'Average includes scores with essay answers not graded yet.',
-                ),
-              Text(
-                data.pendingEssays == null
-                    ? 'Refresh to load the essay count.'
-                    : '${data.pendingEssays} ${data.pendingEssays == 1 ? 'essay' : 'essays'} to grade',
-              ),
-              if ((data.quiz['class'] as Map?)?['archived_at'] != null)
-                const Text('This class is archived.'),
-              if (data.quiz['results_released_at'] == null) ...[
-                const SizedBox(height: 16),
-                FiloButton(
-                  label: _busy ? 'Please wait...' : 'Release results',
-                  onPressed:
-                      readOnly || blocked != null || state?.refreshing == true
-                      ? null
-                      : _release,
-                ),
-                if (!online)
-                  const Text('Connect to the internet to release results.')
-                else if (blocked != null)
-                  Text(blocked),
-              ],
-              const SizedBox(height: 24),
-              TextField(
-                decoration: const InputDecoration(
-                  labelText: 'Search students',
-                  prefixIcon: Icon(Icons.search),
-                ),
-                onChanged: (value) => setState(() => _search = value),
-              ),
-              const SizedBox(height: 12),
-              Wrap(
-                spacing: 8,
-                runSpacing: 4,
-                children: [
-                  for (final label in [
-                    'All',
-                    'To grade',
-                    'In progress',
-                    'Not started',
-                    'Submitted',
-                  ])
-                    FilterChip(
-                      label: Text(label),
-                      selected: _filter == label,
-                      onSelected: (_) => setState(() => _filter = label),
-                    ),
-                ],
-              ),
-              const SizedBox(height: 12),
-              DropdownButtonFormField<String>(
-                initialValue: _sort,
-                decoration: const InputDecoration(labelText: 'Sort'),
-                items: [
-                  for (final label in ['Name', 'Score', 'Most leaves first'])
-                    DropdownMenuItem(value: label, child: Text(label)),
-                ],
-                onChanged: (value) => setState(() => _sort = value ?? 'Name'),
-              ),
-              const SizedBox(height: 16),
-              if (rows.isEmpty)
-                Text(
-                  data.members.isEmpty
-                      ? 'No active students in this class.'
-                      : 'No students match your search or filter.',
-                ),
-              for (final member in rows)
-                Builder(
-                  builder: (_) {
-                    final id = member['student_id'] as String;
-                    final attempt = data.attemptFor(id);
-                    final old =
-                        data.history.where((s) => s.studentId == id).toList()
-                          ..sort((a, b) => b.attempt.compareTo(a.attempt));
-                    final name =
-                        ((member['profile'] as Map?)?['display_name'] ?? id)
-                            .toString();
-                    return ResultStudentRow(
-                      name: name,
-                      status: quizResultStatus(
-                        attempt,
-                        hasEssay: data.quiz['has_essay'] == true,
-                      ).label,
-                      score: attempt?.submitted == true
-                          ? '${attempt?.score ?? '—'}/${data.quiz['total_points']}'
-                          : '—',
-                      leaves: attempt?.leaves,
-                      unreleased:
-                          data.quiz['results_released_at'] == null &&
-                          attempt?.submitted == true,
-                      provisional:
-                          attempt?.submitted == true &&
-                          attempt?.gradingComplete != true,
-                      history: data.hasHistory(id),
-                      onTap: attempt != null
-                          ? () => _open(attempt)
-                          : old.isNotEmpty
-                          ? () => _open(old.first)
-                          : null,
-                      actionsEnabled: !readOnly,
-                      onSecondChance: () =>
-                          openSecondChance(context, widget.quizId, id),
-                    );
-                  },
-                ),
-              const SizedBox(height: 16),
-              const Text(resultsLeaveNote),
-            ],
-          ],
         ),
       ),
     );

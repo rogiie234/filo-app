@@ -1,3 +1,5 @@
+import '../../../core/widgets/filo_motion_widgets.dart';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
@@ -35,7 +37,7 @@ class DeletionRecoveryGate extends ConsumerWidget {
                           ),
                         ],
                       )
-                    : const CircularProgressIndicator(),
+                    : const FiloCircularProgressIndicator(),
               ),
             ),
           ),

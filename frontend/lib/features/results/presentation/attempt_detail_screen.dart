@@ -159,7 +159,8 @@ class _AttemptDetailScreenState extends ConsumerState<AttemptDetailScreen> {
   Future<bool> _leave() async {
     if (_busy) return false;
     if (!_dirty) return true;
-    final choice = await showDialog<String>(
+    final choice = await showFiloDialog<String>(
+      animationStyle: AnimationStyle.noAnimation,
       context: context,
       builder: (dialog) => AlertDialog(
         title: const Text('Save changes before leaving?'),
@@ -211,7 +212,8 @@ class _AttemptDetailScreenState extends ConsumerState<AttemptDetailScreen> {
       text: (question['answer'] as Map?)?['feedback'] as String? ?? '',
     );
     final form = GlobalKey<FormState>();
-    final value = await showDialog<(int, String)>(
+    final value = await showFiloDialog<(int, String)>(
+      animationStyle: AnimationStyle.noAnimation,
       context: context,
       builder: (dialog) => AlertDialog(
         title: const Text('Change points?'),
@@ -332,200 +334,207 @@ class _AttemptDetailScreenState extends ConsumerState<AttemptDetailScreen> {
           Navigator.of(context).pop();
         }
       },
-      child: Scaffold(
-        appBar: AppBar(
-          title: Text(detail?.session.studentName ?? 'Attempt detail'),
-        ),
-        body: SafeArea(
-          child: ResultsListBody(
-            onRefresh: _refresh,
-            offline: !online,
-            loading: async.isLoading,
-            error:
-                _error ??
-                state?.error ??
-                (async.hasError ? "Couldn't load results. Try again." : null),
-            children: [
-              if (detail != null) ...[
-                Wrap(
-                  spacing: 8,
-                  runSpacing: 8,
-                  children: [
-                    ResultStatusChip(
-                      detail.readOnly
-                          ? 'Previous attempt'
-                          : quizResultStatus(
-                              detail.session,
-                              hasEssay: detail.quiz['has_essay'] == true,
-                            ).label,
-                    ),
-                    Text('Attempt ${detail.session.attempt}'),
-                    Text('Leave-app count: ${detail.session.leaves}'),
-                  ],
-                ),
-                const SizedBox(height: 12),
-                Text(
-                  '${detail.session.score ?? '—'}/${detail.quiz['total_points']} points',
-                  style: Theme.of(context).textTheme.headlineMedium,
-                ),
-                Text(
-                  detail.session.json['submitted_at'] == null
-                      ? 'Not submitted'
-                      : 'Submitted ${philippineQuizDate(DateTime.parse(detail.session.json['submitted_at'] as String))}',
-                ),
-                if (detail.readOnly)
-                  for (final chance in monitor?.secondChances ?? <ResultJson>[])
-                    if (chance['previous_session_id'] == detail.session.id) ...[
-                      Text('Reason: ${chance['reason']}'),
-                      if (chance['proof_note'] != null)
-                        Text('Proof note: ${chance['proof_note']}'),
-                    ],
-                Text(
-                  '${detail.pendingEssays} ${detail.pendingEssays == 1 ? 'essay' : 'essays'} to grade',
-                ),
-                if (detail.quiz['results_released_at'] != null)
-                  const Padding(
-                    padding: EdgeInsets.symmetric(vertical: 12),
-                    child: Text(
-                      'The student will see the updated score at the next sync.',
-                    ),
-                  ),
-                if ((detail.quiz['class'] as Map?)?['archived_at'] != null)
-                  const Text('This class is archived.'),
-                if (!online)
-                  const Text('Connect to the internet to save grades.'),
-                if (!detail.readOnly)
-                  TextButton(
-                    onPressed: readOnly
-                        ? null
-                        : () async {
-                            if (await _leave() && context.mounted)
-                              await openSecondChance(
-                                context,
-                                widget.quizId,
-                                detail.session.studentId,
-                              );
-                          },
-                    child: const Text('Grant second chance'),
-                  ),
-                Row(
-                  children: [
-                    TextButton(
-                      onPressed: !_busy && index > 0
-                          ? () => _move(submitted[index - 1].id)
-                          : null,
-                      child: const Text('Previous'),
-                    ),
-                    Expanded(
-                      child: Text(
-                        index < 0
+      child: FiloMotionScope(
+        enabled: false,
+        child: Scaffold(
+          appBar: AppBar(
+            title: Text(detail?.session.studentName ?? 'Attempt detail'),
+          ),
+          body: SafeArea(
+            child: ResultsListBody(
+              onRefresh: _refresh,
+              offline: !online,
+              loading: async.isLoading,
+              error:
+                  _error ??
+                  state?.error ??
+                  (async.hasError ? "Couldn't load results. Try again." : null),
+              children: [
+                if (detail != null) ...[
+                  Wrap(
+                    spacing: 8,
+                    runSpacing: 8,
+                    children: [
+                      ResultStatusChip(
+                        detail.readOnly
                             ? 'Previous attempt'
-                            : '${index + 1} of ${submitted.length}',
-                        textAlign: TextAlign.center,
+                            : quizResultStatus(
+                                detail.session,
+                                hasEssay: detail.quiz['has_essay'] == true,
+                              ).label,
+                      ),
+                      Text('Attempt ${detail.session.attempt}'),
+                      Text('Leave-app count: ${detail.session.leaves}'),
+                    ],
+                  ),
+                  const SizedBox(height: 12),
+                  Text(
+                    '${detail.session.score ?? '—'}/${detail.quiz['total_points']} points',
+                    style: Theme.of(context).textTheme.headlineMedium,
+                  ),
+                  Text(
+                    detail.session.json['submitted_at'] == null
+                        ? 'Not submitted'
+                        : 'Submitted ${philippineQuizDate(DateTime.parse(detail.session.json['submitted_at'] as String))}',
+                  ),
+                  if (detail.readOnly)
+                    for (final chance
+                        in monitor?.secondChances ?? <ResultJson>[])
+                      if (chance['previous_session_id'] ==
+                          detail.session.id) ...[
+                        Text('Reason: ${chance['reason']}'),
+                        if (chance['proof_note'] != null)
+                          Text('Proof note: ${chance['proof_note']}'),
+                      ],
+                  Text(
+                    '${detail.pendingEssays} ${detail.pendingEssays == 1 ? 'essay' : 'essays'} to grade',
+                  ),
+                  if (detail.quiz['results_released_at'] != null)
+                    const Padding(
+                      padding: EdgeInsets.symmetric(vertical: 12),
+                      child: Text(
+                        'The student will see the updated score at the next sync.',
                       ),
                     ),
+                  if ((detail.quiz['class'] as Map?)?['archived_at'] != null)
+                    const Text('This class is archived.'),
+                  if (!online)
+                    const Text('Connect to the internet to save grades.'),
+                  if (!detail.readOnly)
                     TextButton(
-                      onPressed:
-                          !_busy && index >= 0 && index + 1 < submitted.length
-                          ? () => _move(submitted[index + 1].id)
-                          : null,
-                      child: const Text('Next'),
+                      onPressed: readOnly
+                          ? null
+                          : () async {
+                              if (await _leave() && context.mounted)
+                                await openSecondChance(
+                                  context,
+                                  widget.quizId,
+                                  detail.session.studentId,
+                                );
+                            },
+                      child: const Text('Grant second chance'),
                     ),
-                  ],
-                ),
-                for (final entry in questions.indexed)
-                  Builder(
-                    builder: (_) {
-                      final q = entry.$2;
-                      final answer = q['answer'] as Map?;
-                      final canGrade =
-                          q['type'] == 'essay' &&
-                          !blankEssay(answer?['text_answer']) &&
-                          detail.session.submitted &&
-                          !detail.readOnly;
-                      final edit = canGrade
-                          ? _edits.putIfAbsent(
-                              q['id'] as String,
-                              () => _EssayEdit(answer),
-                            )
-                          : null;
-                      if (edit != null && !edit.dirty) {
-                        edit.points.text =
-                            answer?['points_awarded']?.toString() ?? '';
-                        edit.feedback.text =
-                            answer?['feedback'] as String? ?? '';
-                        edit.accept();
-                      }
-                      return ResultQuestionCard(
-                        answerLabel: 'Student answer',
-                        question: instructorReview(q),
-                        number: entry.$1 + 1,
-                        editor: Column(
-                          crossAxisAlignment: CrossAxisAlignment.stretch,
-                          children: [
-                            if (overriddenMark(answer))
-                              const Text(
-                                'Edited',
-                                style: TextStyle(fontWeight: FontWeight.w700),
-                              ),
-                            if (edit != null) ...[
-                              TextField(
-                                controller: edit.points,
-                                enabled: !readOnly,
-                                keyboardType: TextInputType.number,
-                                onChanged: (_) => setState(() {}),
-                                decoration: InputDecoration(
-                                  labelText: 'Points',
-                                  helperText: '0 to ${q['points']}',
-                                ),
-                              ),
-                              const SizedBox(height: 12),
-                              TextField(
-                                controller: edit.feedback,
-                                enabled: !readOnly,
-                                maxLength: 2000,
-                                minLines: 2,
-                                maxLines: 4,
-                                onChanged: (_) => setState(() {}),
-                                decoration: const InputDecoration(
-                                  labelText: 'Feedback',
-                                ),
-                              ),
-                              FiloButton(
-                                label: 'Save',
-                                onPressed: readOnly || !edit.dirty
-                                    ? null
-                                    : () => _save(q['id'] as String),
-                              ),
-                            ],
-                            if (!detail.readOnly && detail.session.submitted)
-                              TextButton(
-                                onPressed: readOnly ? null : () => _override(q),
-                                child: const Text('Change points'),
-                              ),
-                          ],
-                        ),
-                      );
-                    },
-                  ),
-                if (monitor != null)
-                  ExpansionTile(
-                    title: const Text('Earlier attempts'),
+                  Row(
                     children: [
-                      for (final old in monitor.history.where(
-                        (s) =>
-                            s.studentId == detail.session.studentId &&
-                            s.id != _session,
-                      ))
-                        AttemptHistory(
-                          quizId: widget.quizId,
-                          session: old,
-                          chances: monitor.secondChances,
+                      TextButton(
+                        onPressed: !_busy && index > 0
+                            ? () => _move(submitted[index - 1].id)
+                            : null,
+                        child: const Text('Previous'),
+                      ),
+                      Expanded(
+                        child: Text(
+                          index < 0
+                              ? 'Previous attempt'
+                              : '${index + 1} of ${submitted.length}',
+                          textAlign: TextAlign.center,
                         ),
+                      ),
+                      TextButton(
+                        onPressed:
+                            !_busy && index >= 0 && index + 1 < submitted.length
+                            ? () => _move(submitted[index + 1].id)
+                            : null,
+                        child: const Text('Next'),
+                      ),
                     ],
                   ),
+                  for (final entry in questions.indexed)
+                    Builder(
+                      builder: (_) {
+                        final q = entry.$2;
+                        final answer = q['answer'] as Map?;
+                        final canGrade =
+                            q['type'] == 'essay' &&
+                            !blankEssay(answer?['text_answer']) &&
+                            detail.session.submitted &&
+                            !detail.readOnly;
+                        final edit = canGrade
+                            ? _edits.putIfAbsent(
+                                q['id'] as String,
+                                () => _EssayEdit(answer),
+                              )
+                            : null;
+                        if (edit != null && !edit.dirty) {
+                          edit.points.text =
+                              answer?['points_awarded']?.toString() ?? '';
+                          edit.feedback.text =
+                              answer?['feedback'] as String? ?? '';
+                          edit.accept();
+                        }
+                        return ResultQuestionCard(
+                          answerLabel: 'Student answer',
+                          question: instructorReview(q),
+                          number: entry.$1 + 1,
+                          editor: Column(
+                            crossAxisAlignment: CrossAxisAlignment.stretch,
+                            children: [
+                              if (overriddenMark(answer))
+                                const Text(
+                                  'Edited',
+                                  style: TextStyle(fontWeight: FontWeight.w700),
+                                ),
+                              if (edit != null) ...[
+                                TextField(
+                                  controller: edit.points,
+                                  enabled: !readOnly,
+                                  keyboardType: TextInputType.number,
+                                  onChanged: (_) => setState(() {}),
+                                  decoration: InputDecoration(
+                                    labelText: 'Points',
+                                    helperText: '0 to ${q['points']}',
+                                  ),
+                                ),
+                                const SizedBox(height: 12),
+                                TextField(
+                                  controller: edit.feedback,
+                                  enabled: !readOnly,
+                                  maxLength: 2000,
+                                  minLines: 2,
+                                  maxLines: 4,
+                                  onChanged: (_) => setState(() {}),
+                                  decoration: const InputDecoration(
+                                    labelText: 'Feedback',
+                                  ),
+                                ),
+                                FiloButton(
+                                  label: 'Save',
+                                  onPressed: readOnly || !edit.dirty
+                                      ? null
+                                      : () => _save(q['id'] as String),
+                                ),
+                              ],
+                              if (!detail.readOnly && detail.session.submitted)
+                                TextButton(
+                                  onPressed: readOnly
+                                      ? null
+                                      : () => _override(q),
+                                  child: const Text('Change points'),
+                                ),
+                            ],
+                          ),
+                        );
+                      },
+                    ),
+                  if (monitor != null)
+                    ExpansionTile(
+                      title: const Text('Earlier attempts'),
+                      children: [
+                        for (final old in monitor.history.where(
+                          (s) =>
+                              s.studentId == detail.session.studentId &&
+                              s.id != _session,
+                        ))
+                          AttemptHistory(
+                            quizId: widget.quizId,
+                            session: old,
+                            chances: monitor.secondChances,
+                          ),
+                      ],
+                    ),
+                ],
               ],
-            ],
+            ),
           ),
         ),
       ),

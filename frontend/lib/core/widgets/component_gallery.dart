@@ -37,6 +37,7 @@ class _ComponentGalleryState extends State<ComponentGallery> {
   bool _error = false;
   int _radio = 0;
   int _page = 0;
+  int _navigation = 0, _success = 0, _entrance = 0;
   double _progress = .4;
   String _result = 'No action taken.';
   Widget _section(String title, List<Widget> children) => Padding(
@@ -67,7 +68,7 @@ class _ComponentGalleryState extends State<ComponentGallery> {
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
               _section('Preview', [
-                SwitchListTile(
+                FiloSwitchListTile(
                   title: const Text('Reduced motion preview'),
                   value: widget.reduced,
                   onChanged: widget.onReduced,
@@ -94,7 +95,7 @@ class _ComponentGalleryState extends State<ComponentGallery> {
                   spacing: 8,
                   children: [
                     for (final scale in <double?>[null, 1, 1.3])
-                      ChoiceChip(
+                      FiloAnimatedChip(
                         label: Text(
                           scale == null
                               ? 'Device text'
@@ -264,12 +265,12 @@ class _ComponentGalleryState extends State<ComponentGallery> {
                 ),
               ]),
               _section('Selection controls', [
-                SwitchListTile(
+                FiloSwitchListTile(
                   title: const Text('Switch'),
                   value: _switch,
                   onChanged: (v) => setState(() => _switch = v),
                 ),
-                const SwitchListTile(
+                const FiloSwitchListTile(
                   title: Text('Disabled switch'),
                   value: false,
                   onChanged: null,
@@ -454,6 +455,117 @@ class _ComponentGalleryState extends State<ComponentGallery> {
                 const FiloSkeleton(height: 80),
                 const FiloSkeleton(width: 160),
               ]),
+              _section('Motion and confirmed feedback', [
+                FiloCard(
+                  onTap: () => setState(() => _result = 'Card tapped.'),
+                  child: const Text('Tap this card - 0.98 scale / 100 ms'),
+                ),
+                FiloNavigationBar(
+                  selectedIndex: _navigation,
+                  onDestinationSelected: (value) =>
+                      setState(() => _navigation = value),
+                  destinations: const [
+                    NavigationDestination(
+                      icon: FiloIcon(FiloIcons.book),
+                      selectedIcon: FiloIcon(FiloIcons.book),
+                      label: 'First',
+                    ),
+                    NavigationDestination(
+                      icon: FiloIcon(FiloIcons.folder),
+                      selectedIcon: FiloIcon(FiloIcons.folderSelected),
+                      label: 'Second',
+                    ),
+                    NavigationDestination(
+                      icon: FiloIcon(FiloIcons.sparkle),
+                      selectedIcon: FiloIcon(FiloIcons.sparkleSelected),
+                      label: 'Third',
+                    ),
+                  ],
+                ),
+                FiloButton(
+                  label: 'Preview page slide',
+                  outlined: true,
+                  onPressed: () => Navigator.of(context).push(
+                    MaterialPageRoute<void>(
+                      builder: (context) => Scaffold(
+                        appBar: AppBar(
+                          title: const Text('Page motion preview'),
+                        ),
+                        body: Padding(
+                          padding: const EdgeInsets.all(24),
+                          child: FiloButton(
+                            label: 'Go back',
+                            onPressed: () => Navigator.pop(context),
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+                FiloButton(
+                  label: 'Replay confirmed success example',
+                  outlined: true,
+                  onPressed: () {
+                    setState(() => _success++);
+                    FiloHaptics.confirmed(context);
+                  },
+                ),
+                if (_success > 0)
+                  Center(child: FiloSuccessMoment(key: ValueKey(_success))),
+                const Text(
+                  'Local demonstration only; no work is submitted or graded.',
+                ),
+                FiloButton(
+                  label: 'Replay first six list items',
+                  outlined: true,
+                  onPressed: () => setState(() => _entrance++),
+                ),
+                FiloFirstListLoad(
+                  key: ValueKey(_entrance),
+                  id: 'gallery-entrance-$_entrance',
+                  ready: true,
+                  child: Column(
+                    children: [
+                      for (var i = 0; i < 8; i++)
+                        FiloListItem(
+                          index: i,
+                          child: ListTile(
+                            title: Text('Entrance item ${i + 1}'),
+                          ),
+                        ),
+                    ],
+                  ),
+                ),
+                FiloMotionScope(
+                  enabled: false,
+                  child: FiloCard(
+                    onTap: () {},
+                    child: const Text(
+                      'Neutral scope - instant card feedback; no decorative motion',
+                    ),
+                  ),
+                ),
+                FiloButton(
+                  label: 'Preview neutral route',
+                  outlined: true,
+                  onPressed: () => Navigator.of(context).push(
+                    FiloInstantRoute<void>(
+                      builder: (context) => Scaffold(
+                        appBar: AppBar(
+                          title: const Text('Neutral route preview'),
+                        ),
+                        body: Padding(
+                          padding: const EdgeInsets.all(24),
+                          child: FiloButton(
+                            label: 'Go back',
+                            onPressed: () => Navigator.pop(context),
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+              ]),
               _section('Class banner presets', [
                 for (final entry in classBannerColors.entries) ...[
                   Text(
@@ -522,7 +634,7 @@ class _ComponentGalleryState extends State<ComponentGallery> {
                 FiloButton(
                   label: 'Open notice',
                   secondary: true,
-                  onPressed: () => showDialog<void>(
+                  onPressed: () => showFiloDialog<void>(
                     context: context,
                     builder: (_) => const FiloNoticeDialog(
                       title: 'Example notice',
