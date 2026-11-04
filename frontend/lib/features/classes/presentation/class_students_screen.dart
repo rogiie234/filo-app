@@ -5,6 +5,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/connectivity/connectivity_provider.dart';
 import '../../../core/widgets/filo_widgets.dart';
+import '../../../core/widgets/entry_background.dart';
 import '../application/class_providers.dart';
 import '../data/class_member_repository.dart';
 
@@ -81,24 +82,16 @@ class _ClassStudentsScreenState extends ConsumerState<ClassStudentsScreen> {
 
   Future<void> _remove(ClassStudent student, String section) async {
     if (_busy || ref.read(connectivityProvider).asData?.value != true) return;
-    final confirmed = await showFiloDialog<bool>(
-      context: context,
-      builder: (dialog) => AlertDialog(
-        title: Text('Remove ${student.name} from $section?'),
-        content: const Text(
-          'They will lose access to this class. Their submissions and grades will be kept, and downloaded files will stay on their device. To rejoin, they will need to send a new request for approval.',
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(dialog, false),
-            child: const Text('Cancel'),
-          ),
-          TextButton(
-            onPressed: () => Navigator.pop(dialog, true),
-            child: const Text('Remove student'),
-          ),
-        ],
-      ),
+    final confirmed = await showFiloConfirmation(
+      context,
+      title: 'Remove ${student.name} from $section?',
+      message: 'They will lose access to this class. Their submissions and grades will be kept, and downloaded files will stay on their device. To rejoin, they will need to send a new request for approval.',
+      confirmLabel: 'Remove student',
+      cancelLabel: 'Cancel',
+      cancelIsPrimary: true,
+      confirmDestructive: true,
+      confirmOutlined: true,
+      icon: FiloIcons.people,
     );
     if (confirmed != true ||
         !mounted ||
@@ -157,146 +150,201 @@ class _ClassStudentsScreenState extends ConsumerState<ClassStudentsScreen> {
 
     return Scaffold(
       appBar: AppBar(title: const Text('Students')),
-      body: RefreshIndicator(
-        onRefresh: _refresh,
-        child: ListView(
-          physics: const AlwaysScrollableScrollPhysics(),
-          padding: const EdgeInsets.all(FiloSpacing.screen),
-          children: [
-            if (room != null)
-              Text(room.section, style: Theme.of(context).textTheme.titleLarge),
-            if (!online)
-              const FiloPanel(
-                child: Text(
-                  "You're offline. Connect to manage students and requests.",
-                ),
-              ),
-            if (room?.archived == true)
-              const FiloPanel(
-                child: Text('This class is archived and read-only.'),
-              ),
-            if (rooms.asData != null && room == null)
-              const FiloPanel(
-                child: Text('This class is no longer available.'),
-              ),
-            if (students.isLoading || sync.isLoading || _busy)
-              const FiloLinearProgressIndicator(),
-            if (students.hasError || (online && sync.hasError))
-              FiloPanel(
-                child: Column(
-                  children: [
-                    const Text(
-                      'Could not refresh students. Showing saved information.',
+      body: Stack(
+        fit: StackFit.expand,
+        children: [
+          const Positioned.fill(
+            child: EntryBackground(verification: true, breeze: true),
+          ),
+          RefreshIndicator(
+            onRefresh: _refresh,
+            child: ListView(
+              physics: const AlwaysScrollableScrollPhysics(),
+              padding: const EdgeInsets.all(FiloSpacing.screen),
+              children: [
+                if (room != null)
+                  FiloPanel(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          room.section,
+                          style: Theme.of(context).textTheme.titleLarge,
+                        ),
+                        const SizedBox(height: FiloSpacing.s4),
+                        Text(
+                          room.course,
+                          style: Theme.of(context).textTheme.bodyMedium,
+                        ),
+                        const SizedBox(height: FiloSpacing.s12),
+                        Wrap(
+                          spacing: 12,
+                          runSpacing: 8,
+                          children: [
+                            Text('${pending.length} pending requests'),
+                            Text('${active.length} enrolled students'),
+                          ],
+                        ),
+                      ],
                     ),
-                    TextButton(
-                      onPressed: _busy
-                          ? null
-                          : () {
-                              ref.invalidate(
-                                classStudentsProvider(widget.classId),
-                              );
-                              unawaited(_refresh());
-                            },
-                      child: const Text('Retry'),
+                  ),
+                const SizedBox(height: FiloSpacing.s16),
+                if (!online)
+                  const FiloPanel(
+                    child: Text(
+                      "You're offline. Connect to manage students and requests.",
                     ),
-                  ],
+                  ),
+                if (room?.archived == true)
+                  const FiloPanel(
+                    child: Text('This class is archived and read-only.'),
+                  ),
+                if (rooms.asData != null && room == null)
+                  const FiloPanel(
+                    child: Text('This class is no longer available.'),
+                  ),
+                if (students.isLoading || sync.isLoading || _busy)
+                  const FiloLinearProgressIndicator(),
+                if (students.hasError || (online && sync.hasError))
+                  FiloPanel(
+                    child: Column(
+                      children: [
+                        const Text(
+                          'Could not refresh students. Showing saved information.',
+                        ),
+                        TextButton(
+                          onPressed: _busy
+                              ? null
+                              : () {
+                                  ref.invalidate(
+                                    classStudentsProvider(widget.classId),
+                                  );
+                                  unawaited(_refresh());
+                                },
+                          child: const Text('Retry'),
+                        ),
+                      ],
+                    ),
+                  ),
+                if (_message != null)
+                  Padding(
+                    padding: const EdgeInsets.symmetric(
+                      vertical: FiloSpacing.s12,
+                    ),
+                    child: Semantics(
+                      liveRegion: true,
+                      child: FiloPanel(child: Text(_message!)),
+                    ),
+                  ),
+                const SizedBox(height: FiloSpacing.screen),
+                Text(
+                  'Requests (${pending.length})',
+                  key: _requestsKey,
+                  style: Theme.of(context).textTheme.headlineSmall,
                 ),
-              ),
-            if (_message != null)
-              Padding(
-                padding: const EdgeInsets.symmetric(vertical: FiloSpacing.s12),
-                child: Text(_message!),
-              ),
-            const SizedBox(height: FiloSpacing.screen),
-            Text(
-              'Requests (${pending.length})',
-              key: _requestsKey,
-              style: Theme.of(context).textTheme.headlineSmall,
-            ),
-            const SizedBox(height: FiloSpacing.s12),
-            if (pending.isNotEmpty)
-              FiloButton(
-                label: 'Approve all',
-                icon: FiloIcons.checks,
-                onPressed: canDecide ? () => _decide() : null,
-              ),
-            if (pending.isEmpty &&
-                !students.isLoading &&
-                !students.hasError &&
-                online &&
-                !sync.isLoading &&
-                !sync.hasError)
-              const Text('No pending requests.'),
-            for (final student in pending)
-              Padding(
-                padding: const EdgeInsets.only(top: FiloSpacing.s16),
-                child: FiloPanel(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        student.name,
-                        style: Theme.of(context).textTheme.titleMedium,
-                      ),
-                      const SizedBox(height: FiloSpacing.s8),
-                      const Text('Waiting for approval'),
-                      const SizedBox(height: FiloSpacing.s12),
-                      Wrap(
-                        spacing: 12,
-                        runSpacing: 8,
+                const SizedBox(height: FiloSpacing.s12),
+                if (pending.isNotEmpty)
+                  FiloButton(
+                    label: 'Approve all',
+                    icon: FiloIcons.checks,
+                    onPressed: canDecide ? () => _decide() : null,
+                  ),
+                if (pending.isEmpty &&
+                    !students.isLoading &&
+                    !students.hasError &&
+                    online &&
+                    !sync.isLoading &&
+                    !sync.hasError)
+                  const FiloPanel(child: Text('No pending requests.')),
+                for (final student in pending)
+                  Padding(
+                    padding: const EdgeInsets.only(top: FiloSpacing.s16),
+                    child: FiloPanel(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          FilledButton.icon(
-                            onPressed: canDecide
-                                ? () => _decide(student: student)
-                                : null,
-                            icon: const FiloIcon(FiloIcons.check),
-                            label: const Text('Approve'),
+                          Text(
+                            student.name,
+                            style: Theme.of(context).textTheme.titleMedium,
                           ),
-                          OutlinedButton(
-                            onPressed: canDecide
-                                ? () =>
-                                      _decide(student: student, approve: false)
-                                : null,
-                            child: const Text('Decline'),
+                          const SizedBox(height: FiloSpacing.s8),
+                          const Text('Waiting for approval'),
+                          const SizedBox(height: FiloSpacing.s12),
+                          Wrap(
+                            spacing: 12,
+                            runSpacing: 8,
+                            children: [
+                              FilledButton.icon(
+                                onPressed: canDecide
+                                    ? () => _decide(student: student)
+                                    : null,
+                                icon: const FiloIcon(FiloIcons.check),
+                                label: const Text('Approve'),
+                              ),
+                              OutlinedButton(
+                                onPressed: canDecide
+                                    ? () => _decide(
+                                        student: student,
+                                        approve: false,
+                                      )
+                                    : null,
+                                child: const Text('Decline'),
+                              ),
+                            ],
                           ),
                         ],
                       ),
-                    ],
+                    ),
                   ),
+                const SizedBox(height: FiloSpacing.s32),
+                Text(
+                  'Enrolled students (${active.length})',
+                  style: Theme.of(context).textTheme.headlineSmall,
                 ),
-              ),
-            const SizedBox(height: FiloSpacing.s32),
-            Text(
-              'Enrolled students (${active.length})',
-              style: Theme.of(context).textTheme.headlineSmall,
+                const SizedBox(height: FiloSpacing.s12),
+                if (active.isEmpty &&
+                    !students.isLoading &&
+                    !students.hasError &&
+                    online &&
+                    !sync.isLoading &&
+                    !sync.hasError)
+                  const FiloPanel(child: Text('No enrolled students yet.')),
+                for (final student in active)
+                  Padding(
+                    padding: const EdgeInsets.only(bottom: FiloSpacing.s12),
+                    child: FiloPanel(
+                      padding: const EdgeInsets.all(FiloSpacing.s8),
+                      child: ListTile(
+                        contentPadding: const EdgeInsets.symmetric(
+                          horizontal: FiloSpacing.s12,
+                        ),
+                        leading: CircleAvatar(
+                          child: Text(
+                            student.name.trim().isEmpty
+                                ? '?'
+                                : student.name.trim()[0],
+                          ),
+                        ),
+                        title: Text(student.name),
+                        subtitle: const Text('Enrolled'),
+                        trailing: TextButton(
+                          onPressed: canDecide
+                              ? () => _remove(student, room.section)
+                              : null,
+                          style: TextButton.styleFrom(
+                            foregroundColor: Theme.of(context)
+                                .colorScheme
+                                .error,
+                          ),
+                          child: const Text('Remove'),
+                        ),
+                      ),
+                    ),
+                  ),
+              ],
             ),
-            const SizedBox(height: FiloSpacing.s12),
-            if (active.isEmpty &&
-                !students.isLoading &&
-                !students.hasError &&
-                online &&
-                !sync.isLoading &&
-                !sync.hasError)
-              const Text('No enrolled students yet.'),
-            for (final student in active)
-              ListTile(
-                contentPadding: EdgeInsets.zero,
-                leading: CircleAvatar(
-                  child: Text(
-                    student.name.trim().isEmpty ? '?' : student.name.trim()[0],
-                  ),
-                ),
-                title: Text(student.name),
-                subtitle: const Text('Enrolled'),
-                trailing: TextButton(
-                  onPressed: canDecide
-                      ? () => _remove(student, room.section)
-                      : null,
-                  child: const Text('Remove'),
-                ),
-              ),
-          ],
-        ),
+          ),
+        ],
       ),
     );
   }

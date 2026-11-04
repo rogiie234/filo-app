@@ -11,7 +11,6 @@ import '../../features/classes/presentation/class_screen.dart';
 import '../../features/onboarding/presentation/intro_screen.dart';
 import '../../features/posts/presentation/create_post_screen.dart';
 import '../widgets/filo_widgets.dart';
-import '../theme/animation_constants.dart';
 import '../supabase/session_gate.dart';
 
 final appRouterProvider = Provider<GoRouter>((ref) {
@@ -19,24 +18,18 @@ final appRouterProvider = Provider<GoRouter>((ref) {
     initialLocation: '/',
     observers: [RouteObserver<PageRoute<dynamic>>()],
     routes: [
-      GoRoute(path: '/', builder: (context, state) => const IntroScreen()),
+      GoRoute(
+        path: '/',
+        pageBuilder: (context, state) => NoTransitionPage<void>(
+          key: state.pageKey,
+          child: const IntroScreen(),
+        ),
+      ),
       GoRoute(
         path: '/sign-in',
-        // Sign-in is a separate auth step, not a fourth intro/hero morph.
-        pageBuilder: (context, state) => CustomTransitionPage<void>(
+        pageBuilder: (context, state) => NoTransitionPage<void>(
           key: state.pageKey,
-          transitionDuration: FiloMotion.enabled(context)
-              ? FiloAnimation.pageDuration
-              : Duration.zero,
-          reverseTransitionDuration: FiloMotion.enabled(context)
-              ? FiloAnimation.pageDuration
-              : Duration.zero,
           child: const SignInScreen(),
-          transitionsBuilder: (context, animation, secondaryAnimation, child) {
-            return FiloMotionScope(
-              child: FiloPageTransitions.transition(context, animation, child),
-            );
-          },
         ),
       ),
       // Both entries pass through session verification and profile lookup.

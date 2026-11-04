@@ -1,5 +1,6 @@
 import 'package:filo/core/connectivity/connectivity_provider.dart';
 import 'package:filo/app.dart';
+import 'package:filo/core/widgets/entry_artwork.dart';
 import 'package:filo/core/router/app_router.dart';
 import 'package:filo/core/supabase/auth_providers.dart';
 import 'package:filo/core/supabase/session_gate.dart';
@@ -58,6 +59,7 @@ void main() {
     await tester.tap(find.text('Skip intro'));
     await tester.pumpAndSettle();
     expect(find.text('Hello,\ncurious mind.'), findsOneWidget);
+    expect(find.byKey(const ValueKey('sign-in-heading')), findsNothing);
     expect(find.text('Explore the preview'), findsNothing);
     expect(find.text('Continue with Google'), findsOneWidget);
   });
@@ -78,6 +80,85 @@ void main() {
     expect(find.text('Learning,\ntogether.'), findsOneWidget);
     expect(find.text('Next'), findsOneWidget);
   });
+
+  testWidgets(
+    'intro progress and primary actions remain reachable on a small phone',
+    (tester) async {
+      final semantics = tester.ensureSemantics();
+      addTearDown(semantics.dispose);
+      await launch(tester, size: const Size(320, 568), scale: 1.3);
+      for (var page = 1; page <= 3; page++) {
+        expect(find.bySemanticsLabel('Page $page of 3'), findsOneWidget);
+        expect(find.text('$page of 3'), findsNothing);
+        final action = find.text(page == 3 ? 'Get started' : 'Next');
+        expect(tester.getRect(action).bottom, lessThanOrEqualTo(568));
+        await tester.tap(action);
+        await tester.pumpAndSettle();
+        expect(tester.takeException(), isNull);
+      }
+      final signIn = find.text('Continue with Google');
+      expect(signIn, findsOneWidget);
+      expect(tester.getRect(signIn).bottom, lessThanOrEqualTo(568));
+      await tester.ensureVisible(find.text('Hello,\ncurious mind.'));
+      await tester.pumpAndSettle();
+      expect(tester.takeException(), isNull);
+    },
+  );
+
+  testWidgets(
+    'Next slides without a spinner and ignores repeated taps in flight',
+    (tester) async {
+      final semantics = tester.ensureSemantics();
+      addTearDown(semantics.dispose);
+      await launch(tester);
+      tester.platformDispatcher.accessibilityFeaturesTestValue =
+          const FakeAccessibilityFeatures(disableAnimations: false);
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Next'));
+      await tester.pump(const Duration(milliseconds: 16));
+      expect(find.byType(CircularProgressIndicator), findsNothing);
+      await tester.tap(find.text('Next'));
+      await tester.pumpAndSettle();
+      expect(find.bySemanticsLabel('Page 2 of 3'), findsOneWidget);
+      expect(find.text('Next'), findsOneWidget);
+      expect(tester.takeException(), isNull);
+    },
+  );
+
+  for (final action in ['Skip intro', 'Get started']) {
+    testWidgets('$action keeps mascot aligned without route movement', (
+      tester,
+    ) async {
+      await launch(tester);
+      tester.platformDispatcher.accessibilityFeaturesTestValue =
+          const FakeAccessibilityFeatures(disableAnimations: false);
+      await tester.pumpAndSettle();
+      if (action == 'Get started') {
+        for (var page = 0; page < 2; page++) {
+          await tester.tap(find.text('Next'));
+          await tester.pumpAndSettle();
+        }
+      }
+      final before = tester.getRect(
+        find.byType(EntryMascot).hitTestable().first,
+      );
+      await tester.tap(find.text(action));
+      await tester.pump();
+      expect(find.text('Continue with Google'), findsOneWidget);
+      final route = ModalRoute.of(
+        tester.element(find.text('Continue with Google')),
+      ) as PageRoute;
+      expect(route.transitionDuration, Duration.zero);
+      expect(route.reverseTransitionDuration, Duration.zero);
+      expect(find.byKey(const ValueKey('sign-in-heading')), findsOneWidget);
+      final after = tester.getRect(find.byType(EntryMascot).first);
+      expect(after.top, closeTo(before.top, .01));
+      expect(after.size, before.size);
+      await tester.pump(const Duration(milliseconds: 150));
+      expect(tester.getRect(find.byType(EntryMascot).first), after);
+      expect(tester.takeException(), isNull);
+    });
+  }
 
   testWidgets('student navigation, file filters, and pending join request', (
     tester,

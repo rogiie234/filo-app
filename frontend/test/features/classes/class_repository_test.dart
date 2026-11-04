@@ -137,14 +137,14 @@ void main() {
     () async {
       final created = await repository.createClass(
         course: ' Computing ',
-        section: ' A ',
+        section: ' bsit-3a ',
         schoolYear: ' 2026 ',
       );
       expect(created['id'], 'new-class');
       expect(remote.createdValues, {
         'owner_id': 'student',
         'course': 'Computing',
-        'section': 'A',
+        'section': 'BSIT-3A',
         'school_year': '2026',
         'banner_color': null,
       });

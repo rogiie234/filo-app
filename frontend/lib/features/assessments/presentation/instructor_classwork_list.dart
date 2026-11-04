@@ -26,9 +26,11 @@ class InstructorClassworkList extends ConsumerStatefulWidget {
     required this.classId,
     required this.archived,
     required this.active,
+    this.showHeading = true,
   });
   final String classId;
   final bool archived, active;
+  final bool showHeading;
   @override
   ConsumerState<InstructorClassworkList> createState() =>
       _InstructorClassworkListState();
@@ -326,11 +328,13 @@ class _InstructorClassworkListState
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
-                  Text(
-                    'Classwork',
-                    style: Theme.of(context).textTheme.headlineMedium,
-                  ),
-                  const SizedBox(height: FiloSpacing.s8),
+                  if (widget.showHeading)
+                    Text(
+                      'Classwork',
+                      style: Theme.of(context).textTheme.headlineMedium,
+                    ),
+                  if (widget.showHeading)
+                    const SizedBox(height: FiloSpacing.s8),
                   Text(
                     'Assignments, quizzes and exams. Newest first.',
                     style: TextStyle(
@@ -414,13 +418,13 @@ class _InstructorClassworkListState
                             padding: EdgeInsets.symmetric(
                               vertical: FiloSpacing.screen,
                             ),
-                            child: EmptyState(
+                            child: FiloIllustratedEmptyState(
+                              asset: 'assets/illustrations/review-empty.png',
                               title: 'No classwork matches this filter.',
-                              pose: 'curious',
                             ),
                           )
-                        : EmptyState(
-                            pose: 'thinking',
+                        : FiloIllustratedEmptyState(
+                            asset: 'assets/illustrations/review-empty.png',
                             title: _filter == 'Assignments'
                                 ? 'No assignments yet'
                                 : _filter == 'All'
@@ -454,7 +458,7 @@ class _InstructorClassworkListState
               FiloSpacing.screen,
               0,
               FiloSpacing.screen,
-              FiloSpacing.screen,
+              112,
             ),
             sliver: SliverList.builder(
               itemCount: initialWaiting ? 0 : entries.length,

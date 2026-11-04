@@ -32,6 +32,12 @@ class PostRepository {
             ]))
           .watch();
 
+  /// Update cached readers after the server has confirmed deletion.
+  Future<void> markDeleted(String classId, String postId) =>
+      (database.update(database.cachePosts)
+            ..where((p) => p.id.equals(postId) & p.classId.equals(classId)))
+          .write(CachePostsCompanion(deletedAt: Value(database.now().toUtc())));
+
   Future<void> sync(String classId) =>
       _pending[classId] ??= _pull(classId).whenComplete(() {
         // Map.remove returns the stored Future. Returning that value here
@@ -64,6 +70,7 @@ class PostRepository {
           await (db.delete(db.syncState)..where(
                 (s) => s.syncedTableName.isIn([
                   'posts:$classId',
+                  'stream_loaded:$classId',
                   'post_attachments:$classId',
                 ]),
               ))

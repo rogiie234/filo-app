@@ -15,6 +15,7 @@ import '../../../core/supabase/native_google_sign_in.dart';
 import '../../../core/theme/animation_constants.dart';
 import '../../../core/widgets/filo_widgets.dart';
 import '../../../core/widgets/entry_artwork.dart';
+import '../../../core/widgets/entry_background.dart';
 import '../application/sign_in_clock.dart';
 
 class SignInScreen extends ConsumerStatefulWidget {
@@ -91,19 +92,22 @@ class _SignInScreenState extends ConsumerState<SignInScreen> {
       });
   }
 
-  Widget _entrance(Widget child, {Duration delay = Duration.zero}) {
-    if (MediaQuery.disableAnimationsOf(context)) return child;
-    return child
-        .animate()
+  Widget _heading() {
+    final text = Text(
+      'Hello,\ncurious mind.',
+      textAlign: TextAlign.center,
+      style: Theme.of(context).textTheme.headlineMedium,
+    );
+    if (!FiloMotion.enabled(context)) return text;
+    return text
+        .animate(key: const ValueKey('sign-in-heading'))
         .fadeIn(
-          delay: delay,
           duration: FiloAnimation.textDuration,
           curve: FiloAnimation.uiCurve,
         )
         .moveY(
           begin: FiloAnimation.textRise,
           end: 0,
-          delay: delay,
           duration: FiloAnimation.textDuration,
           curve: FiloAnimation.uiCurve,
         );
@@ -114,156 +118,233 @@ class _SignInScreenState extends ConsumerState<SignInScreen> {
     final connectivity = ref.watch(connectivityProvider);
     final offline = connectivity.asData?.value == false;
     return Scaffold(
-      body: SafeArea(
-        child: Column(
-          children: [
-            Padding(
-              padding: const EdgeInsets.fromLTRB(
-                FiloSpacing.screen,
-                FiloSpacing.s12,
-                FiloSpacing.s16,
-                0,
-              ),
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  const Expanded(child: Brand()),
-                  TextButton(
-                    onPressed: () => context.go('/'),
-                    child: const Text('About Filo'),
-                  ),
-                ],
-              ),
-            ),
-            Expanded(
-              child: SingleChildScrollView(
-                padding: const EdgeInsets.all(FiloSpacing.screen),
+      body: Stack(
+        fit: StackFit.expand,
+        children: [
+          const Positioned.fill(child: EntryBackground()),
+          SafeArea(
+            child: Center(
+              child: ConstrainedBox(
+                constraints: const BoxConstraints(maxWidth: 480),
                 child: Column(
                   children: [
-                    const SizedBox(height: FiloSpacing.s40),
-                    Mascot(size: entryMascotSize(context), bob: true),
-                    const SizedBox(height: FiloSpacing.s32),
-                    _entrance(
-                      Text(
-                        'Hello,\ncurious mind.',
-                        textAlign: TextAlign.center,
-                        style: Theme.of(context).textTheme.headlineLarge,
+                    Padding(
+                      padding: const EdgeInsets.fromLTRB(
+                        FiloSpacing.screen,
+                        FiloSpacing.s12,
+                        FiloSpacing.s16,
+                        0,
+                      ),
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          const Expanded(child: Brand()),
+                          TextButton(
+                            onPressed: () => context.go('/'),
+                            child: const Text('About Filo'),
+                          ),
+                        ],
                       ),
                     ),
-                    const SizedBox(height: FiloSpacing.s12),
-                    _entrance(
-                      Text(
-                        'A little curiosity goes a long way.\nLet\u2019s see where yours takes you.',
-                        textAlign: TextAlign.center,
-                        style: Theme.of(context).textTheme.bodyLarge!.copyWith(
-                          color: Theme.of(context).colorScheme.onSurfaceVariant,
-                        ),
+                    Expanded(
+                      child: LayoutBuilder(
+                        builder: (context, constraints) =>
+                            SingleChildScrollView(
+                              padding: entryContentPadding(context),
+                              child: ConstrainedBox(
+                                constraints: BoxConstraints(
+                                  minHeight:
+                                      (constraints.maxHeight -
+                                              entryContentPadding(context)
+                                                  .vertical)
+                                          .clamp(0.0, double.infinity)
+                                          .toDouble(),
+                                ),
+                                child: Column(
+                                  mainAxisAlignment: MainAxisAlignment.start,
+                                  children: [
+                                    if (_failure != null) ...[
+                                      FiloCard(
+                                        tinted: false,
+                                        child: Column(
+                                          crossAxisAlignment:
+                                              CrossAxisAlignment.stretch,
+                                          children: [
+                                            Semantics(
+                                              liveRegion: true,
+                                              child: Column(
+                                                children: [
+                                                  if (_clockIncorrect)
+                                                    Text(
+                                                      'Check your phone\'s date and time',
+                                                      style: Theme.of(context)
+                                                          .textTheme
+                                                          .titleMedium,
+                                                      textAlign:
+                                                          TextAlign.center,
+                                                    ),
+                                                  const SizedBox(
+                                                    height: FiloSpacing.s8,
+                                                  ),
+                                                  Text(
+                                                    _failure!,
+                                                    textAlign: TextAlign.center,
+                                                  ),
+                                                  if (!_clockIncorrect) ...[
+                                                    const SizedBox(
+                                                      height: FiloSpacing.s8,
+                                                    ),
+                                                    const Text(
+                                                      _clockHint,
+                                                      textAlign:
+                                                          TextAlign.center,
+                                                    ),
+                                                  ],
+                                                ],
+                                              ),
+                                            ),
+                                            const SizedBox(
+                                              height: FiloSpacing.s12,
+                                            ),
+                                            FiloButton(
+                                              label: 'Open settings',
+                                              secondary: true,
+                                              onPressed:
+                                                  _signingIn || _checkingClock
+                                                  ? null
+                                                  : _openSettings,
+                                            ),
+                                            const SizedBox(
+                                              height: FiloSpacing.s12,
+                                            ),
+                                            FiloButton(
+                                              label: _checkingClock
+                                                  ? 'Checking date and time...'
+                                                  : 'Try again',
+                                              busy: _checkingClock,
+                                              onPressed:
+                                                  _signingIn ||
+                                                      _checkingClock ||
+                                                      connectivity
+                                                              .asData
+                                                              ?.value !=
+                                                          true
+                                                  ? null
+                                                  : _signIn,
+                                            ),
+                                          ],
+                                        ),
+                                      ),
+                                      const SizedBox(
+                                        height: FiloSpacing.screen,
+                                      ),
+                                    ],
+                                    const EntryMascot(),
+                                    const SizedBox(height: FiloSpacing.s20),
+                                    ConstrainedBox(
+                                      constraints: BoxConstraints(
+                                        minHeight:
+                                            88 *
+                                            MediaQuery.textScalerOf(context)
+                                                .scale(1),
+                                      ),
+                                      child: Center(
+                                        child: Semantics(
+                                          header: true,
+                                          child: _heading(),
+                                        ),
+                                      ),
+                                    ),
+                                    const SizedBox(height: FiloSpacing.s16),
+                                    Text(
+                                      'A little curiosity goes a long way.\nLet\u2019s see where yours takes you.',
+                                      textAlign: TextAlign.center,
+                                      style: Theme.of(context)
+                                          .textTheme
+                                          .bodyLarge!
+                                          .copyWith(
+                                            color: Theme.of(context)
+                                                .colorScheme
+                                                .onSurfaceVariant,
+                                          ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ),
                       ),
-                      delay: FiloAnimation.subtitleDelay,
                     ),
-                    if (_failure != null) ...[
-                      const SizedBox(height: FiloSpacing.screen),
-                      Semantics(
-                        liveRegion: true,
-                        child: Column(
-                          children: [
-                            if (_clockIncorrect)
-                              Text(
-                                'Check your phone\'s date and time',
-                                style: Theme.of(context).textTheme.titleMedium,
-                                textAlign: TextAlign.center,
-                              ),
-                            const SizedBox(height: FiloSpacing.s8),
-                            Text(_failure!, textAlign: TextAlign.center),
-                            if (!_clockIncorrect) ...[
-                              const SizedBox(height: FiloSpacing.s8),
-                              const Text(
-                                _clockHint,
-                                textAlign: TextAlign.center,
-                              ),
+                    Padding(
+                      padding: const EdgeInsets.fromLTRB(
+                        FiloSpacing.screen,
+                        FiloSpacing.s12,
+                        FiloSpacing.screen,
+                        FiloSpacing.screen,
+                      ),
+                      child: Column(
+                        children: [
+                          FiloButton(
+                            label: _signingIn
+                                ? 'Signing in\u2026'
+                                : 'Continue with Google',
+                            secondary: true,
+                            labelVariants: const [
+                              'Continue with Google',
+                              'Signing in\u2026',
                             ],
-                          ],
-                        ),
+                            idlePulse: false,
+                            busy: _signingIn,
+                            minHeight: 64,
+                            showBusyIndicator: false,
+                            leading: FiloMotionTween(
+                              value: _signingIn ? 12 : 0,
+                              duration: FiloAnimation.labelDuration,
+                              builder: (_, offset, child) =>
+                                  Transform.translate(
+                                    offset: Offset(offset, 0),
+                                    child: child,
+                                  ),
+                              child: Image.asset(
+                                'assets/brand/google-g.png',
+                                width: 20,
+                                height: 20,
+                                excludeFromSemantics: true,
+                              ),
+                            ),
+                            onPressed:
+                                _signingIn ||
+                                    _checkingClock ||
+                                    connectivity.asData?.value != true
+                                ? null
+                                : _signIn,
+                          ),
+                          if (offline)
+                            const Padding(
+                              padding: EdgeInsets.only(top: FiloSpacing.s12),
+                              child: Text(
+                                'You\u2019re offline. Connect to the internet to sign in.',
+                                textAlign: TextAlign.center,
+                              ),
+                            ),
+                          if (connectivity.isLoading)
+                            const Text('Checking your connection\u2026'),
+                          if (connectivity.hasError)
+                            TextButton(
+                              onPressed: () =>
+                                  ref.invalidate(connectivityProvider),
+                              child: const Text(
+                                'Could not check your connection. Try again',
+                              ),
+                            ),
+                        ],
                       ),
-                      const SizedBox(height: FiloSpacing.s12),
-                      FiloButton(
-                        label: 'Open settings',
-                        secondary: true,
-                        onPressed: _signingIn || _checkingClock
-                            ? null
-                            : _openSettings,
-                      ),
-                      const SizedBox(height: FiloSpacing.s12),
-                      FiloButton(
-                        label: _checkingClock
-                            ? 'Checking date and time...'
-                            : 'Try again',
-                        busy: _checkingClock,
-                        onPressed:
-                            _signingIn ||
-                                _checkingClock ||
-                                connectivity.asData?.value != true
-                            ? null
-                            : _signIn,
-                      ),
-                    ],
+                    ),
                   ],
                 ),
               ),
             ),
-            Padding(
-              padding: const EdgeInsets.fromLTRB(
-                FiloSpacing.screen,
-                FiloSpacing.s12,
-                FiloSpacing.screen,
-                FiloSpacing.s40,
-              ),
-              child: Column(
-                children: [
-                  _entrance(
-                    FiloButton(
-                      label: _signingIn
-                          ? 'Signing in\u2026'
-                          : 'Continue with Google',
-                      secondary: true,
-                      busy: _signingIn,
-                      leading: Image.asset(
-                        'assets/brand/google-g.png',
-                        width: 20,
-                        height: 20,
-                        excludeFromSemantics: true,
-                      ),
-                      onPressed:
-                          _signingIn ||
-                              _checkingClock ||
-                              connectivity.asData?.value != true
-                          ? null
-                          : _signIn,
-                    ),
-                    delay: FiloAnimation.buttonEntranceDelay,
-                  ),
-                  if (offline)
-                    const Padding(
-                      padding: EdgeInsets.only(top: FiloSpacing.s12),
-                      child: Text(
-                        'You\u2019re offline. Connect to the internet to sign in.',
-                        textAlign: TextAlign.center,
-                      ),
-                    ),
-                  if (connectivity.isLoading)
-                    const Text('Checking your connection\u2026'),
-                  if (connectivity.hasError)
-                    TextButton(
-                      onPressed: () => ref.invalidate(connectivityProvider),
-                      child: const Text(
-                        'Could not check your connection. Try again',
-                      ),
-                    ),
-                ],
-              ),
-            ),
-          ],
-        ),
+          ),
+        ],
       ),
     );
   }

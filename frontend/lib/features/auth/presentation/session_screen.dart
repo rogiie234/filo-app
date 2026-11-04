@@ -2,7 +2,6 @@ import 'dart:async';
 import 'dart:io';
 
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
@@ -13,6 +12,9 @@ import '../../../core/theme/app_theme.dart';
 import '../../../core/widgets/filo_widgets.dart';
 import '../../onboarding/presentation/account_setup_screen.dart';
 import 'session_loading_view.dart';
+import 'otp_code_field.dart';
+import '../../../core/widgets/entry_artwork.dart';
+import '../../../core/widgets/entry_background.dart';
 
 final otpClockProvider = Provider<DateTime Function()>((ref) => DateTime.now);
 
@@ -26,6 +28,8 @@ class _SessionScreenState extends ConsumerState<SessionScreen> {
   final _code = TextEditingController();
   final _focus = FocusNode();
   String? _challenge, _message;
+  String? _lastAutoCode;
+  bool _codeRejected = false;
   DateTime? _resendAt, _expiresAt;
   Timer? _timer;
   bool _busy = false, _error = false, _locked = false;
@@ -77,6 +81,7 @@ class _SessionScreenState extends ConsumerState<SessionScreen> {
       _busy = true;
       _message = null;
       _error = false;
+      _codeRejected = false;
     });
     try {
       await action();
@@ -86,6 +91,7 @@ class _SessionScreenState extends ConsumerState<SessionScreen> {
       final code = error is Map ? error['code'] : null;
       switch (code) {
         case 'OTP_WRONG':
+          _codeRejected = true;
           final attempts = data['attempts_remaining'];
           _feedback(
             'That code is incorrect. Check your email and try again.'
@@ -160,6 +166,7 @@ class _SessionScreenState extends ConsumerState<SessionScreen> {
     setState(() {
       _challenge = data['challenge_id'] as String;
       _locked = false;
+      _lastAutoCode = null;
       _code.clear();
       _resendAt = ref
           .read(otpClockProvider)()
@@ -171,6 +178,19 @@ class _SessionScreenState extends ConsumerState<SessionScreen> {
     _countdown();
     _focus.requestFocus();
   });
+  void _codeChanged(String value) {
+    if (_codeRejected) setState(() => _codeRejected = false);
+    if (value.length < 6) _lastAutoCode = null;
+    if (RegExp(r'^\d{6}$').hasMatch(value) &&
+        value != _lastAutoCode &&
+        _challenge != null &&
+        !_busy &&
+        !_locked) {
+      _lastAutoCode = value;
+      unawaited(_verify());
+    }
+  }
+
   Future<void> _verify() => _perform(() async {
     if (!RegExp(r'^\d{6}$').hasMatch(_code.text)) {
       _feedback('Enter the 6-digit code from your email.', error: true);
@@ -229,274 +249,284 @@ class _SessionScreenState extends ConsumerState<SessionScreen> {
       ),
       body: verification.isLoading
           ? SessionLoadingView(message: _message, error: _error)
-          : SafeArea(
-              child: SingleChildScrollView(
-                keyboardDismissBehavior:
-                    ScrollViewKeyboardDismissBehavior.onDrag,
-                padding: const EdgeInsets.fromLTRB(
-                  FiloSpacing.screen,
-                  FiloSpacing.s16,
-                  FiloSpacing.screen,
-                  FiloSpacing.s40,
+          : Stack(
+              fit: StackFit.expand,
+              children: [
+                Positioned(
+                  top: 0,
+                  left: 0,
+                  right: 0,
+                  // Cancel Scaffold's keyboard shrink for decoration only.
+                  bottom: -MediaQuery.viewInsetsOf(context).bottom,
+                  child: const EntryBackground(verification: true),
                 ),
-                child: Align(
-                  alignment: Alignment.topCenter,
-                  child: ConstrainedBox(
-                    constraints: const BoxConstraints(maxWidth: 440),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.stretch,
-                      children: [
-                        const Center(child: Mascot(pose: 'curious', size: 156)),
-                        const SizedBox(height: FiloSpacing.screen),
-                        Row(
-                          mainAxisAlignment: MainAxisAlignment.center,
+                SafeArea(
+                  child: SingleChildScrollView(
+                    keyboardDismissBehavior:
+                        ScrollViewKeyboardDismissBehavior.onDrag,
+                    padding: const EdgeInsets.fromLTRB(
+                      FiloSpacing.screen,
+                      FiloSpacing.s16,
+                      FiloSpacing.screen,
+                      FiloSpacing.s40,
+                    ),
+                    child: Align(
+                      alignment: Alignment.topCenter,
+                      child: ConstrainedBox(
+                        constraints: const BoxConstraints(maxWidth: 440),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.stretch,
                           children: [
-                            FiloIcon(
-                              FiloIcons.shield,
-                              size: 18,
-                              color: Theme.of(context).colorScheme.primary,
-                            ),
-                            SizedBox(width: FiloSpacing.s8),
-                            Flexible(
-                              child: Text(
-                                'A quick security check',
-                                textAlign: TextAlign.center,
-                                style: FiloTypography.strongLabel(context)
-                                    .copyWith(
-                                      color: Theme.of(context)
-                                          .colorScheme
-                                          .primary,
-                                    ),
-                              ),
-                            ),
-                          ],
-                        ),
-                        const SizedBox(height: FiloSpacing.s12),
-                        Semantics(
-                          header: true,
-                          child: Text(
-                            'Let\u2019s make sure\nit\u2019s you.',
-                            textAlign: TextAlign.center,
-                            style: Theme.of(context).textTheme.headlineMedium!
-                                .copyWith(
-                                  color: Theme.of(context)
-                                      .colorScheme
-                                      .onSurface,
+                            const Center(
+                              child: SizedBox(
+                                width: 176,
+                                height: 176,
+                                child: FittedBox(
+                                  child: EntryMascot(pose: 'curious'),
                                 ),
-                          ),
-                        ),
-                        const SizedBox(height: FiloSpacing.s12),
-                        Text(
-                          sent
-                              ? 'We sent a 6-digit code to $email. Enter it to verify this device. The code expires in 10 minutes.'
-                              : 'One little check to keep your account safe. We\u2019ll send a 6-digit code to your Google email.',
-                          textAlign: TextAlign.center,
-                          style: Theme.of(context).textTheme.bodyLarge!
-                              .copyWith(
-                                color: Theme.of(context)
-                                    .colorScheme
-                                    .onSurfaceVariant,
-                              ),
-                        ),
-                        if (_message != null) ...[
-                          const SizedBox(height: FiloSpacing.s20),
-                          Semantics(
-                            liveRegion: true,
-                            child: FiloPanel(
-                              color: _error
-                                  ? FiloThemeTokens.of(context).warningTint
-                                  : Theme.of(context)
-                                        .colorScheme
-                                        .surfaceContainer,
-                              padding: const EdgeInsets.all(FiloSpacing.s16),
-                              child: Row(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  FiloIcon(
-                                    _error
-                                        ? FiloIcons.info
-                                        : FiloIcons.checkCircle,
-                                    color: _error
-                                        ? FiloThemeTokens.of(context).warning
-                                        : Theme.of(context).colorScheme.primary,
-                                    size: 20,
-                                  ),
-                                  const SizedBox(width: FiloSpacing.s12),
-                                  Expanded(child: Text(_message!)),
-                                ],
                               ),
                             ),
-                          ),
-                        ],
-                        const SizedBox(height: FiloSpacing.screen),
-                        if (verification.hasError)
-                          FiloPanel(
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.stretch,
+                            const SizedBox(height: FiloSpacing.screen),
+                            Row(
+                              mainAxisAlignment: MainAxisAlignment.center,
                               children: [
                                 FiloIcon(
-                                  FiloIcons.info,
+                                  FiloIcons.shield,
+                                  size: 18,
                                   color: Theme.of(context).colorScheme.primary,
-                                  size: 28,
                                 ),
-                                const SizedBox(height: FiloSpacing.s12),
-                                const Text(
-                                  'We couldn\u2019t check this device. Please try again.',
-                                  textAlign: TextAlign.center,
-                                ),
-                                const SizedBox(height: FiloSpacing.s20),
-                                FiloButton(
-                                  label: 'Try again',
-                                  onPressed: () =>
-                                      ref.invalidate(verifiedUserIdProvider),
-                                ),
-                              ],
-                            ),
-                          )
-                        else
-                          FiloPanel(
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.stretch,
-                              children: [
-                                if (!sent) ...[
-                                  Row(
-                                    children: [
-                                      Container(
-                                        width: 44,
-                                        height: 44,
-                                        decoration: BoxDecoration(
-                                          color: Theme.of(context)
-                                              .colorScheme
-                                              .surfaceContainer,
-                                          borderRadius: BorderRadius.circular(
-                                            14,
-                                          ),
-                                        ),
-                                        child: FiloIcon(
-                                          FiloIcons.email,
-                                          color: Theme.of(context)
-                                              .colorScheme
-                                              .primary,
-                                        ),
-                                      ),
-                                      const SizedBox(width: FiloSpacing.s12),
-                                      Expanded(
-                                        child: Text(
-                                          email,
-                                          style:
-                                              FiloTypography.strongLabel(
-                                                context,
-                                              ).copyWith(
-                                                color: Theme.of(context)
-                                                    .colorScheme
-                                                    .onSurface,
-                                              ),
-                                        ),
-                                      ),
-                                    ],
-                                  ),
-                                  const SizedBox(height: FiloSpacing.screen),
-                                  FiloButton(
-                                    label: _busy
-                                        ? 'Sending code\u2026'
-                                        : 'Send code',
-                                    busy: _busy,
-                                    icon: _busy ? null : FiloIcons.forward,
-                                    animateArrow: true,
-                                    onPressed: _busy ? null : _send,
-                                  ),
-                                ] else ...[
-                                  Text(
-                                    'Verification code',
+                                SizedBox(width: FiloSpacing.s8),
+                                Flexible(
+                                  child: Text(
+                                    'A quick security check',
+                                    textAlign: TextAlign.center,
                                     style: FiloTypography.strongLabel(context)
                                         .copyWith(
                                           color: Theme.of(context)
                                               .colorScheme
-                                              .onSurface,
+                                              .primary,
                                         ),
                                   ),
-                                  const SizedBox(height: FiloSpacing.s12),
-                                  AutofillGroup(
-                                    child: TextField(
-                                      controller: _code,
-                                      focusNode: _focus,
-                                      enabled: !_busy && !_locked,
-                                      keyboardType: TextInputType.number,
-                                      autocorrect: false,
-                                      enableSuggestions: false,
-                                      enableIMEPersonalizedLearning: false,
-                                      enableInlinePrediction: false,
-                                      smartDashesType: SmartDashesType.disabled,
-                                      smartQuotesType: SmartQuotesType.disabled,
-                                      textInputAction: TextInputAction.done,
-                                      // Keep OTP entry manual: delayed OS autofill can restore deleted digits.
-                                      autofillHints: null,
-                                      maxLength: 6,
-                                      textAlign: TextAlign.center,
-                                      style: FiloTypography.verificationCode(
-                                        context,
-                                      ),
-                                      inputFormatters: [
-                                        FilteringTextInputFormatter.digitsOnly,
-                                      ],
-                                      decoration: InputDecoration(
-                                        labelText: 'Verification code',
-                                        floatingLabelBehavior:
-                                            FloatingLabelBehavior.never,
-                                        hintText: '000000',
-                                        counterText: '',
-                                        hintStyle: TextStyle(
-                                          color: Theme.of(context)
-                                              .colorScheme
-                                              .onSurfaceVariant,
-                                        ),
-                                      ),
-                                      onSubmitted: (_) {
-                                        if (!_busy && !_locked) _verify();
-                                      },
-                                    ),
-                                  ),
-                                  const SizedBox(height: FiloSpacing.s20),
-                                  FiloButton(
-                                    label: _busy
-                                        ? 'Please wait\u2026'
-                                        : 'Verify code',
-                                    busy: _busy,
-                                    onPressed: _busy || _locked
-                                        ? null
-                                        : _verify,
-                                  ),
-                                  const SizedBox(height: FiloSpacing.s8),
-                                  TextButton(
-                                    onPressed: _canResend ? _send : null,
-                                    child: Text(
-                                      _seconds > 0
-                                          ? 'Resend in ${_seconds}s'
-                                          : 'Resend code',
-                                    ),
-                                  ),
-                                  const SizedBox(height: FiloSpacing.s4),
-                                  Text(
-                                    'No email yet? Check your spam folder.',
-                                    textAlign: TextAlign.center,
-                                    style: Theme.of(context)
-                                        .textTheme
-                                        .bodySmall!
-                                        .copyWith(
-                                          color: Theme.of(context)
-                                              .colorScheme
-                                              .onSurfaceVariant,
-                                        ),
-                                  ),
-                                ],
+                                ),
                               ],
                             ),
-                          ),
-                      ],
+                            const SizedBox(height: FiloSpacing.s12),
+                            Semantics(
+                              header: true,
+                              child: Text(
+                                sent
+                                    ? 'Check your email.'
+                                    : 'Verify this device.',
+                                textAlign: TextAlign.center,
+                                style: Theme.of(context)
+                                    .textTheme
+                                    .headlineMedium!
+                                    .copyWith(
+                                      color: Theme.of(context)
+                                          .colorScheme
+                                          .onSurface,
+                                    ),
+                              ),
+                            ),
+                            const SizedBox(height: FiloSpacing.s12),
+                            Text(
+                              sent
+                                  ? 'We sent a 6-digit code to $email. Enter it to verify this device. The code expires in 10 minutes.'
+                                  : 'One little check to keep your account safe. We\u2019ll send a 6-digit code to your Google email.',
+                              textAlign: TextAlign.center,
+                              style: Theme.of(context).textTheme.bodyLarge!
+                                  .copyWith(
+                                    color: Theme.of(context)
+                                        .colorScheme
+                                        .onSurfaceVariant,
+                                  ),
+                            ),
+                            if (_message != null) ...[
+                              const SizedBox(height: FiloSpacing.s20),
+                              Semantics(
+                                liveRegion: true,
+                                child: FiloPanel(
+                                  color: _error
+                                      ? FiloThemeTokens.of(context).warningTint
+                                      : Theme.of(context)
+                                            .colorScheme
+                                            .surfaceContainer,
+                                  padding: const EdgeInsets.all(
+                                    FiloSpacing.s16,
+                                  ),
+                                  child: Row(
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.start,
+                                    children: [
+                                      FiloIcon(
+                                        _error
+                                            ? FiloIcons.info
+                                            : FiloIcons.checkCircle,
+                                        color: _error
+                                            ? FiloThemeTokens.of(context)
+                                                  .warning
+                                            : Theme.of(context)
+                                                  .colorScheme
+                                                  .primary,
+                                        size: 20,
+                                      ),
+                                      const SizedBox(width: FiloSpacing.s12),
+                                      Expanded(child: Text(_message!)),
+                                    ],
+                                  ),
+                                ),
+                              ),
+                            ],
+                            const SizedBox(height: FiloSpacing.screen),
+                            if (verification.hasError)
+                              FiloPanel(
+                                child: Column(
+                                  crossAxisAlignment:
+                                      CrossAxisAlignment.stretch,
+                                  children: [
+                                    FiloIcon(
+                                      FiloIcons.info,
+                                      color: Theme.of(context)
+                                          .colorScheme
+                                          .primary,
+                                      size: 28,
+                                    ),
+                                    const SizedBox(height: FiloSpacing.s12),
+                                    const Text(
+                                      'We couldn\u2019t check this device. Please try again.',
+                                      textAlign: TextAlign.center,
+                                    ),
+                                    const SizedBox(height: FiloSpacing.s20),
+                                    FiloButton(
+                                      label: 'Try again',
+                                      onPressed: () => ref.invalidate(
+                                        verifiedUserIdProvider,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              )
+                            else
+                              Column(
+                                crossAxisAlignment: CrossAxisAlignment.stretch,
+                                children: [
+                                  if (!sent) ...[
+                                    FiloPanel(
+                                      child: Row(
+                                        children: [
+                                          Container(
+                                            width: 44,
+                                            height: 44,
+                                            decoration: BoxDecoration(
+                                              color: Theme.of(context)
+                                                  .colorScheme
+                                                  .surfaceContainer,
+                                              borderRadius:
+                                                  BorderRadius.circular(14),
+                                            ),
+                                            child: FiloIcon(
+                                              FiloIcons.email,
+                                              color: Theme.of(context)
+                                                  .colorScheme
+                                                  .primary,
+                                            ),
+                                          ),
+                                          const SizedBox(
+                                            width: FiloSpacing.s12,
+                                          ),
+                                          Expanded(
+                                            child: Text(
+                                              email,
+                                              style:
+                                                  FiloTypography.strongLabel(
+                                                    context,
+                                                  ).copyWith(
+                                                    color: Theme.of(context)
+                                                        .colorScheme
+                                                        .onSurface,
+                                                  ),
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                    ),
+                                    const SizedBox(height: FiloSpacing.screen),
+                                    FiloButton(
+                                      label: _busy
+                                          ? 'Sending code\u2026'
+                                          : 'Send code',
+                                      minHeight: 64,
+                                      busy: _busy,
+                                      icon: _busy ? null : FiloIcons.forward,
+                                      animateArrow: true,
+                                      onPressed: _busy ? null : _send,
+                                    ),
+                                  ] else ...[
+                                    Text(
+                                      'Verification code',
+                                      style: FiloTypography.strongLabel(context)
+                                          .copyWith(
+                                            color: Theme.of(context)
+                                                .colorScheme
+                                                .onSurface,
+                                          ),
+                                    ),
+                                    const SizedBox(height: FiloSpacing.s12),
+                                    AutofillGroup(
+                                      child: OtpCodeField(
+                                        controller: _code,
+                                        focusNode: _focus,
+                                        enabled: !_busy && !_locked,
+                                        hasError: _codeRejected,
+                                        onChanged: _codeChanged,
+                                        onSubmitted: (_) {
+                                          if (!_busy && !_locked) _verify();
+                                        },
+                                      ),
+                                    ),
+                                    const SizedBox(height: FiloSpacing.s20),
+                                    FiloButton(
+                                      label: _busy
+                                          ? 'Please wait\u2026'
+                                          : 'Verify code',
+                                      minHeight: 64,
+                                      busy: _busy,
+                                      onPressed: _busy || _locked
+                                          ? null
+                                          : _verify,
+                                    ),
+                                    const SizedBox(height: FiloSpacing.s8),
+                                    TextButton(
+                                      onPressed: _canResend ? _send : null,
+                                      child: Text(
+                                        _seconds > 0
+                                            ? 'Resend in ${_seconds}s'
+                                            : 'Resend code',
+                                      ),
+                                    ),
+                                    const SizedBox(height: FiloSpacing.s4),
+                                    Text(
+                                      'No email yet? Check your spam folder.',
+                                      textAlign: TextAlign.center,
+                                      style: Theme.of(context)
+                                          .textTheme
+                                          .bodySmall!
+                                          .copyWith(
+                                            color: Theme.of(context)
+                                                .colorScheme
+                                                .onSurfaceVariant,
+                                          ),
+                                    ),
+                                  ],
+                                ],
+                              ),
+                          ],
+                        ),
+                      ),
                     ),
                   ),
                 ),
-              ),
+              ],
             ),
     );
   }

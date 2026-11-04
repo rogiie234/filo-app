@@ -11,6 +11,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/connectivity/connectivity_provider.dart';
 import '../../../core/widgets/filo_widgets.dart';
+import '../../../core/widgets/entry_background.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../classes/application/class_providers.dart';
 import '../../classes/domain/prototype_models.dart';
@@ -520,122 +521,225 @@ class _WorkQueueScreenState extends ConsumerState<WorkQueueScreen> {
     final groups = widget.student
         ? ['Overdue', 'Today', 'This week', 'Later', 'Done']
         : ['To grade', 'Graded, not returned'];
-    final body = RefreshIndicator(
-      onRefresh: _refresh,
-      child: ListView(
-        physics: const AlwaysScrollableScrollPhysics(),
-        padding: const EdgeInsets.all(FiloSpacing.screen),
-        children: [
-          Text(
-            widget.student ? 'To-do' : 'To review',
-            style: Theme.of(context).textTheme.headlineMedium,
-          ),
-          const SizedBox(height: FiloSpacing.s16),
-          if (!online) const OfflineBanner(),
-          if (queue.failed)
-            EmptyState(
-              title: 'Could not refresh work.',
-              pose: 'confused',
-              bob: false,
-              showMascot: queue.entries.isEmpty,
-              action: TextButton(
-                onPressed: online ? _refresh : null,
-                child: const Text('Retry'),
+    final body = Stack(
+      fit: StackFit.expand,
+      children: [
+        const Positioned.fill(
+          child: EntryBackground(verification: true, breeze: true),
+        ),
+        RefreshIndicator(
+          onRefresh: _refresh,
+          child: ListView(
+            physics: const AlwaysScrollableScrollPhysics(),
+            padding: const EdgeInsets.fromLTRB(
+              FiloSpacing.screen,
+              FiloSpacing.s16,
+              FiloSpacing.screen,
+              FiloSpacing.screen,
+            ),
+            children: [
+              Text(
+                widget.student ? 'To-do' : 'To review',
+                style: Theme.of(context).textTheme.headlineMedium,
               ),
-            ),
-          if (queue.loading && queue.entries.isEmpty) ...const [
-            StreamPostSkeleton(),
-            StreamPostSkeleton(),
-            StreamPostSkeleton(),
-          ],
-          if (!queue.loading && !queue.failed && queue.entries.isEmpty)
-            EmptyState(
-              pose: queue.loaded ? 'clock' : 'sleepy',
-              bob: queue.loaded,
-              title: !queue.loaded
-                  ? 'No saved work. Connect to the internet and refresh.'
-                  : widget.student
-                  ? "You're all caught up."
-                  : 'Nothing to grade right now.',
-            ),
-          for (final group in groups)
-            if (queue.entries.any((e) => e.group == group)) ...[
-              Padding(
-                padding: const EdgeInsets.symmetric(vertical: FiloSpacing.s16),
-                child: Text(
-                  group,
-                  style: Theme.of(context).textTheme.titleLarge,
+              const SizedBox(height: FiloSpacing.s8),
+              Text(
+                'Student work, ready for your feedback.',
+                style: Theme.of(context).textTheme.bodyLarge?.copyWith(
+                  color: Theme.of(context).colorScheme.onSurfaceVariant,
                 ),
               ),
-              for (final entry in queue.entries.where((e) => e.group == group))
-                Card(
-                  child: ListTile(
-                    leading: FiloIcon(
-                      widget.student ? FiloIcons.assessment : FiloIcons.person,
-                    ),
-                    title: Text(
-                      widget.student ? entry.title : entry.studentName!,
-                    ),
-                    subtitle: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        if (!widget.student) Text(entry.title),
-                        Text('${entry.room.section} • ${entry.room.course}'),
-                        Text(
-                          entry.time == null
-                              ? (widget.student
-                                    ? 'No due date'
-                                    : 'No work turned in')
-                              : '${widget.student ? 'Due' : 'Turned in'} ${MaterialLocalizations.of(context).formatMediumDate(entry.time!.toLocal())} ${MaterialLocalizations.of(context).formatTimeOfDay(TimeOfDay.fromDateTime(entry.time!.toLocal()))}',
-                        ),
-                        if (widget.student) Text('${entry.points ?? 0} points'),
-                        Chip(
-                          avatar: FiloIcon(
-                            entry.status == 'Late' || entry.status == 'Missing'
-                                ? FiloIcons.clock
-                                : FiloIcons.checkCircle,
-                            size: 16,
-                          ),
-                          label: Text(
-                            entry.group == 'Graded, not returned'
-                                ? 'Graded (not returned)'
-                                : entry.status,
-                          ),
-                        ),
-                        if (!widget.student && group == 'Graded, not returned')
-                          TextButton(
-                            onPressed:
-                                online &&
-                                    !_busy.contains(
-                                      '${entry.room.id}:${entry.postId}',
-                                    )
-                                ? () => _return(entry)
-                                : null,
-                            child: const Text('Return assignment grades'),
-                          ),
-                      ],
-                    ),
-                    onTap: () => Navigator.of(context).push(
-                      widget.student
-                          ? MaterialPageRoute<void>(
-                              builder: (_) => AssignmentDetailScreen(
-                                classId: entry.room.id,
-                                postId: entry.postId,
-                              ),
-                            )
-                          : FiloInstantRoute<void>(
-                              builder: (_) => GradeScreen(
-                                classId: entry.room.id,
-                                postId: entry.postId,
-                                studentId: entry.studentId!,
-                              ),
-                            ),
-                    ),
+              const SizedBox(height: FiloSpacing.s16),
+              if (!online) const OfflineBanner(),
+              if (queue.failed)
+                EmptyState(
+                  title: 'Could not refresh work.',
+                  pose: 'confused',
+                  bob: false,
+                  showMascot: queue.entries.isEmpty,
+                  action: TextButton(
+                    onPressed: online ? _refresh : null,
+                    child: const Text('Retry'),
                   ),
                 ),
+              if (queue.loading && queue.entries.isEmpty) ...const [
+                StreamPostSkeleton(),
+                StreamPostSkeleton(),
+                StreamPostSkeleton(),
+              ],
+              if (!queue.loading &&
+                  !queue.failed &&
+                  queue.entries.isEmpty &&
+                  queue.loaded)
+                Padding(
+                  padding: const EdgeInsets.symmetric(
+                    vertical: FiloSpacing.screen,
+                  ),
+                  child: Column(
+                    children: [
+                      ExcludeSemantics(
+                        child: AspectRatio(
+                          aspectRatio: 1.5,
+                          child: ColorFiltered(
+                            colorFilter: const ColorFilter.matrix([
+                              1,
+                              0,
+                              0,
+                              0,
+                              0,
+                              0,
+                              1,
+                              0,
+                              0,
+                              0,
+                              0,
+                              0,
+                              1,
+                              0,
+                              0,
+                              0,
+                              0,
+                              0,
+                              12,
+                              -2700,
+                            ]),
+                            child: Image.asset(
+                              'assets/illustrations/review-empty.png',
+                              fit: BoxFit.contain,
+                              cacheWidth:
+                                  (360 * MediaQuery.devicePixelRatioOf(context))
+                                      .ceil(),
+                              errorBuilder: (_, _, _) => const Icon(
+                                Icons.assignment_outlined,
+                                size: 48,
+                              ),
+                            ),
+                          ),
+                        ),
+                      ),
+                      const SizedBox(height: FiloSpacing.s16),
+                      Text(
+                        'Nothing to grade right now.',
+                        textAlign: TextAlign.center,
+                        style: Theme.of(context).textTheme.titleLarge,
+                      ),
+                    ],
+                  ),
+                ),
+              if (!queue.loading &&
+                  !queue.failed &&
+                  queue.entries.isEmpty &&
+                  !queue.loaded)
+                EmptyState(
+                  pose: queue.loaded ? 'clock' : 'sleepy',
+                  bob: queue.loaded,
+                  title: !queue.loaded
+                      ? 'No saved work. Connect to the internet and refresh.'
+                      : widget.student
+                      ? "You're all caught up."
+                      : 'Nothing to grade right now.',
+                ),
+              for (final group in groups)
+                if (queue.entries.any((e) => e.group == group)) ...[
+                  Padding(
+                    padding: const EdgeInsets.symmetric(
+                      vertical: FiloSpacing.s16,
+                    ),
+                    child: Text(
+                      group,
+                      style: Theme.of(context).textTheme.titleLarge,
+                    ),
+                  ),
+                  for (final entry in queue.entries.where(
+                    (e) => e.group == group,
+                  ))
+                    Card(
+                      margin: const EdgeInsets.only(bottom: FiloSpacing.s12),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(FiloRadii.large),
+                        side: BorderSide(
+                          color: Theme.of(context).colorScheme.outlineVariant,
+                        ),
+                      ),
+                      child: ListTile(
+                        contentPadding: const EdgeInsets.all(FiloSpacing.s16),
+                        titleTextStyle: Theme.of(context).textTheme.titleMedium,
+                        isThreeLine: true,
+                        leading: FiloIcon(
+                          widget.student
+                              ? FiloIcons.assessment
+                              : FiloIcons.person,
+                        ),
+                        title: Text(
+                          widget.student ? entry.title : entry.studentName!,
+                        ),
+                        subtitle: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            if (!widget.student) Text(entry.title),
+                            Text(
+                              '${entry.room.section} • ${entry.room.course}',
+                            ),
+                            Text(
+                              entry.time == null
+                                  ? (widget.student
+                                        ? 'No due date'
+                                        : 'No work turned in')
+                                  : '${widget.student ? 'Due' : 'Turned in'} ${MaterialLocalizations.of(context).formatMediumDate(entry.time!.toLocal())} ${MaterialLocalizations.of(context).formatTimeOfDay(TimeOfDay.fromDateTime(entry.time!.toLocal()))}',
+                            ),
+                            if (widget.student)
+                              Text('${entry.points ?? 0} points'),
+                            Chip(
+                              avatar: FiloIcon(
+                                entry.status == 'Late' ||
+                                        entry.status == 'Missing'
+                                    ? FiloIcons.clock
+                                    : FiloIcons.checkCircle,
+                                size: 16,
+                              ),
+                              label: Text(
+                                entry.group == 'Graded, not returned'
+                                    ? 'Graded (not returned)'
+                                    : entry.status,
+                              ),
+                            ),
+                            if (!widget.student &&
+                                group == 'Graded, not returned')
+                              TextButton(
+                                onPressed:
+                                    online &&
+                                        !_busy.contains(
+                                          '${entry.room.id}:${entry.postId}',
+                                        )
+                                    ? () => _return(entry)
+                                    : null,
+                                child: const Text('Return assignment grades'),
+                              ),
+                          ],
+                        ),
+                        onTap: () => Navigator.of(context).push(
+                          widget.student
+                              ? MaterialPageRoute<void>(
+                                  builder: (_) => AssignmentDetailScreen(
+                                    classId: entry.room.id,
+                                    postId: entry.postId,
+                                  ),
+                                )
+                              : FiloInstantRoute<void>(
+                                  builder: (_) => GradeScreen(
+                                    classId: entry.room.id,
+                                    postId: entry.postId,
+                                    studentId: entry.studentId!,
+                                  ),
+                                ),
+                        ),
+                      ),
+                    ),
+                ],
             ],
-        ],
-      ),
+          ),
+        ),
+      ],
     );
     return widget.embedded
         ? body

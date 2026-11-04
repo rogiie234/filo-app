@@ -49,10 +49,19 @@ dev_dependencies:
 flutter:
   uses-material-design: true
   assets:
+    - assets/illustrations/classes-empty-backdrop.png
+    - assets/illustrations/classes-empty.png
+    - assets/illustrations/notifications-empty.png
+    - assets/illustrations/review-empty.png
+    - assets/illustrations/stream-empty.png
+    - assets/illustrations/library-empty-folder.png
+    - assets/illustrations/restore-empty.png
+    - assets/illustrations/class-banner-landscape.png
     - assets/brand/
     - assets/gallery/bright_banner.png
     # Keep this list in sync when adding mascot PNGs.
     - assets/mascots/waving.png
+    - assets/mascots/entry/
     - assets/mascots/curious.png
     - assets/mascots/cheerful.png
     - assets/mascots/sleepy.png

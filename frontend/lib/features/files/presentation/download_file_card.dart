@@ -13,6 +13,7 @@ import '../../drive_backup/presentation/drive_backup_screen.dart';
 import '../application/files_providers.dart';
 import '../data/download_manager.dart';
 import 'file_viewer_screen.dart';
+import 'remote_file_preview.dart';
 
 String fileSize(int? size) => size == null
     ? 'Size unavailable'
@@ -42,6 +43,69 @@ class DownloadFileCard extends ConsumerStatefulWidget {
 }
 
 class _DownloadFileCardState extends ConsumerState<DownloadFileCard> {
+  Future<Uri> _previewSource() async {
+    final client = ref.read(supabaseClientProvider);
+    await client
+        .from('posts')
+        .select('id')
+        .eq('id', widget.postId)
+        .eq('class_id', widget.classId)
+        .isFilter('deleted_at', null)
+        .single();
+    final source = await client
+        .from('post_attachments')
+        .select()
+        .eq('id', widget.attachment.id)
+        .eq('post_id', widget.postId)
+        .isFilter('deleted_at', null)
+        .single();
+    if (source['kind'] == 'link') {
+      final uri = Uri.tryParse(source['url'] as String? ?? '');
+      if (uri == null || !['http', 'https'].contains(uri.scheme)) {
+        throw StateError('Unavailable preview');
+      }
+      return uri;
+    }
+    return Uri.parse(
+      await client.storage
+          .from('materials')
+          .createSignedUrl(source['storage_path'] as String, 3600),
+    );
+  }
+
+  Future<void> _preview(
+    LocalFileRecord? local,
+    DownloadManager? manager,
+    bool exists,
+  ) async {
+    if (exists && local != null && manager != null) {
+      await Navigator.of(context).push(
+        MaterialPageRoute<void>(
+          builder: (_) => FileViewerScreen(
+            showMascot: widget.showMascot,
+            file: local,
+            repository: manager.files,
+          ),
+        ),
+      );
+      return;
+    }
+    if (ref.read(connectivityProvider).asData?.value != true) {
+      _message('Connect to the internet to preview this file.');
+      return;
+    }
+    await Navigator.of(context).push(
+      MaterialPageRoute<void>(
+        builder: (_) => RemoteFilePreview(
+          name: widget.attachment.name,
+          mimeType: widget.attachment.mimeType,
+          browserOnly: widget.attachment.kind == 'link',
+          load: _previewSource,
+        ),
+      ),
+    );
+  }
+
   bool _reporting = false;
   static final _notices = <String>{};
   void _message(String text) {
@@ -193,60 +257,82 @@ class _DownloadFileCardState extends ConsumerState<DownloadFileCard> {
     Widget content(bool exists) {
       final state = manager?.states[a.id] ?? const DownloadState();
       return Card(
+        color: Theme.of(context).colorScheme.surface,
+        elevation: 0,
+        margin: const EdgeInsets.only(bottom: FiloSpacing.s12),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(FiloRadii.large),
+          side: BorderSide(color: Theme.of(context).colorScheme.outlineVariant),
+        ),
         child: Padding(
-          padding: const EdgeInsets.all(FiloSpacing.s16),
+          padding: const EdgeInsets.all(FiloSpacing.s12),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Row(
-                children: [
-                  FiloFileTypeTile(
-                    details: FiloFileDetails.fromName(
-                      a.name,
-                      mimeType: a.mimeType,
-                      kind: a.kind,
+              InkWell(
+                borderRadius: BorderRadius.circular(FiloRadii.small),
+                onTap: () => _preview(local, manager, exists),
+                child: Tooltip(
+                  message: 'Preview file',
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(
+                      vertical: FiloSpacing.s4,
                     ),
-                  ),
-                  const SizedBox(width: FiloSpacing.s12),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
+                    child: Row(
                       children: [
-                        Text(
-                          a.name,
-                          style: Theme.of(context).textTheme.titleMedium,
-                        ),
-                        FiloFileTypeLabel(
+                        FiloFileTypeTile(
                           details: FiloFileDetails.fromName(
                             a.name,
                             mimeType: a.mimeType,
                             kind: a.kind,
                           ),
                         ),
+                        const SizedBox(width: FiloSpacing.s12),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                a.name,
+                                style: Theme.of(context).textTheme.titleMedium
+                                    ?.copyWith(fontWeight: FontWeight.w800),
+                              ),
+                              FiloFileTypeLabel(
+                                details: FiloFileDetails.fromName(
+                                  a.name,
+                                  mimeType: a.mimeType,
+                                  kind: a.kind,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                        const FiloIcon(FiloIcons.chevronRight),
                       ],
                     ),
                   ),
-                ],
+                ),
               ),
-              const SizedBox(height: FiloSpacing.s8),
+              const SizedBox(height: FiloSpacing.s4),
               Text(
                 '${fileSize(a.sizeBytes)} · ${MaterialLocalizations.of(context).formatMediumDate(a.createdAt.toLocal())}',
+                style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                  color: Theme.of(context).colorScheme.onSurfaceVariant,
+                ),
               ),
-              if (widget.postTitle != null) Text(widget.postTitle!),
+              if (widget.postTitle != null) ...[
+                const SizedBox(height: FiloSpacing.s4),
+                Text(
+                  widget.postTitle!,
+                  style: Theme.of(context).textTheme.bodyMedium,
+                ),
+              ],
+              const Padding(
+                padding: EdgeInsets.symmetric(vertical: FiloSpacing.s4),
+                child: Divider(height: 1),
+              ),
               if (exists && local != null) ...[
                 FiloStatusChip.preset(FiloStatusPreset.availableOffline),
-                TextButton(
-                  onPressed: () => Navigator.of(context).push(
-                    MaterialPageRoute<void>(
-                      builder: (_) => FileViewerScreen(
-                        showMascot: widget.showMascot,
-                        file: local,
-                        repository: manager!.files,
-                      ),
-                    ),
-                  ),
-                  child: const Text('Open'),
-                ),
               ] else if (state.running)
                 Row(
                   children: [
@@ -272,14 +358,6 @@ class _DownloadFileCardState extends ConsumerState<DownloadFileCard> {
                   ],
                 )
               else ...[
-                if (downloadable &&
-                    manager != null &&
-                    localFiles.hasValue &&
-                    !localFiles.isLoading &&
-                    !localFiles.hasError &&
-                    local == null &&
-                    state.error == null)
-                  FiloStatusChip.preset(FiloStatusPreset.cloudOnly),
                 if (local != null)
                   const Text('This file is no longer on your device.'),
                 if (state.error != null) Text(state.error!.message),
@@ -289,22 +367,45 @@ class _DownloadFileCardState extends ConsumerState<DownloadFileCard> {
                         ? "You're offline. Connect to download."
                         : "You're offline. Connect to open this link.",
                   ),
-                TextButton.icon(
-                  onPressed: !online || manager == null
-                      ? null
-                      : downloadable
-                      ? () => _download(manager)
-                      : _browser,
-                  icon: FiloIcon(
-                    downloadable ? FiloIcons.download : FiloIcons.openExternal,
-                  ),
-                  label: Text(
-                    downloadable
-                        ? state.error == null
-                              ? 'Download'
-                              : 'Retry'
-                        : 'Open in browser',
-                  ),
+                OverflowBar(
+                  alignment: MainAxisAlignment.spaceBetween,
+                  overflowAlignment: OverflowBarAlignment.end,
+                  spacing: FiloSpacing.s8,
+                  overflowSpacing: FiloSpacing.s4,
+                  children: [
+                    if (downloadable &&
+                        manager != null &&
+                        localFiles.hasValue &&
+                        !localFiles.isLoading &&
+                        !localFiles.hasError &&
+                        local == null &&
+                        state.error == null)
+                      FiloStatusChip.preset(FiloStatusPreset.cloudOnly)
+                    else
+                      const SizedBox.shrink(),
+                    FilledButton.tonalIcon(
+                      style: FilledButton.styleFrom(
+                        minimumSize: const Size(112, 48),
+                      ),
+                      onPressed: !online || manager == null
+                          ? null
+                          : downloadable
+                          ? () => _download(manager)
+                          : _browser,
+                      icon: FiloIcon(
+                        downloadable
+                            ? FiloIcons.download
+                            : FiloIcons.openExternal,
+                      ),
+                      label: Text(
+                        downloadable
+                            ? state.error == null
+                                  ? 'Download'
+                                  : 'Retry'
+                            : 'Open in browser',
+                      ),
+                    ),
+                  ],
                 ),
                 if (state.error?.kind == 'locked' && manager != null)
                   FutureBuilder<CacheProfile?>(

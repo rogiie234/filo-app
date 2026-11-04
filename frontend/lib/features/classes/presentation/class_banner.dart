@@ -15,33 +15,63 @@ class ClassBanner extends StatelessWidget {
     this.color = filoDefaultBanner,
     this.image,
     this.avatar,
+    this.compact = false,
   });
 
   final String section, instructor;
   final int color;
   final ImageProvider? image;
   final Widget? avatar;
+  final bool compact;
 
-  static const patternOpacity = FiloPaint.bannerPatternOpacity;
   static const imageScrim = FiloPaint.bannerScrim;
 
-  static Color foreground(int color) =>
-      color == classBannerColors['sage'] || color == classBannerColors['olive']
+  static Color foreground(
+    int color, {
+    Brightness brightness = Brightness.light,
+  }) =>
+      brightness == Brightness.light &&
+          (color == classBannerColors['sage'] ||
+              color == classBannerColors['olive'])
       ? FiloPaint.bannerInk
       : FiloPaint.white;
+
+  static Color presetBackground(int color, Brightness brightness) => Color.lerp(
+    Color(color),
+    Colors.black,
+    brightness == Brightness.dark ? .65 : 0,
+  )!;
+
+  static Color landscapeTint(
+    int color, {
+    Brightness brightness = Brightness.light,
+  }) => brightness == Brightness.dark
+      ? Colors.white.withValues(alpha: .22)
+      : foreground(color) == FiloPaint.white
+      ? Colors.black.withValues(alpha: .3)
+      : FiloPaint.bannerInk.withValues(alpha: .24);
 
   @override
   Widget build(BuildContext context) {
     final preset = classBannerColors.containsValue(color)
         ? color
         : classBannerColor(null);
+    final brightness = Theme.of(context).brightness;
     final background = image == null ? preset : classBannerColor(null);
-    final ink = image == null ? foreground(preset) : FiloPaint.white;
+    final ink = image == null
+        ? foreground(preset, brightness: brightness)
+        : FiloPaint.white;
     final fallback = ColoredBox(
-      color: Color(background),
-      child: CustomPaint(
-        painter: ClassBannerPattern(foreground(background)),
-        child: const SizedBox.expand(),
+      color: presetBackground(background, brightness),
+      child: Image.asset(
+        'assets/illustrations/class-banner-landscape.png',
+        fit: BoxFit.cover,
+        alignment: Alignment.bottomRight,
+        color: landscapeTint(background, brightness: brightness),
+        colorBlendMode: BlendMode.srcIn,
+        cacheWidth: (520 * MediaQuery.devicePixelRatioOf(context)).ceil(),
+        excludeFromSemantics: true,
+        errorBuilder: (_, error, stack) => const SizedBox.expand(),
       ),
     );
     return ClipRect(
@@ -66,7 +96,7 @@ class ClassBanner extends StatelessWidget {
             mainAxisSize: MainAxisSize.min,
             children: [
               if (image != null) ...[
-                const SizedBox(height: 48),
+                SizedBox(height: compact ? 16 : 48),
                 const SizedBox(
                   height: 32,
                   child: DecoratedBox(
@@ -92,7 +122,9 @@ class ClassBanner extends StatelessWidget {
                         ),
                 ),
                 child: Padding(
-                  padding: const EdgeInsets.all(FiloSpacing.screen),
+                  padding: EdgeInsets.all(
+                    compact ? FiloSpacing.s16 : FiloSpacing.screen,
+                  ),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
@@ -112,7 +144,7 @@ class ClassBanner extends StatelessWidget {
                               width: 44,
                               height: 44,
                               child: FiloIcon(
-                                FiloIcons.book,
+                                Icons.eco_outlined,
                                 size: 25,
                                 color: ink,
                               ),
@@ -120,7 +152,9 @@ class ClassBanner extends StatelessWidget {
                           ),
                         ],
                       ),
-                      const SizedBox(height: FiloSpacing.s20),
+                      SizedBox(
+                        height: compact ? FiloSpacing.s8 : FiloSpacing.s20,
+                      ),
                       Row(
                         children: [
                           if (avatar != null) ...[
@@ -146,35 +180,4 @@ class ClassBanner extends StatelessWidget {
       ),
     );
   }
-}
-
-class ClassBannerPattern extends CustomPainter {
-  const ClassBannerPattern(this.ink);
-  final Color ink;
-
-  @override
-  void paint(Canvas canvas, Size size) {
-    final paint = Paint()
-      ..color = ink.withValues(alpha: ClassBanner.patternOpacity)
-      ..style = PaintingStyle.stroke
-      ..strokeWidth = 2;
-    for (var y = -24.0; y < size.height; y += 64) {
-      for (var x = -24.0; x < size.width; x += 80) {
-        final book = Path()
-          ..moveTo(x, y + 4)
-          ..quadraticBezierTo(x + 10, y, x + 20, y + 6)
-          ..quadraticBezierTo(x + 30, y, x + 40, y + 4)
-          ..lineTo(x + 40, y + 30)
-          ..quadraticBezierTo(x + 30, y + 26, x + 20, y + 32)
-          ..quadraticBezierTo(x + 10, y + 26, x, y + 30)
-          ..close()
-          ..moveTo(x + 20, y + 6)
-          ..lineTo(x + 20, y + 32);
-        canvas.drawPath(book, paint);
-      }
-    }
-  }
-
-  @override
-  bool shouldRepaint(ClassBannerPattern oldDelegate) => oldDelegate.ink != ink;
 }

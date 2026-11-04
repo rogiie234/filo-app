@@ -42,12 +42,14 @@ class ClassworkList extends ConsumerStatefulWidget {
   const ClassworkList({
     super.key,
     required this.classId,
+    this.showHeading = true,
     required this.instructor,
     required this.live,
     required this.previewPosts,
     required this.onOpen,
   });
   final String classId;
+  final bool showHeading;
   final bool instructor, live;
   final List<ClassPost> previewPosts;
   final ValueChanged<ClassPost> onOpen;
@@ -255,10 +257,17 @@ class _ClassworkListState extends ConsumerState<ClassworkList> {
     final content = ListView(
       key: PageStorageKey('classwork-$id'),
       physics: const AlwaysScrollableScrollPhysics(),
-      padding: const EdgeInsets.all(FiloSpacing.screen),
+      padding: EdgeInsets.fromLTRB(
+        FiloSpacing.screen,
+        FiloSpacing.screen,
+        FiloSpacing.screen,
+        widget.instructor ? 112 : FiloSpacing.screen,
+      ),
       children: [
-        Text('Classwork', style: Theme.of(context).textTheme.headlineMedium),
-        const SizedBox(height: FiloSpacing.s8),
+        if (widget.showHeading) ...[
+          Text('Classwork', style: Theme.of(context).textTheme.headlineMedium),
+          const SizedBox(height: FiloSpacing.s8),
+        ],
         Text(
           'Make space for your next small win.',
           style: TextStyle(
@@ -364,8 +373,8 @@ class _ClassworkListState extends ConsumerState<ClassworkList> {
             )
         else if (empty && !failed)
           if (confirmedLoad && (!needQuizzes || catalog?.value?.loaded == true))
-            const EmptyState(
-              pose: 'thinking',
+            const FiloIllustratedEmptyState(
+              asset: 'assets/illustrations/review-empty.png',
               title: 'No classwork yet.',
               message: 'Your next learning adventure will appear here.',
             )

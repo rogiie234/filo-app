@@ -1,3 +1,8 @@
+import 'package:filo/core/widgets/entry_background.dart';
+import 'package:filo/features/home/presentation/home_screen.dart';
+import 'package:filo/features/settings/application/theme_settings.dart';
+import 'package:flutter/cupertino.dart' show CupertinoPicker;
+
 import 'dart:async';
 import 'dart:io';
 import 'dart:ui' as ui;
@@ -17,7 +22,7 @@ import 'package:filo/features/classes/data/class_repository.dart';
 import 'package:filo/features/classes/domain/prototype_models.dart';
 import 'package:filo/features/classes/presentation/classes_screen.dart';
 import 'package:filo/features/classes/presentation/classes_widgets.dart'
-    show RedDotBadge;
+    show RedDotBadge, ClassCardSkeleton;
 import 'package:filo/features/onboarding/data/profile_repository.dart';
 import 'package:filo/features/onboarding/application/notification_permission.dart';
 import 'package:filo/core/sync/sync_providers.dart';
@@ -25,6 +30,7 @@ import 'package:filo/features/drive_backup/data/drive_backup_service.dart';
 import 'package:filo/features/notifications/application/notification_providers.dart';
 import 'package:filo/features/notifications/presentation/inbox_screen.dart';
 import 'package:flutter/material.dart';
+import 'package:filo/core/widgets/filo_button.dart';
 import 'package:flutter/rendering.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -161,6 +167,7 @@ void main() {
     AccountRole role = AccountRole.student,
     bool online = true,
     bool empty = false,
+    bool homeThemeFailure = false,
     double scale = 1,
     bool? notificationAccess,
     Stream<int>? unread,
@@ -186,6 +193,10 @@ void main() {
     await tester.pumpWidget(
       ProviderScope(
         overrides: [
+          if (homeThemeFailure)
+            themeSettingsRepositoryProvider.overrideWith(
+              (ref) async => throw StateError('fixture theme read failure'),
+            ),
           authUserIdProvider.overrideWith((ref) => Stream.value('teacher')),
           accountDatabaseProvider.overrideWith((ref) async => db),
           deadlineBridgeProvider.overrideWithValue(const NoDeadlineBridge()),
@@ -232,14 +243,23 @@ void main() {
           child: MaterialApp(
             debugShowCheckedModeBanner: false,
             theme: theme ?? AppTheme.light,
-            home: ClassesScreen(
-              profile: AccountProfile.fromJson({
-                'id': 'teacher',
-                'role': role.name,
-                'display_name': 'Alex',
-                'email': 'alex@example.invalid',
-              }),
-            ),
+            home: homeThemeFailure
+                ? HomeScreen(
+                    profile: AccountProfile.fromJson({
+                      'id': 'teacher',
+                      'role': role.name,
+                      'display_name': 'Alex',
+                      'email': 'alex@example.invalid',
+                    }),
+                  )
+                : ClassesScreen(
+                    profile: AccountProfile.fromJson({
+                      'id': 'teacher',
+                      'role': role.name,
+                      'display_name': 'Alex',
+                      'email': 'alex@example.invalid',
+                    }),
+                  ),
           ),
         ),
       ),
@@ -275,6 +295,134 @@ void main() {
       await closing;
     });
     return Harness(repo, network, cards, rooms, capture);
+  }
+
+  testClasses('theme read failure cannot block return from Create class', (
+    tester,
+  ) async {
+    await launch(
+      tester,
+      role: AccountRole.instructor,
+      empty: true,
+      homeThemeFailure: true,
+    );
+    final container = ProviderScope.containerOf(
+      tester.element(find.byType(HomeScreen)),
+    );
+    final subscription = container.listen(themeSettingsProvider, (_, _) {});
+    try {
+      await expectLater(
+        container.read(themeSettingsProvider.future),
+        throwsStateError,
+      );
+      await tester.pump();
+      expect(find.text('Your classes'), findsOneWidget);
+      await tester.ensureVisible(find.text('Create class'));
+      await tester.tap(find.text('Create class'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.byTooltip('Back to classes'));
+      await tester.pumpAndSettle();
+      expect(find.text('Your classes'), findsOneWidget);
+      expect(find.text('Could not load your theme setting.'), findsNothing);
+      expect(container.read(themeSettingsProvider).hasError, isTrue);
+    } finally {
+      subscription.close();
+    }
+  });
+
+  testClasses('school year modal prevents past starts and earlier endings', (
+    tester,
+  ) async {
+    await launch(tester, role: AccountRole.instructor, empty: true);
+    await tester.ensureVisible(find.text('Create class'));
+    await tester.tap(find.text('Create class'));
+    await tester.pumpAndSettle();
+    await tester.ensureVisible(find.byType(TextFormField).at(2));
+    await tester.tap(find.byType(TextFormField).at(2));
+    await tester.pumpAndSettle();
+    final year = DateTime.now().year;
+    expect(find.text('Starting year'), findsOneWidget);
+    expect(find.text('Ending year'), findsOneWidget);
+    expect(find.byType(CupertinoPicker), findsNWidgets(2));
+    final startWheel = tester.widget<CupertinoPicker>(
+      find.byType(CupertinoPicker).first,
+    );
+    expect(find.text('${year - 1}'), findsNothing);
+    startWheel.onSelectedItemChanged!(2);
+    await tester.pump();
+    final endWheel = tester.widget<CupertinoPicker>(
+      find.byType(CupertinoPicker).last,
+    );
+    expect(endWheel.scrollController!.selectedItem, 0);
+    await tester.tap(find.text('Use school year'));
+    await tester.pumpAndSettle();
+    expect(find.text('${year + 2}-${year + 3}'), findsOneWidget);
+    await tester.tap(find.byType(TextFormField).at(2));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Cancel'));
+    await tester.pumpAndSettle();
+    expect(find.text('${year + 2}-${year + 3}'), findsOneWidget);
+  });
+
+  testClasses('create action floats and preview follows course and section', (
+    tester,
+  ) async {
+    await launch(tester, role: AccountRole.instructor, empty: true);
+    await tester.ensureVisible(find.text('Create class'));
+    await tester.tap(find.text('Create class'));
+    await tester.pumpAndSettle();
+    final scaffold = tester.widget<Scaffold>(find.byType(Scaffold).last);
+    expect(scaffold.bottomNavigationBar, isNull);
+    expect(scaffold.floatingActionButton, isNotNull);
+    await tester.enterText(
+      find.byType(TextFormField).at(0),
+      'Computing preview',
+    );
+    await tester.enterText(find.byType(TextFormField).at(1), 'BSIT-4B');
+    FocusManager.instance.primaryFocus?.unfocus();
+    await tester.ensureVisible(find.text('Class card preview'));
+    await tester.pumpAndSettle();
+    expect(find.text('Computing preview'), findsOneWidget);
+    expect(find.text('BSIT-4B'), findsOneWidget);
+    final upload = tester.widget<FiloButton>(
+      find.widgetWithText(FiloButton, 'Upload banner image'),
+    );
+    expect(upload.outlined, isTrue);
+    expect(upload.minHeight, greaterThanOrEqualTo(48));
+    expect(find.byType(OutlinedButton), findsNWidgets(9));
+    expect(
+      tester.getTopLeft(find.text('Class card preview')).dy,
+      lessThan(tester.getTopLeft(find.text('Banner')).dy),
+    );
+    final defaultTile = find.widgetWithText(OutlinedButton, 'Default');
+    final forestTile = find.widgetWithText(OutlinedButton, 'Forest');
+    expect(tester.getSize(defaultTile).width, tester.getSize(forestTile).width);
+    expect(tester.getTopLeft(defaultTile).dy, tester.getTopLeft(forestTile).dy);
+  });
+
+  for (final empty in [true, false]) {
+    testClasses(
+      'cancel create preserves known classes empty=$empty without skeleton',
+      (tester) async {
+        await launch(tester, role: AccountRole.instructor, empty: empty);
+        expect(
+          tester.widget<EntryBackground>(find.byType(EntryBackground)).breeze,
+          isTrue,
+        );
+        await tester.ensureVisible(find.text('Create class'));
+        await tester.tap(find.text('Create class'));
+        await tester.pumpAndSettle();
+        await tester.tap(find.byTooltip('Back to classes'));
+        await tester.pump();
+        expect(find.byType(ClassCardSkeleton), findsNothing);
+        await tester.pumpAndSettle();
+        expect(find.byType(ClassCardSkeleton), findsNothing);
+        expect(
+          find.text(empty ? 'No classes yet.' : 'Computing'),
+          findsOneWidget,
+        );
+      },
+    );
   }
 
   for (final theme in [AppTheme.light, AppTheme.dark]) {
@@ -553,8 +701,13 @@ void main() {
         ' Computing II ',
       );
       await tester.enterText(find.byType(TextFormField).at(1), ' BSIT-3B ');
-      await tester.enterText(find.byType(TextFormField).at(2), '2026-2027');
-      final teal = find.widgetWithText(ChoiceChip, 'Teal');
+      await tester.ensureVisible(find.byType(TextFormField).at(2));
+      await tester.tap(find.byType(TextFormField).at(2));
+      await tester.pumpAndSettle();
+      expect(find.byType(CupertinoPicker), findsNWidgets(2));
+      await tester.tap(find.text('Use school year'));
+      await tester.pumpAndSettle();
+      final teal = find.widgetWithText(OutlinedButton, 'Teal');
       await tester.ensureVisible(teal);
       await tester.pumpAndSettle();
       await tester.tap(teal);
@@ -565,7 +718,7 @@ void main() {
       expect(h.repository.createdValues, {
         'course': 'Computing II',
         'section': 'BSIT-3B',
-        'school_year': '2026-2027',
+        'school_year': '${DateTime.now().year}-${DateTime.now().year + 1}',
         'banner_color': 'teal',
       });
       expect(find.text('BSIT-3B'), findsOneWidget);
@@ -573,6 +726,7 @@ void main() {
         tester.widget<NavigationBar>(find.byType(NavigationBar)).selectedIndex,
         0,
       );
+      expect(find.byType(EntryBackground), findsOneWidget);
       for (final tab in ['Stream', 'Files', 'Classwork']) {
         expect(find.text(tab), findsWidgets);
       }
@@ -586,7 +740,12 @@ void main() {
       await tester.pumpAndSettle();
       await tester.enterText(find.byType(TextFormField).at(0), 'Computing');
       await tester.enterText(find.byType(TextFormField).at(1), 'BSIT-3B');
-      await tester.enterText(find.byType(TextFormField).at(2), '2026-2027');
+      await tester.ensureVisible(find.byType(TextFormField).at(2));
+      await tester.tap(find.byType(TextFormField).at(2));
+      await tester.pumpAndSettle();
+      expect(find.byType(CupertinoPicker), findsNWidgets(2));
+      await tester.tap(find.text('Use school year'));
+      await tester.pumpAndSettle();
       h.repository.failPull = true;
       await tester.tap(find.widgetWithText(FilledButton, 'Create class'));
       await tester.pumpAndSettle();
@@ -607,7 +766,12 @@ void main() {
       await tester.pumpAndSettle();
       await tester.enterText(find.byType(TextFormField).at(0), 'Computing');
       await tester.enterText(find.byType(TextFormField).at(1), 'BSIT-3B');
-      await tester.enterText(find.byType(TextFormField).at(2), '2026-2027');
+      await tester.ensureVisible(find.byType(TextFormField).at(2));
+      await tester.tap(find.byType(TextFormField).at(2));
+      await tester.pumpAndSettle();
+      expect(find.byType(CupertinoPicker), findsNWidgets(2));
+      await tester.tap(find.text('Use school year'));
+      await tester.pumpAndSettle();
       await tester.tap(find.widgetWithText(FilledButton, 'Create class'));
       await tester.pumpAndSettle();
       expect(

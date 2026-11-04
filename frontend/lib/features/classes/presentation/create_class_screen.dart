@@ -3,6 +3,7 @@ import '../../../core/picked_image_file.dart';
 import 'dart:typed_data';
 
 import 'package:flutter/material.dart';
+import 'package:flutter/cupertino.dart' show CupertinoPicker;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
@@ -10,6 +11,7 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import '../../../core/connectivity/connectivity_provider.dart';
 import '../../../core/supabase/supabase_provider.dart';
 import '../../../core/widgets/filo_widgets.dart';
+import '../../../core/widgets/entry_background.dart';
 import '../application/class_providers.dart';
 import '../data/class_remote.dart';
 import '../domain/class_banner.dart';
@@ -35,6 +37,105 @@ class _CreateClassScreenState extends ConsumerState<CreateClassScreen> {
   String? _uploadPath;
   bool _picking = false;
   bool _bannerSaved = false;
+
+  Future<void> _pickSchoolYear() async {
+    FocusScope.of(context).unfocus();
+    final currentYear = DateTime.now().year;
+    final parts = _year.text.split('-');
+    var start = int.tryParse(parts.first) ?? currentYear;
+    if (start < currentYear || start >= currentYear + 100) start = currentYear;
+    var end = parts.length == 2
+        ? int.tryParse(parts.last) ?? start + 1
+        : start + 1;
+    if (end <= start || end > start + 100) end = start + 1;
+    final range = await showFiloDialog<String>(
+      context: context,
+      builder: (dialogContext) => StatefulBuilder(
+        builder: (context, updateSelection) {
+          Widget yearColumn(String label, bool starting) => Expanded(
+            child: _SchoolYearWheel(
+              key: ValueKey(
+                starting ? 'starting-year-wheel' : 'ending-year-wheel-$start',
+              ),
+              label: label,
+              firstYear: starting ? currentYear : start + 1,
+              selectedYear: starting ? start : end,
+              onChanged: (year) => updateSelection(() {
+                if (starting) {
+                  start = year;
+                  if (end <= start || end > start + 100) end = start + 1;
+                } else {
+                  end = year;
+                }
+              }),
+            ),
+          );
+          return AlertDialog(
+            title: const Text('School year'),
+            content: SizedBox(
+              width: 360,
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Row(
+                    children: [
+                      Expanded(
+                        child: Text(
+                          'Starting year',
+                          textAlign: TextAlign.center,
+                          style: Theme.of(context).textTheme.titleSmall,
+                        ),
+                      ),
+                      const SizedBox(width: 32),
+                      Expanded(
+                        child: Text(
+                          'Ending year',
+                          textAlign: TextAlign.center,
+                          style: Theme.of(context).textTheme.titleSmall,
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: FiloSpacing.s8),
+                  SizedBox(
+                    height:
+                        (MediaQuery.textScalerOf(context).scale(24) + 24) * 3,
+                    child: Row(
+                      children: [
+                        yearColumn('Starting year', true),
+                        SizedBox(
+                          width: 32,
+                          child: ExcludeSemantics(
+                            child: Text(
+                              '-',
+                              textAlign: TextAlign.center,
+                              style: Theme.of(context).textTheme.titleLarge,
+                            ),
+                          ),
+                        ),
+                        yearColumn('Ending year', false),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(dialogContext),
+                child: const Text('Cancel'),
+              ),
+              FilledButton(
+                onPressed: () => Navigator.pop(dialogContext, '$start-$end'),
+                child: const Text('Use school year'),
+              ),
+            ],
+          );
+        },
+      ),
+    );
+    if (range != null && mounted) setState(() => _year.text = range);
+  }
 
   Future<void> _pickBanner() async {
     setState(() => _picking = true);
@@ -166,162 +267,468 @@ class _CreateClassScreenState extends ConsumerState<CreateClassScreen> {
             icon: const FiloIcon(FiloIcons.back),
           ),
         ),
-        body: Form(
-          key: _form,
-          child: ListView(
-            padding: const EdgeInsets.all(FiloSpacing.screen),
-            children: [
-              Text(
-                'A new place to grow.',
-                style: Theme.of(context).textTheme.headlineMedium,
-              ),
-              const SizedBox(height: FiloSpacing.screen),
-              TextFormField(
-                controller: _course,
-                enabled: editable,
-                maxLength: 120,
-                textCapitalization: TextCapitalization.sentences,
-                decoration: const InputDecoration(labelText: 'Course'),
-                validator: (v) =>
-                    v == null || v.trim().isEmpty ? 'Enter a course.' : null,
-              ),
-              const SizedBox(height: FiloSpacing.s16),
-              TextFormField(
-                controller: _section,
-                enabled: editable,
-                maxLength: 60,
-                decoration: const InputDecoration(labelText: 'Section'),
-                validator: (v) =>
-                    v == null || v.trim().isEmpty ? 'Enter a section.' : null,
-              ),
-              const SizedBox(height: FiloSpacing.s16),
-              TextFormField(
-                controller: _year,
-                enabled: editable,
-                maxLength: 20,
-                decoration: const InputDecoration(
-                  labelText: 'School Year',
-                  hintText: '2026–2027',
+        body: Stack(
+          fit: StackFit.expand,
+          children: [
+            Positioned(
+              top: 0,
+              left: 0,
+              right: 0,
+              // Keep the botanical scene fixed when the keyboard resizes the form.
+              bottom: -MediaQuery.viewInsetsOf(context).bottom,
+              child: Transform.flip(
+                flipX: true,
+                child: const Opacity(
+                  opacity: .6,
+                  child: EntryBackground(verification: true),
                 ),
-                validator: (v) => v == null || v.trim().isEmpty
-                    ? 'Enter a school year.'
-                    : null,
               ),
-              const SizedBox(height: FiloSpacing.screen),
-              Text('Banner', style: Theme.of(context).textTheme.titleMedium),
-              const SizedBox(height: FiloSpacing.s12),
-              Wrap(
-                spacing: 8,
-                runSpacing: 8,
-                children: [
-                  FiloAnimatedChip(
-                    label: const Text('Default'),
-                    selected: _banner == null && _bannerImage == null,
-                    onSelected: editable
-                        ? (_) => setState(() {
-                            _banner = null;
-                            _bannerImage = null;
-                          })
-                        : null,
-                  ),
-                  for (final entry in classBannerColors.entries)
-                    FiloAnimatedChip(
-                      label: Text(
-                        '${entry.key[0].toUpperCase()}${entry.key.substring(1)}',
-                      ),
-                      avatar: CircleAvatar(backgroundColor: Color(entry.value)),
-                      selected: _banner == entry.key && _bannerImage == null,
-                      onSelected: editable
-                          ? (_) => setState(() {
-                              _banner = entry.key;
-                              _bannerImage = null;
-                            })
-                          : null,
+            ),
+            Positioned(
+              top: 8,
+              right: 0,
+              child: ExcludeSemantics(
+                child: IgnorePointer(
+                  child: CustomPaint(
+                    size: const Size(100, 88),
+                    painter: _BreezeLeafPainter(
+                      Theme.of(context).colorScheme.primary,
                     ),
-                ],
-              ),
-              TextButton.icon(
-                onPressed: editable ? _pickBanner : null,
-                icon: const FiloIcon(FiloIcons.addImage),
-                label: Text(
-                  _picking ? 'Opening photos…' : 'Upload banner image',
-                ),
-              ),
-              const Text('JPG, PNG, or WebP · up to 2 MB'),
-              const SizedBox(height: FiloSpacing.s16),
-              ClipRRect(
-                borderRadius: BorderRadius.circular(FiloRadii.large),
-                child: ValueListenableBuilder<TextEditingValue>(
-                  valueListenable: _section,
-                  builder: (context, value, _) => ClassBanner(
-                    section: value.text.trim().isEmpty
-                        ? 'Your classroom'
-                        : value.text.trim(),
-                    instructor: 'Instructor',
-                    color: classBannerColor(_banner),
-                    image: _bannerImage == null
-                        ? null
-                        : MemoryImage(_bannerImage!),
                   ),
                 ),
               ),
-              const SizedBox(height: FiloSpacing.s8),
-              const Text(
-                'A permanent join code is generated when you create the class.',
-              ),
-              if (_error != null)
-                Padding(
-                  padding: const EdgeInsets.only(top: FiloSpacing.s16),
-                  child: Text(
-                    _error!,
-                    style: TextStyle(
+            ),
+            Form(
+              key: _form,
+              child: ListView(
+                keyboardDismissBehavior:
+                    ScrollViewKeyboardDismissBehavior.onDrag,
+                padding: EdgeInsets.fromLTRB(
+                  24,
+                  24,
+                  24,
+                  112 + MediaQuery.paddingOf(context).bottom,
+                ),
+                children: [
+                  if (!online) ...[
+                    const Text('Connect to the internet to create a class.'),
+                    const SizedBox(height: FiloSpacing.s16),
+                  ],
+                  Text(
+                    'A new place to grow.',
+                    style: Theme.of(context).textTheme.headlineMedium,
+                  ),
+                  const SizedBox(height: FiloSpacing.s8),
+                  Text(
+                    'Add your class details, then choose a banner.',
+                    style: Theme.of(context).textTheme.bodyLarge!.copyWith(
                       color: Theme.of(context).colorScheme.onSurfaceVariant,
                     ),
                   ),
-                ),
-            ],
-          ),
-        ),
-        bottomNavigationBar: SafeArea(
-          child: Padding(
-            padding: const EdgeInsets.fromLTRB(
-              FiloSpacing.screen,
-              FiloSpacing.s12,
-              FiloSpacing.screen,
-              FiloSpacing.s20,
-            ),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                if (!online)
-                  const Padding(
-                    padding: EdgeInsets.only(bottom: FiloSpacing.s8),
-                    child: Text('Connect to the internet to create a class.'),
+                  const SizedBox(height: FiloSpacing.screen),
+                  Text(
+                    'Class details',
+                    style: Theme.of(context).textTheme.titleMedium,
                   ),
-                FiloButton(
-                  label: _busy
-                      ? 'Creating…'
-                      : _writeUnconfirmed
-                      ? 'Back to classes'
-                      : _created == null
-                      ? 'Create class'
-                      : _bannerImage != null && !_bannerSaved
-                      ? 'Retry saving banner'
-                      : 'Retry loading class',
-                  icon: _busy ? null : FiloIcons.add,
-                  onPressed: _busy || _picking
-                      ? null
-                      : _writeUnconfirmed
-                      ? () => Navigator.pop(context)
-                      : !online
-                      ? null
-                      : _create,
-                ),
-              ],
+                  const SizedBox(height: FiloSpacing.s16),
+                  TextFormField(
+                    controller: _course,
+                    enabled: editable,
+                    textInputAction: TextInputAction.next,
+                    maxLength: 120,
+                    textCapitalization: TextCapitalization.sentences,
+                    decoration: const InputDecoration(labelText: 'Course'),
+                    validator: (v) => v == null || v.trim().isEmpty
+                        ? 'Enter a course.'
+                        : null,
+                  ),
+                  const SizedBox(height: FiloSpacing.s16),
+                  TextFormField(
+                    controller: _section,
+                    textCapitalization: TextCapitalization.characters,
+                    enabled: editable,
+                    textInputAction: TextInputAction.next,
+                    maxLength: 60,
+                    decoration: const InputDecoration(labelText: 'Section'),
+                    validator: (v) => v == null || v.trim().isEmpty
+                        ? 'Enter a section.'
+                        : null,
+                  ),
+                  const SizedBox(height: FiloSpacing.s16),
+                  TextFormField(
+                    controller: _year,
+                    enabled: editable,
+                    readOnly: true,
+                    onTap: editable ? _pickSchoolYear : null,
+                    decoration: const InputDecoration(
+                      labelText: 'School year',
+                      hintText: 'Select school year',
+                      suffixIcon: FiloIcon(FiloIcons.calendar),
+                    ),
+                    validator: (value) => value == null || value.isEmpty
+                        ? 'Select a school year.'
+                        : null,
+                  ),
+                  const SizedBox(height: FiloSpacing.screen),
+                  Text(
+                    'Class card preview',
+                    style: Theme.of(context).textTheme.titleMedium,
+                  ),
+                  const SizedBox(height: FiloSpacing.s12),
+                  ClipRRect(
+                    borderRadius: BorderRadius.circular(FiloRadii.large),
+                    child: AnimatedBuilder(
+                      animation: Listenable.merge([_section, _course]),
+                      builder: (context, _) => Material(
+                        color: Theme.of(context).colorScheme.surface,
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(FiloRadii.large),
+                          side: BorderSide(
+                            color: Theme.of(context).colorScheme.outline,
+                          ),
+                        ),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.stretch,
+                          children: [
+                            ClassBanner(
+                              section: _section.text.trim().isEmpty
+                                  ? 'Your classroom'
+                                  : _section.text.trim().toUpperCase(),
+                              instructor: 'Instructor',
+                              compact: true,
+                              color: classBannerColor(_banner),
+                              image: _bannerImage == null
+                                  ? null
+                                  : MemoryImage(_bannerImage!),
+                            ),
+                            Padding(
+                              padding: const EdgeInsets.all(FiloSpacing.s20),
+                              child: Row(
+                                children: [
+                                  FiloIcon(
+                                    FiloIcons.book,
+                                    color: Theme.of(context)
+                                        .colorScheme
+                                        .primary,
+                                  ),
+                                  const SizedBox(width: FiloSpacing.s12),
+                                  Expanded(
+                                    child: Text(
+                                      _course.text.trim().isEmpty
+                                          ? 'Course name'
+                                          : _course.text.trim(),
+                                      style: Theme.of(context)
+                                          .textTheme
+                                          .titleMedium,
+                                    ),
+                                  ),
+                                  const SizedBox(width: FiloSpacing.s12),
+                                  const ExcludeSemantics(
+                                    child: FiloIcon(FiloIcons.forward),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: FiloSpacing.screen),
+                  Text(
+                    'Banner',
+                    style: Theme.of(context).textTheme.titleMedium,
+                  ),
+                  const SizedBox(height: FiloSpacing.s12),
+                  FiloPanel(
+                    padding: const EdgeInsets.all(FiloSpacing.s12),
+                    child: LayoutBuilder(
+                      builder: (context, constraints) => Wrap(
+                        spacing: 8,
+                        runSpacing: 8,
+                        children: [
+                          for (final key in <String?>[
+                            null,
+                            ...classBannerColors.keys,
+                          ])
+                            SizedBox(
+                              width: (constraints.maxWidth - 16) / 3,
+                              child: Semantics(
+                                selected:
+                                    _banner == key && _bannerImage == null,
+                                inMutuallyExclusiveGroup: true,
+                                child: OutlinedButton(
+                                  onPressed: editable
+                                      ? () => setState(() {
+                                          _banner = key;
+                                          _bannerImage = null;
+                                        })
+                                      : null,
+                                  style: OutlinedButton.styleFrom(
+                                    minimumSize: const Size(0, 88),
+                                    padding: const EdgeInsets.symmetric(
+                                      horizontal: 4,
+                                      vertical: 12,
+                                    ),
+                                    backgroundColor:
+                                        _banner == key && _bannerImage == null
+                                        ? Theme.of(context)
+                                              .colorScheme
+                                              .primaryContainer
+                                        : Theme.of(context).colorScheme.surface,
+                                    side: BorderSide(
+                                      width:
+                                          _banner == key && _bannerImage == null
+                                          ? 2
+                                          : 1,
+                                      color:
+                                          _banner == key && _bannerImage == null
+                                          ? Theme.of(context)
+                                                .colorScheme
+                                                .primary
+                                          : Theme.of(context)
+                                                .colorScheme
+                                                .outline,
+                                    ),
+                                    shape: RoundedRectangleBorder(
+                                      borderRadius: BorderRadius.circular(
+                                        FiloRadii.medium,
+                                      ),
+                                    ),
+                                  ),
+                                  child: Column(
+                                    mainAxisSize: MainAxisSize.min,
+                                    children: [
+                                      ExcludeSemantics(
+                                        child: CircleAvatar(
+                                          radius: 14,
+                                          backgroundColor: Color(
+                                            classBannerColor(key),
+                                          ),
+                                          child:
+                                              _banner == key &&
+                                                  _bannerImage == null
+                                              ? Icon(
+                                                  Icons.check_rounded,
+                                                  size: 18,
+                                                  color: ClassBanner.foreground(
+                                                    classBannerColor(key),
+                                                  ),
+                                                )
+                                              : null,
+                                        ),
+                                      ),
+                                      const SizedBox(height: 8),
+                                      Text(
+                                        key == null
+                                            ? 'Default'
+                                            : '${key[0].toUpperCase()}${key.substring(1)}',
+                                        textAlign: TextAlign.center,
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              ),
+                            ),
+                        ],
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: FiloSpacing.s12),
+                  FiloButton(
+                    outlined: true,
+                    minHeight: 48,
+                    onPressed: editable ? _pickBanner : null,
+                    leading: FiloIcon(
+                      FiloIcons.addImage,
+                      color: editable
+                          ? Theme.of(context).colorScheme.primary
+                          : Theme.of(context).colorScheme.onSurfaceVariant,
+                    ),
+                    label: _picking
+                        ? 'Opening photos\u2026'
+                        : 'Upload banner image',
+                    labelVariants: const [
+                      'Opening photos\u2026',
+                      'Upload banner image',
+                    ],
+                  ),
+                  const SizedBox(height: FiloSpacing.s8),
+                  Wrap(
+                    alignment: WrapAlignment.center,
+                    crossAxisAlignment: WrapCrossAlignment.center,
+                    spacing: 6,
+                    children: [
+                      ExcludeSemantics(
+                        child: FiloIcon(
+                          FiloIcons.info,
+                          size: 16,
+                          color: Theme.of(context).colorScheme.onSurfaceVariant,
+                        ),
+                      ),
+                      Text(
+                        'JPG, PNG or WebP \u00b7 Max 2 MB',
+                        textAlign: TextAlign.center,
+                        style: Theme.of(context).textTheme.bodySmall!.copyWith(
+                          color: Theme.of(context).colorScheme.onSurfaceVariant,
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: FiloSpacing.s16),
+                  const SizedBox(height: FiloSpacing.s8),
+                  if (_error != null)
+                    Padding(
+                      padding: const EdgeInsets.only(top: FiloSpacing.s16),
+                      child: Semantics(
+                        liveRegion: true,
+                        child: FiloPanel(
+                          child: Text(
+                            _error!,
+                            style: TextStyle(
+                              color: Theme.of(context)
+                                  .colorScheme
+                                  .onSurfaceVariant,
+                            ),
+                          ),
+                        ),
+                      ),
+                    ),
+                ],
+              ),
             ),
+          ],
+        ),
+        floatingActionButtonLocation: FloatingActionButtonLocation.centerFloat,
+        floatingActionButtonAnimator: FloatingActionButtonAnimator.noAnimation,
+        floatingActionButton: SizedBox(
+          width: (MediaQuery.sizeOf(context).width - 48)
+              .clamp(0.0, 520.0)
+              .toDouble(),
+          child: FiloButton(
+            label: _busy
+                ? 'Creating…'
+                : _writeUnconfirmed
+                ? 'Back to classes'
+                : _created == null
+                ? 'Create class'
+                : _bannerImage != null && !_bannerSaved
+                ? 'Retry saving banner'
+                : 'Retry loading class',
+            minHeight: 64,
+            busy: _busy,
+            icon: _busy ? null : FiloIcons.add,
+            onPressed: _busy || _picking
+                ? null
+                : _writeUnconfirmed
+                ? () => Navigator.pop(context)
+                : !online
+                ? null
+                : _create,
           ),
         ),
       ),
     );
   }
+}
+
+class _BreezeLeafPainter extends CustomPainter {
+  const _BreezeLeafPainter(this.color);
+  final Color color;
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final paint = Paint()
+      ..color = color.withValues(alpha: .16)
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 1.4
+      ..strokeCap = StrokeCap.round;
+    canvas.drawPath(
+      Path()
+        ..moveTo(8, 70)
+        ..cubicTo(55, 74, 70, 48, 47, 46)
+        ..cubicTo(29, 44, 39, 61, 61, 43),
+      paint,
+    );
+    canvas.drawPath(
+      Path()
+        ..moveTo(25, 79)
+        ..quadraticBezierTo(53, 79, 69, 61),
+      paint,
+    );
+    paint
+      ..style = PaintingStyle.fill
+      ..color = color.withValues(alpha: .22);
+    canvas.drawPath(
+      Path()
+        ..moveTo(62, 39)
+        ..cubicTo(55, 18, 70, 9, 91, 15)
+        ..cubicTo(86, 36, 74, 44, 62, 39)
+        ..close(),
+      paint,
+    );
+    paint
+      ..style = PaintingStyle.stroke
+      ..color = color.withValues(alpha: .26);
+    canvas.drawPath(
+      Path()
+        ..moveTo(58, 45)
+        ..quadraticBezierTo(72, 31, 84, 20),
+      paint,
+    );
+  }
+
+  @override
+  bool shouldRepaint(covariant _BreezeLeafPainter oldDelegate) =>
+      color != oldDelegate.color;
+}
+
+class _SchoolYearWheel extends StatefulWidget {
+  const _SchoolYearWheel({
+    super.key,
+    required this.label,
+    required this.firstYear,
+    required this.selectedYear,
+    required this.onChanged,
+  });
+  final String label;
+  final int firstYear, selectedYear;
+  final ValueChanged<int> onChanged;
+
+  @override
+  State<_SchoolYearWheel> createState() => _SchoolYearWheelState();
+}
+
+class _SchoolYearWheelState extends State<_SchoolYearWheel> {
+  late final _controller = FixedExtentScrollController(
+    initialItem: widget.selectedYear - widget.firstYear,
+  );
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) => Semantics(
+    label: widget.label,
+    child: CupertinoPicker(
+      scrollController: _controller,
+      squeeze: 1,
+      diameterRatio: 100,
+      itemExtent: MediaQuery.textScalerOf(context).scale(24) + 24,
+      onSelectedItemChanged: (index) =>
+          widget.onChanged(widget.firstYear + index),
+      children: [
+        for (var index = 0; index < 100; index++)
+          Center(
+            child: Text(
+              '${widget.firstYear + index}',
+              style: Theme.of(context).textTheme.titleLarge,
+            ),
+          ),
+      ],
+    ),
+  );
 }

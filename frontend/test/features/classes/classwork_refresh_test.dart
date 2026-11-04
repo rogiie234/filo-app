@@ -96,6 +96,8 @@ void main() {
               '${student ? 'submissions' : 'instructor_classwork_posts'}:class',
             ).overrideWith((ref) => Stream.value(true)),
             postSyncProvider('class').overrideWith((ref) async {}),
+            streamLoadedProvider('class')
+                .overrideWith((ref) => Stream.value(false)),
             instructorAssignmentsRefreshProvider('class')
                 .overrideWith((ref) async {}),
             instructorQuizListRefreshProvider('class')
@@ -212,6 +214,8 @@ void main() {
           classFilesProvider('class').overrideWith((ref) => Stream.value([])),
           postSyncLifecycleProvider('class').overrideWith((ref) {}),
           postSyncProvider('class').overrideWith((ref) async {}),
+          streamLoadedProvider('class')
+              .overrideWith((ref) => Stream.value(false)),
           connectivityProvider.overrideWith((ref) => Stream.value(false)),
           classCardsProvider.overrideWith((ref) async* {
             yield [_room];
@@ -269,4 +273,78 @@ void main() {
       await tester.pumpWidget(const SizedBox.shrink());
     },
   );
+  for (final knownEmpty in [false, true]) {
+    testWidgets('Stream known-empty=$knownEmpty while refresh is pending', (
+      tester,
+    ) async {
+      final syncGate = Completer<void>();
+      final container = ProviderContainer(
+        overrides: [
+          classSyncLifecycleProvider.overrideWith((ref) {}),
+          classFilesProvider('class').overrideWith((ref) => Stream.value([])),
+          postSyncLifecycleProvider('class').overrideWith((ref) {}),
+          postSyncProvider('class').overrideWith((ref) async {
+            await syncGate.future;
+          }),
+          streamLoadedProvider('class')
+              .overrideWith((ref) => Stream.value(knownEmpty)),
+          connectivityProvider.overrideWith((ref) => Stream.value(true)),
+          classCardsProvider.overrideWith((ref) async* {
+            yield [_room];
+          }),
+          streamPostsProvider('class').overrideWith((ref) async* {
+            yield <ClassPost>[];
+          }),
+          studentQuizCatalogProvider.overrideWith(
+            (ref) => Stream.value(const StudentQuizCatalog([], loaded: true)),
+          ),
+          studentQuizNowProvider.overrideWith((ref) => Stream.value(_date)),
+          classworkLoadedProvider('submissions:class')
+              .overrideWith((ref) => Stream.value(true)),
+          submissionSyncLifecycleProvider('class').overrideWith((ref) {}),
+          submissionSyncProvider('class').overrideWith((ref) async {}),
+          classSubmissionsProvider('class')
+              .overrideWith((ref) => Stream.value([])),
+          returnedGradesProvider('class')
+              .overrideWith((ref) => Stream.value([])),
+        ],
+      );
+      addTearDown(container.dispose);
+      await tester.pumpWidget(
+        UncontrolledProviderScope(
+          container: container,
+          child: MaterialApp(
+            theme: AppTheme.light,
+            home: ClassScreen(
+              classId: 'class',
+              profile: AccountProfile.fromJson({
+                'id': 'student',
+                'role': 'student',
+                'display_name': 'Student',
+              }),
+            ),
+          ),
+        ),
+      );
+
+      for (var i = 0; i < 8; i++) {
+        await tester.pump(const Duration(milliseconds: 50));
+      }
+      expect(
+        find.text('No posts yet'),
+        knownEmpty ? findsOneWidget : findsNothing,
+      );
+      expect(
+        find.byType(StreamPostSkeleton),
+        knownEmpty ? findsNothing : findsOneWidget,
+      );
+      syncGate.complete();
+      for (var i = 0; i < 8; i++) {
+        await tester.pump(const Duration(milliseconds: 50));
+      }
+      expect(find.text('No posts yet'), findsOneWidget);
+      expect(find.byType(StreamPostSkeleton), findsNothing);
+      await tester.pumpWidget(const SizedBox.shrink());
+    });
+  }
 }

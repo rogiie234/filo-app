@@ -4,6 +4,7 @@ import 'package:flutter_animate/flutter_animate.dart';
 import '../../../core/theme/animation_constants.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/widgets/filo_widgets.dart';
+import '../../../core/widgets/entry_background.dart';
 
 /// Permission outcome and navigation remain owned by AccountSetupScreen.
 class NotificationPromptView extends StatelessWidget {
@@ -126,72 +127,84 @@ class NotificationPromptView extends StatelessWidget {
   Widget build(BuildContext context) => PopScope(
     canPop: false,
     child: Scaffold(
-      body: SafeArea(
-        child: Column(
-          children: [
-            Expanded(
-              child: LayoutBuilder(
-                builder: (context, viewport) => SingleChildScrollView(
+      body: Stack(
+        fit: StackFit.expand,
+        children: [
+          const Positioned.fill(child: EntryBackground(verification: true)),
+          SafeArea(
+            child: Column(
+              children: [
+                const Padding(
+                  padding: EdgeInsets.fromLTRB(24, 16, 24, 0),
+                  child: Align(alignment: Alignment.centerLeft, child: Brand()),
+                ),
+                Expanded(
+                  child: LayoutBuilder(
+                    builder: (context, viewport) => SingleChildScrollView(
+                      padding: const EdgeInsets.fromLTRB(
+                        FiloSpacing.screen,
+                        FiloSpacing.screen,
+                        FiloSpacing.screen,
+                        FiloSpacing.screen,
+                      ),
+                      child: ConstrainedBox(
+                        constraints: BoxConstraints(
+                          minHeight: (viewport.maxHeight - 48)
+                              .clamp(0.0, double.infinity)
+                              .toDouble(),
+                        ),
+                        child: Center(
+                          child: ConstrainedBox(
+                            constraints: const BoxConstraints(maxWidth: 520),
+                            child: _content(context),
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+                Padding(
                   padding: const EdgeInsets.fromLTRB(
                     FiloSpacing.screen,
-                    FiloSpacing.screen,
+                    FiloSpacing.s12,
                     FiloSpacing.screen,
                     FiloSpacing.screen,
                   ),
-                  child: ConstrainedBox(
-                    constraints: BoxConstraints(
-                      minHeight: (viewport.maxHeight - 48)
-                          .clamp(0.0, double.infinity)
-                          .toDouble(),
-                    ),
-                    child: Center(
-                      child: ConstrainedBox(
-                        constraints: const BoxConstraints(maxWidth: 520),
-                        child: _content(context),
+                  child: Center(
+                    child: ConstrainedBox(
+                      constraints: const BoxConstraints(maxWidth: 520),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.stretch,
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          FiloButton(
+                            label: 'Not now',
+                            text: true,
+                            minHeight: 64,
+                            onPressed: busy ? null : onSkip,
+                          ),
+                          const SizedBox(height: FiloSpacing.s8),
+                          FiloButton(
+                            label: busy
+                                ? 'Continuing\u2026'
+                                : 'Enable notifications',
+                            busy: busy,
+                            minHeight: 64,
+                            labelVariants: const [
+                              'Enable notifications',
+                              'Continuing\u2026',
+                            ],
+                            onPressed: busy ? null : onEnable,
+                          ),
+                        ],
                       ),
                     ),
                   ),
                 ),
-              ),
+              ],
             ),
-            Padding(
-              padding: const EdgeInsets.fromLTRB(
-                FiloSpacing.screen,
-                FiloSpacing.s12,
-                FiloSpacing.screen,
-                FiloSpacing.screen,
-              ),
-              child: Center(
-                child: ConstrainedBox(
-                  constraints: const BoxConstraints(maxWidth: 520),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.stretch,
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      FiloButton(
-                        label: busy
-                            ? 'Continuing\u2026'
-                            : 'Enable notifications',
-                        busy: busy,
-                        onPressed: busy ? null : onEnable,
-                      ),
-                      const SizedBox(height: FiloSpacing.s8),
-                      ConstrainedBox(
-                        constraints: const BoxConstraints(
-                          minHeight: FiloControlSize.compact,
-                        ),
-                        child: TextButton(
-                          onPressed: busy ? null : onSkip,
-                          child: const Text('Not now'),
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-            ),
-          ],
-        ),
+          ),
+        ],
       ),
     ),
   );

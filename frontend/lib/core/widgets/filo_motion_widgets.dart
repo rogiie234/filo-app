@@ -221,12 +221,13 @@ class FiloAnimatedChip extends StatelessWidget {
   final EdgeInsetsGeometry? padding;
   @override
   Widget build(BuildContext context) {
-    final check = showCheckmark
+    final check = showCheckmark && selected
         ? ExcludeSemantics(
             child: SizedBox.square(
               dimension: 18,
               child: FiloMotionTween(
-                value: selected ? 1 : 0,
+                initialValue: 0,
+                value: 1,
                 duration: FiloAnimation.chipDuration,
                 builder: (_, value, child) => Opacity(
                   opacity: value,

@@ -4,6 +4,34 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {
+  testWidgets(
+    'outlined destructive actions have red text and border without red fill',
+    (tester) async {
+      for (final theme in [AppTheme.light, AppTheme.dark]) {
+        await tester.pumpWidget(
+          MaterialApp(
+            theme: theme,
+            home: Scaffold(
+              body: FiloButton(
+                label: 'Confirm',
+                destructive: true,
+                outlined: true,
+                onPressed: () {},
+              ),
+            ),
+          ),
+        );
+        final control = tester.widget<FilledButton>(find.byType(FilledButton));
+        final tokens = FiloThemeTokens.of(
+          tester.element(find.byType(FiloButton)),
+        );
+        expect(control.style!.foregroundColor!.resolve({}), tokens.destructive);
+        expect(control.style!.side!.resolve({})!.color, tokens.destructive);
+        expect(control.style!.backgroundColor!.resolve({}), Colors.transparent);
+      }
+    },
+  );
+
   var taps = 0;
   Widget button({
     bool enabled = true,
@@ -24,6 +52,50 @@ void main() {
         idlePulse: pulse,
       ),
     ),
+  );
+
+  testWidgets(
+    'label busy mode stays visible, larger and blocks repeat actions',
+    (tester) async {
+      taps = 0;
+      await tester.pumpWidget(
+        MaterialApp(
+          theme: AppTheme.light,
+          home: Scaffold(
+            body: Center(
+              child: FiloButton(
+                label: 'Signing in?',
+                onPressed: () => taps++,
+                secondary: true,
+                minHeight: 64,
+                busy: true,
+                showBusyIndicator: false,
+                leading: const Icon(Icons.login),
+              ),
+            ),
+          ),
+        ),
+      );
+      expect(find.text('Signing in?'), findsOneWidget);
+      expect(find.byType(CircularProgressIndicator), findsNothing);
+      expect(tester.getSize(find.byType(FiloButton)).height, 64);
+      expect(
+        tester.widget<FilledButton>(find.byType(FilledButton)).onPressed,
+        isNull,
+      );
+      final opacity = tester.widget<Opacity>(
+        find
+            .ancestor(
+              of: find.text('Signing in?'),
+              matching: find.byType(Opacity),
+            )
+            .first,
+      );
+      expect(opacity.opacity, 1);
+      await tester.tap(find.byType(FilledButton));
+      expect(taps, 0);
+      expect(tester.takeException(), isNull);
+    },
   );
 
   testWidgets(

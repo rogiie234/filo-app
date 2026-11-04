@@ -19,9 +19,11 @@ class NotificationSettingsScreen extends ConsumerStatefulWidget {
     super.key,
     this.initialClassId,
     this.focusPhoneSetup = false,
+    this.embedded = false,
   });
   final String? initialClassId;
   final bool focusPhoneSetup;
+  final bool embedded;
 
   @override
   ConsumerState<NotificationSettingsScreen> createState() =>
@@ -131,36 +133,39 @@ class _NotificationSettingsScreenState
         ],
       );
     }
-    return Scaffold(
-      appBar: AppBar(title: const Text('Notification settings')),
-      body: SafeArea(
-        child: SingleChildScrollView(
-          padding: const EdgeInsets.all(FiloSpacing.screen),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              FiloPanel(
-                color: access.asData?.value == false
-                    ? FiloThemeTokens.of(context).mint
-                    : Theme.of(context).colorScheme.surface,
-                child: content,
-              ),
+    final body = SafeArea(
+      child: SingleChildScrollView(
+        padding: const EdgeInsets.all(FiloSpacing.screen),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            FiloPanel(
+              color: access.asData?.value == false
+                  ? FiloThemeTokens.of(context).mint
+                  : Theme.of(context).colorScheme.surface,
+              child: content,
+            ),
+            const SizedBox(height: FiloSpacing.screen),
+            NotificationPreferenceControls(
+              initialClassId: widget.initialClassId,
+            ),
+            if (ref.watch(deadlineBridgeProvider).supported) ...[
               const SizedBox(height: FiloSpacing.screen),
-              NotificationPreferenceControls(
-                initialClassId: widget.initialClassId,
+              KeyedSubtree(
+                key: _phoneSetup,
+                child: const DeadlineReminderSetup(),
               ),
-              if (ref.watch(deadlineBridgeProvider).supported) ...[
-                const SizedBox(height: FiloSpacing.screen),
-                KeyedSubtree(
-                  key: _phoneSetup,
-                  child: const DeadlineReminderSetup(),
-                ),
-              ],
             ],
-          ),
+          ],
         ),
       ),
     );
+    return widget.embedded
+        ? body
+        : Scaffold(
+            appBar: AppBar(title: const Text('Notification settings')),
+            body: body,
+          );
   }
 }
 

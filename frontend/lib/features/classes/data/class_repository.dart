@@ -107,6 +107,7 @@ class ClassRepository {
           await (db.delete(db.syncState)..where(
                 (s) => s.syncedTableName.isIn([
                   'posts:${row.id}',
+                  'stream_loaded:${row.id}',
                   'post_attachments:${row.id}',
                   'submissions:${row.id}',
                   'submission_items:${row.id}',
@@ -202,10 +203,11 @@ class ClassRepository {
     required String schoolYear,
     String? bannerColor,
   }) {
+    final normalizedSection = section.trim().toUpperCase();
     if (course.trim().isEmpty ||
         course.trim().length > 120 ||
-        section.trim().isEmpty ||
-        section.trim().length > 60 ||
+        normalizedSection.isEmpty ||
+        normalizedSection.length > 60 ||
         schoolYear.trim().isEmpty ||
         schoolYear.trim().length > 20) {
       throw ArgumentError('Valid class details are required');
@@ -213,7 +215,7 @@ class ClassRepository {
     return remote.createClass({
       'owner_id': userId,
       'course': course.trim(),
-      'section': section.trim(),
+      'section': normalizedSection,
       'school_year': schoolYear.trim(),
       'banner_color': bannerColor,
     });

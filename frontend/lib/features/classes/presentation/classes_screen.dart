@@ -21,6 +21,7 @@ import '../../study/presentation/study_home_screen.dart';
 import '../../../core/sync/sync_providers.dart';
 import 'classes_widgets.dart';
 import 'classes_empty_state.dart';
+import '../../../core/widgets/entry_background.dart';
 import 'create_class_screen.dart';
 import 'recently_deleted_screen.dart';
 import '../domain/prototype_models.dart';
@@ -36,6 +37,13 @@ class _ClassesScreenState extends ConsumerState<ClassesScreen> {
   final _search = TextEditingController();
   String _query = '';
   int _destination = 0;
+  bool _hasShownClasses = false;
+
+  @override
+  void didUpdateWidget(covariant ClassesScreen oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.profile?.id != widget.profile?.id) _hasShownClasses = false;
+  }
 
   @override
   void dispose() {
@@ -66,7 +74,14 @@ class _ClassesScreenState extends ConsumerState<ClassesScreen> {
         : state.role == PreviewRole.student;
     final online =
         !live || ref.watch(connectivityProvider).asData?.value == true;
-    final rooms = (cards.asData?.value ?? <ClassRoom>[])
+    final savedRooms = cards.when<List<ClassRoom>?>(
+      skipLoadingOnReload: true,
+      skipError: true,
+      data: (rooms) => rooms,
+      loading: () => null,
+      error: (_, _) => null,
+    );
+    final rooms = (savedRooms ?? <ClassRoom>[])
         .where(
           (room) => '${room.section} ${room.course} ${room.instructor}'
               .toLowerCase()
@@ -78,11 +93,22 @@ class _ClassesScreenState extends ConsumerState<ClassesScreen> {
       ...rooms.where((r) => r.archived),
     ];
     final loading =
-        cards.isLoading ||
-        (live &&
+        (cards.isLoading && !cards.hasValue) ||
+        (!_hasShownClasses &&
+            live &&
             online &&
             sync.isLoading &&
             (cards.asData?.value.isEmpty ?? true));
+    if (!loading && !cards.hasError && !sync.hasError) _hasShownClasses = true;
+    final instructorEmpty =
+        !student &&
+        online &&
+        !loading &&
+        !cards.hasError &&
+        !sync.hasError &&
+        cards.asData != null &&
+        cards.asData!.value.isEmpty &&
+        _query.trim().isEmpty;
     return FiloFirstListLoad(
       id: 'classes',
       hasItems: cards.asData?.value.isNotEmpty ?? false,
@@ -143,183 +169,222 @@ class _ClassesScreenState extends ConsumerState<ClassesScreen> {
             ? const MyFilesScreen()
             : live && _destination == 1
             ? WorkQueueScreen(student: student, embedded: true)
-            : _refresh(
-                ListView(
-                  physics: const AlwaysScrollableScrollPhysics(),
-                  keyboardDismissBehavior:
-                      ScrollViewKeyboardDismissBehavior.onDrag,
-                  padding: const EdgeInsets.fromLTRB(
-                    FiloSpacing.screen,
-                    FiloSpacing.s16,
-                    FiloSpacing.screen,
-                    112,
-                  ),
-                  children: [
-                    if (live && !online) ...const [
-                      OfflineBanner(),
-                      SizedBox(height: FiloSpacing.s16),
-                    ],
-                    if (live && sync.hasError)
-                      EmptyState(
-                        title: 'Could not refresh your classes. Showing saved content.',
-                        pose: 'confused',
-                        showMascot: (cards.asData?.value.isEmpty ?? true),
-                        bob: false,
-                        action: TextButton(
-                          onPressed: online
-                              ? () => ref
-                                    .read(classSyncProvider.notifier)
-                                    .refresh()
-                              : null,
-                          child: const Text('Retry'),
-                        ),
+            : Stack(
+                fit: StackFit.expand,
+                children: [
+                  if (!student)
+                    const Positioned.fill(
+                      child: EntryBackground(verification: true, breeze: true),
+                    ),
+                  _refresh(
+                    ListView(
+                      physics: const AlwaysScrollableScrollPhysics(),
+                      keyboardDismissBehavior:
+                          ScrollViewKeyboardDismissBehavior.onDrag,
+                      padding: EdgeInsets.fromLTRB(
+                        FiloSpacing.screen,
+                        FiloSpacing.s16,
+                        FiloSpacing.screen,
+                        instructorEmpty ? FiloSpacing.screen : 112,
                       ),
-
-                    if (cards.hasError)
-                      const EmptyState(
-                        title: 'Could not read saved classes. Try reopening the app.',
-                        pose: 'confused',
-                        bob: false,
-                      ),
-                    if ((live && sync.hasError) || cards.hasError)
-                      const SizedBox(height: FiloSpacing.s16),
-                    Row(
                       children: [
-                        Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(
-                                'Your classes',
-                                style: Theme.of(context)
-                                    .textTheme
-                                    .headlineMedium!
-                                    .copyWith(
-                                      color: Theme.of(context)
-                                          .colorScheme
-                                          .onSurface,
-                                    ),
-                              ),
-                              const SizedBox(height: FiloSpacing.s8),
-                              Text(
-                                'A good place to grow.',
-                                style: Theme.of(context).textTheme.bodyLarge!
-                                    .copyWith(
-                                      color: Theme.of(context)
-                                          .colorScheme
-                                          .onSurfaceVariant,
-                                    ),
-                              ),
-                            ],
+                        if (live && !online) ...const [
+                          OfflineBanner(),
+                          SizedBox(height: FiloSpacing.s16),
+                        ],
+                        if (live && sync.hasError)
+                          EmptyState(
+                            title: 'Could not refresh your classes. Showing saved content.',
+                            pose: 'confused',
+                            showMascot: (cards.asData?.value.isEmpty ?? true),
+                            bob: false,
+                            action: TextButton(
+                              onPressed: online
+                                  ? () => ref
+                                        .read(classSyncProvider.notifier)
+                                        .refresh()
+                                  : null,
+                              child: const Text('Retry'),
+                            ),
                           ),
+
+                        if (cards.hasError)
+                          const EmptyState(
+                            title: 'Could not read saved classes. Try reopening the app.',
+                            pose: 'confused',
+                            bob: false,
+                          ),
+                        if ((live && sync.hasError) || cards.hasError)
+                          const SizedBox(height: FiloSpacing.s16),
+                        Row(
+                          children: [
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    'Your classes',
+                                    style: Theme.of(context)
+                                        .textTheme
+                                        .headlineMedium!
+                                        .copyWith(
+                                          color: Theme.of(context)
+                                              .colorScheme
+                                              .onSurface,
+                                        ),
+                                  ),
+                                  const SizedBox(height: FiloSpacing.s8),
+                                  Text(
+                                    student ? 'A good place to grow.' : 'Manage your classes and keep learning moving.',
+                                    style: Theme.of(context)
+                                        .textTheme
+                                        .bodyLarge!
+                                        .copyWith(
+                                          color: Theme.of(context)
+                                              .colorScheme
+                                              .onSurfaceVariant,
+                                        ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                            if (rooms.isNotEmpty || loading) ...[
+                              const SizedBox(width: FiloSpacing.s16),
+                              const Mascot(size: 72),
+                            ],
+                          ],
                         ),
-                        if (rooms.isNotEmpty || loading) ...[
-                          const SizedBox(width: FiloSpacing.s16),
-                          const Mascot(size: 72),
+                        const SizedBox(height: FiloSpacing.screen),
+                        TextField(
+                          controller: _search,
+                          textInputAction: TextInputAction.search,
+                          onSubmitted: (_) => FocusScope.of(context).unfocus(),
+                          decoration: InputDecoration(
+                            hintText: 'Find a class',
+                            labelText: 'Find a class',
+                            floatingLabelBehavior: FloatingLabelBehavior.never,
+                            prefixIcon: const FiloIcon(FiloIcons.search),
+                            prefixIconColor: Theme.of(context)
+                                .colorScheme
+                                .primary,
+                            suffixIcon: _query.isEmpty
+                                ? null
+                                : IconButton(
+                                    tooltip: 'Clear search',
+                                    icon: const FiloIcon(FiloIcons.close),
+                                    onPressed: () {
+                                      _search.clear();
+                                      setState(() => _query = '');
+                                    },
+                                  ),
+                            border: const OutlineInputBorder(
+                              borderRadius: BorderRadius.all(
+                                Radius.circular(FiloRadii.pill),
+                              ),
+                            ),
+                            enabledBorder: OutlineInputBorder(
+                              borderRadius: BorderRadius.all(
+                                Radius.circular(FiloRadii.pill),
+                              ),
+                              borderSide: BorderSide(
+                                color: FiloThemeTokens.of(context)
+                                    .controlBorder,
+                              ),
+                            ),
+                          ),
+                          onChanged: (value) => setState(() => _query = value),
+                        ),
+                        const SizedBox(height: FiloSpacing.screen),
+                        if (live) _SyncErrorStatus(),
+                        if (rooms.isEmpty &&
+                            !loading &&
+                            !cards.hasError &&
+                            !sync.hasError)
+                          ClassesEmptyState(
+                            pose: _query.trim().isNotEmpty
+                                ? 'curious'
+                                : !online
+                                ? 'sleepy'
+                                : 'waving',
+                            action: instructorEmpty
+                                ? FiloButton(
+                                    label: 'Create class',
+                                    icon: FiloIcons.add,
+                                    minHeight: 64,
+                                    onPressed: live
+                                        ? _create
+                                        : () => context.push('/classes/it119'),
+                                  )
+                                : null,
+                            bob: online,
+                            title: _query.trim().isNotEmpty
+                                ? 'No classes found.'
+                                : !online
+                                ? 'No saved classes found.'
+                                : 'No classes yet.',
+                            message: _query.trim().isNotEmpty
+                                ? 'Try another course, section, or instructor.'
+                                : !online
+                                ? 'Connect to the internet to refresh your classes.'
+                                : student
+                                ? 'Join a class using the code from your instructor.'
+                                : 'Create your first class to get started.',
+                          ),
+                        if (loading)
+                          for (
+                            var index = 0;
+                            index < (savedRooms?.length ?? 1);
+                            index++
+                          )
+                            ClassCardSkeleton(compact: !student),
+                        for (final room in rooms.where(
+                          (room) => !room.archived,
+                        ))
+                          FiloListItem(
+                            index: entranceRooms.indexOf(room),
+                            child: _classTile(room),
+                          ),
+                        if (rooms.any((room) => room.archived)) ...[
+                          Text(
+                            'Archived',
+                            style: Theme.of(context).textTheme.titleLarge,
+                          ),
+                          const SizedBox(height: FiloSpacing.s16),
+                          for (final room in rooms.where(
+                            (room) => room.archived,
+                          ))
+                            FiloListItem(
+                              index: entranceRooms.indexOf(room),
+                              child: _classTile(room),
+                            ),
+                        ],
+                        if (live && !student) ...[
+                          const SizedBox(height: FiloSpacing.screen),
+                          FiloPanel(
+                            padding: EdgeInsets.zero,
+                            child: ListTile(
+                              leading: const FiloIcon(FiloIcons.delete),
+                              title: const Text('Recently deleted'),
+                              trailing: const FiloIcon(FiloIcons.chevronRight),
+                              subtitle: const Text(
+                                'Restore classes within 14 days',
+                              ),
+                              onTap: () => Navigator.of(context).push(
+                                MaterialPageRoute<void>(
+                                  builder: (_) => const RecentlyDeletedScreen(),
+                                ),
+                              ),
+                            ),
+                          ),
                         ],
                       ],
                     ),
-                    const SizedBox(height: FiloSpacing.screen),
-                    TextField(
-                      controller: _search,
-                      textInputAction: TextInputAction.search,
-                      onSubmitted: (_) => FocusScope.of(context).unfocus(),
-                      decoration: InputDecoration(
-                        hintText: 'Find a class',
-                        labelText: 'Find a class',
-                        floatingLabelBehavior: FloatingLabelBehavior.never,
-                        prefixIcon: const FiloIcon(FiloIcons.search),
-                        prefixIconColor: Theme.of(context).colorScheme.primary,
-                        suffixIcon: _query.isEmpty
-                            ? null
-                            : IconButton(
-                                tooltip: 'Clear search',
-                                icon: const FiloIcon(FiloIcons.close),
-                                onPressed: () {
-                                  _search.clear();
-                                  setState(() => _query = '');
-                                },
-                              ),
-                        border: const OutlineInputBorder(
-                          borderRadius: BorderRadius.all(
-                            Radius.circular(FiloRadii.pill),
-                          ),
-                        ),
-                        enabledBorder: OutlineInputBorder(
-                          borderRadius: BorderRadius.all(
-                            Radius.circular(FiloRadii.pill),
-                          ),
-                          borderSide: BorderSide(
-                            color: FiloThemeTokens.of(context).controlBorder,
-                          ),
-                        ),
-                      ),
-                      onChanged: (value) => setState(() => _query = value),
-                    ),
-                    const SizedBox(height: FiloSpacing.screen),
-                    if (rooms.isEmpty &&
-                        !loading &&
-                        !cards.hasError &&
-                        !sync.hasError)
-                      ClassesEmptyState(
-                        pose: _query.trim().isNotEmpty
-                            ? 'curious'
-                            : !online
-                            ? 'sleepy'
-                            : 'waving',
-                        bob: online,
-                        title: _query.trim().isNotEmpty
-                            ? 'No classes found.'
-                            : !online
-                            ? 'No saved classes found.'
-                            : 'No classes yet.',
-                        message: _query.trim().isNotEmpty
-                            ? 'Try another course, section, or instructor.'
-                            : !online
-                            ? 'Connect to the internet to refresh your classes.'
-                            : student
-                            ? 'Join a class using the code from your instructor.'
-                            : 'Create a class to get started.',
-                      ),
-                    if (loading) ...const [
-                      ClassCardSkeleton(),
-                      ClassCardSkeleton(),
-                      ClassCardSkeleton(),
-                    ],
-                    for (final room in rooms.where((room) => !room.archived))
-                      FiloListItem(
-                        index: entranceRooms.indexOf(room),
-                        child: _classTile(room),
-                      ),
-                    if (rooms.any((room) => room.archived)) ...[
-                      Text(
-                        'Archived',
-                        style: Theme.of(context).textTheme.titleLarge,
-                      ),
-                      const SizedBox(height: FiloSpacing.s16),
-                      for (final room in rooms.where((room) => room.archived))
-                        FiloListItem(
-                          index: entranceRooms.indexOf(room),
-                          child: _classTile(room),
-                        ),
-                    ],
-                    if (live && !student)
-                      ListTile(
-                        leading: const FiloIcon(FiloIcons.delete),
-                        title: const Text('Recently deleted'),
-                        subtitle: const Text('Restore classes within 14 days'),
-                        onTap: () => Navigator.of(context).push(
-                          MaterialPageRoute<void>(
-                            builder: (_) => const RecentlyDeletedScreen(),
-                          ),
-                        ),
-                      ),
-                  ],
-                ),
+                  ),
+                ],
               ),
         floatingActionButtonAnimator: FloatingActionButtonAnimator.noAnimation,
         floatingActionButtonLocation: FloatingActionButtonLocation.centerFloat,
-        floatingActionButton: _destination != 0
+        floatingActionButton: _destination != 0 || instructorEmpty
             ? null
             : Padding(
                 padding: const EdgeInsets.symmetric(
@@ -327,6 +392,7 @@ class _ClassesScreenState extends ConsumerState<ClassesScreen> {
                 ),
                 child: FiloButton(
                   label: student ? 'Join class' : 'Create class',
+                  minHeight: student ? 56 : 64,
                   icon: FiloIcons.add,
                   onPressed: !online
                       ? null
@@ -340,7 +406,6 @@ class _ClassesScreenState extends ConsumerState<ClassesScreen> {
         bottomNavigationBar: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            if (live) _SyncErrorStatus(),
             FiloNavigationBar(
               selectedIndex: !student && _destination == 3 ? 0 : _destination,
               onDestinationSelected: (index) {
@@ -394,6 +459,9 @@ class _ClassesScreenState extends ConsumerState<ClassesScreen> {
     padding: const EdgeInsets.only(bottom: FiloSpacing.s16),
     child: ClassCard(
       room: room,
+      compact: widget.profile != null
+          ? widget.profile!.role == AccountRole.instructor
+          : ref.read(previewProvider).role == PreviewRole.instructor,
       pendingRequests: widget.profile?.role == AccountRole.instructor
           ? ref.watch(pendingClassRequestsProvider).asData?.value[room.id] ?? 0
           : 0,
@@ -631,32 +699,41 @@ class _SyncErrorStatus extends ConsumerWidget {
         // Routine timestamps/sync activity stay out of the navigation area.
         if (sync.errors.isEmpty) return const SizedBox.shrink();
         return Padding(
-          padding: const EdgeInsets.symmetric(horizontal: FiloSpacing.screen),
-          child: Row(
-            children: [
-              ExcludeSemantics(
-                child: FiloIcon(
-                  FiloIcons.info,
-                  size: 18,
-                  color: Theme.of(context).colorScheme.onSurfaceVariant,
-                ),
+          padding: const EdgeInsets.only(bottom: FiloSpacing.s16),
+          child: Semantics(
+            liveRegion: true,
+            child: FiloPanel(
+              padding: const EdgeInsets.symmetric(
+                horizontal: FiloSpacing.s16,
+                vertical: FiloSpacing.s8,
               ),
-              const SizedBox(width: FiloSpacing.s8),
-              Expanded(
-                child: Text(
-                  !online
-                      ? "You're offline. Some changes haven't synced."
-                      : 'Some changes could not sync.',
-                  style: Theme.of(context).textTheme.bodySmall,
-                ),
+              child: Row(
+                children: [
+                  ExcludeSemantics(
+                    child: FiloIcon(
+                      FiloIcons.info,
+                      size: 18,
+                      color: Theme.of(context).colorScheme.onSurfaceVariant,
+                    ),
+                  ),
+                  const SizedBox(width: FiloSpacing.s8),
+                  Expanded(
+                    child: Text(
+                      !online
+                          ? "You're offline. Some changes haven't synced."
+                          : 'Some changes could not sync.',
+                      style: Theme.of(context).textTheme.bodySmall,
+                    ),
+                  ),
+                  TextButton(
+                    onPressed: sync.syncing || !online
+                        ? null
+                        : () => sync.run(retryFailed: true),
+                    child: const Text('Retry sync'),
+                  ),
+                ],
               ),
-              TextButton(
-                onPressed: sync.syncing || !online
-                    ? null
-                    : () => sync.run(retryFailed: true),
-                child: const Text('Retry sync'),
-              ),
-            ],
+            ),
           ),
         );
       },

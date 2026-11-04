@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/widgets/filo_widgets.dart';
+import '../../../core/widgets/entry_background.dart';
 import '../../../data/local/app_database.dart';
 import '../../../core/sync/sync_providers.dart';
 import '../../drive_backup/data/drive_backup_service.dart';
@@ -271,7 +272,25 @@ class _MyFilesScreenState extends ConsumerState<MyFilesScreen> {
               'Export a copy',
             ])
               ListTile(
-                title: Text(label),
+                leading: Icon(
+                  switch (label) {
+                    'Open' => Icons.description_outlined,
+                    'Open in another app' => Icons.open_in_new_rounded,
+                    'Rename' => Icons.edit_outlined,
+                    'Move' => Icons.drive_file_move_outlined,
+                    'Delete' => Icons.delete_outline_rounded,
+                    _ => Icons.ios_share_rounded,
+                  },
+                  color: label == 'Delete'
+                      ? Theme.of(context).colorScheme.error
+                      : null,
+                ),
+                title: Text(
+                  label,
+                  style: label == 'Delete'
+                      ? TextStyle(color: Theme.of(context).colorScheme.error)
+                      : null,
+                ),
                 onTap: () => Navigator.pop(context, label),
               ),
           ],
@@ -352,7 +371,22 @@ class _MyFilesScreenState extends ConsumerState<MyFilesScreen> {
             ListTile(title: Text(folder.name)),
             for (final label in ['Rename', 'Move', 'Delete'])
               ListTile(
-                title: Text(label),
+                leading: Icon(
+                  switch (label) {
+                    'Rename' => Icons.edit_outlined,
+                    'Move' => Icons.drive_file_move_outlined,
+                    _ => Icons.delete_outline_rounded,
+                  },
+                  color: label == 'Delete'
+                      ? Theme.of(context).colorScheme.error
+                      : null,
+                ),
+                title: Text(
+                  label,
+                  style: label == 'Delete'
+                      ? TextStyle(color: Theme.of(context).colorScheme.error)
+                      : null,
+                ),
                 onTap: () => Navigator.pop(context, label),
               ),
           ],
@@ -470,35 +504,6 @@ class _MyFilesScreenState extends ConsumerState<MyFilesScreen> {
           }
         },
         child: Scaffold(
-          appBar: AppBar(
-            automaticallyImplyLeading: false,
-            title: const Text('Files'),
-            leading: _folder == null
-                ? null
-                : IconButton(
-                    tooltip: 'Up to parent folder',
-                    onPressed: () => setState(
-                      () => _folder = path.isEmpty ? null : path.last.parentId,
-                    ),
-                    icon: const FiloIcon(FiloIcons.back),
-                  ),
-            actions: [
-              IconButton(
-                tooltip: 'Drive backup',
-                onPressed: _backupMenu,
-                icon: const FiloIcon(FiloIcons.cloudUpload),
-              ),
-              PopupMenuButton<String>(
-                tooltip: 'Sort files',
-                initialValue: _sort,
-                onSelected: (value) => setState(() => _sort = value),
-                itemBuilder: (_) => [
-                  for (final value in ['Name', 'Date', 'Size'])
-                    PopupMenuItem(value: value, child: Text('Sort by $value')),
-                ],
-              ),
-            ],
-          ),
           floatingActionButtonLocation:
               FloatingActionButtonLocation.centerFloat,
           floatingActionButtonAnimator:
@@ -509,146 +514,417 @@ class _MyFilesScreenState extends ConsumerState<MyFilesScreen> {
               label: _busy ? 'Please wait\u2026' : 'Add files',
               icon: _busy ? null : FiloIcons.add,
               busy: _busy,
+              minHeight: 64,
               onPressed: repo == null || _busy ? null : () => _add(repo),
             ),
           ),
-          body:
-              repository.isLoading || fileData.isLoading || folderData.isLoading
-              ? const Center(child: FiloCircularProgressIndicator())
-              : repo == null || fileData.hasError || folderData.hasError
-              ? Center(
-                  child: SingleChildScrollView(
-                    padding: const EdgeInsets.all(FiloSpacing.screen),
-                    child: EmptyState(
-                      title: "Couldn't load files. Try again.",
-                      pose: 'confused',
-                      bob: false,
-                      action: TextButton(
-                        onPressed: () {
-                          ref.invalidate(filesRepositoryProvider);
-                          ref.invalidate(localFilesProvider);
-                          ref.invalidate(localFoldersProvider);
-                        },
-                        child: const Text('Retry'),
-                      ),
-                    ),
-                  ),
-                )
-              : ListView(
-                  padding: const EdgeInsets.fromLTRB(
-                    FiloSpacing.s20,
-                    FiloSpacing.s8,
-                    FiloSpacing.s20,
-                    96,
-                  ),
-                  children: [
-                    TextField(
-                      controller: _search,
-                      decoration: const InputDecoration(
-                        hintText: 'Search files and folders',
-                        prefixIcon: FiloIcon(FiloIcons.search),
-                      ),
-                      onChanged: (value) => setState(() => _query = value),
-                    ),
-                    Wrap(
-                      children: [
-                        TextButton(
-                          onPressed: () => setState(() => _folder = null),
-                          child: const Text('My Files'),
+          body: Stack(
+            fit: StackFit.expand,
+            children: [
+              const Positioned.fill(
+                child: EntryBackground(verification: true, breeze: true),
+              ),
+              SafeArea(
+                top: false,
+                child:
+                    repository.isLoading ||
+                        fileData.isLoading ||
+                        folderData.isLoading
+                    ? const Center(
+                        child: FiloCircularProgressIndicator(
+                          semanticsLabel: 'Loading files',
                         ),
-                        for (final folder in path)
-                          TextButton(
-                            onPressed: () =>
-                                setState(() => _folder = folder.id),
-                            child: Text('› ${folder.name}'),
+                      )
+                    : repo == null || fileData.hasError || folderData.hasError
+                    ? Center(
+                        child: SingleChildScrollView(
+                          padding: const EdgeInsets.fromLTRB(
+                            FiloSpacing.screen,
+                            FiloSpacing.screen,
+                            FiloSpacing.screen,
+                            112,
                           ),
-                      ],
-                    ),
-                    if (_busy) const FiloLinearProgressIndicator(),
-                    if (visibleFolders.isEmpty && visibleFiles.isEmpty)
-                      EmptyState(
-                        pose: query.isNotEmpty ? 'curious' : 'folder',
-                        title: query.isNotEmpty
-                            ? 'No matching files.'
-                            : 'No files yet.',
-                        message: query.isNotEmpty
-                            ? 'Try another file or folder name.'
-                            : 'Download class materials or add your own.',
-                      ),
-                    for (final folder in visibleFolders)
-                      FiloListItem(
-                        index: visibleFolders.indexOf(folder),
-                        child: ListTile(
-                          leading: const FiloIcon(FiloIcons.folder),
-                          title: Text(folder.name),
-                          subtitle: Text(
-                            '${folder.classId == null ? '' : 'Class folder · '}${fileSize(folderSize(folder))}',
-                          ),
-                          onTap: () => setState(() {
-                            _folder = folder.id;
-                            _query = '';
-                            _search.clear();
-                          }),
-                          trailing: IconButton(
-                            tooltip: 'Folder actions',
-                            onPressed: _busy
-                                ? null
-                                : () => _folderActions(
-                                    repo,
-                                    folder,
-                                    folders,
-                                    files,
-                                  ),
-                            icon: const FiloIcon(FiloIcons.moreVertical),
-                          ),
-                        ),
-                      ),
-                    for (final file in visibleFiles)
-                      FiloListItem(
-                        index:
-                            visibleFolders.length + visibleFiles.indexOf(file),
-                        child: ListTile(
-                          leading: FiloFileTypeTile(
-                            details: FiloFileDetails.fromName(
-                              file.name,
-                              mimeType: file.mimeType,
+                          child: EmptyState(
+                            title: "Couldn't load files. Try again.",
+                            pose: 'confused',
+                            bob: false,
+                            action: TextButton(
+                              onPressed: () {
+                                ref.invalidate(filesRepositoryProvider);
+                                ref.invalidate(localFilesProvider);
+                                ref.invalidate(localFoldersProvider);
+                              },
+                              child: const Text('Retry'),
                             ),
                           ),
-                          title: Text(file.name),
-                          subtitle: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              FiloFileTypeLabel(
-                                details: FiloFileDetails.fromName(
-                                  file.name,
-                                  mimeType: file.mimeType,
+                        ),
+                      )
+                    : ListView(
+                        padding: const EdgeInsets.fromLTRB(
+                          FiloSpacing.screen,
+                          FiloSpacing.s16,
+                          FiloSpacing.screen,
+                          112,
+                        ),
+                        children: [
+                          Semantics(
+                            header: true,
+                            child: Text(
+                              _folder == null
+                                  ? 'Your library'
+                                  : path.lastOrNull?.name ?? 'Folder',
+                              style: Theme.of(context).textTheme.headlineMedium,
+                            ),
+                          ),
+                          const SizedBox(height: FiloSpacing.s8),
+                          Text(
+                            'Your files, organized on this device.',
+                            style: Theme.of(context).textTheme.bodyLarge
+                                ?.copyWith(
+                                  color: Theme.of(context)
+                                      .colorScheme
+                                      .onSurfaceVariant,
                                 ),
+                          ),
+                          const SizedBox(height: FiloSpacing.s20),
+                          TextField(
+                            controller: _search,
+                            decoration: InputDecoration(
+                              filled: true,
+                              fillColor: Theme.of(context).colorScheme.surface,
+                              hintText: 'Search files and folders',
+                              prefixIcon: const FiloIcon(FiloIcons.search),
+                              suffixIcon: _query.isEmpty
+                                  ? null
+                                  : IconButton(
+                                      tooltip: 'Clear search',
+                                      icon: const Icon(Icons.close_rounded),
+                                      onPressed: () => setState(() {
+                                        _query = '';
+                                        _search.clear();
+                                      }),
+                                    ),
+                            ),
+                            onChanged: (value) =>
+                                setState(() => _query = value),
+                          ),
+                          const SizedBox(height: FiloSpacing.s8),
+                          Wrap(
+                            spacing: FiloSpacing.s8,
+                            crossAxisAlignment: WrapCrossAlignment.center,
+                            children: [
+                              if (_folder != null)
+                                IconButton(
+                                  tooltip: 'Up to parent folder',
+                                  onPressed: () => setState(
+                                    () => _folder = path.isEmpty
+                                        ? null
+                                        : path.last.parentId,
+                                  ),
+                                  icon: const FiloIcon(FiloIcons.back),
+                                ),
+                              TextButton.icon(
+                                onPressed: _backupMenu,
+                                icon: const FiloIcon(
+                                  FiloIcons.cloudUpload,
+                                  size: 20,
+                                ),
+                                label: const Text('Drive backup'),
                               ),
-                              Text(
-                                '${fileSize(file.size)} · ${MaterialLocalizations.of(context).formatMediumDate(file.updatedAt.toLocal())}',
+                              PopupMenuButton<String>(
+                                tooltip: 'Sort files',
+                                initialValue: _sort,
+                                onSelected: (value) =>
+                                    setState(() => _sort = value),
+                                itemBuilder: (_) => [
+                                  for (final value in ['Name', 'Date', 'Size'])
+                                    PopupMenuItem(
+                                      value: value,
+                                      child: Text('Sort by $value'),
+                                    ),
+                                ],
+                                child: Padding(
+                                  padding: const EdgeInsets.symmetric(
+                                    horizontal: FiloSpacing.s12,
+                                    vertical: FiloSpacing.s12,
+                                  ),
+                                  child: Row(
+                                    mainAxisSize: MainAxisSize.min,
+                                    children: [
+                                      const Icon(Icons.sort_rounded, size: 20),
+                                      const SizedBox(width: FiloSpacing.s8),
+                                      Text('Sort: $_sort'),
+                                    ],
+                                  ),
+                                ),
                               ),
                             ],
                           ),
-                          onTap: () => Navigator.of(context).push(
-                            MaterialPageRoute<void>(
-                              builder: (_) => FileViewerScreen(
-                                showMascot: true,
-                                file: file,
-                                repository: repo,
+                          if (path.isNotEmpty)
+                            Wrap(
+                              crossAxisAlignment: WrapCrossAlignment.center,
+                              children: [
+                                TextButton(
+                                  onPressed: () =>
+                                      setState(() => _folder = null),
+                                  child: const Text('Your library'),
+                                ),
+                                for (final folder in path)
+                                  TextButton(
+                                    onPressed: () =>
+                                        setState(() => _folder = folder.id),
+                                    child: Text('› ${folder.name}'),
+                                  ),
+                              ],
+                            ),
+                          if (_busy) const FiloLinearProgressIndicator(),
+                          if (visibleFolders.isNotEmpty)
+                            Padding(
+                              padding: const EdgeInsets.symmetric(
+                                vertical: FiloSpacing.s12,
+                              ),
+                              child: Text(
+                                'Folders',
+                                style: Theme.of(context).textTheme.titleMedium,
                               ),
                             ),
-                          ),
-                          trailing: IconButton(
-                            tooltip: 'File actions',
-                            onPressed: _busy
-                                ? null
-                                : () => _fileActions(repo, file, folders),
-                            icon: const FiloIcon(FiloIcons.moreVertical),
-                          ),
-                        ),
+                          if (visibleFolders.isEmpty &&
+                              visibleFiles.isEmpty &&
+                              query.isEmpty)
+                            Padding(
+                              padding: const EdgeInsets.symmetric(
+                                vertical: FiloSpacing.screen,
+                              ),
+                              child: Column(
+                                children: [
+                                  ExcludeSemantics(
+                                    child: AspectRatio(
+                                      aspectRatio: 1.5,
+                                      child: ColorFiltered(
+                                        // Suppress the generated low-opacity halo around the illustration.
+                                        colorFilter: const ColorFilter.matrix([
+                                          1,
+                                          0,
+                                          0,
+                                          0,
+                                          0,
+                                          0,
+                                          1,
+                                          0,
+                                          0,
+                                          0,
+                                          0,
+                                          0,
+                                          1,
+                                          0,
+                                          0,
+                                          0,
+                                          0,
+                                          0,
+                                          12,
+                                          -2700,
+                                        ]),
+                                        child: Image.asset(
+                                          'assets/illustrations/library-empty-folder.png',
+                                          fit: BoxFit.contain,
+                                          cacheWidth:
+                                              (360 *
+                                                      MediaQuery.devicePixelRatioOf(
+                                                        context,
+                                                      ))
+                                                  .ceil(),
+                                          errorBuilder: (_, _, _) => const Icon(
+                                            Icons.folder_open_rounded,
+                                            size: 104,
+                                          ),
+                                        ),
+                                      ),
+                                    ),
+                                  ),
+                                  const SizedBox(height: FiloSpacing.s16),
+                                  Text(
+                                    'No files yet.',
+                                    textAlign: TextAlign.center,
+                                    style: Theme.of(context)
+                                        .textTheme
+                                        .titleLarge,
+                                  ),
+                                  const SizedBox(height: FiloSpacing.s8),
+                                  Text(
+                                    'Download class materials or add your own.',
+                                    textAlign: TextAlign.center,
+                                    style: Theme.of(context)
+                                        .textTheme
+                                        .bodyMedium
+                                        ?.copyWith(
+                                          color: Theme.of(context)
+                                              .colorScheme
+                                              .onSurfaceVariant,
+                                        ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          if (visibleFolders.isEmpty &&
+                              visibleFiles.isEmpty &&
+                              query.isNotEmpty)
+                            const EmptyState(
+                              pose: 'curious',
+                              bob: false,
+                              title: 'No matching files.',
+                              message: 'Try another file or folder name.',
+                            ),
+                          for (final folder in visibleFolders)
+                            FiloListItem(
+                              index: visibleFolders.indexOf(folder),
+                              child: Card(
+                                margin: const EdgeInsets.only(
+                                  bottom: FiloSpacing.s12,
+                                ),
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(
+                                    FiloRadii.large,
+                                  ),
+                                  side: BorderSide(
+                                    color: Theme.of(context)
+                                        .colorScheme
+                                        .outlineVariant,
+                                  ),
+                                ),
+                                child: ListTile(
+                                  contentPadding: const EdgeInsets.all(
+                                    FiloSpacing.s12,
+                                  ),
+                                  leading: Container(
+                                    width: 48,
+                                    height: 48,
+                                    decoration: BoxDecoration(
+                                      color: Theme.of(context)
+                                          .colorScheme
+                                          .primaryContainer,
+                                      borderRadius: BorderRadius.circular(
+                                        FiloRadii.small,
+                                      ),
+                                    ),
+                                    child: FiloIcon(
+                                      FiloIcons.folder,
+                                      color: Theme.of(context)
+                                          .colorScheme
+                                          .onPrimaryContainer,
+                                    ),
+                                  ),
+                                  title: Text(folder.name),
+                                  subtitle: Text(
+                                    '${folder.classId == null ? '' : 'Class folder · '}${fileSize(folderSize(folder))}',
+                                  ),
+                                  onTap: () => setState(() {
+                                    _folder = folder.id;
+                                    _query = '';
+                                    _search.clear();
+                                  }),
+                                  trailing: IconButton(
+                                    tooltip: 'Folder actions',
+                                    onPressed: _busy
+                                        ? null
+                                        : () => _folderActions(
+                                            repo,
+                                            folder,
+                                            folders,
+                                            files,
+                                          ),
+                                    icon: const FiloIcon(
+                                      FiloIcons.moreVertical,
+                                    ),
+                                  ),
+                                ),
+                              ),
+                            ),
+                          if (visibleFiles.isNotEmpty)
+                            Padding(
+                              padding: const EdgeInsets.symmetric(
+                                vertical: FiloSpacing.s12,
+                              ),
+                              child: Text(
+                                'Files on this device',
+                                style: Theme.of(context).textTheme.titleMedium,
+                              ),
+                            ),
+                          for (final file in visibleFiles)
+                            FiloListItem(
+                              index:
+                                  visibleFolders.length +
+                                  visibleFiles.indexOf(file),
+                              child: Card(
+                                margin: const EdgeInsets.only(
+                                  bottom: FiloSpacing.s12,
+                                ),
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(
+                                    FiloRadii.large,
+                                  ),
+                                  side: BorderSide(
+                                    color: Theme.of(context)
+                                        .colorScheme
+                                        .outlineVariant,
+                                  ),
+                                ),
+                                child: ListTile(
+                                  contentPadding: const EdgeInsets.all(
+                                    FiloSpacing.s12,
+                                  ),
+                                  titleTextStyle: Theme.of(context)
+                                      .textTheme
+                                      .titleMedium,
+                                  isThreeLine: true,
+                                  leading: FiloFileTypeTile(
+                                    details: FiloFileDetails.fromName(
+                                      file.name,
+                                      mimeType: file.mimeType,
+                                    ),
+                                  ),
+                                  title: Text(file.name),
+                                  subtitle: Column(
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.start,
+                                    children: [
+                                      FiloFileTypeLabel(
+                                        details: FiloFileDetails.fromName(
+                                          file.name,
+                                          mimeType: file.mimeType,
+                                        ),
+                                      ),
+                                      Text(
+                                        '${fileSize(file.size)} · ${MaterialLocalizations.of(context).formatMediumDate(file.updatedAt.toLocal())}',
+                                      ),
+                                    ],
+                                  ),
+                                  onTap: () => Navigator.of(context).push(
+                                    MaterialPageRoute<void>(
+                                      builder: (_) => FileViewerScreen(
+                                        showMascot: true,
+                                        file: file,
+                                        repository: repo,
+                                      ),
+                                    ),
+                                  ),
+                                  trailing: IconButton(
+                                    tooltip: 'File actions',
+                                    onPressed: _busy
+                                        ? null
+                                        : () =>
+                                              _fileActions(repo, file, folders),
+                                    icon: const FiloIcon(
+                                      FiloIcons.moreVertical,
+                                    ),
+                                  ),
+                                ),
+                              ),
+                            ),
+                        ],
                       ),
-                  ],
-                ),
+              ),
+            ],
+          ),
         ),
       ),
     );

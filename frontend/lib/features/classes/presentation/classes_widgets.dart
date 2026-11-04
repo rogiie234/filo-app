@@ -211,7 +211,8 @@ class OfflineBanner extends StatelessWidget {
 }
 
 class ClassCardSkeleton extends StatelessWidget {
-  const ClassCardSkeleton({super.key});
+  const ClassCardSkeleton({super.key, this.compact = false});
+  final bool compact;
   @override
   Widget build(BuildContext context) => Semantics(
     label: 'Loading classes',
@@ -225,17 +226,50 @@ class ClassCardSkeleton extends StatelessWidget {
         ),
         child: Column(
           children: [
-            Container(height: 148, color: FiloThemeTokens.of(context).mint),
+            Container(
+              color: FiloThemeTokens.of(context).mint,
+              padding: EdgeInsets.all(compact ? 16 : 24),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Container(
+                    height: 44,
+                    width: 180,
+                    color: Theme.of(context).colorScheme.surfaceContainer,
+                  ),
+                  SizedBox(height: compact ? 8 : 20),
+                  Row(
+                    children: [
+                      CircleAvatar(
+                        radius: 16,
+                        backgroundColor: Theme.of(context)
+                            .colorScheme
+                            .surfaceContainer,
+                      ),
+                      const SizedBox(width: 12),
+                      Container(
+                        height: 16,
+                        width: 100,
+                        color: Theme.of(context).colorScheme.surfaceContainer,
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+            ),
             Padding(
               padding: const EdgeInsets.all(FiloSpacing.s20),
               child: Row(
                 children: [
-                  CircleAvatar(
-                    backgroundColor: Theme.of(context)
-                        .colorScheme
-                        .surfaceContainer,
+                  Container(
+                    width: 40,
+                    height: 40,
+                    decoration: BoxDecoration(
+                      borderRadius: BorderRadius.circular(FiloRadii.small),
+                      color: Theme.of(context).colorScheme.surfaceContainer,
+                    ),
                   ),
-                  const SizedBox(width: FiloSpacing.s16),
+                  const SizedBox(width: FiloSpacing.s12),
                   Expanded(
                     child: Container(
                       height: 18,
@@ -244,6 +278,13 @@ class ClassCardSkeleton extends StatelessWidget {
                         borderRadius: BorderRadius.circular(FiloRadii.small),
                       ),
                     ),
+                  ),
+                  const SizedBox(width: 12),
+                  CircleAvatar(
+                    radius: 18,
+                    backgroundColor: Theme.of(context)
+                        .colorScheme
+                        .surfaceContainer,
                   ),
                 ],
               ),
@@ -261,10 +302,12 @@ class ClassCard extends ConsumerWidget {
     required this.room,
     required this.onTap,
     this.pendingRequests = 0,
+    this.compact = false,
   });
   final ClassRoom room;
   final VoidCallback? onTap;
   final int pendingRequests;
+  final bool compact;
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final path = room.bannerPath;
@@ -304,6 +347,7 @@ class ClassCard extends ConsumerWidget {
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
                   ClassBanner(
+                    compact: compact,
                     section: room.section,
                     instructor: room.instructor,
                     color: hasImage ? classBannerColor(null) : room.color,
@@ -351,34 +395,36 @@ class ClassCard extends ConsumerWidget {
                           ),
                         ),
                         const SizedBox(width: FiloSpacing.s12),
-                        Semantics(
-                          label: pendingRequests > 0
-                              ? 'Pending join requests'
-                              : null,
-                          child: RedDotBadge(
-                            visible: pendingRequests > 0,
-                            child: Container(
-                              width: 36,
-                              height: 36,
-                              decoration: BoxDecoration(
-                                color: Theme.of(context)
-                                    .colorScheme
-                                    .primaryContainer,
-                                shape: BoxShape.circle,
-                              ),
-                              child: FiloIcon(
-                                room.pending
-                                    ? FiloIcons.lock
-                                    : FiloIcons.forward,
-                                size: 20,
-                                color: Theme.of(context).colorScheme.primary,
-                              ),
+                        ExcludeSemantics(
+                          child: Container(
+                            width: 36,
+                            height: 36,
+                            decoration: BoxDecoration(
+                              color: Theme.of(context)
+                                  .colorScheme
+                                  .primaryContainer,
+                              shape: BoxShape.circle,
+                            ),
+                            child: FiloIcon(
+                              room.pending ? FiloIcons.lock : FiloIcons.forward,
+                              size: 20,
+                              color: Theme.of(context).colorScheme.primary,
                             ),
                           ),
                         ),
                       ],
                     ),
                   ),
+                  if (pendingRequests > 0)
+                    Padding(
+                      padding: const EdgeInsets.fromLTRB(20, 0, 20, 16),
+                      child: Text(
+                        '$pendingRequests pending ${pendingRequests == 1 ? 'request' : 'requests'}',
+                        style: Theme.of(context).textTheme.labelLarge!.copyWith(
+                          color: Theme.of(context).colorScheme.primary,
+                        ),
+                      ),
+                    ),
                   if (room.pending)
                     const Padding(
                       padding: EdgeInsets.fromLTRB(

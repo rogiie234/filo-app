@@ -7,6 +7,7 @@ import '../../../core/connectivity/connectivity_provider.dart';
 import '../../../core/notifications/push_events.dart';
 import '../../../core/widgets/filo_icons.dart';
 import '../../../core/widgets/filo_widgets.dart';
+import '../../../core/widgets/entry_background.dart';
 import '../../../data/local/app_database.dart';
 import '../../classes/presentation/classes_widgets.dart' show OfflineBanner;
 import '../application/notification_providers.dart';
@@ -174,7 +175,62 @@ class _InboxScreenState extends ConsumerState<InboxScreen> {
         ),
       );
     } else if (rows.isEmpty) {
-      content = EmptyState(title: "You're all caught up.", pose: 'waving');
+      content = Padding(
+        padding: const EdgeInsets.symmetric(vertical: FiloSpacing.s32),
+        child: Column(
+          children: [
+            ExcludeSemantics(
+              child: ConstrainedBox(
+                constraints: const BoxConstraints(maxWidth: 360),
+                child: AspectRatio(
+                  aspectRatio: 1.5,
+                  child: ColorFiltered(
+                    // Remove the generated low-opacity halo; keep the solid illustration.
+                    colorFilter: const ColorFilter.matrix([
+                      1,
+                      0,
+                      0,
+                      0,
+                      0,
+                      0,
+                      1,
+                      0,
+                      0,
+                      0,
+                      0,
+                      0,
+                      1,
+                      0,
+                      0,
+                      0,
+                      0,
+                      0,
+                      12,
+                      -2700,
+                    ]),
+                    child: Image.asset(
+                      'assets/illustrations/notifications-empty.png',
+                      fit: BoxFit.contain,
+                      cacheWidth: (360 * MediaQuery.devicePixelRatioOf(context))
+                          .ceil(),
+                      errorBuilder: (_, _, _) => const Icon(
+                        Icons.notifications_none_rounded,
+                        size: 48,
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+            ),
+            const SizedBox(height: FiloSpacing.s16),
+            Text(
+              "You're all caught up.",
+              textAlign: TextAlign.center,
+              style: theme.textTheme.titleLarge,
+            ),
+          ],
+        ),
+      );
     } else {
       content = const SizedBox.shrink();
     }
@@ -187,123 +243,129 @@ class _InboxScreenState extends ConsumerState<InboxScreen> {
           leading: const BackButton(),
           title: const Text('Notifications'),
         ),
-        body: SafeArea(
-          top: false,
-          child: Column(
-            children: [
-              Padding(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: FiloSpacing.screen,
-                ),
-                child: Align(
-                  alignment: AlignmentDirectional.centerEnd,
-                  child: TextButton(
-                    style: TextButton.styleFrom(
-                      minimumSize: const Size(
-                        FiloControlSize.compact,
-                        FiloControlSize.compact,
-                      ),
-                    ),
-                    onPressed: current && unread && !_marking ? _markAll : null,
-                    child: Text(
-                      _marking ? 'Saving…' : 'Mark all as read',
-                      textAlign: TextAlign.end,
-                    ),
-                  ),
-                ),
-              ),
-              Expanded(
-                child: RefreshIndicator(
-                  onRefresh: _refresh,
-                  child: CustomScrollView(
-                    key: const PageStorageKey('notification-inbox'),
-                    physics: const AlwaysScrollableScrollPhysics(),
-                    slivers: [
-                      SliverPadding(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: FiloSpacing.screen,
-                        ),
-                        sliver: SliverList.list(
-                          children: [
-                            if (offline) const OfflineBanner(),
-                            if (refresh.isLoading && !offline)
-                              const FiloLinearProgressIndicator(
-                                semanticsLabel: 'Refreshing notifications',
-                              ),
-                            if (refresh.hasError && !offline)
-                              _notice(
-                                'Could not refresh notifications. Showing saved content.',
-                                _refresh,
-                              ),
-                            if (_writeError != null)
-                              _notice(_writeError!, _markAll),
-                            if (rows == null || rows.isEmpty) content,
-                          ],
-                        ),
-                      ),
-                      if (rows != null && rows.isNotEmpty)
-                        SliverPadding(
-                          padding: const EdgeInsets.fromLTRB(
-                            FiloSpacing.screen,
-                            FiloSpacing.s8,
-                            FiloSpacing.screen,
-                            FiloSpacing.screen,
+        body: Stack(
+          fit: StackFit.expand,
+          children: [
+            const Positioned.fill(
+              child: EntryBackground(verification: true, breeze: true),
+            ),
+            SafeArea(
+              top: false,
+              child: Column(
+                children: [
+                  Expanded(
+                    child: RefreshIndicator(
+                      onRefresh: _refresh,
+                      child: CustomScrollView(
+                        key: const PageStorageKey('notification-inbox'),
+                        physics: const AlwaysScrollableScrollPhysics(),
+                        slivers: [
+                          SliverPadding(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: FiloSpacing.screen,
+                            ),
+                            sliver: SliverList.list(
+                              children: [
+                                if (offline) const OfflineBanner(),
+                                if (refresh.isLoading && !offline)
+                                  const FiloLinearProgressIndicator(
+                                    semanticsLabel: 'Refreshing notifications',
+                                  ),
+                                if (refresh.hasError && !offline)
+                                  _notice(
+                                    'Could not refresh notifications. Showing saved content.',
+                                    _refresh,
+                                  ),
+                                if (_writeError != null)
+                                  _notice(_writeError!, _markAll),
+                                if (rows == null || rows.isEmpty) content,
+                              ],
+                            ),
                           ),
-                          sliver: SliverList.builder(
-                            itemCount: rows.length,
-                            itemBuilder: (context, index) {
-                              final row = rows[index];
-                              final header =
-                                  index == 0 ||
-                                  inboxDay(rows[index - 1].createdAt) !=
-                                      inboxDay(row.createdAt);
-                              return FiloListItem(
-                                index: index,
-                                child: Column(
-                                  crossAxisAlignment:
-                                      CrossAxisAlignment.stretch,
-                                  children: [
-                                    if (header)
-                                      Padding(
-                                        padding: const EdgeInsets.only(
-                                          top: FiloSpacing.s16,
-                                          bottom: FiloSpacing.s12,
-                                        ),
-                                        child: Semantics(
-                                          header: true,
-                                          child: Text(
-                                            inboxDayLabel(
-                                              context,
-                                              row.createdAt,
-                                              _now,
+                          if (rows != null && rows.isNotEmpty)
+                            SliverPadding(
+                              padding: const EdgeInsets.fromLTRB(
+                                FiloSpacing.screen,
+                                FiloSpacing.s8,
+                                FiloSpacing.screen,
+                                FiloSpacing.screen,
+                              ),
+                              sliver: SliverList.builder(
+                                itemCount: rows.length,
+                                itemBuilder: (context, index) {
+                                  final row = rows[index];
+                                  final header =
+                                      index == 0 ||
+                                      inboxDay(rows[index - 1].createdAt) !=
+                                          inboxDay(row.createdAt);
+                                  return FiloListItem(
+                                    index: index,
+                                    child: Column(
+                                      crossAxisAlignment:
+                                          CrossAxisAlignment.stretch,
+                                      children: [
+                                        if (header)
+                                          Padding(
+                                            padding: const EdgeInsets.only(
+                                              top: FiloSpacing.s16,
+                                              bottom: FiloSpacing.s12,
                                             ),
-                                            style: theme.textTheme.titleMedium,
+                                            child: Semantics(
+                                              header: true,
+                                              child: Text(
+                                                inboxDayLabel(
+                                                  context,
+                                                  row.createdAt,
+                                                  _now,
+                                                ),
+                                                style:
+                                                    theme.textTheme.titleMedium,
+                                              ),
+                                            ),
+                                          ),
+                                        Padding(
+                                          padding: const EdgeInsets.only(
+                                            bottom: FiloSpacing.s12,
+                                          ),
+                                          child: _InboxRow(
+                                            row: row,
+                                            onTap: _opening
+                                                ? null
+                                                : () => _open(row.id),
                                           ),
                                         ),
-                                      ),
-                                    Padding(
-                                      padding: const EdgeInsets.only(
-                                        bottom: FiloSpacing.s12,
-                                      ),
-                                      child: _InboxRow(
-                                        row: row,
-                                        onTap: _opening
-                                            ? null
-                                            : () => _open(row.id),
-                                      ),
+                                      ],
                                     ),
-                                  ],
-                                ),
-                              );
-                            },
-                          ),
-                        ),
-                    ],
+                                  );
+                                },
+                              ),
+                            ),
+                        ],
+                      ),
+                    ),
                   ),
-                ),
+                  Padding(
+                    padding: const EdgeInsets.fromLTRB(
+                      FiloSpacing.screen,
+                      FiloSpacing.s12,
+                      FiloSpacing.screen,
+                      FiloSpacing.s16,
+                    ),
+                    child: FiloButton(
+                      label: _marking ? 'Saving\u2026' : 'Mark all as read',
+                      labelVariants: const ['Mark all as read', 'Saving\u2026'],
+                      outlined: true,
+                      minHeight: 56,
+                      busy: _marking,
+                      onPressed: current && unread && !_marking
+                          ? _markAll
+                          : null,
+                    ),
+                  ),
+                ],
               ),
-            ],
-          ),
+            ),
+          ],
         ),
       ),
     );
@@ -311,21 +373,26 @@ class _InboxScreenState extends ConsumerState<InboxScreen> {
 
   Widget _notice(String message, VoidCallback retry) => Padding(
     padding: const EdgeInsets.symmetric(vertical: FiloSpacing.s12),
-    child: Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(message),
-        TextButton(
-          onPressed: retry,
-          style: TextButton.styleFrom(
-            minimumSize: const Size(
-              FiloControlSize.compact,
-              FiloControlSize.compact,
+    child: FiloPanel(
+      child: Semantics(
+        liveRegion: true,
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(message),
+            TextButton(
+              onPressed: retry,
+              style: TextButton.styleFrom(
+                minimumSize: const Size(
+                  FiloControlSize.compact,
+                  FiloControlSize.compact,
+                ),
+              ),
+              child: const Text('Retry'),
             ),
-          ),
-          child: const Text('Retry'),
+          ],
         ),
-      ],
+      ),
     ),
   );
 }
@@ -355,8 +422,12 @@ class _InboxRow extends StatelessWidget {
             ? colors.primaryContainer.withValues(alpha: 0.35)
             : colors.surface,
         shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(FiloRadii.medium),
-          side: BorderSide(color: colors.outlineVariant),
+          borderRadius: BorderRadius.circular(FiloRadii.large),
+          side: BorderSide(
+            color: unread
+                ? colors.primary.withValues(alpha: .4)
+                : colors.outlineVariant,
+          ),
         ),
         clipBehavior: Clip.antiAlias,
         child: InkWell(
@@ -393,7 +464,12 @@ class _InboxRow extends StatelessWidget {
                       ),
                       if (row.body?.isNotEmpty == true) ...[
                         const SizedBox(height: FiloSpacing.s4),
-                        Text(row.body!, style: theme.textTheme.bodyMedium),
+                        Text(
+                          row.body!,
+                          style: theme.textTheme.bodyMedium?.copyWith(
+                            color: colors.onSurfaceVariant,
+                          ),
+                        ),
                       ],
                       const SizedBox(height: FiloSpacing.s8),
                       Text(

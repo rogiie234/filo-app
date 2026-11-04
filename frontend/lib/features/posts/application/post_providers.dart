@@ -112,7 +112,63 @@ final postSyncProvider = FutureProvider.autoDispose.family<void, String>((
   final online = ref.watch(connectivityProvider).asData?.value == true;
   if (!online) return;
   final coordinator = await ref.watch(syncCoordinatorProvider.future);
-  if (ref.mounted) await coordinator?.run();
+  if (!ref.mounted) return;
+  if (coordinator == null) throw StateError('Sign in to refresh posts');
+  await coordinator.run();
+  if (!ref.mounted) return;
+  if ([
+    'queue',
+    'class_access',
+    'classes',
+    'posts',
+    'post_attachments',
+  ].any(coordinator.errors.containsKey)) {
+    throw StateError('Could not refresh posts');
+  }
+  final repository = await ref.read(postRepositoryProvider.future);
+  if (!ref.mounted) return;
+  if (repository == null) throw StateError('Sign in to refresh posts');
+  final db = repository.database;
+  final room = await (db.select(
+    db.cacheClasses,
+  )..where((c) => c.id.equals(classId))).getSingleOrNull();
+  if (!ref.mounted || !coordinator.isCurrent()) return;
+  if (room == null || room.deletedAt != null) {
+    throw StateError('Class unavailable');
+  }
+  if (room.ownerId != repository.classes.userId) {
+    final member =
+        await (db.select(db.cacheClassMembers)..where(
+              (m) =>
+                  m.classId.equals(classId) &
+                  m.studentId.equals(repository.classes.userId),
+            ))
+            .getSingleOrNull();
+    if (!ref.mounted) return;
+    if (member?.status != 'active') throw StateError('Class unavailable');
+  }
+  await repository.database
+      .into(repository.database.syncState)
+      .insertOnConflictUpdate(
+        SyncStateCompanion.insert(syncedTableName: 'stream_loaded:$classId'),
+      );
+});
+
+// Separate from server cursors: a successful empty pull has no row timestamp.
+final streamLoadedProvider = StreamProvider.autoDispose.family<bool, String>((
+  ref,
+  classId,
+) async* {
+  final repository = await ref.watch(postRepositoryProvider.future);
+  if (repository == null) {
+    yield false;
+    return;
+  }
+  final db = repository.database;
+  yield* (db.select(db.syncState)
+        ..where((s) => s.syncedTableName.equals('stream_loaded:$classId')))
+      .watch()
+      .map((rows) => rows.isNotEmpty);
 });
 
 final postSyncLifecycleProvider = Provider.autoDispose.family<void, String>((

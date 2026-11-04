@@ -14,6 +14,8 @@ import 'package:filo/core/supabase/session_gate.dart';
 import 'package:filo/data/local/database_providers.dart';
 import 'package:filo/core/theme/app_theme.dart';
 import 'package:filo/features/auth/presentation/session_screen.dart';
+import 'package:filo/features/auth/presentation/otp_code_field.dart';
+import 'package:filo/core/widgets/entry_background.dart';
 import 'package:filo/features/onboarding/data/profile_repository.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -129,7 +131,7 @@ void main() {
         'new device shows full email and fits a small phone with larger text',
         (tester) async {
           await launch(tester);
-          expect(find.text('Let’s make sure\nit’s you.'), findsOneWidget);
+          expect(find.text('Verify this device.'), findsOneWidget);
           expect(find.text('person@example.com'), findsOneWidget);
           expect(find.text('p***@example.com'), findsNothing);
           expect(find.text('Send code'), findsOneWidget);
@@ -137,6 +139,32 @@ void main() {
           expect(tester.takeException(), isNull);
         },
       );
+      testWidgets(
+        'verification decoration stays fixed while keyboard resizes form',
+        (tester) async {
+          await launch(tester);
+          addTearDown(tester.view.resetViewInsets);
+          final background = tester.getRect(find.byType(EntryBackground));
+          final viewport = tester.getSize(
+            find.byType(SingleChildScrollView).first,
+          );
+          for (final inset in [160.0, 280.0, 0.0]) {
+            tester.view.viewInsets = FakeViewPadding(bottom: inset);
+            await tester.pumpAndSettle();
+            expect(tester.getRect(find.byType(EntryBackground)), background);
+            final height = tester
+                .getSize(find.byType(SingleChildScrollView).first)
+                .height;
+            if (inset > 0) {
+              expect(height, lessThan(viewport.height));
+            } else {
+              expect(height, viewport.height);
+            }
+            expect(tester.takeException(), isNull);
+          }
+        },
+      );
+
       Future<void> finishRequest(WidgetTester tester) async {
         // Supabase decodes responses in a real isolate, outside the fake test clock.
         for (var i = 0; i < 100; i++) {
@@ -154,9 +182,11 @@ void main() {
       }
 
       for (final error in ['OTP_WRONG', 'OTP_EXPIRED', 'OTP_LOCKED']) {
+        var verifyRequests = 0;
         a11yScreenTest('OTP maps $error and respects backend resend timing', (
           tester,
         ) async {
+          verifyRequests = 0;
           final client = (await tester.runAsync(
             () async => SupabaseClient(
               'https://example.supabase.co',
@@ -173,6 +203,7 @@ void main() {
                     headers: {'content-type': 'application/json'},
                   );
                 }
+                verifyRequests++;
                 return http.Response(
                   jsonEncode({
                     'error': {'code': error},
@@ -220,16 +251,7 @@ void main() {
             expect(field.enableInlinePrediction, isFalse);
             await tester.showKeyboard(find.byType(TextField));
             // Use incremental platform editing updates, including backspace.
-            for (final text in [
-              '1',
-              '12',
-              '1',
-              '13',
-              '1',
-              '15',
-              '',
-              '654321',
-            ]) {
+            for (final text in ['1', '12', '1', '13', '1', '15', '', '65432']) {
               tester.testTextInput.updateEditingValue(
                 TextEditingValue(
                   text: text,
@@ -243,7 +265,7 @@ void main() {
               expect(field.controller!.text, text);
             }
             // A delayed OS autofill response must not restore an erased OTP.
-            await tester.enterText(find.byType(TextField), '038909');
+            await tester.enterText(find.byType(TextField), '03890');
             await tester.enterText(find.byType(TextField), '03');
             final editable = tester.state<EditableTextState>(
               find.byType(EditableText),
@@ -265,22 +287,15 @@ void main() {
             );
             await tester.pump();
             expect(field.controller!.text, '03');
-            // Pasting remains supported and still enforces six numeric digits.
-            tester.testTextInput.updateEditingValue(
-              const TextEditingValue(
-                text: '12a3456',
-                selection: TextSelection.collapsed(offset: 7),
-              ),
-            );
-            await tester.pump();
-            expect(field.controller!.text, '123456');
           }
-          await tester.enterText(find.byType(TextField), '123456');
-          await tester.ensureVisible(find.text('Verify code'));
-          await tester.runAsync(() async {
-            await tester.tap(find.text('Verify code'));
-          });
+          // The completed paste verifies once without tapping Verify code.
+          await tester.enterText(find.byType(TextField), '12a3456');
           await finishRequest(tester);
+          expect(verifyRequests, 1);
+          expect(
+            tester.widget<TextField>(find.byType(TextField)).controller!.text,
+            '123456',
+          );
           final expected = {
             'OTP_WRONG':
                 'That code is incorrect. Check your email and try again.',
@@ -289,6 +304,20 @@ void main() {
             'OTP_LOCKED': "You've reached the limit of 5 incorrect attempts. Wait until this code expires, then request a new code.",
           };
           expect(find.text(expected[error]!), findsOneWidget);
+          expect(
+            tester.widget<OtpCodeField>(find.byType(OtpCodeField)).hasError,
+            error == 'OTP_WRONG',
+          );
+          if (error == 'OTP_WRONG') {
+            await tester.enterText(find.byType(TextField), '12345');
+            await tester.pump();
+            expect(
+              tester.widget<OtpCodeField>(find.byType(OtpCodeField)).hasError,
+              isFalse,
+            );
+            expect(verifyRequests, 1);
+          }
+
           now = now.add(const Duration(seconds: 59));
           await tester.runAsync(
             () => Future<void>.delayed(const Duration(milliseconds: 1100)),

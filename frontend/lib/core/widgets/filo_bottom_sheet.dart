@@ -97,7 +97,8 @@ Future<T?> showFiloBottomSheet<T>({
                         right: 12,
                         child: IconButton(
                           tooltip: 'Close',
-                          onPressed: () => Navigator.of(sheetContext).pop(),
+                          onPressed: () =>
+                              Navigator.of(sheetContext).maybePop(),
                           icon: const FiloIcon(FiloIcons.close),
                         ),
                       ),
@@ -138,7 +139,7 @@ Future<T?> showFiloBottomSheet<T>({
                       const SizedBox(width: FiloSpacing.s8),
                       IconButton(
                         tooltip: 'Close',
-                        onPressed: () => Navigator.of(sheetContext).pop(),
+                        onPressed: () => Navigator.of(sheetContext).maybePop(),
                         icon: const FiloIcon(FiloIcons.close),
                       ),
                     ],

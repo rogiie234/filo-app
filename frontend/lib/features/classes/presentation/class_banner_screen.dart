@@ -13,9 +13,15 @@ import '../../../core/widgets/filo_widgets.dart';
 import '../application/class_providers.dart';
 import '../domain/class_banner.dart';
 import 'class_banner.dart';
+import 'classes_widgets.dart' show classImageProvider;
 
 class ClassBannerScreen extends ConsumerStatefulWidget {
-  const ClassBannerScreen({super.key, required this.classId});
+  const ClassBannerScreen({
+    super.key,
+    required this.classId,
+    this.embedded = false,
+  });
+  final bool embedded;
   final String classId;
   @override
   ConsumerState<ClassBannerScreen> createState() => _ClassBannerState();
@@ -24,7 +30,7 @@ class ClassBannerScreen extends ConsumerStatefulWidget {
 class _ClassBannerState extends ConsumerState<ClassBannerScreen> {
   String? _banner, _error, _imageExtension, _uploadPath;
   Uint8List? _bannerImage;
-  bool _busy = false, _picking = false;
+  bool _busy = false, _picking = false, _changed = false;
   Future<void> _pickBanner() async {
     setState(() => _picking = true);
     try {
@@ -51,6 +57,7 @@ class _ClassBannerState extends ConsumerState<ClassBannerScreen> {
         setState(() {
           _uploadPath = null;
           _bannerImage = bytes;
+          _changed = true;
           _imageExtension = extension;
           _error = null;
         });
@@ -130,72 +137,148 @@ class _ClassBannerState extends ConsumerState<ClassBannerScreen> {
   Widget build(BuildContext context) {
     final online = ref.watch(connectivityProvider).asData?.value == true;
     final editable = !_busy && !_picking && online;
+    final rooms = ref.watch(classCardsProvider).asData?.value;
+    final room = rooms?.where((r) => r.id == widget.classId).firstOrNull;
+    final selectedBanner = _changed
+        ? _banner
+        : classBannerColors.entries
+              .where((entry) => entry.value == room?.color)
+              .firstOrNull
+              ?.key;
+    final originalPath = !_changed ? room?.bannerPath : null;
+    final originalUrl = originalPath == null || originalPath.isEmpty
+        ? null
+        : ref
+              .watch(classImageProvider(('banners', originalPath)))
+              .asData
+              ?.value;
+    final hasPhoto = _bannerImage != null || originalPath != null;
+    final content = ListView(
+      padding: const EdgeInsets.all(FiloSpacing.screen),
+      children: [
+        Text(
+          'Class card preview',
+          style: Theme.of(context).textTheme.titleMedium,
+        ),
+        const SizedBox(height: FiloSpacing.s12),
+        ClipRRect(
+          borderRadius: BorderRadius.circular(FiloRadii.large),
+          child: ClassBanner(
+            section: room?.section ?? 'Your classroom',
+            instructor: room?.instructor ?? 'Instructor',
+            compact: true,
+            color: _changed
+                ? classBannerColor(_banner)
+                : room?.color ?? classBannerColor(null),
+            image: _bannerImage != null
+                ? MemoryImage(_bannerImage!)
+                : originalUrl == null
+                ? null
+                : NetworkImage(originalUrl),
+          ),
+        ),
+        if (room != null)
+          Padding(
+            padding: const EdgeInsets.all(FiloSpacing.s12),
+            child: Text(room.course),
+          ),
+        const SizedBox(height: FiloSpacing.s20),
+        Text('Banner color', style: Theme.of(context).textTheme.titleMedium),
+        const SizedBox(height: FiloSpacing.s8),
+        const Text('Choose a color or upload a new banner.'),
+        const SizedBox(height: FiloSpacing.s12),
+        LayoutBuilder(
+          builder: (context, constraints) => Wrap(
+            spacing: 8,
+            runSpacing: 8,
+            children: [
+              for (final key in <String?>[null, ...classBannerColors.keys])
+                SizedBox(
+                  width: (constraints.maxWidth - 16) / 3,
+                  child: Semantics(
+                    selected: selectedBanner == key && !hasPhoto,
+                    inMutuallyExclusiveGroup: true,
+                    child: OutlinedButton(
+                      onPressed: editable
+                          ? () => setState(() {
+                              _banner = key;
+                              _bannerImage = null;
+                              _changed = true;
+                            })
+                          : null,
+                      style: OutlinedButton.styleFrom(
+                        minimumSize: const Size(0, 88),
+                        padding: const EdgeInsets.all(8),
+                        backgroundColor: selectedBanner == key && !hasPhoto
+                            ? Theme.of(context).colorScheme.primaryContainer
+                            : Theme.of(context).colorScheme.surface,
+                      ),
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          CircleAvatar(
+                            radius: 14,
+                            backgroundColor: Color(classBannerColor(key)),
+                            child: selectedBanner == key && !hasPhoto
+                                ? Icon(
+                                    Icons.check_rounded,
+                                    size: 18,
+                                    color: ClassBanner.foreground(
+                                      classBannerColor(key),
+                                    ),
+                                  )
+                                : null,
+                          ),
+                          const SizedBox(height: 8),
+                          Text(
+                            key == null
+                                ? 'Default'
+                                : '${key[0].toUpperCase()}${key.substring(1)}',
+                            textAlign: TextAlign.center,
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ),
+            ],
+          ),
+        ),
+        const SizedBox(height: FiloSpacing.s16),
+        FiloButton(
+          outlined: true,
+          minHeight: 48,
+          label: _picking ? 'Opening photos\u2026' : 'Upload banner image',
+          leading: const FiloIcon(FiloIcons.addImage),
+          onPressed: editable ? _pickBanner : null,
+        ),
+        const SizedBox(height: FiloSpacing.s8),
+        Text(
+          'JPG, PNG or WebP \u00b7 Max 2 MB',
+          textAlign: TextAlign.center,
+          style: Theme.of(context).textTheme.bodySmall,
+        ),
+        const SizedBox(height: FiloSpacing.s20),
+        if (_error != null)
+          Semantics(liveRegion: true, child: FiloPanel(child: Text(_error!))),
+        if (!online)
+          const Text('Connect to the internet to change the banner.'),
+        FiloButton(
+          label: _busy ? 'Saving...' : 'Save banner',
+          busy: _busy,
+          minHeight: 64,
+          onPressed: editable && _changed ? _save : null,
+        ),
+      ],
+    );
     return PopScope(
       canPop: !_busy && !_picking,
-      child: Scaffold(
-        appBar: AppBar(title: const Text('Change banner')),
-        body: ListView(
-          padding: const EdgeInsets.all(FiloSpacing.screen),
-          children: [
-            const Text('Choose a color or upload a new banner.'),
-            Wrap(
-              spacing: 8,
-              runSpacing: 8,
-              children: [
-                FiloAnimatedChip(
-                  label: const Text('Default'),
-                  selected: _banner == null && _bannerImage == null,
-                  onSelected: editable
-                      ? (_) => setState(() {
-                          _banner = null;
-                          _bannerImage = null;
-                        })
-                      : null,
-                ),
-                for (final entry in classBannerColors.entries)
-                  FiloAnimatedChip(
-                    label: Text(
-                      '${entry.key[0].toUpperCase()}${entry.key.substring(1)}',
-                    ),
-                    avatar: CircleAvatar(backgroundColor: Color(entry.value)),
-                    selected: _banner == entry.key && _bannerImage == null,
-                    onSelected: editable
-                        ? (_) => setState(() {
-                            _banner = entry.key;
-                            _bannerImage = null;
-                          })
-                        : null,
-                  ),
-              ],
+      child: widget.embedded
+          ? content
+          : Scaffold(
+              appBar: AppBar(title: const Text('Change banner')),
+              body: content,
             ),
-            TextButton.icon(
-              onPressed: editable ? _pickBanner : null,
-              icon: const FiloIcon(FiloIcons.addImage),
-              label: Text(_picking ? 'Opening photos…' : 'Upload banner image'),
-            ),
-            const Text('JPG, PNG, or WebP · up to 2 MB'),
-            const SizedBox(height: FiloSpacing.s16),
-            ClipRRect(
-              borderRadius: BorderRadius.circular(FiloRadii.large),
-              child: ClassBanner(
-                section: 'Your classroom',
-                instructor: 'Instructor',
-                color: classBannerColor(_banner),
-                image: _bannerImage == null ? null : MemoryImage(_bannerImage!),
-              ),
-            ),
-            const SizedBox(height: FiloSpacing.s16),
-            if (_error != null)
-              Semantics(liveRegion: true, child: Text(_error!)),
-            if (!online)
-              const Text('Connect to the internet to change the banner.'),
-            FiloButton(
-              label: _busy ? 'Saving...' : 'Save banner',
-              onPressed: editable ? _save : null,
-            ),
-          ],
-        ),
-      ),
     );
   }
 }

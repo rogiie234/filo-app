@@ -4,8 +4,13 @@ import '../../../core/widgets/filo_widgets.dart';
 import '../../classes/domain/prototype_models.dart';
 
 class PreviewClassFiles extends StatefulWidget {
-  const PreviewClassFiles({super.key, required this.hasSamples});
+  const PreviewClassFiles({
+    super.key,
+    required this.hasSamples,
+    this.showHeading = true,
+  });
   final bool hasSamples;
+  final bool showHeading;
   @override
   State<PreviewClassFiles> createState() => _PreviewClassFilesState();
 }
@@ -23,8 +28,13 @@ class _PreviewClassFilesState extends State<PreviewClassFiles> {
     return ListView(
       padding: const EdgeInsets.all(FiloSpacing.screen),
       children: [
-        Text('Class files', style: Theme.of(context).textTheme.headlineMedium),
-        const SizedBox(height: FiloSpacing.s8),
+        if (widget.showHeading) ...[
+          Text(
+            'Class files',
+            style: Theme.of(context).textTheme.headlineMedium,
+          ),
+          const SizedBox(height: FiloSpacing.s8),
+        ],
         Text(
           'Good ideas, kept together.',
           style: TextStyle(
@@ -58,10 +68,8 @@ class _PreviewClassFilesState extends State<PreviewClassFiles> {
         ),
         const SizedBox(height: FiloSpacing.screen),
         if (files.isEmpty)
-          EmptyState(
-            pose: _query.trim().isNotEmpty || _filter != 'All'
-                ? 'curious'
-                : 'folder',
+          FiloIllustratedEmptyState(
+            asset: 'assets/illustrations/library-empty-folder.png',
             title: 'No files here yet.',
             message: 'Class materials will have a home right here.',
           ),
@@ -90,6 +98,7 @@ class FileCard extends StatelessWidget {
   final PreviewFile file;
   @override
   Widget build(BuildContext context) => FiloPanel(
+    padding: const EdgeInsets.all(FiloSpacing.s12),
     child: Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -104,7 +113,8 @@ class FileCard extends StatelessWidget {
                 children: [
                   Text(
                     file.name,
-                    style: Theme.of(context).textTheme.labelLarge!,
+                    style: Theme.of(context).textTheme.titleMedium
+                        ?.copyWith(fontWeight: FontWeight.w800),
                   ),
                   const SizedBox(height: FiloSpacing.s4),
                   FiloFileTypeLabel(
@@ -121,10 +131,13 @@ class FileCard extends StatelessWidget {
             ),
           ],
         ),
-        const SizedBox(height: FiloSpacing.s12),
+        const SizedBox(height: FiloSpacing.s4),
+        const Divider(height: 1),
+        const SizedBox(height: FiloSpacing.s4),
         Align(
-          alignment: Alignment.centerRight,
-          child: TextButton.icon(
+          alignment: Alignment.centerLeft,
+          child: FilledButton.tonalIcon(
+            style: FilledButton.styleFrom(minimumSize: const Size(112, 48)),
             onPressed: () => showFilePreview(context, file),
             icon: const FiloIcon(FiloIcons.visible, size: 20),
             label: const Text('Preview file'),

@@ -112,6 +112,84 @@ class FiloPanel extends StatelessWidget {
   );
 }
 
+/// Successful illustrated empty lists, separate from loading/error recovery.
+class FiloIllustratedEmptyState extends StatelessWidget {
+  const FiloIllustratedEmptyState({
+    super.key,
+    required this.asset,
+    required this.title,
+    this.message = '',
+  });
+  final String asset, title, message;
+  @override
+  Widget build(BuildContext context) => Padding(
+    padding: const EdgeInsets.symmetric(vertical: FiloSpacing.screen),
+    child: Column(
+      children: [
+        ExcludeSemantics(
+          child: ConstrainedBox(
+            constraints: const BoxConstraints(maxWidth: 360),
+            child: AspectRatio(
+              aspectRatio: 1.5,
+              child: ColorFiltered(
+                // Remove low-opacity haze from the existing generated illustrations.
+                colorFilter: const ColorFilter.matrix([
+                  1,
+                  0,
+                  0,
+                  0,
+                  0,
+                  0,
+                  1,
+                  0,
+                  0,
+                  0,
+                  0,
+                  0,
+                  1,
+                  0,
+                  0,
+                  0,
+                  0,
+                  0,
+                  12,
+                  -2700,
+                ]),
+                child: Image.asset(
+                  asset,
+                  fit: BoxFit.contain,
+                  cacheWidth: (360 * MediaQuery.devicePixelRatioOf(context))
+                      .ceil(),
+                  errorBuilder: (_, _, _) => const SizedBox.shrink(),
+                ),
+              ),
+            ),
+          ),
+        ),
+        const SizedBox(height: FiloSpacing.s16),
+        Semantics(
+          header: true,
+          child: Text(
+            title,
+            textAlign: TextAlign.center,
+            style: Theme.of(context).textTheme.titleLarge,
+          ),
+        ),
+        if (message.isNotEmpty) ...[
+          const SizedBox(height: FiloSpacing.s8),
+          Text(
+            message,
+            textAlign: TextAlign.center,
+            style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+              color: Theme.of(context).colorScheme.onSurfaceVariant,
+            ),
+          ),
+        ],
+      ],
+    ),
+  );
+}
+
 class EmptyState extends StatelessWidget {
   const EmptyState({
     super.key,

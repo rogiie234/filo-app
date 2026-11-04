@@ -5,6 +5,7 @@ import 'package:filo/core/connectivity/connectivity_provider.dart';
 import 'package:filo/core/notifications/push_events.dart';
 import 'package:filo/core/theme/app_theme.dart';
 import 'package:filo/core/widgets/filo_icons.dart';
+import 'package:filo/core/widgets/filo_widgets.dart';
 import 'package:filo/data/local/app_database.dart';
 import 'package:filo/features/notifications/application/notification_providers.dart';
 import 'package:filo/features/notifications/data/inbox_repository.dart';
@@ -233,8 +234,11 @@ void main() {
       expect(find.text("You're all caught up."), findsNothing);
       expect(
         tester
-            .widget<TextButton>(
-              find.widgetWithText(TextButton, 'Mark all as read'),
+            .widget<FiloButton>(
+              find.byWidgetPredicate(
+                (widget) =>
+                    widget is FiloButton && widget.label == 'Mark all as read',
+              ),
             )
             .onPressed,
         isNull,
@@ -248,6 +252,17 @@ void main() {
     (tester) async {
       await launch(tester, initial: []);
       expect(find.text("You're all caught up."), findsOneWidget);
+      expect(
+        find.byWidgetPredicate(
+          (widget) =>
+              widget is Image &&
+              widget.image is ResizeImage &&
+              ((widget.image as ResizeImage).imageProvider as AssetImage)
+                      .assetName ==
+                  'assets/illustrations/notifications-empty.png',
+        ),
+        findsOneWidget,
+      );
     },
   );
   testWidgets('loading never shows caught up', (tester) async {
@@ -308,11 +323,20 @@ void main() {
       final gate = Completer<void>();
       h.repo.waiting = gate.future;
       h.repo.fail = true;
-      await tester.tap(find.text('Mark all as read'));
+      await tester.tap(
+        find.byWidgetPredicate(
+          (widget) =>
+              widget is FiloButton && widget.label == 'Mark all as read',
+        ),
+      );
       await tester.pump();
       expect(
         tester
-            .widget<TextButton>(find.widgetWithText(TextButton, 'Saving…'))
+            .widget<FiloButton>(
+              find.byWidgetPredicate(
+                (widget) => widget is FiloButton && widget.busy,
+              ),
+            )
             .onPressed,
         isNull,
       );
@@ -333,8 +357,11 @@ void main() {
       await tester.pump();
       expect(
         tester
-            .widget<TextButton>(
-              find.widgetWithText(TextButton, 'Mark all as read'),
+            .widget<FiloButton>(
+              find.byWidgetPredicate(
+                (widget) =>
+                    widget is FiloButton && widget.label == 'Mark all as read',
+              ),
             )
             .onPressed,
         isNull,

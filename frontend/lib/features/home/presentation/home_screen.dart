@@ -1,5 +1,3 @@
-import '../../../core/widgets/filo_motion_widgets.dart';
-
 import 'dart:async';
 
 import 'package:flutter/material.dart';
@@ -11,7 +9,6 @@ import '../../exams/presentation/student_exam_screen.dart';
 import '../../classes/presentation/classes_screen.dart';
 import '../../onboarding/data/profile_repository.dart';
 import '../../../core/notifications/push_events.dart';
-import '../../settings/application/theme_settings.dart';
 import '../../settings/application/profile_settings.dart';
 
 class HomeScreen extends ConsumerStatefulWidget {
@@ -61,35 +58,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
   Widget build(BuildContext context) {
     final profile =
         ref.watch(accountProfileProvider(widget.profile.id)) ?? widget.profile;
-    final appearance = ref.watch(themeSettingsProvider);
-    if (appearance.isLoading) {
-      return const Scaffold(
-        body: Center(child: FiloCircularProgressIndicator()),
-      );
-    }
-    if (appearance.hasError) {
-      return Scaffold(
-        body: SafeArea(
-          child: Center(
-            child: SingleChildScrollView(
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  const Text('Could not load your theme setting.'),
-                  TextButton(
-                    onPressed: () {
-                      ref.invalidate(themeSettingsRepositoryProvider);
-                      ref.invalidate(themeSettingsProvider);
-                    },
-                    child: const Text('Retry'),
-                  ),
-                ],
-              ),
-            ),
-          ),
-        ),
-      );
-    }
+    // Appearance is optional; its load/retry state belongs in Settings, not a Home gate.
     if (!_announced) {
       _announced = true;
       WidgetsBinding.instance.addPostFrameCallback((_) {

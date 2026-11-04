@@ -59,15 +59,17 @@ void main() {
   );
 
   test('text and icons meet contrast on base, pattern and brightest photo', () {
-    for (final value in classBannerColors.values) {
-      final ink = ClassBanner.foreground(value);
-      final base = Color(value);
-      final pattern = Color.alphaBlend(
-        ink.withValues(alpha: ClassBanner.patternOpacity),
-        base,
-      );
-      for (final fill in [base, pattern]) {
-        expect(_contrast(ink, fill), greaterThanOrEqualTo(4.5));
+    for (final brightness in Brightness.values) {
+      for (final value in classBannerColors.values) {
+        final ink = ClassBanner.foreground(value, brightness: brightness);
+        final base = ClassBanner.presetBackground(value, brightness);
+        final pattern = Color.alphaBlend(
+          ClassBanner.landscapeTint(value, brightness: brightness),
+          base,
+        );
+        for (final fill in [base, pattern]) {
+          expect(_contrast(ink, fill), greaterThanOrEqualTo(4.5));
+        }
       }
     }
     expect(
@@ -85,6 +87,7 @@ void main() {
     await tester.pumpWidget(
       MaterialApp(
         theme: theme,
+        themeAnimationDuration: Duration.zero,
         home: MediaQuery(
           data: const MediaQueryData(textScaler: TextScaler.linear(1.3)),
           child: Scaffold(body: SingleChildScrollView(child: child)),
@@ -95,60 +98,69 @@ void main() {
   }
 
   Finder patterns() => find.byWidgetPredicate(
-    (w) => w is CustomPaint && w.painter is ClassBannerPattern,
+    (w) =>
+        w is Image &&
+        w.image is ResizeImage &&
+        (w.image as ResizeImage).imageProvider is AssetImage &&
+        ((w.image as ResizeImage).imageProvider as AssetImage).assetName ==
+            'assets/illustrations/class-banner-landscape.png',
   );
 
-  testWidgets('presets wrap at 130%, expose text and hide decorative books', (
-    tester,
-  ) async {
-    final semantics = tester.ensureSemantics();
-    try {
-      for (final theme in [AppTheme.light, AppTheme.dark]) {
-        for (final entry in classBannerColors.entries) {
-          await mount(
-            tester,
-            ClassBanner(
-              color: entry.value,
-              section: 'BSIT - a long Section name that wraps',
-              instructor: 'Instructor with a long display name',
-            ),
-            theme,
-          );
-          expect(patterns(), findsOneWidget);
-          final title = tester.widget<Text>(
-            find.text('BSIT - a long Section name that wraps'),
-          );
-          expect(title.style!.color, ClassBanner.foreground(entry.value));
-          expect(
-            find.bySemanticsLabel('Instructor with a long display name'),
-            findsOneWidget,
-          );
-          expect(find.byType(ExcludeSemantics), findsWidgets);
-          expect(tester.takeException(), isNull);
+  testWidgets(
+    'presets wrap at 130%, expose text and hide decorative landscape',
+    (tester) async {
+      final semantics = tester.ensureSemantics();
+      try {
+        for (final theme in [AppTheme.light, AppTheme.dark]) {
+          for (final entry in classBannerColors.entries) {
+            await mount(
+              tester,
+              ClassBanner(
+                color: entry.value,
+                section: 'BSIT - a long Section name that wraps',
+                instructor: 'Instructor with a long display name',
+              ),
+              theme,
+            );
+            expect(patterns(), findsOneWidget);
+            expect(find.byIcon(Icons.eco_outlined), findsOneWidget);
+            final title = tester.widget<Text>(
+              find.text('BSIT - a long Section name that wraps'),
+            );
+            expect(
+              title.style!.color,
+              ClassBanner.foreground(entry.value, brightness: theme.brightness),
+            );
+            expect(
+              find.bySemanticsLabel('Instructor with a long display name'),
+              findsOneWidget,
+            );
+            expect(find.byType(ExcludeSemantics), findsWidgets);
+            expect(tester.takeException(), isNull);
+          }
         }
+        await mount(
+          tester,
+          const ClassBanner(
+            color: 0xFFFFFFFF,
+            section: 'Default',
+            instructor: 'Instructor',
+          ),
+          AppTheme.light,
+        );
+        final landscape = tester.widget<Image>(patterns());
+        expect(landscape.color, Colors.black.withValues(alpha: .3));
+        expect(
+          find.byWidgetPredicate(
+            (w) => w is ColoredBox && w.color == Color(classBannerColor(null)),
+          ),
+          findsOneWidget,
+        );
+      } finally {
+        semantics.dispose();
       }
-      await mount(
-        tester,
-        const ClassBanner(
-          color: 0xFFFFFFFF,
-          section: 'Default',
-          instructor: 'Instructor',
-        ),
-        AppTheme.light,
-      );
-      final painter =
-          tester.widget<CustomPaint>(patterns()).painter as ClassBannerPattern;
-      expect(painter.ink, Colors.white);
-      expect(
-        find.byWidgetPredicate(
-          (w) => w is ColoredBox && w.color == Color(classBannerColor(null)),
-        ),
-        findsOneWidget,
-      );
-    } finally {
-      semantics.dispose();
-    }
-  });
+    },
+  );
 
   testWidgets(
     'loading, decoded bright image and error use the same safe renderer',
@@ -164,7 +176,16 @@ void main() {
         AppTheme.dark,
       );
       expect(patterns(), findsOneWidget);
-      expect(tester.widget<Image>(find.byType(Image)).fit, BoxFit.cover);
+      expect(
+        tester
+            .widget<Image>(
+              find.byWidgetPredicate(
+                (widget) => widget is Image && identical(widget.image, image),
+              ),
+            )
+            .fit,
+        BoxFit.cover,
+      );
       final info = await tester.runAsync(() async {
         final data = await rootBundle.load('assets/gallery/bright_banner.png');
         final codec = await ui.instantiateImageCodec(

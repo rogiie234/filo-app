@@ -21,6 +21,8 @@ class FiloButton extends StatefulWidget {
     this.leading,
     this.animateArrow = false,
     this.busy = false,
+    this.showBusyIndicator = true,
+    this.minHeight = FiloControlSize.primary,
     this.labelVariants = const [],
   });
   final bool idlePulse;
@@ -32,6 +34,10 @@ class FiloButton extends StatefulWidget {
   final Widget? leading;
   final bool animateArrow;
   final bool busy;
+
+  /// Keep label/leading feedback visible while still blocking busy actions.
+  final bool showBusyIndicator;
+  final double minHeight;
 
   /// Reserve the largest label so text and trailing icon never jump sideways.
   final List<String> labelVariants;
@@ -116,7 +122,7 @@ class _FiloButtonState extends State<FiloButton>
     final foreground = disabled
         ? tokens.disabledInk
         : widget.destructive
-        ? tokens.onDestructive
+        ? (flat ? tokens.destructive : tokens.onDestructive)
         : flat
         ? colors.primary
         : widget.secondary
@@ -183,13 +189,18 @@ class _FiloButtonState extends State<FiloButton>
                           : disabled
                           ? BorderSide(color: tokens.disabledBorder)
                           : widget.secondary || widget.outlined
-                          ? BorderSide(color: tokens.controlBorder, width: 1.5)
+                          ? BorderSide(
+                              color: widget.destructive
+                                  ? tokens.destructive
+                                  : tokens.controlBorder,
+                              width: 1.5,
+                            )
                           : null,
                       minimumSize: Size(
                         double.infinity,
                         flat
                             ? FiloControlSize.compact
-                            : FiloControlSize.primary - edge,
+                            : widget.minHeight - edge,
                       ),
                       padding: EdgeInsets.symmetric(
                         horizontal: FiloSpacing.s20,
@@ -216,18 +227,25 @@ class _FiloButtonState extends State<FiloButton>
                       Semantics(
                         label: widget.label,
                         liveRegion: true,
-                        child: SizedBox.square(
-                          dimension: 20,
-                          child: FiloCircularProgressIndicator(
-                            strokeWidth: 2,
-                            color: foreground,
-                          ),
-                        ),
+                        child: widget.showBusyIndicator
+                            ? SizedBox.square(
+                                dimension: 20,
+                                child: FiloCircularProgressIndicator(
+                                  strokeWidth: 2,
+                                  color: foreground,
+                                ),
+                              )
+                            : const SizedBox(
+                                height: 20,
+                                width: double.infinity,
+                              ),
                       ),
                     ExcludeSemantics(
                       excluding: widget.busy,
                       child: Opacity(
-                        opacity: widget.busy ? 0 : 1,
+                        opacity: widget.busy && widget.showBusyIndicator
+                            ? 0
+                            : 1,
                         child: Row(
                           mainAxisAlignment: MainAxisAlignment.center,
                           children: [
