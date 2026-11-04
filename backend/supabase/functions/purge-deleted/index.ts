@@ -24,7 +24,8 @@ Deno.serve(async (req) => {
   const started = Date.now();
   const expiredBefore = new Date(started - 14 * 86400000).toISOString();
   const { data: classes, error } = await db.from("classes")
-    .select("id").lt("deleted_at", expiredBefore)
+    .select("id").not("deleted_at", "is", null)
+    .or(`deleted_at.lt.${expiredBefore},purge_requested_at.not.is.null`)
     .order("deleted_at").order("id").limit(25);
   if (error) return reply({ error: "Could not load expired classes" }, 500);
   const purged: string[] = [];

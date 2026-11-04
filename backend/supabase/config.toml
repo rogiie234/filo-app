@@ -490,3 +490,9 @@ enabled = true
 verify_jwt = false
 import_map = "./functions/process-account-deletions/deno.json"
 entrypoint = "./functions/process-account-deletions/index.ts"
+
+[functions.permanently-delete-class]
+enabled = true
+verify_jwt = false
+import_map = "./functions/permanently-delete-class/deno.json"
+entrypoint = "./functions/permanently-delete-class/index.ts"

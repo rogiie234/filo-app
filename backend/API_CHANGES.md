@@ -2477,3 +2477,10 @@ passed; no code/test correction was needed. Supersedes NOT RUN for migration/nam
 only. Read-only list confirms delete-account/process-account-deletions are not deployed.
 Real Auth/Storage cleanup, scheduler, instructor runtime display and two-session races
 remain pending in canonical M13 QA; no full runtime acceptance or waiver inferred.
+
+
+## Owner-requested permanent class deletion - 4 November 2026 (deployment pending)
+
+New POST Edge `permanently-delete-class` accepts `{class_id: UUID, section: string}` with Auth bearer token; SQL request RPC additionally enforces current verified session, matching deleted-class owner/instructor and section. Returns `{deleted:true}` only after Storage cleanup and confirmed row purge.403authorization/missing/deployed RPC failure;503unknown/partial cleanup remains irreversible and retryable. Migration20261104180000 adds classes.purge_requested_at and prevents restore/owner changes/clearing marker once set; expired or explicitly marked classes use service-only existing purge helpers. Scheduler now includes marked rows for eventual retry. Blobs removed via Storage API; SQL never deletes Storage metadata directly. Original downloaded device files unaffected. Requires migration + new Edge deployment + purge-deleted redeployment; no remote application/acceptance claimed.
+
+Deployment update 2026-11-04: owner-authorized migration20261104180000 applied to fiobwfzmqcffbpixzvbq; remote inventory confirms permanently-delete-class ACTIVE v1 and purge-deleted ACTIVE v61. CLI exits0 and matching migration ledger are deployment evidence only; no deletion/runtime/security tests performed. Canonical evidence: workspace qa/M14-BRAND-AND-DOCUMENTATION-ACCEPTANCE.md.
