@@ -1,17 +1,15 @@
-import '../../../core/picked_image_file.dart';
-
 import 'dart:typed_data';
 
 import 'package:flutter/material.dart';
 import 'package:flutter/cupertino.dart' show CupertinoPicker;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:image_picker/image_picker.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../../../core/connectivity/connectivity_provider.dart';
 import '../../../core/supabase/supabase_provider.dart';
 import '../../../core/widgets/filo_widgets.dart';
 import '../../../core/widgets/entry_background.dart';
+import '../application/class_banner_picker.dart';
 import '../application/class_providers.dart';
 import '../data/class_remote.dart';
 import '../domain/class_banner.dart';
@@ -140,25 +138,7 @@ class _CreateClassScreenState extends ConsumerState<CreateClassScreen> {
   Future<void> _pickBanner() async {
     setState(() => _picking = true);
     try {
-      final image = await ImagePicker().pickImage(
-        source: ImageSource.gallery,
-        maxWidth: 1600,
-        maxHeight: 900,
-        imageQuality: 85,
-        requestFullMetadata: false,
-      );
-      if (image == null) return;
-      await usePickedImage(image, () async {
-        final extension = image.name.split('.').last.toLowerCase();
-        if (!['jpg', 'jpeg', 'png', 'webp'].contains(extension)) {
-          throw const FormatException('Choose a JPG, PNG, or WebP image.');
-        }
-        if (await image.length() > 2097152) {
-          throw const FormatException(
-            'Choose a banner image smaller than 2 MB.',
-          );
-        }
-        final bytes = await image.readAsBytes();
+      await pickClassBanner((bytes, extension) {
         if (!mounted) return;
         setState(() {
           _bannerImage = bytes;
@@ -258,373 +238,377 @@ class _CreateClassScreenState extends ConsumerState<CreateClassScreen> {
         !_busy && !_picking && _created == null && !_writeUnconfirmed;
     return PopScope(
       canPop: !_busy && !_picking,
-      child: Scaffold(
-        appBar: AppBar(
-          title: const Text('Create class'),
-          leading: IconButton(
-            tooltip: 'Back to classes',
-            onPressed: _busy || _picking ? null : () => Navigator.pop(context),
-            icon: const FiloIcon(FiloIcons.back),
+      child: EntryBackground(
+        verification: true,
+        breeze: true,
+        variation: 4,
+        child: Scaffold(
+          backgroundColor: Colors.transparent,
+          appBar: AppBar(
+            backgroundColor: Colors.transparent,
+            surfaceTintColor: Colors.transparent,
+            elevation: 0,
+            scrolledUnderElevation: 0,
+            title: const Text('Create class'),
+            leading: IconButton(
+              tooltip: 'Back to classes',
+              onPressed: _busy || _picking
+                  ? null
+                  : () => Navigator.pop(context),
+              icon: const FiloIcon(FiloIcons.back),
+            ),
           ),
-        ),
-        body: Stack(
-          fit: StackFit.expand,
-          children: [
-            Positioned(
-              top: 0,
-              left: 0,
-              right: 0,
-              // Keep the botanical scene fixed when the keyboard resizes the form.
-              bottom: -MediaQuery.viewInsetsOf(context).bottom,
-              child: Transform.flip(
-                flipX: true,
-                child: const Opacity(
-                  opacity: .6,
-                  child: EntryBackground(verification: true),
-                ),
-              ),
-            ),
-            Positioned(
-              top: 8,
-              right: 0,
-              child: ExcludeSemantics(
-                child: IgnorePointer(
-                  child: CustomPaint(
-                    size: const Size(100, 88),
-                    painter: _BreezeLeafPainter(
-                      Theme.of(context).colorScheme.primary,
+          body: Stack(
+            fit: StackFit.expand,
+            children: [
+              Positioned(
+                top: 8,
+                right: 0,
+                child: ExcludeSemantics(
+                  child: IgnorePointer(
+                    child: CustomPaint(
+                      size: const Size(100, 88),
+                      painter: _BreezeLeafPainter(
+                        Theme.of(context).colorScheme.primary,
+                      ),
                     ),
                   ),
                 ),
               ),
-            ),
-            Form(
-              key: _form,
-              child: ListView(
-                keyboardDismissBehavior:
-                    ScrollViewKeyboardDismissBehavior.onDrag,
-                padding: EdgeInsets.fromLTRB(
-                  24,
-                  24,
-                  24,
-                  112 + MediaQuery.paddingOf(context).bottom,
-                ),
-                children: [
-                  if (!online) ...[
-                    const Text('Connect to the internet to create a class.'),
+              Form(
+                key: _form,
+                child: ListView(
+                  keyboardDismissBehavior:
+                      ScrollViewKeyboardDismissBehavior.onDrag,
+                  padding: EdgeInsets.fromLTRB(
+                    24,
+                    24,
+                    24,
+                    24 + MediaQuery.paddingOf(context).bottom,
+                  ),
+                  children: [
+                    if (!online) ...[
+                      const Text('Connect to the internet to create a class.'),
+                      const SizedBox(height: FiloSpacing.s16),
+                    ],
+                    Text(
+                      'A new place to grow.',
+                      style: Theme.of(context).textTheme.headlineMedium,
+                    ),
+                    const SizedBox(height: FiloSpacing.s8),
+                    Text(
+                      'Add your class details, then choose a banner.',
+                      style: Theme.of(context).textTheme.bodyLarge!.copyWith(
+                        color: Theme.of(context).colorScheme.onSurfaceVariant,
+                      ),
+                    ),
+                    const SizedBox(height: FiloSpacing.screen),
+                    Text(
+                      'Class details',
+                      style: Theme.of(context).textTheme.titleMedium,
+                    ),
                     const SizedBox(height: FiloSpacing.s16),
-                  ],
-                  Text(
-                    'A new place to grow.',
-                    style: Theme.of(context).textTheme.headlineMedium,
-                  ),
-                  const SizedBox(height: FiloSpacing.s8),
-                  Text(
-                    'Add your class details, then choose a banner.',
-                    style: Theme.of(context).textTheme.bodyLarge!.copyWith(
-                      color: Theme.of(context).colorScheme.onSurfaceVariant,
+                    TextFormField(
+                      controller: _course,
+                      enabled: editable,
+                      textInputAction: TextInputAction.next,
+                      maxLength: 120,
+                      textCapitalization: TextCapitalization.sentences,
+                      decoration: const InputDecoration(labelText: 'Course'),
+                      validator: (v) => v == null || v.trim().isEmpty
+                          ? 'Enter a course.'
+                          : null,
                     ),
-                  ),
-                  const SizedBox(height: FiloSpacing.screen),
-                  Text(
-                    'Class details',
-                    style: Theme.of(context).textTheme.titleMedium,
-                  ),
-                  const SizedBox(height: FiloSpacing.s16),
-                  TextFormField(
-                    controller: _course,
-                    enabled: editable,
-                    textInputAction: TextInputAction.next,
-                    maxLength: 120,
-                    textCapitalization: TextCapitalization.sentences,
-                    decoration: const InputDecoration(labelText: 'Course'),
-                    validator: (v) => v == null || v.trim().isEmpty
-                        ? 'Enter a course.'
-                        : null,
-                  ),
-                  const SizedBox(height: FiloSpacing.s16),
-                  TextFormField(
-                    controller: _section,
-                    textCapitalization: TextCapitalization.characters,
-                    enabled: editable,
-                    textInputAction: TextInputAction.next,
-                    maxLength: 60,
-                    decoration: const InputDecoration(labelText: 'Section'),
-                    validator: (v) => v == null || v.trim().isEmpty
-                        ? 'Enter a section.'
-                        : null,
-                  ),
-                  const SizedBox(height: FiloSpacing.s16),
-                  TextFormField(
-                    controller: _year,
-                    enabled: editable,
-                    readOnly: true,
-                    onTap: editable ? _pickSchoolYear : null,
-                    decoration: const InputDecoration(
-                      labelText: 'School year',
-                      hintText: 'Select school year',
-                      suffixIcon: FiloIcon(FiloIcons.calendar),
+                    const SizedBox(height: FiloSpacing.s16),
+                    TextFormField(
+                      controller: _section,
+                      textCapitalization: TextCapitalization.characters,
+                      enabled: editable,
+                      textInputAction: TextInputAction.next,
+                      maxLength: 60,
+                      decoration: const InputDecoration(labelText: 'Section'),
+                      validator: (v) => v == null || v.trim().isEmpty
+                          ? 'Enter a section.'
+                          : null,
                     ),
-                    validator: (value) => value == null || value.isEmpty
-                        ? 'Select a school year.'
-                        : null,
-                  ),
-                  const SizedBox(height: FiloSpacing.screen),
-                  Text(
-                    'Class card preview',
-                    style: Theme.of(context).textTheme.titleMedium,
-                  ),
-                  const SizedBox(height: FiloSpacing.s12),
-                  ClipRRect(
-                    borderRadius: BorderRadius.circular(FiloRadii.large),
-                    child: AnimatedBuilder(
-                      animation: Listenable.merge([_section, _course]),
-                      builder: (context, _) => Material(
-                        color: Theme.of(context).colorScheme.surface,
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(FiloRadii.large),
-                          side: BorderSide(
-                            color: Theme.of(context).colorScheme.outline,
+                    const SizedBox(height: FiloSpacing.s16),
+                    TextFormField(
+                      controller: _year,
+                      enabled: editable,
+                      readOnly: true,
+                      onTap: editable ? _pickSchoolYear : null,
+                      decoration: const InputDecoration(
+                        labelText: 'School year',
+                        hintText: 'Select school year',
+                        suffixIcon: FiloIcon(FiloIcons.calendar),
+                      ),
+                      validator: (value) => value == null || value.isEmpty
+                          ? 'Select a school year.'
+                          : null,
+                    ),
+                    const SizedBox(height: FiloSpacing.screen),
+                    Text(
+                      'Class card preview',
+                      style: Theme.of(context).textTheme.titleMedium,
+                    ),
+                    const SizedBox(height: FiloSpacing.s12),
+                    ClipRRect(
+                      borderRadius: BorderRadius.circular(FiloRadii.large),
+                      child: AnimatedBuilder(
+                        animation: Listenable.merge([_section, _course]),
+                        builder: (context, _) => Material(
+                          color: Theme.of(context).colorScheme.surface,
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(
+                              FiloRadii.large,
+                            ),
+                            side: BorderSide(
+                              color: Theme.of(context).colorScheme.outline,
+                            ),
+                          ),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.stretch,
+                            children: [
+                              ClassBanner(
+                                section: _section.text.trim().isEmpty
+                                    ? 'Your classroom'
+                                    : _section.text.trim().toUpperCase(),
+                                instructor: 'Instructor',
+                                compact: true,
+                                color: classBannerColor(_banner),
+                                image: _bannerImage == null
+                                    ? null
+                                    : MemoryImage(_bannerImage!),
+                              ),
+                              Padding(
+                                padding: const EdgeInsets.all(FiloSpacing.s20),
+                                child: Row(
+                                  children: [
+                                    FiloIcon(
+                                      FiloIcons.book,
+                                      color: Theme.of(context)
+                                          .colorScheme
+                                          .primary,
+                                    ),
+                                    const SizedBox(width: FiloSpacing.s12),
+                                    Expanded(
+                                      child: Text(
+                                        _course.text.trim().isEmpty
+                                            ? 'Course name'
+                                            : _course.text.trim(),
+                                        style: Theme.of(context)
+                                            .textTheme
+                                            .titleMedium,
+                                      ),
+                                    ),
+                                    const SizedBox(width: FiloSpacing.s12),
+                                    const ExcludeSemantics(
+                                      child: FiloIcon(FiloIcons.forward),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ],
                           ),
                         ),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.stretch,
+                      ),
+                    ),
+                    const SizedBox(height: FiloSpacing.screen),
+                    Text(
+                      'Banner',
+                      style: Theme.of(context).textTheme.titleMedium,
+                    ),
+                    const SizedBox(height: FiloSpacing.s12),
+                    FiloPanel(
+                      padding: const EdgeInsets.all(FiloSpacing.s12),
+                      child: LayoutBuilder(
+                        builder: (context, constraints) => Wrap(
+                          spacing: 8,
+                          runSpacing: 8,
                           children: [
-                            ClassBanner(
-                              section: _section.text.trim().isEmpty
-                                  ? 'Your classroom'
-                                  : _section.text.trim().toUpperCase(),
-                              instructor: 'Instructor',
-                              compact: true,
-                              color: classBannerColor(_banner),
-                              image: _bannerImage == null
-                                  ? null
-                                  : MemoryImage(_bannerImage!),
-                            ),
-                            Padding(
-                              padding: const EdgeInsets.all(FiloSpacing.s20),
-                              child: Row(
-                                children: [
-                                  FiloIcon(
-                                    FiloIcons.book,
-                                    color: Theme.of(context)
-                                        .colorScheme
-                                        .primary,
-                                  ),
-                                  const SizedBox(width: FiloSpacing.s12),
-                                  Expanded(
-                                    child: Text(
-                                      _course.text.trim().isEmpty
-                                          ? 'Course name'
-                                          : _course.text.trim(),
-                                      style: Theme.of(context)
-                                          .textTheme
-                                          .titleMedium,
+                            for (final key in <String?>[
+                              null,
+                              ...classBannerColors.keys,
+                            ])
+                              SizedBox(
+                                width: (constraints.maxWidth - 16) / 3,
+                                child: Semantics(
+                                  selected:
+                                      _banner == key && _bannerImage == null,
+                                  inMutuallyExclusiveGroup: true,
+                                  child: OutlinedButton(
+                                    onPressed: editable
+                                        ? () => setState(() {
+                                            _banner = key;
+                                            _bannerImage = null;
+                                          })
+                                        : null,
+                                    style: OutlinedButton.styleFrom(
+                                      minimumSize: const Size(0, 88),
+                                      padding: const EdgeInsets.symmetric(
+                                        horizontal: 4,
+                                        vertical: 12,
+                                      ),
+                                      backgroundColor:
+                                          _banner == key && _bannerImage == null
+                                          ? Theme.of(context)
+                                                .colorScheme
+                                                .primaryContainer
+                                          : Theme.of(context)
+                                                .colorScheme
+                                                .surface,
+                                      side: BorderSide(
+                                        width:
+                                            _banner == key &&
+                                                _bannerImage == null
+                                            ? 2
+                                            : 1,
+                                        color:
+                                            _banner == key &&
+                                                _bannerImage == null
+                                            ? Theme.of(context)
+                                                  .colorScheme
+                                                  .primary
+                                            : Theme.of(context)
+                                                  .colorScheme
+                                                  .outline,
+                                      ),
+                                      shape: RoundedRectangleBorder(
+                                        borderRadius: BorderRadius.circular(
+                                          FiloRadii.medium,
+                                        ),
+                                      ),
+                                    ),
+                                    child: Column(
+                                      mainAxisSize: MainAxisSize.min,
+                                      children: [
+                                        ExcludeSemantics(
+                                          child: CircleAvatar(
+                                            radius: 14,
+                                            backgroundColor: Color(
+                                              classBannerColor(key),
+                                            ),
+                                            child:
+                                                _banner == key &&
+                                                    _bannerImage == null
+                                                ? Icon(
+                                                    Icons.check_rounded,
+                                                    size: 18,
+                                                    color:
+                                                        ClassBanner.foreground(
+                                                          classBannerColor(key),
+                                                        ),
+                                                  )
+                                                : null,
+                                          ),
+                                        ),
+                                        const SizedBox(height: 8),
+                                        Text(
+                                          key == null
+                                              ? 'Default'
+                                              : '${key[0].toUpperCase()}${key.substring(1)}',
+                                          textAlign: TextAlign.center,
+                                        ),
+                                      ],
                                     ),
                                   ),
-                                  const SizedBox(width: FiloSpacing.s12),
-                                  const ExcludeSemantics(
-                                    child: FiloIcon(FiloIcons.forward),
-                                  ),
-                                ],
+                                ),
                               ),
-                            ),
                           ],
                         ),
                       ),
                     ),
-                  ),
-                  const SizedBox(height: FiloSpacing.screen),
-                  Text(
-                    'Banner',
-                    style: Theme.of(context).textTheme.titleMedium,
-                  ),
-                  const SizedBox(height: FiloSpacing.s12),
-                  FiloPanel(
-                    padding: const EdgeInsets.all(FiloSpacing.s12),
-                    child: LayoutBuilder(
-                      builder: (context, constraints) => Wrap(
-                        spacing: 8,
-                        runSpacing: 8,
-                        children: [
-                          for (final key in <String?>[
-                            null,
-                            ...classBannerColors.keys,
-                          ])
-                            SizedBox(
-                              width: (constraints.maxWidth - 16) / 3,
-                              child: Semantics(
-                                selected:
-                                    _banner == key && _bannerImage == null,
-                                inMutuallyExclusiveGroup: true,
-                                child: OutlinedButton(
-                                  onPressed: editable
-                                      ? () => setState(() {
-                                          _banner = key;
-                                          _bannerImage = null;
-                                        })
-                                      : null,
-                                  style: OutlinedButton.styleFrom(
-                                    minimumSize: const Size(0, 88),
-                                    padding: const EdgeInsets.symmetric(
-                                      horizontal: 4,
-                                      vertical: 12,
-                                    ),
-                                    backgroundColor:
-                                        _banner == key && _bannerImage == null
-                                        ? Theme.of(context)
-                                              .colorScheme
-                                              .primaryContainer
-                                        : Theme.of(context).colorScheme.surface,
-                                    side: BorderSide(
-                                      width:
-                                          _banner == key && _bannerImage == null
-                                          ? 2
-                                          : 1,
-                                      color:
-                                          _banner == key && _bannerImage == null
-                                          ? Theme.of(context)
-                                                .colorScheme
-                                                .primary
-                                          : Theme.of(context)
-                                                .colorScheme
-                                                .outline,
-                                    ),
-                                    shape: RoundedRectangleBorder(
-                                      borderRadius: BorderRadius.circular(
-                                        FiloRadii.medium,
-                                      ),
-                                    ),
-                                  ),
-                                  child: Column(
-                                    mainAxisSize: MainAxisSize.min,
-                                    children: [
-                                      ExcludeSemantics(
-                                        child: CircleAvatar(
-                                          radius: 14,
-                                          backgroundColor: Color(
-                                            classBannerColor(key),
-                                          ),
-                                          child:
-                                              _banner == key &&
-                                                  _bannerImage == null
-                                              ? Icon(
-                                                  Icons.check_rounded,
-                                                  size: 18,
-                                                  color: ClassBanner.foreground(
-                                                    classBannerColor(key),
-                                                  ),
-                                                )
-                                              : null,
-                                        ),
-                                      ),
-                                      const SizedBox(height: 8),
-                                      Text(
-                                        key == null
-                                            ? 'Default'
-                                            : '${key[0].toUpperCase()}${key.substring(1)}',
-                                        textAlign: TextAlign.center,
-                                      ),
-                                    ],
-                                  ),
-                                ),
+                    const SizedBox(height: FiloSpacing.s12),
+                    FiloButton(
+                      outlined: true,
+                      minHeight: 48,
+                      onPressed: editable ? _pickBanner : null,
+                      leading: FiloIcon(
+                        FiloIcons.addImage,
+                        color: editable
+                            ? Theme.of(context).colorScheme.primary
+                            : Theme.of(context).colorScheme.onSurfaceVariant,
+                      ),
+                      label: _picking
+                          ? 'Opening photos\u2026'
+                          : 'Upload banner image',
+                      labelVariants: const [
+                        'Opening photos\u2026',
+                        'Upload banner image',
+                      ],
+                    ),
+                    const SizedBox(height: FiloSpacing.s8),
+                    Wrap(
+                      alignment: WrapAlignment.center,
+                      crossAxisAlignment: WrapCrossAlignment.center,
+                      spacing: 6,
+                      children: [
+                        ExcludeSemantics(
+                          child: FiloIcon(
+                            FiloIcons.info,
+                            size: 16,
+                            color: Theme.of(context)
+                                .colorScheme
+                                .onSurfaceVariant,
+                          ),
+                        ),
+                        Text(
+                          'JPG, PNG or WebP \u00b7 Max 2 MB',
+                          textAlign: TextAlign.center,
+                          style: Theme.of(context).textTheme.bodySmall!
+                              .copyWith(
+                                color: Theme.of(context)
+                                    .colorScheme
+                                    .onSurfaceVariant,
                               ),
-                            ),
-                        ],
-                      ),
-                    ),
-                  ),
-                  const SizedBox(height: FiloSpacing.s12),
-                  FiloButton(
-                    outlined: true,
-                    minHeight: 48,
-                    onPressed: editable ? _pickBanner : null,
-                    leading: FiloIcon(
-                      FiloIcons.addImage,
-                      color: editable
-                          ? Theme.of(context).colorScheme.primary
-                          : Theme.of(context).colorScheme.onSurfaceVariant,
-                    ),
-                    label: _picking
-                        ? 'Opening photos\u2026'
-                        : 'Upload banner image',
-                    labelVariants: const [
-                      'Opening photos\u2026',
-                      'Upload banner image',
-                    ],
-                  ),
-                  const SizedBox(height: FiloSpacing.s8),
-                  Wrap(
-                    alignment: WrapAlignment.center,
-                    crossAxisAlignment: WrapCrossAlignment.center,
-                    spacing: 6,
-                    children: [
-                      ExcludeSemantics(
-                        child: FiloIcon(
-                          FiloIcons.info,
-                          size: 16,
-                          color: Theme.of(context).colorScheme.onSurfaceVariant,
                         ),
-                      ),
-                      Text(
-                        'JPG, PNG or WebP \u00b7 Max 2 MB',
-                        textAlign: TextAlign.center,
-                        style: Theme.of(context).textTheme.bodySmall!.copyWith(
-                          color: Theme.of(context).colorScheme.onSurfaceVariant,
-                        ),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: FiloSpacing.s16),
-                  const SizedBox(height: FiloSpacing.s8),
-                  if (_error != null)
-                    Padding(
-                      padding: const EdgeInsets.only(top: FiloSpacing.s16),
-                      child: Semantics(
-                        liveRegion: true,
-                        child: FiloPanel(
-                          child: Text(
-                            _error!,
-                            style: TextStyle(
-                              color: Theme.of(context)
-                                  .colorScheme
-                                  .onSurfaceVariant,
+                      ],
+                    ),
+                    const SizedBox(height: FiloSpacing.s16),
+                    const SizedBox(height: FiloSpacing.s8),
+                    if (_error != null)
+                      Padding(
+                        padding: const EdgeInsets.only(top: FiloSpacing.s16),
+                        child: Semantics(
+                          liveRegion: true,
+                          child: FiloPanel(
+                            child: Text(
+                              _error!,
+                              style: TextStyle(
+                                color: Theme.of(context)
+                                    .colorScheme
+                                    .onSurfaceVariant,
+                              ),
                             ),
                           ),
                         ),
                       ),
+                    const SizedBox(height: FiloSpacing.screen),
+                    FiloButton(
+                      label: _busy
+                          ? 'Creating…'
+                          : _writeUnconfirmed
+                          ? 'Back to classes'
+                          : _created == null
+                          ? 'Create class'
+                          : _bannerImage != null && !_bannerSaved
+                          ? 'Retry saving banner'
+                          : 'Retry loading class',
+                      minHeight: 64,
+                      busy: _busy,
+                      icon: _busy ? null : FiloIcons.add,
+                      onPressed: _busy || _picking
+                          ? null
+                          : _writeUnconfirmed
+                          ? () => Navigator.pop(context)
+                          : !online
+                          ? null
+                          : _create,
                     ),
-                ],
+                  ],
+                ),
               ),
-            ),
-          ],
-        ),
-        floatingActionButtonLocation: FloatingActionButtonLocation.centerFloat,
-        floatingActionButtonAnimator: FloatingActionButtonAnimator.noAnimation,
-        floatingActionButton: SizedBox(
-          width: (MediaQuery.sizeOf(context).width - 48)
-              .clamp(0.0, 520.0)
-              .toDouble(),
-          child: FiloButton(
-            label: _busy
-                ? 'Creating…'
-                : _writeUnconfirmed
-                ? 'Back to classes'
-                : _created == null
-                ? 'Create class'
-                : _bannerImage != null && !_bannerSaved
-                ? 'Retry saving banner'
-                : 'Retry loading class',
-            minHeight: 64,
-            busy: _busy,
-            icon: _busy ? null : FiloIcons.add,
-            onPressed: _busy || _picking
-                ? null
-                : _writeUnconfirmed
-                ? () => Navigator.pop(context)
-                : !online
-                ? null
-                : _create,
+            ],
           ),
         ),
       ),

@@ -19,8 +19,9 @@ void main() {
     TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
         .setMockMethodCallHandler(DeadlineBridge.channel, (call) async {
           calls.add(call);
-          if (call.method == 'guideCapabilities')
+          if (call.method == 'guideCapabilities') {
             return {'sdk': 31, 'xiaomi': true};
+          }
           return result;
         });
     final bridge = GuideChannelBridge();

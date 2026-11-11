@@ -43,9 +43,9 @@ class AccountTemporaryFile {
           directory.path,
           followLinks: false,
         );
-        if (type == FileSystemEntityType.notFound)
+        if (type == FileSystemEntityType.notFound) {
           await directory.create();
-        else if (type != FileSystemEntityType.directory)
+        } else if (type != FileSystemEntityType.directory)
           throw const FileProblem('Unsafe temporary path.');
         if (!p.equals(
           p.normalize(await directory.resolveSymbolicLinks()),
@@ -59,10 +59,11 @@ class AccountTemporaryFile {
       if (!isCurrent()) throw const FileProblem('Account changed.');
       return temporary;
     } catch (_) {
-      if (created)
+      if (created) {
         await temporary.close();
-      else
+      } else {
         storage.releaseTemporary(lease);
+      }
       rethrow;
     }
   }

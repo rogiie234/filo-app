@@ -55,18 +55,21 @@ String? studentQuizDisabledReason(
 }) {
   final state = studentQuizState(quiz, now);
   if (archived) return 'This class is archived.';
-  if (quiz.session?.submitted == true)
+  if (quiz.session?.submitted == true) {
     return 'You have already taken this quiz.';
+  }
   if (quiz.closesAt != null && !now.isBefore(quiz.closesAt!)) {
     return 'This quiz has closed.';
   }
   if (state.status == StudentQuizStatus.upcoming) {
     return 'This quiz opens on ${philippineQuizDate(quiz.opensAt)}.';
   }
-  if (!online)
+  if (!online) {
     return 'Connect to the internet to ${state.action == 'Continue' ? 'continue' : 'start'}.';
-  if (state.pending || !quiz.sessionKnown)
+  }
+  if (state.pending || !quiz.sessionKnown) {
     return 'Refresh to check your exam status.';
+  }
   return null;
 }
 
@@ -107,7 +110,8 @@ String studentQuizGroup(StudentQuiz quiz, DateTime now) {
   if (due.isBefore(now)) return 'Overdue';
   final today = DateTime(now.year, now.month, now.day);
   if (due.isBefore(today.add(const Duration(days: 1)))) return 'Today';
-  if (due.isBefore(today.add(Duration(days: 8 - today.weekday))))
+  if (due.isBefore(today.add(Duration(days: 8 - today.weekday)))) {
     return 'This week';
+  }
   return 'Later';
 }

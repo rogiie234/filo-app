@@ -215,32 +215,88 @@ class FiloCard extends StatelessWidget {
 
 enum FiloToastKind { info, success, error }
 
+VoidCallback? _dismissSheetToast;
+
 void showFiloToast(
   BuildContext context,
   String message, {
   FiloToastKind kind = FiloToastKind.info,
 }) {
+  _dismissSheetToast?.call();
+  final duration = Duration(seconds: kind == FiloToastKind.error ? 4 : 3);
+  final theme = Theme.of(context);
+  final colors = theme.colorScheme;
+  final content = Row(
+    children: [
+      FiloIcon(
+        switch (kind) {
+          FiloToastKind.success => FiloIcons.checkCircle,
+          FiloToastKind.error => FiloIcons.error,
+          FiloToastKind.info => FiloIcons.info,
+        },
+        color: colors.onInverseSurface,
+        size: 20,
+      ),
+      const SizedBox(width: FiloSpacing.s12),
+      Expanded(child: Text(message)),
+    ],
+  );
   final messenger = ScaffoldMessenger.of(context);
   messenger.clearSnackBars();
+  if (ModalRoute.of(context) is ModalBottomSheetRoute) {
+    final overlay = Overlay.of(context, rootOverlay: true);
+    late final OverlayEntry entry;
+    var dismissed = false;
+    void dismiss() {
+      if (dismissed) return;
+      dismissed = true;
+      entry.remove();
+      entry.dispose();
+      if (identical(_dismissSheetToast, dismiss)) _dismissSheetToast = null;
+    }
+
+    entry = OverlayEntry(
+      builder: (overlayContext) {
+        final media = MediaQuery.of(overlayContext);
+        return Positioned(
+          left: media.padding.left + FiloSpacing.s16,
+          right: media.padding.right + FiloSpacing.s16,
+          bottom:
+              media.viewInsets.bottom + media.padding.bottom + FiloSpacing.s16,
+          child: IgnorePointer(
+            child: Theme(
+              data: theme,
+              child: Semantics(
+                liveRegion: true,
+                child: Material(
+                  color: colors.inverseSurface,
+                  borderRadius: BorderRadius.circular(FiloRadii.medium),
+                  child: Padding(
+                    padding: const EdgeInsets.all(FiloSpacing.s16),
+                    child: DefaultTextStyle(
+                      style: theme.textTheme.bodyMedium!.copyWith(
+                        color: colors.onInverseSurface,
+                      ),
+                      child: content,
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          ),
+        );
+      },
+    );
+    overlay.insert(entry);
+    _dismissSheetToast = dismiss;
+    Future<void>.delayed(duration, dismiss);
+    return;
+  }
   messenger.showSnackBar(
     SnackBar(
-      duration: Duration(seconds: kind == FiloToastKind.error ? 4 : 3),
+      duration: duration,
       margin: const EdgeInsets.all(FiloSpacing.s16),
-      content: Row(
-        children: [
-          FiloIcon(
-            switch (kind) {
-              FiloToastKind.success => FiloIcons.checkCircle,
-              FiloToastKind.error => FiloIcons.error,
-              FiloToastKind.info => FiloIcons.info,
-            },
-            color: Theme.of(context).colorScheme.onInverseSurface,
-            size: 20,
-          ),
-          const SizedBox(width: FiloSpacing.s12),
-          Expanded(child: Text(message)),
-        ],
-      ),
+      content: content,
     ),
     snackBarAnimationStyle: FiloMotion.enabled(context)
         ? null

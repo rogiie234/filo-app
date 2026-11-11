@@ -165,19 +165,22 @@ class _StudentExamScreenState extends ConsumerState<StudentExamScreen> {
                 (widget.classId == null || q.classId == widget.classId),
           )
           .firstOrNull;
-      if (catalog.failed)
+      if (catalog.failed) {
         throw const ExamFailure(
           "We couldn't complete that request. Try again.",
         );
-      if (quiz == null)
+      }
+      if (quiz == null) {
         throw const ExamFailure('This item is no longer available.');
+      }
       final room = ref
           .read(classCardsProvider)
           .value
           ?.where((room) => room.id == quiz.classId && !room.pending)
           .firstOrNull;
-      if (room == null)
+      if (room == null) {
         throw const ExamFailure('This item is no longer available.');
+      }
       if (room.archived || quiz.json['class_archived'] == true) {
         throw const ExamFailure('This class is archived.');
       }
@@ -252,8 +255,9 @@ class _StudentExamScreenState extends ConsumerState<StudentExamScreen> {
     final r = _repository;
     if (r == null) return;
     final attempt = r.active;
-    if (_busy || (_writes == 0 && _unsaved.isNotEmpty) || attempt == null)
+    if (_busy || (_writes == 0 && _unsaved.isNotEmpty) || attempt == null) {
       return;
+    }
     if (!r.clock.verified) return;
     if (r.submissionRequested || r.clock.expired) {
       await _expire();
@@ -393,8 +397,9 @@ class _StudentExamScreenState extends ConsumerState<StudentExamScreen> {
       _confirmationRoute = null;
       if (route != null) {
         WidgetsBinding.instance.addPostFrameCallback((_) {
-          if (mounted && route.isActive)
+          if (mounted && route.isActive) {
             Navigator.of(context).removeRoute(route, false);
+          }
         });
       }
       _edits.clear();
@@ -501,7 +506,14 @@ class _StudentExamScreenState extends ConsumerState<StudentExamScreen> {
                       padding: const EdgeInsets.all(FiloSpacing.screen),
                       children: [
                         if (_busy || repositoryState.isLoading)
-                          const FiloLinearProgressIndicator(),
+                          const Center(
+                            child: SizedBox.square(
+                              dimension: 24,
+                              child: FiloCircularProgressIndicator(
+                                semanticsLabel: 'Loading exam',
+                              ),
+                            ),
+                          ),
                         const SizedBox(height: FiloSpacing.s16),
                         Semantics(
                           liveRegion: true,
@@ -569,12 +581,14 @@ class _StudentExamScreenState extends ConsumerState<StudentExamScreen> {
         r == null ||
         r.active == null ||
         !r.clock.verified ||
-        (!r.clock.expired && !r.submissionRequested))
+        (!r.clock.expired && !r.submissionRequested)) {
       return;
+    }
     final route = _confirmationRoute;
     _confirmationRoute = null;
-    if (route?.isActive == true)
+    if (route?.isActive == true) {
       Navigator.of(context).removeRoute(route!, false);
+    }
     FocusManager.instance.primaryFocus?.unfocus();
     try {
       await r.submit();
@@ -659,7 +673,7 @@ class _StudentExamScreenState extends ConsumerState<StudentExamScreen> {
             keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.manual,
             itemCount: attempt.questions.length + 2,
             itemBuilder: (context, index) {
-              if (index == 0)
+              if (index == 0) {
                 return Column(
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
@@ -698,7 +712,14 @@ class _StudentExamScreenState extends ConsumerState<StudentExamScreen> {
                       ),
                     ],
                     if (answersState.isLoading && !answersState.hasValue)
-                      const FiloLinearProgressIndicator(),
+                      const Center(
+                        child: SizedBox.square(
+                          dimension: 24,
+                          child: FiloCircularProgressIndicator(
+                            semanticsLabel: 'Loading saved answers',
+                          ),
+                        ),
+                      ),
                     if (r.error != null ||
                         r.saver?.error != null ||
                         expired ||
@@ -709,6 +730,7 @@ class _StudentExamScreenState extends ConsumerState<StudentExamScreen> {
                       ),
                   ],
                 );
+              }
               if (index <= attempt.questions.length) {
                 final question = attempt.questions[index - 1];
                 return Padding(

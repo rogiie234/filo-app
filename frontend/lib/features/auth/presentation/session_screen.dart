@@ -154,6 +154,7 @@ class _SessionScreenState extends ConsumerState<SessionScreen> {
   }
 
   Future<void> _send() => _perform(() async {
+    final resending = _challenge != null;
     final hash = await ref.read(deviceHashProvider.future);
     final requestedAt = ref.read(otpClockProvider)();
     final response = await ref
@@ -177,6 +178,13 @@ class _SessionScreenState extends ConsumerState<SessionScreen> {
     });
     _countdown();
     _focus.requestFocus();
+    if (resending) {
+      showFiloToast(
+        context,
+        'A new code has been sent. Check your email.',
+        kind: FiloToastKind.success,
+      );
+    }
   });
   void _codeChanged(String value) {
     if (_codeRejected) setState(() => _codeRejected = false);
@@ -232,7 +240,12 @@ class _SessionScreenState extends ConsumerState<SessionScreen> {
         ? '${rawEmail[0]}***${rawEmail.substring(at)}'
         : 'your Google email';
     return Scaffold(
+      extendBodyBehindAppBar: true,
       appBar: AppBar(
+        backgroundColor: Colors.transparent,
+        surfaceTintColor: Colors.transparent,
+        elevation: 0,
+        scrolledUnderElevation: 0,
         title: const Brand(),
         toolbarHeight: 76,
         actions: [

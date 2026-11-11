@@ -57,8 +57,9 @@ class _PhoneLimitsGuideState extends ConsumerState<PhoneLimitsGuideScreen> {
     setState(() => _closing = true);
     final account = _account;
     try {
-      if (_shown && account != null && account.isCurrent())
+      if (_shown && account != null && account.isCurrent()) {
         await account.dismissPhoneGuide();
+      }
     } catch (_) {
       /* A failed seen-marker write allows the guide to appear next save. */
     }
@@ -69,20 +70,26 @@ class _PhoneLimitsGuideState extends ConsumerState<PhoneLimitsGuideScreen> {
 
   Future<void> _open(String section) async {
     if (_opening || _closing || _account?.isCurrent() != true) return;
-    setState(() => {_opening = true, _manual = false, _retrySection = null});
+    setState(() {
+      _opening = true;
+      _manual = false;
+      _retrySection = null;
+    });
     try {
       final result = await ref
           .read(deadlineBridgeProvider)
           .guideOpenSettings(section);
       if (!mounted || _account?.isCurrent() != true) return;
-      setState(
-        () => {
-          _manual = result != 'direct',
-          _retrySection = result == 'failed' ? section : null,
-        },
-      );
+      setState(() {
+        _manual = result != 'direct';
+        _retrySection = result == 'failed' ? section : null;
+      });
     } catch (_) {
-      if (mounted) setState(() => {_manual = true, _retrySection = section});
+      if (mounted)
+        setState(() {
+          _manual = true;
+          _retrySection = section;
+        });
     } finally {
       if (mounted) setState(() => _opening = false);
     }
@@ -133,18 +140,20 @@ class _PhoneLimitsGuideState extends ConsumerState<PhoneLimitsGuideScreen> {
         !repository.isLoading && !repository.hasError && repository.hasValue;
     if (available &&
         (_account == null ||
-            _account!.userId == repository.requireValue.userId))
+            _account!.userId == repository.requireValue.userId)) {
       _account = repository.requireValue;
+    }
     final current =
         available &&
         _account?.isCurrent() == true &&
         repository.requireValue.db == _account?.db &&
         (widget.expectedUserId == null ||
             repository.requireValue.userId == widget.expectedUserId);
-    if (current)
+    if (current) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
         if (mounted && _account?.isCurrent() == true) _shown = true;
       });
+    }
     return PopScope(
       canPop: _closing,
       onPopInvokedWithResult: (didPop, result) {

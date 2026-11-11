@@ -52,11 +52,12 @@ class AiSourceLoader {
         .single();
     final name = metadata['name'] as String;
     checkAiSource(name, (metadata['size_bytes'] as num?)?.toInt() ?? 0);
-    if (metadata['kind'] != 'file')
+    if (metadata['kind'] != 'file') {
       throw const LessonReadException(
         'UNSUPPORTED',
         'This file type is not supported.',
       );
+    }
     cancel.check();
     if (!isCurrent()) throw const AiCancelled();
     final hit = await cache.find('att:$id');
@@ -108,8 +109,9 @@ class AiSourceLoader {
       final total = int.tryParse(
         response.headers.value('content-length') ?? '',
       );
-      if (total != null && total > LessonTextExtractor.maxFileBytes)
+      if (total != null && total > LessonTextExtractor.maxFileBytes) {
         throw lessonTooLarge;
+      }
       var count = 0;
       final sink = temporary.openWrite();
       try {

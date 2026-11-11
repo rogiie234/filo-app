@@ -9,8 +9,9 @@ import '../domain/quiz_draft.dart';
 import 'question_card.dart';
 
 class QuestionBankScreen extends ConsumerStatefulWidget {
-  const QuestionBankScreen({super.key, this.picking = false});
+  const QuestionBankScreen({super.key, this.picking = false, this.course});
   final bool picking;
+  final String? course;
   @override
   ConsumerState<QuestionBankScreen> createState() => _QuestionBankScreenState();
 }
@@ -19,8 +20,10 @@ class _QuestionBankScreenState extends ConsumerState<QuestionBankScreen> {
   List<BankQuestion>? _rows;
   final _selected = <String>{};
   String _search = '', _type = 'all';
+  String? _courseFilter;
   String? _error;
   bool _loading = true, _busy = false;
+  String? _deletingId;
   @override
   void initState() {
     super.initState();
@@ -28,22 +31,43 @@ class _QuestionBankScreenState extends ConsumerState<QuestionBankScreen> {
   }
 
   Future<void> _load() async {
+    if (_loading && _rows != null) return;
     setState(() {
       _loading = true;
       _error = null;
     });
     try {
+      if (widget.picking &&
+          (widget.course == null || widget.course!.trim().isEmpty)) {
+        throw StateError('Course unavailable');
+      }
       final repository = await ref.read(questionBankRepositoryProvider.future);
-      final rows = await repository.list();
+      final rows = await repository.list(
+        course: widget.picking ? widget.course : null,
+      );
       if (!mounted) return;
       setState(() {
-        _rows = rows;
-        _selected.removeWhere((id) => !rows.any((r) => r.id == id));
+        _rows = widget.picking
+            ? rows
+                  .where(
+                    (row) =>
+                        row.courseKey == widget.course!.trim().toLowerCase(),
+                  )
+                  .toList()
+            : rows;
+        _selected.removeWhere((id) => !_rows!.any((r) => r.id == id));
+        if (_courseFilter != null &&
+            !_rows!.any((row) => (row.courseKey ?? '') == _courseFilter))
+          _courseFilter = null;
       });
     } catch (_) {
       if (mounted) {
         setState(
-          () => _error = 'Could not load the question bank. Connect and retry.',
+          () => _error =
+              widget.picking &&
+                  (widget.course == null || widget.course!.trim().isEmpty)
+              ? 'Course unavailable. Return to Classwork, refresh the class and try again.'
+              : 'Could not load the question bank. Connect and retry.',
         );
       }
     } finally {
@@ -58,6 +82,7 @@ class _QuestionBankScreenState extends ConsumerState<QuestionBankScreen> {
   }
 
   Future<void> _delete(BankQuestion row) async {
+    if (_busy || _loading) return;
     final confirmed = await showFiloConfirmation(
       context,
       title: 'Delete this saved question?',
@@ -66,8 +91,11 @@ class _QuestionBankScreenState extends ConsumerState<QuestionBankScreen> {
       cancelLabel: 'Cancel',
       icon: FiloIcons.delete,
     );
-    if (!confirmed || !mounted) return;
-    setState(() => _busy = true);
+    if (!confirmed || !mounted || _busy || _loading) return;
+    setState(() {
+      _busy = true;
+      _deletingId = row.id;
+    });
     try {
       final repository = await ref.read(questionBankRepositoryProvider.future);
       await repository.delete(row.id);
@@ -84,6 +112,16 @@ class _QuestionBankScreenState extends ConsumerState<QuestionBankScreen> {
     }
   }
 
+  void _addSelected() {
+    final selected = _rows!.where((r) => _selected.contains(r.id)).toList();
+    final copies = selected.map((r) => r.tryCopyToQuiz()).toList();
+    if (selected.length != _selected.length || copies.any((q) => q == null)) {
+      setState(() => _error = BankQuestion.invalidContentMessage);
+      return;
+    }
+    Navigator.pop(context, copies.cast<QuizQuestion>());
+  }
+
   @override
   Widget build(BuildContext context) {
     ref.listen(connectivityProvider, (previous, next) {
@@ -97,17 +135,27 @@ class _QuestionBankScreenState extends ConsumerState<QuestionBankScreen> {
       }
     });
     final online = ref.watch(connectivityProvider).asData?.value == true;
-    final available =
-        online && _rows != null && !_loading && !_busy && _error == null;
-    final filtered = (_rows ?? [])
+    final available = online && _rows != null && _error == null;
+    final matching = (_rows ?? [])
         .where(
           (r) =>
+              (_courseFilter == null || (r.courseKey ?? '') == _courseFilter) &&
               (_type == 'all' || r.row['type'] == _type) &&
               (r.row['prompt'] as String).toLowerCase().contains(
                 _search.toLowerCase().trim(),
               ),
         )
         .toList();
+    final courses =
+        (_rows ?? []).map((row) => row.courseKey ?? '').toSet().toList()
+          ..sort();
+    final filtered = [
+      for (final course in courses)
+        ...matching.where((row) => (row.courseKey ?? '') == course),
+    ];
+    String courseLabel(String key) => key.isEmpty
+        ? 'Unassigned'
+        : _rows!.firstWhere((row) => row.courseKey == key).course!;
     final content = Column(
       mainAxisSize: widget.picking ? MainAxisSize.min : MainAxisSize.max,
       children: [
@@ -132,6 +180,51 @@ class _QuestionBankScreenState extends ConsumerState<QuestionBankScreen> {
                       ),
                       child: Column(
                         children: [
+                          if (widget.picking) ...[
+                            Text(
+                              widget.course ?? 'Course unavailable',
+                              style: Theme.of(context).textTheme.titleMedium,
+                            ),
+                            TextButton.icon(
+                              icon: const FiloIcon(FiloIcons.folder),
+                              label: const Text('Manage saved questions'),
+                              onPressed: _busy || _loading
+                                  ? null
+                                  : () async {
+                                      await Navigator.of(context).push(
+                                        MaterialPageRoute<void>(
+                                          builder: (_) =>
+                                              const QuestionBankScreen(),
+                                        ),
+                                      );
+                                      if (mounted) await _load();
+                                    },
+                            ),
+                          ] else if (_rows != null) ...[
+                            DropdownButtonFormField<String>(
+                              key: ValueKey(_courseFilter),
+                              initialValue: _courseFilter,
+                              hint: const Text('All courses'),
+                              isExpanded: true,
+                              decoration: const InputDecoration(
+                                labelText: 'Course',
+                              ),
+                              items: [
+                                const DropdownMenuItem(
+                                  value: null,
+                                  child: Text('All courses'),
+                                ),
+                                for (final course in courses)
+                                  DropdownMenuItem(
+                                    value: course,
+                                    child: Text(courseLabel(course)),
+                                  ),
+                              ],
+                              onChanged: (value) =>
+                                  setState(() => _courseFilter = value),
+                            ),
+                            const SizedBox(height: FiloSpacing.s16),
+                          ],
                           TextField(
                             decoration: const InputDecoration(
                               labelText: 'Search questions',
@@ -165,7 +258,7 @@ class _QuestionBankScreenState extends ConsumerState<QuestionBankScreen> {
                     ),
                     if (!online)
                       const Padding(
-                        padding: const EdgeInsets.all(FiloSpacing.screen),
+                        padding: EdgeInsets.all(FiloSpacing.screen),
                         child: EmptyState(
                           title: "You're offline. Connect, then refresh to use the question bank.",
                           pose: 'sleepy',
@@ -180,12 +273,22 @@ class _QuestionBankScreenState extends ConsumerState<QuestionBankScreen> {
                           pose: 'confused',
                           bob: false,
                           action: TextButton(
-                            onPressed: online && !_busy ? _load : null,
+                            onPressed: online && !_busy && !_loading
+                                ? _load
+                                : null,
                             child: const Text('Retry'),
                           ),
                         ),
                       ),
-                    if (_loading || _busy) const FiloLinearProgressIndicator(),
+                    if (_loading && _rows == null)
+                      const Center(
+                        child: SizedBox.square(
+                          dimension: 24,
+                          child: FiloCircularProgressIndicator(
+                            semanticsLabel: 'Loading question bank',
+                          ),
+                        ),
+                      ),
                   ],
                 );
               }
@@ -196,13 +299,43 @@ class _QuestionBankScreenState extends ConsumerState<QuestionBankScreen> {
                     pose: _rows!.isEmpty ? 'thinking' : 'curious',
                     bob: !widget.picking,
                     title: _rows!.isEmpty
-                        ? 'No saved questions yet. Use Save to bank on a question in an assessment.'
-                        : 'No matching questions. Try another search or question type.',
+                        ? widget.picking
+                              ? 'No saved questions for this course yet.'
+                              : 'Your question bank is empty.'
+                        : 'No matching questions. Try another course, search or question type.',
+                    message: _rows!.isEmpty
+                        ? 'Save a question from an assessment to reuse it here. Older questions can be assigned to a course in Manage saved questions.'
+                        : '',
                   ),
                 );
               }
               final row = filtered[index - 1];
-              final q = row.copyToQuiz();
+              final q = row.tryCopyToQuiz();
+              if (q == null) {
+                return Padding(
+                  padding: const EdgeInsets.all(FiloSpacing.screen),
+                  child: FiloPanel(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          row.row['prompt'] is String
+                              ? row.row['prompt'] as String
+                              : 'Saved question',
+                        ),
+                        const Text(BankQuestion.invalidContentMessage),
+                        if (!widget.picking)
+                          TextButton(
+                            onPressed: _loading || _busy
+                                ? null
+                                : () => _delete(row),
+                            child: const Text('Delete'),
+                          ),
+                      ],
+                    ),
+                  ),
+                );
+              }
               if (widget.picking) {
                 return CheckboxListTile(
                   controlAffinity: ListTileControlAffinity.leading,
@@ -211,11 +344,13 @@ class _QuestionBankScreenState extends ConsumerState<QuestionBankScreen> {
                     '${questionTypeLabels[q.type]} / ${q.points} points',
                   ),
                   value: _selected.contains(row.id),
-                  onChanged: (value) => setState(() {
-                    value == true
-                        ? _selected.add(row.id)
-                        : _selected.remove(row.id);
-                  }),
+                  onChanged: _loading || _busy
+                      ? null
+                      : (value) => setState(() {
+                          value == true
+                              ? _selected.add(row.id)
+                              : _selected.remove(row.id);
+                        }),
                 );
               }
               return Padding(
@@ -229,6 +364,17 @@ class _QuestionBankScreenState extends ConsumerState<QuestionBankScreen> {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
+                      if (index == 1 ||
+                          filtered[index - 2].courseKey != row.courseKey) ...[
+                        Semantics(
+                          header: true,
+                          child: Text(
+                            courseLabel(row.courseKey ?? ''),
+                            style: Theme.of(context).textTheme.titleLarge,
+                          ),
+                        ),
+                        const SizedBox(height: FiloSpacing.s16),
+                      ],
                       Text(
                         q.prompt,
                         style: Theme.of(context).textTheme.titleMedium,
@@ -256,12 +402,24 @@ class _QuestionBankScreenState extends ConsumerState<QuestionBankScreen> {
                         Wrap(
                           children: [
                             TextButton(
-                              onPressed: () => _edit(row),
+                              onPressed: _loading || _busy
+                                  ? null
+                                  : () => _edit(row),
                               child: const Text('Edit'),
                             ),
                             TextButton(
-                              onPressed: () => _delete(row),
-                              child: const Text('Delete'),
+                              onPressed: _loading || _busy
+                                  ? null
+                                  : () => _delete(row),
+                              child: _busy && _deletingId == row.id
+                                  ? const SizedBox.square(
+                                      dimension: 20,
+                                      child: FiloCircularProgressIndicator(
+                                        strokeWidth: 2,
+                                        semanticsLabel: 'Deleting question',
+                                      ),
+                                    )
+                                  : const Text('Delete'),
                             ),
                           ],
                         ),
@@ -282,14 +440,9 @@ class _QuestionBankScreenState extends ConsumerState<QuestionBankScreen> {
             ),
             child: FiloButton(
               label: 'Add selected (${_selected.length})',
-              onPressed: available && _selected.isNotEmpty
-                  ? () => Navigator.pop(
-                      context,
-                      _rows!
-                          .where((r) => _selected.contains(r.id))
-                          .map((r) => r.copyToQuiz())
-                          .toList(),
-                    )
+              onPressed:
+                  available && !_loading && !_busy && _selected.isNotEmpty
+                  ? _addSelected
                   : null,
             ),
           ),
@@ -328,7 +481,12 @@ class _BankEditorState extends ConsumerState<_BankEditor> {
   final _cardKey = GlobalKey();
   bool _busy = false, _dirty = false;
   String? _error;
+  late String _course = widget.row.course ?? '';
   Future<void> _save() async {
+    if (_course.trim().isEmpty || _course.trim().length > 120) {
+      setState(() => _error = 'Enter a course of 1 to 120 characters.');
+      return;
+    }
     setState(
       () => _editor.errors = _question.validationErrors(
         pointsText: _editor.points,
@@ -346,7 +504,7 @@ class _BankEditorState extends ConsumerState<_BankEditor> {
     });
     try {
       final repository = await ref.read(questionBankRepositoryProvider.future);
-      await repository.save(widget.row.id, _question);
+      await repository.save(widget.row.id, _question, course: _course);
       if (mounted) {
         setState(() => _dirty = false);
         Navigator.pop(context);
@@ -406,6 +564,20 @@ class _BankEditorState extends ConsumerState<_BankEditor> {
                 const Text("You're offline. Connect to save changes."),
               if (_error != null)
                 Semantics(liveRegion: true, child: Text(_error!)),
+              TextFormField(
+                initialValue: _course,
+                enabled: !_busy,
+                maxLength: 120,
+                decoration: const InputDecoration(
+                  labelText: 'Course',
+                  hintText: 'Assign this saved question to a course',
+                ),
+                onChanged: (value) => setState(() {
+                  _course = value;
+                  _dirty = true;
+                }),
+              ),
+              const SizedBox(height: FiloSpacing.s16),
               QuestionCard(
                 key: _cardKey,
                 question: _question,

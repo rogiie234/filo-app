@@ -37,13 +37,15 @@ String gradebookCell(GradingData data, String post, String student) {
 }
 
 String gradebookItemCell(GradingData data, Json item, String studentId) {
-  if (item['is_quiz'] != true)
+  if (item['is_quiz'] != true) {
     return gradebookCell(data, item['id'] as String, studentId);
+  }
   final attempt = data.quizAttempt(item['id'] as String, studentId);
   final value = data.quizCell(item, studentId);
   if (attempt == null ||
-      !['submitted', 'auto_submitted'].contains(attempt['status']))
+      !['submitted', 'auto_submitted'].contains(attempt['status'])) {
     return value;
+  }
   return '$value${item['results_released_at'] == null ? '\nNot released' : ''}${attempt['grading_complete'] != true ? '\nProvisional' : ''}';
 }
 
@@ -59,7 +61,7 @@ void openGradebookItem(
     return;
   }
   final attempt = data.quizAttempt(item['id'] as String, studentId);
-  if (attempt != null)
+  if (attempt != null) {
     Navigator.of(context).push(
       FiloInstantRoute<void>(
         builder: (_) => AttemptDetailScreen(
@@ -68,6 +70,7 @@ void openGradebookItem(
         ),
       ),
     );
+  }
 }
 
 void openGradebookGrade(

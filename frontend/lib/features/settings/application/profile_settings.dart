@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/supabase/auth_providers.dart';
 import '../../../data/local/app_database.dart';
+import '../../../data/local/cache_row_json.dart';
 import '../../../data/local/database_providers.dart';
 import '../../onboarding/data/profile_repository.dart';
 import '../../onboarding/domain/profile_photo.dart';
@@ -46,23 +47,16 @@ class ProfileCache {
       'created_at',
       'updated_at',
     ];
-    if (columns.any((key) => !row.containsKey(key)))
+    if (columns.any((key) => !row.containsKey(key))) {
       throw StateError('Incomplete confirmed profile');
-    // Match the sync cache's snake-case and timestamp serialization.
-    final json = <String, dynamic>{
-      for (final entry in row.entries)
-        entry.key.replaceAllMapped(
-          RegExp(r'_([a-z])'),
-          (m) => m[1]!.toUpperCase(),
-        ): entry.key.endsWith('_at') && entry.value != null
-            ? DateTime.parse(entry.value as String).millisecondsSinceEpoch
-            : entry.value,
-    };
+    }
+    final json = cacheRowJson(row);
     final confirmed = CacheProfile.fromJson(json);
     await database.transaction(() async {
       final cached = await database.readProfile(userId);
-      if (cached != null && cached.updatedAt.isAfter(confirmed.updatedAt))
+      if (cached != null && cached.updatedAt.isAfter(confirmed.updatedAt)) {
         return;
+      }
       await database.saveProfile(confirmed.toCompanion(false));
     });
   }
@@ -74,8 +68,9 @@ final profileCacheProvider = FutureProvider<ProfileCache?>((ref) async {
   final database = await ref.watch(accountDatabaseProvider.future);
   if (!ref.mounted ||
       database == null ||
-      ref.read(authUserIdProvider).asData?.value != id)
+      ref.read(authUserIdProvider).asData?.value != id) {
     return null;
+  }
   return ProfileCache(database, id);
 });
 
@@ -118,8 +113,9 @@ class ConfirmedProfileController extends Notifier<ConfirmedProfile?> {
     if (current == null || current.profile.id != id) return;
     state = null;
     if (current.photo != null) await MemoryImage(current.photo!.bytes).evict();
-    if (current.profile.photoUrl != null)
+    if (current.profile.photoUrl != null) {
       await NetworkImage(current.profile.photoUrl!).evict();
+    }
   }
 
   void publish(AccountProfile profile, ProfilePhotoDraft? photo) {

@@ -72,7 +72,7 @@ void main() {
     calls = 0;
     copied = null;
     guard = AiRequestGuard();
-    invoke = (_, __, ___) async => {
+    invoke = (_, _, _) async => {
       'answer': '**Summary**\n- Main idea',
       'mode': 'files',
       'truncated': false,
@@ -97,8 +97,9 @@ void main() {
     );
     TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
         .setMockMethodCallHandler(SystemChannels.platform, (call) async {
-          if (call.method == 'Clipboard.setData')
+          if (call.method == 'Clipboard.setData') {
             copied = (call.arguments as Map)['text'] as String;
+          }
           if (call.method == 'Clipboard.hasStrings') return {'value': false};
           return null;
         });
@@ -232,7 +233,7 @@ void main() {
   ) async {
     await StudySummaryRepository(db).save(notebook, 'Old summary');
     final response = Completer<dynamic>();
-    invoke = (_, __, ___) => response.future;
+    invoke = (_, _, _) => response.future;
     await tester.pumpWidget(app());
     await pumpSummary(tester);
     await tap(tester, button('Summarize again'));

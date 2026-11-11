@@ -34,26 +34,30 @@ class _StudyHomeScreenState extends ConsumerState<StudyHomeScreen> {
       final name = await notebookName(context);
       if (!mounted ||
           name == null ||
-          ref.read(accountDatabaseProvider).asData?.value != repo.db)
+          ref.read(accountDatabaseProvider).asData?.value != repo.db) {
         return;
+      }
       final id = await repo.create(name);
       if (!mounted ||
-          ref.read(accountDatabaseProvider).asData?.value != repo.db)
+          ref.read(accountDatabaseProvider).asData?.value != repo.db) {
         return;
+      }
       await Navigator.of(context).push(
         MaterialPageRoute<void>(
           builder: (_) => StudyNotebookScreen(notebookId: id),
         ),
       );
     } on StudyLimitExceeded {
-      if (mounted)
+      if (mounted) {
         showMessage(
           context,
           'You can have up to 20 notebooks. Delete one to add another.',
         );
+      }
     } catch (_) {
-      if (mounted)
+      if (mounted) {
         showMessage(context, 'Could not create this notebook. Try again.');
+      }
     } finally {
       if (mounted) setState(() => _creating = false);
     }

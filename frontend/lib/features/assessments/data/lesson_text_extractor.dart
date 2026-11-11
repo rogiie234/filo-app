@@ -75,11 +75,12 @@ class LessonTextExtractor {
     final token = AiCancelToken();
     unawaited(owner.cancelled.then((_) => token.cancel()));
     final type = fileType.toLowerCase().replaceFirst(RegExp(r'^\.'), '');
-    if (!supported.contains(type))
+    if (!supported.contains(type)) {
       throw const LessonReadException(
         'UNSUPPORTED',
         'This file type is not supported.',
       );
+    }
     owner.check();
     var timedOut = false;
     final timer = Timer(timeout, () {
@@ -109,8 +110,10 @@ class LessonTextExtractor {
             ? await _image(path, token, onProgress)
             : await _worker(path, type, token, onProgress);
         token.check();
-        if (length != await file.length() || stamp != await file.lastModified())
+        if (length != await file.length() ||
+            stamp != await file.lastModified()) {
           throw lessonReadFailed;
+        }
         final result = LessonText(
           text: raw['text'] as String,
           sourceKey: key,
@@ -118,8 +121,9 @@ class LessonTextExtractor {
           warnings: (raw['warnings'] as List).cast<String>(),
         );
         if (result.text.trim().isEmpty) throw noLessonText;
-        if (cache != null && draftQuizId != null)
+        if (cache != null && draftQuizId != null) {
           await cache!.save(result, draftQuizId);
+        }
         token.check();
         return result;
       } on LessonReadException {
@@ -153,7 +157,7 @@ class LessonTextExtractor {
     final sub = port.listen((dynamic value) {
       final map = Map<String, dynamic>.from(value as Map);
       if (map.containsKey('stage')) {
-        if (!token.isCancelled)
+        if (!token.isCancelled) {
           progress?.call(
             ExtractionProgress(
               map['stage'] as String,
@@ -161,14 +165,16 @@ class LessonTextExtractor {
               total: map['total'] as int?,
             ),
           );
+        }
       } else if (map.containsKey('error')) {
-        if (!result.isCompleted)
+        if (!result.isCompleted) {
           result.completeError(
             LessonReadException(
               map['error'] as String,
               map['message'] as String,
             ),
           );
+        }
       } else if (!result.isCompleted) {
         result.complete(map);
       }
@@ -282,8 +288,9 @@ class LessonTextExtractor {
           width > 2048 ||
           height > 2048 ||
           width * height > 4000000 ||
-          pixels.length != width * height * 3 ~/ 2)
+          pixels.length != width * height * 3 ~/ 2) {
         throw lessonReadFailed;
+      }
       token.check();
       progress?.call(const ExtractionProgress('Reading image...'));
       final recognized = await recognizer.processImage(
@@ -323,8 +330,9 @@ class LessonTextExtractor {
   static void validateSources(List<Map<String, String>> sources) {
     if (sources.isEmpty ||
         sources.length > 3 ||
-        sources.any((s) => (s['text'] ?? '').trim().isEmpty))
+        sources.any((s) => (s['text'] ?? '').trim().isEmpty)) {
       throw noLessonText;
+    }
     if (sources.fold<int>(0, (n, s) => n + s['text']!.runes.length) >
         maxCharacters) {
       throw const LessonReadException(
@@ -392,8 +400,9 @@ String cleanLessonPages(
     for (final line in {page.first, page.last}) {
       if (line.length > 3 &&
           line.length < 100 &&
-          RegExp(r'[A-Za-z]').hasMatch(line))
+          RegExp(r'[A-Za-z]').hasMatch(line)) {
         repeated[line] = (repeated[line] ?? 0) + 1;
+      }
     }
   }
   final edges = repeated.entries
@@ -429,10 +438,11 @@ String cleanLessonPages(
     }
     if (kept.isNotEmpty) output.add(kept.join('\n'));
   }
-  if (removed > 0)
+  if (removed > 0) {
     onSkipped?.call(
       '$removed repeated page-edge headers or page markers were removed during cleanup.',
     );
+  }
   return output.join('\n\n');
 }
 
@@ -501,8 +511,9 @@ Future<void> _extractWorker((String, String, SendPort) input) async {
   final (path, type, port) = input;
   try {
     final file = File(path);
-    if (await file.length() > LessonTextExtractor.maxFileBytes)
+    if (await file.length() > LessonTextExtractor.maxFileBytes) {
       throw lessonTooLarge;
+    }
     if (type == 'sha') {
       var read = 0;
       port.send({
@@ -511,8 +522,9 @@ Future<void> _extractWorker((String, String, SendPort) input) async {
                     .bind(
                       file.openRead().map((chunk) {
                         read += chunk.length;
-                        if (read > LessonTextExtractor.maxFileBytes)
+                        if (read > LessonTextExtractor.maxFileBytes) {
                           throw lessonTooLarge;
+                        }
                         return chunk;
                       }),
                     )
@@ -525,8 +537,9 @@ Future<void> _extractWorker((String, String, SendPort) input) async {
     final builder = BytesBuilder(copy: false);
     port.send({'stage': 'Reading file...'});
     await for (final chunk in file.openRead()) {
-      if (builder.length + chunk.length > LessonTextExtractor.maxFileBytes)
+      if (builder.length + chunk.length > LessonTextExtractor.maxFileBytes) {
         throw lessonTooLarge;
+      }
       builder.add(chunk);
     }
     final bytes = builder.takeBytes();
@@ -551,10 +564,11 @@ Future<void> _extractWorker((String, String, SendPort) input) async {
       warnings.addAll(parsed.$2);
     }
     final bounded = boundedLessonText(text, lessonCacheByteCap);
-    if (bounded.$2)
+    if (bounded.$2) {
       warnings.add(
         'Only the first 2 MB of extracted text was kept. Choose a smaller section for the rest.',
       );
+    }
     port.send({
       'text': bounded.$1,
       'character_count': bounded.$1.runes.length,
@@ -594,8 +608,9 @@ Future<void> _extractWorker((String, String, SendPort) input) async {
     final data = file.content;
     if (data.length > 4 * 1024 * 1024) throw lessonReadFailed;
     final text = utf8.decode(data);
-    if (text.contains('<!DOCTYPE') || text.contains('<!ENTITY'))
+    if (text.contains('<!DOCTYPE') || text.contains('<!ENTITY')) {
       throw lessonReadFailed;
+    }
     return XmlDocument.parse(text);
   }
 
@@ -612,8 +627,9 @@ Future<void> _extractWorker((String, String, SendPort) input) async {
                   .where((a) => a.name.local == 'p' && a.namespaceUri == ns)
                   .firstOrNull,
               p,
-            ))
+            )) {
           continue;
+        }
         if (e.name.local == 't') output.write(e.innerText);
         if (e.name.local == 'tab') output.write('\t');
         if (e.name.local == 'br') output.write('\n');
@@ -661,8 +677,9 @@ Future<void> _extractWorker((String, String, SendPort) input) async {
     final target = rels[ids[i].getAttribute('id', namespace: ns)];
     if (target == null) throw lessonReadFailed;
     final path = target.startsWith('/') ? target.substring(1) : 'ppt/$target';
-    if (!RegExp(r'^ppt/slides/slide\d+\.xml$').hasMatch(path))
+    if (!RegExp(r'^ppt/slides/slide\d+\.xml$').hasMatch(path)) {
       throw lessonReadFailed;
+    }
     final text = paragraphs(
       xml(path),
       'http://schemas.openxmlformats.org/drawingml/2006/main',

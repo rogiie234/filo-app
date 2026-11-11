@@ -286,9 +286,13 @@ void main() {
         'key',
         httpClient: MockClient((request) async {
           requests.add(request);
-          final rows = request.url.pathSegments.last == 'class_members'
+          final rows =
+              request.url.queryParameters['id']?.startsWith('gt.') == true
+              ? []
+              : request.url.pathSegments.last == 'class_members'
               ? [
                   {
+                    'id': 'membership',
                     'class_id': 'class',
                     'classes': {
                       'id': 'class',

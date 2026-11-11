@@ -1,3 +1,4 @@
+import 'package:filo/core/connectivity/connectivity_provider.dart';
 import 'package:drift/native.dart';
 import 'package:filo/core/notifications/push_registration.dart';
 import 'package:filo/core/notifications/push_providers.dart';
@@ -8,6 +9,7 @@ import 'package:filo/data/local/database_providers.dart';
 import 'package:filo/features/onboarding/data/profile_repository.dart';
 import 'package:filo/features/settings/application/theme_settings.dart';
 import 'package:filo/features/settings/presentation/settings_screen.dart';
+import 'package:filo/features/settings/presentation/edit_profile_screen.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -36,6 +38,7 @@ void main() {
 
   Widget app(Widget page) => ProviderScope(
     overrides: [
+      connectivityProvider.overrideWithValue(const AsyncData(true)),
       authUserIdProvider.overrideWith((ref) => Stream.value('account-a')),
       accountDatabaseProvider.overrideWith((ref) async => database),
       pushRegistrationProvider.overrideWith(
@@ -68,6 +71,43 @@ void main() {
       ),
     ),
   );
+
+  for (final role in ['instructor', 'student']) {
+    testWidgets('long $role profile stays usable at 320dp and 130 percent', (
+      tester,
+    ) async {
+      tester.view.physicalSize = const Size(320, 740);
+      tester.view.devicePixelRatio = 1;
+      addTearDown(tester.view.resetPhysicalSize);
+      addTearDown(tester.view.resetDevicePixelRatio);
+      const name = 'Alexandra Marie Santos with a long account name';
+      final profile = AccountProfile.fromJson({
+        'id': 'account-a',
+        'role': role,
+        'display_name': name,
+        'school': 'School of Computing and Information Technology',
+        'email': 'alexandra.marie.santos@example.invalid',
+      });
+      await tester.pumpWidget(app(SettingsScreen(profile: profile)));
+      await tester.pumpAndSettle();
+      expect(find.text(name), findsOneWidget);
+      expect(find.text(profile.role.label), findsOneWidget);
+      expect(tester.takeException(), isNull);
+      await tester.ensureVisible(find.text('Edit profile'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Edit profile'));
+      await tester.pumpAndSettle();
+      expect(find.byType(EditProfileScreen), findsOneWidget);
+      expect(find.byType(TextFormField), findsNWidgets(2));
+      expect(tester.takeException(), isNull);
+      await tester.pageBack();
+      await tester.pumpAndSettle();
+      expect(find.byType(SettingsScreen), findsOneWidget);
+      expect(find.text(name), findsOneWidget);
+      await tester.pumpWidget(const SizedBox());
+      await tester.pumpAndSettle();
+    });
+  }
 
   testWidgets(
     'picker changes brightness immediately, follows System, and retries failed save at 130 percent',

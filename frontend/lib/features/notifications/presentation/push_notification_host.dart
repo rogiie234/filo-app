@@ -162,12 +162,13 @@ class _PushNotificationHostState extends ConsumerState<PushNotificationHost> {
             }
             _open(destination);
             try {
-              if (event.assignmentId == null && event.alarmId == null)
+              if (event.assignmentId == null && event.alarmId == null) {
                 await InboxRepository(
                   repository.db,
                   widget.userId,
                   repository.isCurrent,
                 ).markRead(event.id!);
+              }
             } catch (_) {
               if (_ready && repository.isCurrent()) {
                 _message(
@@ -248,11 +249,12 @@ class _PushNotificationHostState extends ConsumerState<PushNotificationHost> {
         repository.isCurrent,
       ).markRead(id);
     } catch (_) {
-      if (repository.isCurrent())
+      if (repository.isCurrent()) {
         _message(
           'Could not save read status. Try again.',
           retry: () => unawaited(_retryRead(repository, id)),
         );
+      }
     }
   }
 
@@ -348,8 +350,9 @@ class _PushNotificationHostState extends ConsumerState<PushNotificationHost> {
         notificationDestinationRepositoryProvider,
         (_, _) => _schedule(),
       );
-      if (_profile!.role == AccountRole.student)
+      if (_profile!.role == AccountRole.student) {
         ref.listen(examUpdatesProvider, (_, _) => _schedule());
+      }
     }
     final showBanner =
         _ready && _foreground && !_protected && _banners.isNotEmpty;
@@ -362,6 +365,15 @@ class _PushNotificationHostState extends ConsumerState<PushNotificationHost> {
       _timedEvent = _banners.first.event;
       _timer = Timer(const Duration(seconds: 5), _dismiss);
     }
+    final accountNavigator = NavigatorPopHandler<Object?>(
+      onPopWithResult: (result) => _navigator.currentState?.maybePop(result),
+      child: Navigator(
+        key: _navigator,
+        observers: [_observer, _orientationObserver],
+        onGenerateRoute: (_) =>
+            MaterialPageRoute<void>(builder: (_) => widget.child),
+      ),
+    );
     return NotificationListener<NotificationHomeReady>(
       onNotification: (notification) {
         if (notification.profile.id == widget.userId) {
@@ -372,12 +384,14 @@ class _PushNotificationHostState extends ConsumerState<PushNotificationHost> {
       },
       child: Stack(
         children: [
-          Navigator(
-            key: _navigator,
-            observers: [_observer, _orientationObserver],
-            onGenerateRoute: (_) =>
-                MaterialPageRoute<void>(builder: (_) => widget.child),
-          ),
+          if (Router.maybeOf(context)?.backButtonDispatcher != null)
+            BackButtonListener(
+              onBackButtonPressed: () async =>
+                  await _navigator.currentState?.maybePop() ?? false,
+              child: accountNavigator,
+            )
+          else
+            accountNavigator,
           if (showBanner)
             Positioned(
               top: 8,

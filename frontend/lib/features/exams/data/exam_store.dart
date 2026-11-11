@@ -56,8 +56,9 @@ class ExamStore {
         if (previous != null &&
             previous['session_id'] == session.id &&
             ['submitted', 'auto_submitted'].contains(previous['status']) &&
-            session.inProgress)
+            session.inProgress) {
           return;
+        }
         payload['session'] = session.json;
         payload['known'] = true;
         await db.customStatement(
@@ -103,7 +104,7 @@ class ExamStore {
                   !incoming.sessionKnown) &&
               incoming.session?.submitted != true;
           final quiz = preserve
-              ? StudentQuiz(incoming.json, old!.session)
+              ? StudentQuiz(incoming.json, old.session)
               : incoming;
           await db.customStatement(
             '''

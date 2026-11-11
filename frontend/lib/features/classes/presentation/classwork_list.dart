@@ -522,52 +522,57 @@ class AssignmentRow extends StatelessWidget {
   final bool showStatus;
   final VoidCallback onTap;
   @override
-  Widget build(BuildContext context) => Material(
-    color: Theme.of(context).colorScheme.surface,
-    shape: RoundedRectangleBorder(
-      borderRadius: BorderRadius.circular(FiloRadii.large),
-      side: BorderSide(color: Theme.of(context).colorScheme.outline),
-    ),
-    clipBehavior: Clip.antiAlias,
-    child: InkWell(
-      onTap: onTap,
-      child: Padding(
-        padding: const EdgeInsets.all(FiloSpacing.s20),
-        child: Row(
-          children: [
-            FiloIcon(
-              FiloIcons.assessment,
-              color: Theme.of(context).colorScheme.primary,
-              size: 28,
-            ),
-            const SizedBox(width: FiloSpacing.s16),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    post.title,
-                    style: Theme.of(context).textTheme.titleMedium,
-                  ),
-                  const SizedBox(height: FiloSpacing.s8),
-                  Text(
-                    streamDueLabel(context, post),
-                    style: TextStyle(
-                      color: Theme.of(context).colorScheme.onSurfaceVariant,
-                    ),
-                  ),
-                  Text(
-                    post.points == null ? 'No points' : '${post.points} points',
-                    style: TextStyle(
-                      color: Theme.of(context).colorScheme.onSurfaceVariant,
-                    ),
-                  ),
-                  if (showStatus) AssignmentStatusChip(status: status),
-                ],
+  Widget build(BuildContext context) => FiloCardTap(
+    enabled: true,
+    child: Material(
+      color: Theme.of(context).colorScheme.surface,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(FiloRadii.large),
+        side: BorderSide(color: Theme.of(context).colorScheme.outline),
+      ),
+      clipBehavior: Clip.antiAlias,
+      child: InkWell(
+        onTap: onTap,
+        child: Padding(
+          padding: const EdgeInsets.all(FiloSpacing.s20),
+          child: Row(
+            children: [
+              FiloIcon(
+                FiloIcons.assessment,
+                color: Theme.of(context).colorScheme.primary,
+                size: 28,
               ),
-            ),
-            const FiloIcon(FiloIcons.chevronRight),
-          ],
+              const SizedBox(width: FiloSpacing.s16),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      post.title,
+                      style: Theme.of(context).textTheme.titleMedium,
+                    ),
+                    const SizedBox(height: FiloSpacing.s8),
+                    Text(
+                      streamDueLabel(context, post),
+                      style: TextStyle(
+                        color: Theme.of(context).colorScheme.onSurfaceVariant,
+                      ),
+                    ),
+                    Text(
+                      post.points == null
+                          ? 'No points'
+                          : '${post.points} points',
+                      style: TextStyle(
+                        color: Theme.of(context).colorScheme.onSurfaceVariant,
+                      ),
+                    ),
+                    if (showStatus) AssignmentStatusChip(status: status),
+                  ],
+                ),
+              ),
+              const FiloIcon(FiloIcons.chevronRight),
+            ],
+          ),
         ),
       ),
     ),

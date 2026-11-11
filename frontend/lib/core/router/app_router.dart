@@ -1,11 +1,12 @@
 import 'package:flutter/material.dart';
 
+import 'session_navigation_gate.dart';
+
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../features/assessments/presentation/new_assessment_screen.dart';
 import '../../features/auth/presentation/sign_in_screen.dart';
-import '../../features/auth/presentation/session_screen.dart';
 import '../../features/classes/presentation/classes_screen.dart';
 import '../../features/classes/presentation/class_screen.dart';
 import '../../features/onboarding/presentation/intro_screen.dart';
@@ -18,49 +19,59 @@ final appRouterProvider = Provider<GoRouter>((ref) {
     initialLocation: '/',
     observers: [RouteObserver<PageRoute<dynamic>>()],
     routes: [
-      GoRoute(
-        path: '/',
-        pageBuilder: (context, state) => NoTransitionPage<void>(
-          key: state.pageKey,
-          child: const IntroScreen(),
-        ),
-      ),
-      GoRoute(
-        path: '/sign-in',
-        pageBuilder: (context, state) => NoTransitionPage<void>(
-          key: state.pageKey,
-          child: const SignInScreen(),
-        ),
-      ),
-      // Both entries pass through session verification and profile lookup.
-      // App keeps the account Navigator mounted while the URL changes.
-      for (final path in ['/onboarding', '/home'])
-        GoRoute(
-          path: path,
-          builder: (context, state) =>
-              ref.read(loginSessionProvider).asData?.value == null
-              ? const SignInScreen()
-              : const SessionScreen(),
-        ),
-      GoRoute(
-        path: '/classes',
-        builder: (context, state) => const ClassesScreen(),
+      ShellRoute(
+        builder: (context, state, child) => SessionNavigationGate(child: child),
         routes: [
           GoRoute(
-            path: ':classId',
+            path: '/',
+            pageBuilder: (context, state) => NoTransitionPage<void>(
+              key: state.pageKey,
+              child: const PublicRoutePage(child: IntroScreen()),
+            ),
+          ),
+          GoRoute(
+            path: '/sign-in',
+            pageBuilder: (context, state) => NoTransitionPage<void>(
+              key: state.pageKey,
+              child: const PublicRoutePage(child: SignInScreen()),
+            ),
+          ),
+          // Both entries pass through session verification and profile lookup.
+          // The shell keeps the account Navigator mounted while the URL changes.
+          for (final path in ['/onboarding', '/home'])
+            GoRoute(
+              path: path,
+              builder: (context, state) =>
+                  const PublicRoutePage(child: SignInScreen()),
+            ),
+          GoRoute(
+            path: '/classes',
             builder: (context, state) =>
-                ClassScreen(classId: state.pathParameters['classId']!),
+                const PublicRoutePage(child: ClassesScreen()),
             routes: [
               GoRoute(
-                path: 'post/new',
-                builder: (context, state) =>
-                    CreatePostScreen(classId: state.pathParameters['classId']!),
-              ),
-              GoRoute(
-                path: 'assessment/new',
-                builder: (context, state) => NewAssessmentScreen(
-                  classId: state.pathParameters['classId']!,
+                path: ':classId',
+                builder: (context, state) => PublicRoutePage(
+                  child: ClassScreen(classId: state.pathParameters['classId']!),
                 ),
+                routes: [
+                  GoRoute(
+                    path: 'post/new',
+                    builder: (context, state) => PublicRoutePage(
+                      child: CreatePostScreen(
+                        classId: state.pathParameters['classId']!,
+                      ),
+                    ),
+                  ),
+                  GoRoute(
+                    path: 'assessment/new',
+                    builder: (context, state) => PublicRoutePage(
+                      child: NewAssessmentScreen(
+                        classId: state.pathParameters['classId']!,
+                      ),
+                    ),
+                  ),
+                ],
               ),
             ],
           ),

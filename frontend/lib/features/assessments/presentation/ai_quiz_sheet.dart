@@ -99,11 +99,12 @@ class _AiQuizSheetState extends ConsumerState<AiQuizSheet> {
       });
       if (!accepted) await _privacy();
     } catch (e) {
-      if (mounted)
+      if (mounted) {
         setState(() {
           _error = aiFriendlyError(e);
           _initializing = false;
         });
+      }
     }
   }
 
@@ -150,8 +151,9 @@ class _AiQuizSheetState extends ConsumerState<AiQuizSheet> {
   Future<void> _pickPhone() async {
     if (_busy ||
         (widget.regenerateType != null && _restoredContext) ||
-        _sources.length >= 3)
+        _sources.length >= 3) {
       return;
+    }
     try {
       final picked = await FilePicker.pickFiles(
         type: FileType.custom,
@@ -199,8 +201,9 @@ class _AiQuizSheetState extends ConsumerState<AiQuizSheet> {
         });
       }
     } catch (_) {
-      if (mounted)
+      if (mounted) {
         setState(() => _error = 'The files could not be selected. Try again.');
+      }
     }
   }
 
@@ -208,8 +211,9 @@ class _AiQuizSheetState extends ConsumerState<AiQuizSheet> {
     if (_busy ||
         (widget.regenerateType != null && _restoredContext) ||
         _sources.length >= 3 ||
-        _sources.any((s) => s.id == 'att:${entry.attachment.id}'))
+        _sources.any((s) => s.id == 'att:${entry.attachment.id}')) {
       return;
+    }
     final source = AiSourceSelection(
       id: 'att:${entry.attachment.id}',
       name: entry.attachment.name,
@@ -246,8 +250,9 @@ class _AiQuizSheetState extends ConsumerState<AiQuizSheet> {
   }
 
   void _progress(AiSourceSelection source, ExtractionProgress progress) {
-    if (mounted && _sources.contains(source) && !source.cancel.isCancelled)
+    if (mounted && _sources.contains(source) && !source.cancel.isCancelled) {
       setState(() => source.progress = progress);
+    }
   }
 
   Future<void> _read(
@@ -258,10 +263,11 @@ class _AiQuizSheetState extends ConsumerState<AiQuizSheet> {
       source.cancel.check();
       final result = await read();
       source.cancel.check();
-      if (mounted && _sources.contains(source))
+      if (mounted && _sources.contains(source)) {
         setState(() => source.result = result);
+      }
     } catch (e) {
-      if (mounted && _sources.contains(source))
+      if (mounted && _sources.contains(source)) {
         setState(
           () => source.error = e is AiCancelled
               ? 'Reading cancelled. Remove this file to choose it again.'
@@ -271,6 +277,7 @@ class _AiQuizSheetState extends ConsumerState<AiQuizSheet> {
               ? e.message
               : 'This file could not be read. Choose it again.',
         );
+      }
     }
   }
 
@@ -278,10 +285,11 @@ class _AiQuizSheetState extends ConsumerState<AiQuizSheet> {
     try {
       await (await ref.read(syncCoordinatorProvider.future))?.run();
     } catch (_) {
-      if (mounted)
+      if (mounted) {
         setState(
           () => _error = 'Class materials could not be refreshed. Check your connection and try again.',
         );
+      }
     }
   }
 
@@ -314,11 +322,12 @@ class _AiQuizSheetState extends ConsumerState<AiQuizSheet> {
         }
         final cache = await ref.read(fileTextCacheProvider.future);
         final restored = await cache?.restore(original);
-        if (restored == null)
+        if (restored == null) {
           throw const LessonReadException(
             'NO_TEXT',
             'The original source text is unavailable. Choose the original files again.',
           );
+        }
         texts = restored;
         sourceContext = original;
       }

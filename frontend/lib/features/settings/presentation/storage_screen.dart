@@ -52,7 +52,7 @@ class _StorageScreenState extends ConsumerState<StorageScreen> {
     if (!_current) return;
     if (_scroll.hasClients) _scroll.jumpTo(0);
     setState(() => _clearing = false);
-    if (cleared)
+    if (cleared) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
           content: Text(
@@ -60,6 +60,7 @@ class _StorageScreenState extends ConsumerState<StorageScreen> {
           ),
         ),
       );
+    }
   }
 
   Widget _size(String label, int bytes) => Padding(
@@ -84,15 +85,17 @@ class _StorageScreenState extends ConsumerState<StorageScreen> {
   @override
   Widget build(BuildContext context) {
     ref.listen(authUserIdProvider, (_, next) {
-      if (next.asData != null && next.asData!.value != widget.userId)
+      if (next.asData != null && next.asData!.value != widget.userId) {
         _accountLost = true;
+      }
     });
     final account = ref.watch(authUserIdProvider);
     if (_accountLost || account.asData?.value != widget.userId) {
-      if (!account.isLoading)
+      if (!account.isLoading) {
         WidgetsBinding.instance.addPostFrameCallback((_) {
           if (mounted) Navigator.of(context).popUntil((route) => route.isFirst);
         });
+      }
       return const Scaffold(
         body: Center(child: FiloCircularProgressIndicator()),
       );

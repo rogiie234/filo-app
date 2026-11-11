@@ -36,23 +36,26 @@ class AccountDeletionCleanup {
   }
 
   Future<void> _removeAccount(String id) async {
-    if (!RegExp(r'^[a-zA-Z0-9-]+$').hasMatch(id))
+    if (!RegExp(r'^[a-zA-Z0-9-]+$').hasMatch(id)) {
       throw StateError('Invalid account');
+    }
     final support = await directoryProvider();
     final root = Directory(p.join(support.path, 'files', id));
     FileStorage.setBlocked(root, true);
     await FileStorage(root).waitForIdle();
     await manager.removeForUser(id);
+    final canonicalSupport = await support.resolveSymbolicLinks();
     for (final folder in ['files', 'drive_backup']) {
       final parent = Directory(p.join(support.path, folder));
       if (await FileSystemEntity.type(parent.path, followLinks: false) ==
-          FileSystemEntityType.notFound)
+          FileSystemEntityType.notFound) {
         continue;
+      }
       if (await FileSystemEntity.type(parent.path, followLinks: false) !=
               FileSystemEntityType.directory ||
           !p.equals(
             p.normalize(await parent.resolveSymbolicLinks()),
-            p.normalize(parent.absolute.path),
+            p.normalize(p.join(canonicalSupport, folder)),
           )) {
         throw StateError('Unsafe account directory');
       }
@@ -63,8 +66,9 @@ class AccountDeletionCleanup {
       legacyLock,
       followLinks: false,
     );
-    if (legacyType == FileSystemEntityType.directory)
+    if (legacyType == FileSystemEntityType.directory) {
       throw StateError('Invalid legacy lock');
+    }
     await _remove(legacyLock, support.path);
     const storage = FlutterSecureStorage();
     bool owned(String key) =>
@@ -77,8 +81,9 @@ class AccountDeletionCleanup {
         await storage.delete(key: key);
       }
     }
-    if ((await storage.readAll()).keys.any(owned))
+    if ((await storage.readAll()).keys.any(owned)) {
       throw StateError('Account keys remain');
+    }
     for (final path in [
       p.join(support.path, 'files', id),
       p.join(support.path, 'drive_backup', id),
@@ -98,8 +103,9 @@ class AccountDeletionCleanup {
   }
 
   Future<void> _remove(String path, String parent) async {
-    if (!p.isWithin(p.absolute(parent), p.absolute(path)))
+    if (!p.isWithin(p.absolute(parent), p.absolute(path))) {
       throw StateError('Unsafe account path');
+    }
     final type = await FileSystemEntity.type(path, followLinks: false);
     if (type == FileSystemEntityType.notFound) return;
     if (type == FileSystemEntityType.link) {

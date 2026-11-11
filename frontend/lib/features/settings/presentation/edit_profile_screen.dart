@@ -1,3 +1,5 @@
+import '../../../core/widgets/entry_background.dart';
+
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -74,7 +76,7 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
       final photo = await picker();
       if (_current && photo != null) setState(() => _photo = photo);
     } catch (error) {
-      if (_current)
+      if (_current) {
         setState(
           () => _photoError = error is FormatException
               ? error.message
@@ -86,6 +88,7 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
               ? 'Photo access is blocked. Allow photo access in Android settings, then try again.'
               : 'Could not open this photo. Try choosing another image.',
         );
+      }
     } finally {
       if (_current) setState(() => _picking = false);
     }
@@ -96,8 +99,9 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
     if (_confirmed == null &&
         (!_dirty ||
             !_valid ||
-            ref.read(connectivityProvider).asData?.value != true))
+            ref.read(connectivityProvider).asData?.value != true)) {
       return;
+    }
     if (!validateFiloForm(_form)) return;
     FocusScope.of(context).unfocus();
     setState(() {
@@ -120,8 +124,9 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
       }
       final cache = await ref.read(profileCacheProvider.future);
       if (!_current) return;
-      if (cache == null || cache.userId != widget.profile.id)
+      if (cache == null || cache.userId != widget.profile.id) {
         throw StateError('Saved data unavailable');
+      }
       await cache.save(_confirmed!);
       if (!_current) return;
       ref.read(confirmedProfileProvider.notifier).cached(_confirmed!);
@@ -135,7 +140,7 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
       ScaffoldMessenger.of(context)
           .showSnackBar(const SnackBar(content: Text('Changes saved.')));
     } catch (error) {
-      if (_current)
+      if (_current) {
         setState(
           () => _error = _confirmed != null
               ? "Your profile was saved online, but Filo couldn't update its saved copy on this device. Try again."
@@ -143,6 +148,7 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
               ? "We couldn't confirm whether your changes were saved. Check your settings when you're connected."
               : "Couldn't save your changes. Try again.",
         );
+      }
     } finally {
       if (_current) setState(() => _busy = false);
     }
@@ -181,19 +187,22 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
   @override
   Widget build(BuildContext context) {
     ref.listen(authUserIdProvider, (_, next) {
-      if (next.asData != null && next.asData!.value != widget.profile.id)
+      if (next.asData != null && next.asData!.value != widget.profile.id) {
         _accountLost = true;
+      }
     });
     final account = ref.watch(authUserIdProvider);
     if (_accountLost || account.asData?.value != widget.profile.id) {
-      if (!account.isLoading)
+      if (!account.isLoading) {
         WidgetsBinding.instance.addPostFrameCallback((_) {
           if (mounted &&
               (_accountLost ||
                   ref.read(authUserIdProvider).asData?.value !=
-                      widget.profile.id))
+                      widget.profile.id)) {
             Navigator.of(context).popUntil((route) => route.isFirst);
+          }
         });
+      }
       return const Scaffold(
         body: Center(child: FiloCircularProgressIndicator()),
       );
@@ -207,123 +216,162 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
       onPopInvokedWithResult: (didPop, _) {
         if (!didPop) _leave();
       },
-      child: Scaffold(
-        appBar: AppBar(title: const Text('Edit profile')),
-        body: SafeArea(
-          child: Form(
-            key: _form,
-            child: ListView(
-              padding: const EdgeInsets.all(FiloSpacing.screen),
-              children: [
-                Center(
-                  child: _photo == null
-                      ? FiloAvatar(
-                          userId: _baseline.id,
-                          name: _baseline.name,
-                          url: _baseline.photoUrl,
-                          path: _baseline.avatarPath,
-                          size: 112,
-                        )
-                      : ExcludeSemantics(
-                          child: ClipOval(
-                            child: Image.memory(
-                              _photo!.bytes,
-                              width: 112,
-                              height: 112,
-                              fit: BoxFit.cover,
+      child: EntryBackground(
+        verification: true,
+        breeze: true,
+        variation: 2,
+        child: Scaffold(
+          backgroundColor: Colors.transparent,
+          appBar: AppBar(
+            backgroundColor: Colors.transparent,
+            surfaceTintColor: Colors.transparent,
+            elevation: 0,
+            scrolledUnderElevation: 0,
+            title: const Text('Edit profile'),
+          ),
+          body: SafeArea(
+            child: Form(
+              key: _form,
+              child: ListView(
+                keyboardDismissBehavior:
+                    ScrollViewKeyboardDismissBehavior.onDrag,
+                padding: const EdgeInsets.all(FiloSpacing.screen),
+                children: [
+                  FiloPanel(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: [
+                        Center(
+                          child: _photo == null
+                              ? FiloAvatar(
+                                  userId: _baseline.id,
+                                  name: _baseline.name,
+                                  url: _baseline.photoUrl,
+                                  path: _baseline.avatarPath,
+                                  size: 112,
+                                )
+                              : ExcludeSemantics(
+                                  child: ClipOval(
+                                    child: Image.memory(
+                                      _photo!.bytes,
+                                      width: 112,
+                                      height: 112,
+                                      fit: BoxFit.cover,
+                                    ),
+                                  ),
+                                ),
+                        ),
+                        const SizedBox(height: FiloSpacing.s16),
+                        FiloButton(
+                          label: _picking ? 'Preparing photo…' : 'Choose photo',
+                          secondary: true,
+                          icon: FiloIcons.edit,
+                          onPressed: locked ? null : _pick,
+                        ),
+                        if (_photoError != null)
+                          Padding(
+                            padding: const EdgeInsets.only(
+                              top: FiloSpacing.s12,
+                            ),
+                            child: Semantics(
+                              liveRegion: true,
+                              child: Text(_photoError!),
                             ),
                           ),
-                        ),
-                ),
-                const SizedBox(height: FiloSpacing.s16),
-                FiloButton(
-                  label: _picking ? 'Preparing photo…' : 'Choose photo',
-                  secondary: true,
-                  icon: FiloIcons.edit,
-                  onPressed: locked ? null : _pick,
-                ),
-                if (_photoError != null)
-                  Padding(
-                    padding: const EdgeInsets.only(top: FiloSpacing.s12),
-                    child: Semantics(
-                      liveRegion: true,
-                      child: Text(_photoError!),
+                      ],
                     ),
                   ),
-                const SizedBox(height: FiloSpacing.screen),
-                FiloPanel(
-                  child: Column(
-                    children: [
-                      TextFormField(
-                        controller: _name,
-                        readOnly: locked,
-                        maxLength: 80,
-                        autovalidateMode: AutovalidateMode.onUserInteraction,
-                        textCapitalization: TextCapitalization.words,
-                        textInputAction: TextInputAction.next,
-                        decoration: const InputDecoration(labelText: 'Name'),
-                        onChanged: (_) => setState(() {}),
-                        validator: (value) => value!.trim().isEmpty
-                            ? 'Enter your name.'
-                            : value.trim().length > 80
-                            ? 'Use 80 characters or fewer.'
-                            : null,
-                      ),
-                      const SizedBox(height: FiloSpacing.s16),
-                      TextFormField(
-                        controller: _school,
-                        readOnly: locked,
-                        maxLength: 120,
-                        autovalidateMode: AutovalidateMode.onUserInteraction,
-                        textCapitalization: TextCapitalization.words,
-                        textInputAction: TextInputAction.done,
-                        decoration: const InputDecoration(
-                          labelText: 'School (optional)',
-                        ),
-                        onChanged: (_) => setState(() {}),
-                        validator: (value) => value!.trim().length > 120
-                            ? 'Use 120 characters or fewer.'
-                            : null,
-                      ),
-                    ],
-                  ),
-                ),
-                const SizedBox(height: FiloSpacing.s20),
-                FiloPanel(
-                  child: Column(
-                    children: [
-                      _locked('Email', _baseline.email ?? 'Not available'),
-                      const Divider(height: 1),
-                      _locked('Role', _baseline.role.label),
-                    ],
-                  ),
-                ),
-                const SizedBox(height: FiloSpacing.screen),
-                if (!online && _confirmed == null)
-                  const Padding(
-                    padding: EdgeInsets.only(bottom: FiloSpacing.s16),
+                  const SizedBox(height: FiloSpacing.screen),
+                  Semantics(
+                    header: true,
                     child: Text(
-                      "You're offline. Connect to save your changes.",
+                      'About you',
+                      style: Theme.of(context).textTheme.titleLarge,
                     ),
                   ),
-                if (_error != null)
-                  Padding(
-                    padding: const EdgeInsets.only(bottom: FiloSpacing.s16),
-                    child: Semantics(liveRegion: true, child: Text(_error!)),
+                  const SizedBox(height: FiloSpacing.s12),
+                  FiloPanel(
+                    child: Column(
+                      children: [
+                        TextFormField(
+                          controller: _name,
+                          readOnly: locked,
+                          maxLength: 80,
+                          autovalidateMode: AutovalidateMode.onUserInteraction,
+                          textCapitalization: TextCapitalization.words,
+                          textInputAction: TextInputAction.next,
+                          decoration: const InputDecoration(labelText: 'Name'),
+                          onChanged: (_) => setState(() {}),
+                          validator: (value) => value!.trim().isEmpty
+                              ? 'Enter your name.'
+                              : value.trim().length > 80
+                              ? 'Use 80 characters or fewer.'
+                              : null,
+                        ),
+                        const SizedBox(height: FiloSpacing.s16),
+                        TextFormField(
+                          controller: _school,
+                          readOnly: locked,
+                          maxLength: 120,
+                          autovalidateMode: AutovalidateMode.onUserInteraction,
+                          textCapitalization: TextCapitalization.words,
+                          textInputAction: TextInputAction.done,
+                          decoration: const InputDecoration(
+                            labelText: 'School (optional)',
+                          ),
+                          onChanged: (_) => setState(() {}),
+                          validator: (value) => value!.trim().length > 120
+                              ? 'Use 120 characters or fewer.'
+                              : null,
+                        ),
+                      ],
+                    ),
                   ),
-                FiloButton(
-                  label: _busy
-                      ? 'Saving…'
-                      : _error == null
-                      ? 'Save'
-                      : 'Retry',
-                  busy: _busy,
-                  onPressed:
-                      !_busy && !_picking && (_confirmed != null || enabled)
-                      ? _save
-                      : null,
-                ),
-              ],
+                  const SizedBox(height: FiloSpacing.s20),
+                  Semantics(
+                    header: true,
+                    child: Text(
+                      'Account details',
+                      style: Theme.of(context).textTheme.titleLarge,
+                    ),
+                  ),
+                  const SizedBox(height: FiloSpacing.s12),
+                  FiloPanel(
+                    child: Column(
+                      children: [
+                        _locked('Email', _baseline.email ?? 'Not available'),
+                        const Divider(height: 1),
+                        _locked('Role', _baseline.role.label),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(height: FiloSpacing.screen),
+                  if (!online && _confirmed == null)
+                    const Padding(
+                      padding: EdgeInsets.only(bottom: FiloSpacing.s16),
+                      child: Text(
+                        "You're offline. Connect to save your changes.",
+                      ),
+                    ),
+                  if (_error != null)
+                    Padding(
+                      padding: const EdgeInsets.only(bottom: FiloSpacing.s16),
+                      child: Semantics(liveRegion: true, child: Text(_error!)),
+                    ),
+                  FiloButton(
+                    label: _busy
+                        ? 'Saving…'
+                        : _error == null
+                        ? 'Save'
+                        : 'Retry',
+                    busy: _busy,
+                    onPressed:
+                        !_busy && !_picking && (_confirmed != null || enabled)
+                        ? _save
+                        : null,
+                  ),
+                ],
+              ),
             ),
           ),
         ),

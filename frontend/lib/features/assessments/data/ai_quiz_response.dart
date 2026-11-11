@@ -14,8 +14,9 @@ List<QuizQuestion> decodeAiQuestions(
   dynamic value,
   Map<String, int> requested,
 ) {
-  if (value is! Map || value['questions'] is! List)
+  if (value is! Map || value['questions'] is! List) {
     throw const FormatException();
+  }
   final questions = <QuizQuestion>[];
   final counts = {for (final type in aiQuestionTypes) type: 0};
   for (final item in value['questions'] as List) {

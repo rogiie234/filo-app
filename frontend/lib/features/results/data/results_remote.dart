@@ -21,13 +21,18 @@ class SupabaseResultsRemote implements ResultsRemote {
   static const _timeout = Duration(seconds: 20);
 
   Future<List<ResultJson>> _pages(
-    Future<List<ResultJson>> Function(int, int) query,
+    PostgrestFilterBuilder<List<ResultJson>> query,
   ) async {
     final all = <ResultJson>[];
-    for (var offset = 0; ; offset += 200) {
-      final page = await query(offset, offset + 199).timeout(_timeout);
+    String? after;
+    while (true) {
+      final page = await (after == null ? query : query.gt('id', after))
+          .order('id', ascending: true)
+          .limit(200)
+          .timeout(_timeout);
+      if (page.isEmpty) return all;
       all.addAll(page);
-      if (page.length < 200) return all;
+      after = page.last['id'] as String;
     }
   }
 
@@ -89,50 +94,39 @@ class SupabaseResultsRemote implements ResultsRemote {
       throw resultsUnavailable;
     }
     return _pages(
-      (start, end) async => await client
+      client
           .from('class_members')
           .select(
             '*,profile:profiles!class_members_student_id_fkey(id,display_name,avatar_path)',
           )
           .eq('class_id', classId)
-          .eq('status', 'active')
-          .order('id')
-          .range(start, end),
+          .eq('status', 'active'),
     );
   }
 
   @override
   Future<ResultJson> monitoring(ResultJson quiz) async {
     final sessions = await _pages(
-      (start, end) async => await client
+      client
           .from('exam_sessions')
           .select(
             '*,profile:profiles!exam_sessions_student_id_fkey(id,display_name,avatar_path)',
           )
-          .eq('quiz_id', quiz['id'])
-          .order('id')
-          .range(start, end),
+          .eq('quiz_id', quiz['id']),
     );
     final roster = await members(quiz['class_id'] as String);
     final chances = await _pages(
-      (start, end) async => await client
-          .from('second_chances')
-          .select()
-          .eq('quiz_id', quiz['id'])
-          .order('id')
-          .range(start, end),
+      client.from('second_chances').select().eq('quiz_id', quiz['id']),
     );
     final essays = await _pages(
-      (start, end) async => await client
+      client
           .from('exam_answers')
           .select(
-            'session_id,text_answer,points_awarded,questions!inner(type),exam_sessions!inner(quiz_id,status)',
+            'id,session_id,text_answer,points_awarded,questions!inner(type),exam_sessions!inner(quiz_id,status)',
           )
           .eq('questions.type', 'essay')
           .eq('exam_sessions.quiz_id', quiz['id'])
-          .inFilter('exam_sessions.status', ['submitted', 'auto_submitted'])
-          .order('id')
-          .range(start, end),
+          .inFilter('exam_sessions.status', ['submitted', 'auto_submitted']),
     );
     return {
       'quiz': quiz,
@@ -156,20 +150,13 @@ class SupabaseResultsRemote implements ResultsRemote {
         .timeout(_timeout);
     if (session == null) throw resultsUnavailable;
     final questions = await _pages(
-      (start, end) async => await client
+      client
           .from('questions')
           .select('*,question_options(*),answer_keys(*)')
-          .eq('quiz_id', quiz['id'])
-          .order('id')
-          .range(start, end),
+          .eq('quiz_id', quiz['id']),
     );
     final answers = await _pages(
-      (start, end) async => await client
-          .from('exam_answers')
-          .select()
-          .eq('session_id', sessionId)
-          .order('id')
-          .range(start, end),
+      client.from('exam_answers').select().eq('session_id', sessionId),
     );
     final byQuestion = {for (final a in answers) a['question_id']: a};
     final byId = {for (final q in questions) q['id']: q};
@@ -211,24 +198,20 @@ class SupabaseResultsRemote implements ResultsRemote {
   }
 
   Future<List<ResultJson>> classQuizzes(String classId) => _pages(
-    (start, end) async => await client
+    client
         .from('quizzes')
         .select()
         .eq('class_id', classId)
         .eq('status', 'published')
-        .isFilter('deleted_at', null)
-        .order('id')
-        .range(start, end),
+        .isFilter('deleted_at', null),
   );
 
   Future<List<ResultJson>> classAttempts(String classId) => _pages(
-    (start, end) async => await client
+    client
         .from('exam_sessions')
         .select('*,quizzes!inner(class_id,deleted_at)')
         .eq('quizzes.class_id', classId)
         .isFilter('quizzes.deleted_at', null)
-        .neq('status', 'voided')
-        .order('id')
-        .range(start, end),
+        .neq('status', 'voided'),
   );
 }

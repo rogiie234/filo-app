@@ -17,8 +17,9 @@ void main() {
     binding.defaultBinaryMessenger.setMockMethodCallHandler(
       SystemChannels.platform,
       (call) async {
-        if (call.method == 'HapticFeedback.vibrate')
+        if (call.method == 'HapticFeedback.vibrate') {
           calls.add(call.arguments as String);
+        }
         return null;
       },
     );
@@ -43,6 +44,83 @@ void main() {
         child: FiloMotionScope(child: Scaffold(body: child)),
       ),
     ),
+  );
+
+  testWidgets(
+    'card presses stay unscaled with reduced motion or hidden tickers',
+    (tester) async {
+      var taps = 0;
+      for (final reduced in [false, true]) {
+        for (final ticker in [false, true]) {
+          await tester.pumpWidget(
+            app(
+              TickerMode(
+                enabled: ticker,
+                child: FiloCard(
+                  onTap: () => taps++,
+                  child: const Text('Motion card'),
+                ),
+              ),
+              reduced: reduced,
+            ),
+          );
+          final gesture = await tester.startGesture(
+            tester.getCenter(find.text('Motion card')),
+          );
+          await tester.pump();
+          await tester.pump(const Duration(milliseconds: 100));
+          final transform = find
+              .descendant(
+                of: find.byType(FiloCardTap),
+                matching: find.byType(Transform),
+              )
+              .first;
+          expect(
+            tester.widget<Transform>(transform).transform.storage[0],
+            closeTo(!reduced && ticker ? .98 : 1, .001),
+          );
+          final before = taps;
+          await gesture.up();
+          await tester.pump();
+          expect(taps, before + 1);
+          await tester.pumpWidget(const SizedBox());
+        }
+      }
+      expect(taps, 4);
+      expect(tester.takeException(), isNull);
+    },
+  );
+
+  testWidgets(
+    'disabling a pressed card resets feedback without activating it',
+    (tester) async {
+      var taps = 0;
+      Widget sample(bool enabled) => app(
+        FiloCard(
+          onTap: enabled ? () => taps++ : null,
+          child: const Text('Disable card'),
+        ),
+      );
+      await tester.pumpWidget(sample(true));
+      final gesture = await tester.startGesture(
+        tester.getCenter(find.text('Disable card')),
+      );
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 100));
+      await tester.pumpWidget(sample(false));
+      final transform = find
+          .descendant(
+            of: find.byType(FiloCardTap),
+            matching: find.byType(Transform),
+          )
+          .first;
+      expect(tester.widget<Transform>(transform).transform.storage[0], 1);
+      await gesture.up();
+      await tester.pump();
+      expect(taps, 0);
+      await tester.pumpWidget(const SizedBox());
+      expect(tester.takeException(), isNull);
+    },
   );
 
   testWidgets(
@@ -107,7 +185,7 @@ void main() {
           child: FiloMotionTween(
             value: target,
             duration: const Duration(seconds: 1),
-            builder: (_, current, __) {
+            builder: (_, current, _) {
               value = current;
               return const SizedBox();
             },

@@ -155,8 +155,9 @@ class FileTextCache {
               variables: [Variable(localId)],
             )
             .get())
-        .isEmpty)
+        .isEmpty) {
       return;
+    }
     await db.customStatement(
       'DELETE FROM ai_question_contexts WHERE question_key=? AND question_key<>?',
       [serverId, localId],
@@ -182,8 +183,9 @@ class FileTextCache {
     final texts = <Map<String, String>>[];
     for (final source in context.sources) {
       final result = await find(source.key);
-      if (result == null || result.characterCount < source.characters)
+      if (result == null || result.characterCount < source.characters) {
         return null;
+      }
       texts.add({
         'file_name': source.name,
         'text': String.fromCharCodes(result.text.runes.take(source.characters)),

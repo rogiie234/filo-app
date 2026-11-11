@@ -51,70 +51,80 @@ final studyNotebooksProvider = StreamProvider.autoDispose<List<StudyNotebook>>((
   ref,
 ) async* {
   final repo = await ref.watch(notebookRepositoryProvider.future);
-  if (repo == null || !ref.mounted)
+  if (repo == null || !ref.mounted) {
     throw StateError('No verified account database');
+  }
   yield* repo.watchAll();
 });
 final studySourcesProvider = StreamProvider.autoDispose
     .family<List<StudySource>, String>((ref, id) async* {
       final repo = await ref.watch(notebookSourceRepositoryProvider.future);
-      if (repo == null || !ref.mounted)
+      if (repo == null || !ref.mounted) {
         throw StateError('No verified account database');
+      }
       yield* repo.watch(id);
     });
 final studyChatsProvider = StreamProvider.autoDispose
     .family<List<StudyChat>, String>((ref, id) async* {
       final repo = await ref.watch(studyChatRepositoryProvider.future);
-      if (repo == null || !ref.mounted)
+      if (repo == null || !ref.mounted) {
         throw StateError('No verified account database');
+      }
       yield* repo.watch(id);
     });
 final studyMessagesProvider = StreamProvider.autoDispose
     .family<List<StudyMessage>, String>((ref, id) async* {
       final repo = await ref.watch(studyChatRepositoryProvider.future);
-      if (repo == null || !ref.mounted)
+      if (repo == null || !ref.mounted) {
         throw StateError('No verified account database');
+      }
       yield* repo.watchMessages(id);
     });
 final studySummaryProvider = StreamProvider.autoDispose
     .family<StudySummary?, String>((ref, id) async* {
       final repo = await ref.watch(studySummaryRepositoryProvider.future);
-      if (repo == null || !ref.mounted)
+      if (repo == null || !ref.mounted) {
         throw StateError('No verified account database');
+      }
       yield* repo.watch(id);
     });
 final studyDecksProvider = StreamProvider.autoDispose
     .family<List<StudyDeck>, String>((ref, id) async* {
       final repo = await ref.watch(studyDeckRepositoryProvider.future);
-      if (repo == null || !ref.mounted)
+      if (repo == null || !ref.mounted) {
         throw StateError('No verified account database');
+      }
       yield* repo.watch(id);
     });
 final studyCardsProvider = StreamProvider.autoDispose
     .family<List<StudyCard>, String>((ref, id) async* {
       final repo = await ref.watch(studyDeckRepositoryProvider.future);
-      if (repo == null || !ref.mounted)
+      if (repo == null || !ref.mounted) {
         throw StateError('No verified account database');
+      }
       yield* repo.watchCards(id);
     });
 final studyQuizzesProvider = StreamProvider.autoDispose
     .family<List<StudyQuiz>, String>((ref, id) async* {
       final repo = await ref.watch(studyQuizRepositoryProvider.future);
-      if (repo == null || !ref.mounted)
+      if (repo == null || !ref.mounted) {
         throw StateError('No verified account database');
+      }
       yield* repo.watch(id);
     });
 final studyQuestionsProvider = StreamProvider.autoDispose
     .family<List<StudyQuestion>, String>((ref, id) async* {
       final repo = await ref.watch(studyQuizRepositoryProvider.future);
-      if (repo == null || !ref.mounted)
+      if (repo == null || !ref.mounted) {
         throw StateError('No verified account database');
+      }
       yield* repo.watchQuestions(id);
     });
 final studyAttemptsProvider = StreamProvider.autoDispose
     .family<List<StudyAttempt>, String>((ref, id) async* {
       final repo = await ref.watch(studyAttemptRepositoryProvider.future);
-      if (repo == null || !ref.mounted)
+      if (repo == null || !ref.mounted) {
         throw StateError('No verified account database');
+      }
       yield* repo.watch(id);
     });

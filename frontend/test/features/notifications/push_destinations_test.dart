@@ -237,6 +237,8 @@ void main() {
     'cross class',
     'transport',
     'late account',
+    'late preparation',
+    'attachment failure',
   ]) {
     test('authorized canonical row/cache and read semantics: $mode', () async {
       final db = AppDatabase(NativeDatabase.memory());
@@ -248,17 +250,22 @@ void main() {
         ),
       );
       var current = true;
+      final requests = <String>[];
       final gate = Completer<void>();
       final started = Completer<void>();
-      var prepared = false;
       final client = SupabaseClient(
         'https://example.supabase.co',
         'test-key',
         httpClient: MockClient((request) async {
           final table = request.url.pathSegments.last;
-          if (mode == 'transport')
+          requests.add(table);
+          if (mode == 'attachment failure' && table == 'post_attachments')
+            throw StateError('Attachment load failed');
+          if (mode == 'transport') {
             throw StateError('synthetic transport failure');
-          if (mode == 'late account' && table == 'notifications') {
+          }
+          if (mode == 'late account' && table == 'notifications' ||
+              mode == 'late preparation' && table == 'post_attachments') {
             if (!started.isCompleted) started.complete();
             await gate.future;
           }
@@ -279,15 +286,71 @@ void main() {
           } else if (table == 'posts') {
             data = mode == 'missing'
                 ? null
-                : {'id': targetId, 'class_id': classId, 'kind': 'assignment'};
+                : {
+                    'id': targetId,
+                    'class_id': classId,
+                    'kind': 'assignment',
+                    'author_id': classId,
+                    'title': 'Target only',
+                    'accept_late': true,
+                    'allow_files': true,
+                    'max_files': 5,
+                    'created_at': stamp,
+                    'updated_at': stamp,
+                  };
+            expect(request.url.queryParameters['id'], 'eq.$targetId');
           } else if (table == 'classes') {
-            data = {'id': classId, 'owner_id': classId};
+            data = {
+              'id': classId,
+              'owner_id': classId,
+              'course': 'Course',
+              'section': 'A',
+              'school_year': '2026',
+              'join_code': 'CODE01',
+              'created_at': stamp,
+              'updated_at': stamp,
+            };
+            expect(request.url.queryParameters['id'], 'eq.$classId');
           } else if (table == 'class_members') {
+            expect(request.url.queryParameters['deleted_at'], 'is.null');
             data = mode == 'denied'
                 ? []
                 : [
-                    {'id': targetId},
+                    {
+                      'id': targetId,
+                      'class_id': classId,
+                      'student_id': userId,
+                      'status': 'active',
+                      'requested_at': stamp,
+                      'created_at': stamp,
+                      'updated_at': stamp,
+                    },
                   ];
+          } else if (table == 'profiles') {
+            expect(request.url.queryParameters['id'], 'in.($classId)');
+            data = [
+              {
+                'id': classId,
+                'role': 'instructor',
+                'display_name': 'Owner',
+                'created_at': stamp,
+                'updated_at': stamp,
+              },
+            ];
+          } else if (table == 'post_attachments') {
+            expect(request.url.queryParameters['post_id'], 'eq.$targetId');
+            data = [
+              {
+                'id': noticeId,
+                'post_id': targetId,
+                'kind': 'link',
+                'name': 'Attachment',
+                'url': 'https://example.com',
+                'sort_order': 0,
+                'created_at': stamp,
+                'updated_at': stamp,
+              },
+            ];
           }
           return http.Response(
             jsonEncode(data),
@@ -305,20 +368,35 @@ void main() {
         userId: userId,
         online: () => true,
         isCurrent: () => current,
-        prepare: (_) async {
-          prepared = true;
-        },
       );
       try {
         final resolution = repository.resolve(noticeId, instructor: false);
-        if (mode == 'late account') {
+        if (mode == 'late account' || mode == 'late preparation') {
           await started.future;
           current = false;
           gate.complete();
         }
         if (mode == 'online') {
           expect((await resolution).screen, NotificationScreen.assignment);
-          expect(prepared, isTrue);
+          expect(requests, [
+            'notifications',
+            'posts',
+            'classes',
+            'class_members',
+            'profiles',
+            'post_attachments',
+          ]);
+          expect(
+            (await db.select(db.cachePostAttachments).get()).single.postId,
+            targetId,
+          );
+          expect(await db.select(db.syncState).get(), isEmpty);
+          expect((await db.select(db.cachePosts).get()).single.id, targetId);
+          expect((await db.select(db.cacheClasses).get()).single.id, classId);
+          expect(
+            (await db.select(db.cacheClassMembers).get()).single.status,
+            'active',
+          );
           expect(
             (await db.select(db.cacheNotifications).get()).single.readAt,
             isNull,
@@ -346,7 +424,16 @@ void main() {
           );
         } else {
           await expectLater(resolution, throwsStateError);
-          expect(await db.select(db.cacheNotifications).get(), isEmpty);
+          expect(await db.select(db.cachePosts).get(), isEmpty);
+          expect(await db.select(db.cacheClasses).get(), isEmpty);
+          if (mode == 'late preparation' || mode == 'attachment failure') {
+            expect(
+              (await db.select(db.cacheNotifications).get()).single.readAt,
+              isNull,
+            );
+          } else {
+            expect(await db.select(db.cacheNotifications).get(), isEmpty);
+          }
         }
       } finally {
         sync.dispose();
@@ -370,7 +457,6 @@ void main() {
           userId: userId,
           online: () => false,
           isCurrent: () => true,
-          prepare: (_) async {},
         );
         await expectLater(
           repository.resolve(noticeId, instructor: false),
@@ -444,7 +530,6 @@ void main() {
         userId: userId,
         online: () => false,
         isCurrent: () => true,
-        prepare: (_) async => fail('Offline resolution must not load remotely'),
       );
       expect(
         (await repository.resolve(noticeId, instructor: false)).screen,

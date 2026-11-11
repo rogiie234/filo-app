@@ -74,7 +74,7 @@ void main() {
         db = AppDatabase(NativeDatabase.memory());
         guard = AiRequestGuard();
         client = StudentAiClient(
-          invoke: (_, __, ___) async =>
+          invoke: (_, _, _) async =>
               throw StateError('Read-only flow must not dispatch'),
           loadSources: (_) async => [],
           isOnline: () => false,
@@ -150,8 +150,9 @@ void main() {
             await tester.tap(find.text(entry.key));
             await settleStudy(tester);
             expect(find.text(entry.value), findsOneWidget);
-            if (entry.key == 'Practice quiz')
+            if (entry.key == 'Practice quiz') {
               expect(find.text('Generate practice quiz'), findsOneWidget);
+            }
             await tester.pageBack();
             await tester.pumpAndSettle();
           }

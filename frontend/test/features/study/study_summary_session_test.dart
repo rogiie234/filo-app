@@ -52,7 +52,7 @@ void main() {
     calls = 0;
     submitted = null;
     guard = AiRequestGuard();
-    invoke = (_, body, __) async => {
+    invoke = (_, body, _) async => {
       'answer': '**Overview**\n- Main idea',
       'mode': 'files',
       'truncated': false,
@@ -99,7 +99,7 @@ void main() {
     expect(submitted!['messages'], isEmpty);
     expect(session.pending, isNull);
     now = now.add(const Duration(days: 1));
-    invoke = (_, __, ___) async => {
+    invoke = (_, _, _) async => {
       'answer': 'Replacement',
       'mode': 'files',
       'truncated': false,
@@ -117,7 +117,7 @@ void main() {
     () async {
       await repo.save(notebook, 'Old summary');
       final response = Completer<dynamic>(), started = Completer<void>();
-      invoke = (_, __, ___) {
+      invoke = (_, _, _) {
         started.complete();
         return response.future;
       };
@@ -204,7 +204,7 @@ void main() {
       'AI_UNAVAILABLE',
       'AI_BLOCKED',
     ]) {
-      invoke = (_, __, ___) async => {
+      invoke = (_, _, _) async => {
         'error': {'code': code, 'message': 'PRIVATE'},
       };
       await session.generate();
@@ -214,17 +214,17 @@ void main() {
       );
       expect((await saved())!.content, 'Old summary');
     }
-    invoke = (_, __, ___) async => throw StateError('PRIVATE');
+    invoke = (_, _, _) async => throw StateError('PRIVATE');
     await session.generate();
     expect(session.error, studyAiMessages['UNKNOWN']);
-    invoke = (_, __, ___) async => {'answer': 3};
+    invoke = (_, _, _) async => {'answer': 3};
     await session.generate();
     expect(session.error, studyAiMessages['AI_BAD_OUTPUT']);
   });
 
   test('account change while transport waits discards the result', () async {
     final response = Completer<dynamic>(), started = Completer<void>();
-    invoke = (_, __, ___) {
+    invoke = (_, _, _) {
       started.complete();
       return response.future;
     };
@@ -287,7 +287,7 @@ void main() {
       session.dispose();
       final response = Completer<dynamic>();
       final timed = StudentAiClient(
-        invoke: (_, __, ___) => response.future,
+        invoke: (_, _, _) => response.future,
         loadSources: client.loadSources,
         isOnline: () => true,
         currentAccount: () => 'owner',

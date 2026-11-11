@@ -11,6 +11,7 @@ class ClassBanner extends StatelessWidget {
   const ClassBanner({
     super.key,
     required this.section,
+    this.course,
     required this.instructor,
     this.color = filoDefaultBanner,
     this.image,
@@ -19,6 +20,7 @@ class ClassBanner extends StatelessWidget {
   });
 
   final String section, instructor;
+  final String? course;
   final int color;
   final ImageProvider? image;
   final Widget? avatar;
@@ -133,7 +135,7 @@ class ClassBanner extends StatelessWidget {
                         children: [
                           Expanded(
                             child: Text(
-                              section,
+                              course ?? section,
                               style: Theme.of(context).textTheme.headlineMedium!
                                   .copyWith(color: ink),
                             ),
@@ -152,6 +154,14 @@ class ClassBanner extends StatelessWidget {
                           ),
                         ],
                       ),
+                      if (course != null) ...[
+                        const SizedBox(height: FiloSpacing.s8),
+                        Text(
+                          section,
+                          style: Theme.of(context).textTheme.bodyMedium!
+                              .copyWith(color: ink),
+                        ),
+                      ],
                       SizedBox(
                         height: compact ? FiloSpacing.s8 : FiloSpacing.s20,
                       ),

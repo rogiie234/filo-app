@@ -39,6 +39,7 @@ class ClassScreen extends ConsumerStatefulWidget {
 
 class _ClassScreenState extends ConsumerState<ClassScreen> {
   int _tab = 0;
+  String? _streamFilter;
   String? _openedSection;
   bool _checkingAccess = false;
 
@@ -122,200 +123,195 @@ class _ClassScreenState extends ConsumerState<ClassScreen> {
               0
         : 0;
     final classAction = SafeArea(
+      top: false,
       bottom: false,
       child: Padding(
-        padding: const EdgeInsets.fromLTRB(
-          FiloSpacing.screen,
-          FiloSpacing.s12,
-          FiloSpacing.screen,
-          FiloSpacing.s8,
-        ),
-        child: FiloButton(
-          label: _tab == 0 ? 'Create post' : 'New assessment',
-          minHeight: 64,
-          icon: FiloIcons.add,
-          onPressed:
-              room.archived ||
-                  (live &&
-                      (ref.watch(connectivityProvider).asData?.value != true))
-              ? null
-              : () {
-                  if (live && _tab == 0) {
-                    Navigator.of(context).push(
-                      MaterialPageRoute<void>(
-                        builder: (_) => CreatePostScreen(classId: room.id),
-                      ),
-                    );
-                  } else if (live) {
-                    Navigator.of(context).push(
-                      MaterialPageRoute<void>(
-                        builder: (_) => AssessmentFormScreen(classId: room.id),
-                      ),
-                    );
-                  } else {
-                    context.push(
-                      '/classes/${room.id}/${_tab == 0 ? 'post/new' : 'assessment/new'}',
-                    );
-                  }
-                },
+        padding: const EdgeInsets.fromLTRB(24, 8, 24, 12),
+        child: Align(
+          alignment: Alignment.centerRight,
+          child: SizedBox(
+            width: 72,
+            child: FiloButton(
+              label: _tab == 0 ? 'Create post' : 'New assessment',
+              iconOnly: true,
+              minHeight: 72,
+              icon: FiloIcons.add,
+              onPressed:
+                  room.archived ||
+                      (live &&
+                          (ref.watch(connectivityProvider).asData?.value !=
+                              true))
+                  ? null
+                  : () {
+                      if (live && _tab == 0) {
+                        Navigator.of(context).push(
+                          MaterialPageRoute<void>(
+                            builder: (_) => CreatePostScreen(classId: room.id),
+                          ),
+                        );
+                      } else if (live) {
+                        Navigator.of(context).push(
+                          MaterialPageRoute<void>(
+                            builder: (_) =>
+                                AssessmentFormScreen(classId: room.id),
+                          ),
+                        );
+                      } else {
+                        context.push(
+                          '/classes/${room.id}/${_tab == 0 ? 'post/new' : 'assessment/new'}',
+                        );
+                      }
+                    },
+            ),
+          ),
         ),
       ),
     );
-    return Scaffold(
-      appBar: AppBar(
-        toolbarHeight:
-            64.0 +
-            (MediaQuery.textScalerOf(context).scale(20) - 20).clamp(
-              0,
-              double.infinity,
-            ),
-        titleSpacing: FiloSpacing.s8,
-        elevation: 0,
-        scrolledUnderElevation: 0,
-        leading: IconButton(
-          tooltip: 'Back to classes',
-          icon: const FiloIcon(FiloIcons.back),
-          onPressed: () => live ? Navigator.pop(context) : context.pop(),
-        ),
-        title: Text(
-          const ['Stream', 'Classwork', 'Class files'][_tab],
-          style: Theme.of(context).textTheme.headlineMedium
-              ?.copyWith(fontSize: 24),
-        ),
-        actions: [
-          Padding(
-            padding: const EdgeInsets.only(right: FiloSpacing.s12),
-            child: IconButton.filledTonal(
-              tooltip: 'Class menu',
-              style: IconButton.styleFrom(
-                minimumSize: const Size(48, 48),
-                foregroundColor: Theme.of(context)
-                    .colorScheme
-                    .onPrimaryContainer,
-                backgroundColor: Theme.of(context).colorScheme.primaryContainer,
+    return EntryBackground(
+      verification: true,
+      breeze: true,
+      variation: 1,
+      child: Scaffold(
+        backgroundColor: Colors.transparent,
+        appBar: AppBar(
+          backgroundColor: Colors.transparent,
+          surfaceTintColor: Colors.transparent,
+          toolbarHeight:
+              64.0 +
+              (MediaQuery.textScalerOf(context).scale(20) - 20).clamp(
+                0,
+                double.infinity,
               ),
-              icon: Badge(
-                isLabelVisible: pendingCount > 0,
-                backgroundColor: Theme.of(context).colorScheme.error,
-                child: const FiloIcon(FiloIcons.moreVertical),
-              ),
-              onPressed: () => _menu(room, live, instructor, pendingCount),
-            ),
+          titleSpacing: FiloSpacing.s8,
+          elevation: 0,
+          scrolledUnderElevation: 0,
+          leading: IconButton(
+            tooltip: 'Back to classes',
+            icon: const FiloIcon(FiloIcons.back),
+            onPressed: () => live ? Navigator.pop(context) : context.pop(),
           ),
-        ],
-      ),
-      body: Stack(
-        fit: StackFit.expand,
-        children: [
-          if (instructor)
-            const Positioned.fill(
-              child: EntryBackground(verification: true, breeze: true),
-            ),
-          Column(
-            children: [
-              if (room.archived)
-                const Padding(
-                  padding: EdgeInsets.all(FiloSpacing.s12),
-                  child: Text('This class is archived.'),
-                ),
-              if (live && ref.watch(classSyncProvider).hasError)
-                TextButton(
-                  onPressed: () =>
-                      ref.read(classSyncProvider.notifier).refresh(),
-                  child: const Text('Could not refresh. Retry'),
-                ),
-              Expanded(
-                child: IndexedStack(
-                  index: _tab,
-                  children: [
-                    _refresh(_stream(state, room)),
-                    if (live && instructor)
-                      InstructorClassworkList(
-                        classId: room.id,
-                        showHeading: false,
-                        archived: room.archived,
-                        active: _tab == 1,
-                      )
-                    else
-                      ClassworkList(
-                        classId: room.id,
-                        showHeading: false,
-                        instructor: instructor,
-                        live: live,
-                        previewPosts: state.posts,
-                        onOpen: _openStreamPost,
-                      ),
-                    _refresh(
-                      ClassFiles(
-                        showHeading: false,
-                        hasSamples: !live && room.id == 'it119',
-                        classId: live ? room.id : null,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ],
+          title: Text(
+            const ['Stream', 'Classwork', 'Class files'][_tab],
+            style: Theme.of(context).textTheme.headlineMedium
+                ?.copyWith(fontSize: 24),
           ),
-        ],
-      ),
-      floatingActionButtonLocation: FloatingActionButtonLocation.centerFloat,
-      floatingActionButtonAnimator: FloatingActionButtonAnimator.noAnimation,
-      floatingActionButton: instructor && _tab != 2 ? classAction : null,
-      bottomNavigationBar: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          if (live &&
-              instructor &&
-              _tab != 2 &&
-              (room.archived ||
-                  ref.watch(connectivityProvider).asData?.value != true))
+          actions: [
             Padding(
-              padding: const EdgeInsets.symmetric(
-                horizontal: FiloSpacing.screen,
-              ),
-              child: Text(
-                room.archived
-                    ? 'This class is archived and read-only.'
-                    : _tab == 0
-                    ? (ref.watch(connectivityProvider).asData?.value == true
-                          ? ''
-                          : 'Connect to the internet to post or upload files.')
-                    : (ref.watch(connectivityProvider).asData?.value == true
-                          ? ''
-                          : 'Connect to the internet to create an assessment.'),
+              padding: const EdgeInsets.only(right: FiloSpacing.s12),
+              child: IconButton.filledTonal(
+                tooltip: 'Class menu',
+                style: IconButton.styleFrom(
+                  minimumSize: const Size(48, 48),
+                  foregroundColor: Theme.of(context)
+                      .colorScheme
+                      .onPrimaryContainer,
+                  backgroundColor: Theme.of(context)
+                      .colorScheme
+                      .primaryContainer,
+                ),
+                icon: Badge(
+                  isLabelVisible: pendingCount > 0,
+                  backgroundColor: Theme.of(context).colorScheme.error,
+                  child: const FiloIcon(FiloIcons.moreVertical),
+                ),
+                onPressed: () => _menu(room, live, instructor, pendingCount),
               ),
             ),
-          NavigationBar(
-            height:
-                (80 +
-                        24 *
-                            (MediaQuery.textScalerOf(context).scale(14) / 14 -
-                                1) /
-                            .3)
-                    .clamp(80.0, 104.0)
-                    .toDouble(),
-            selectedIndex: _tab,
-            onDestinationSelected: (value) => setState(() => _tab = value),
-            destinations: const [
-              NavigationDestination(
-                icon: FiloIcon(FiloIcons.stream),
-                selectedIcon: FiloIcon(FiloIcons.streamSelected),
-                label: 'Stream',
+          ],
+        ),
+        body: Column(
+          children: [
+            if (room.archived)
+              const Padding(
+                padding: EdgeInsets.all(FiloSpacing.s12),
+                child: Text('This class is archived.'),
               ),
-              NavigationDestination(
-                icon: FiloIcon(FiloIcons.assessment),
-                selectedIcon: FiloIcon(FiloIcons.assessmentSelected),
-                label: 'Classwork',
+            if (live && ref.watch(classSyncProvider).hasError)
+              TextButton(
+                onPressed: () => ref.read(classSyncProvider.notifier).refresh(),
+                child: const Text('Could not refresh. Retry'),
               ),
-              NavigationDestination(
-                icon: FiloIcon(FiloIcons.folder),
-                selectedIcon: FiloIcon(FiloIcons.folderSelected),
-                label: 'Files',
+            Expanded(
+              child: IndexedStack(
+                index: _tab,
+                children: [
+                  _refresh(_stream(state, room)),
+                  if (live && instructor)
+                    InstructorClassworkList(
+                      classId: room.id,
+                      showHeading: false,
+                      archived: room.archived,
+                      active: _tab == 1,
+                    )
+                  else
+                    ClassworkList(
+                      classId: room.id,
+                      showHeading: false,
+                      instructor: instructor,
+                      live: live,
+                      previewPosts: state.posts,
+                      onOpen: _openStreamPost,
+                    ),
+                  _refresh(
+                    ClassFiles(
+                      showHeading: false,
+                      hasSamples: !live && room.id == 'it119',
+                      classId: live ? room.id : null,
+                    ),
+                  ),
+                ],
               ),
-            ],
-          ),
-        ],
+            ),
+          ],
+        ),
+        bottomNavigationBar: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            if (live &&
+                instructor &&
+                _tab != 2 &&
+                (room.archived ||
+                    ref.watch(connectivityProvider).asData?.value != true))
+              Padding(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: FiloSpacing.screen,
+                ),
+                child: Text(
+                  room.archived
+                      ? 'This class is archived and read-only.'
+                      : _tab == 0
+                      ? (ref.watch(connectivityProvider).asData?.value == true
+                            ? ''
+                            : 'Connect to the internet to post or upload files.')
+                      : (ref.watch(connectivityProvider).asData?.value == true
+                            ? ''
+                            : 'Connect to the internet to create an assessment.'),
+                ),
+              ),
+            if (instructor && _tab != 2) classAction,
+            FiloNavigationBar(
+              selectedIndex: _tab,
+              onDestinationSelected: (value) => setState(() => _tab = value),
+              destinations: const [
+                NavigationDestination(
+                  icon: FiloIcon(FiloIcons.stream),
+                  selectedIcon: FiloIcon(FiloIcons.streamSelected),
+                  label: 'Stream',
+                ),
+                NavigationDestination(
+                  icon: FiloIcon(FiloIcons.assessment),
+                  selectedIcon: FiloIcon(FiloIcons.assessmentSelected),
+                  label: 'Classwork',
+                ),
+                NavigationDestination(
+                  icon: FiloIcon(FiloIcons.folder),
+                  selectedIcon: FiloIcon(FiloIcons.folderSelected),
+                  label: 'Files',
+                ),
+              ],
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -323,6 +319,7 @@ class _ClassScreenState extends ConsumerState<ClassScreen> {
   bool _busy = false;
 
   void _menu(ClassRoom room, bool live, bool instructor, int pendingCount) {
+    var copyingCode = false;
     showFiloBottomSheet<void>(
       title: 'Class options',
       context: context,
@@ -390,19 +387,19 @@ class _ClassScreenState extends ConsumerState<ClassScreen> {
                             icon: const FiloIcon(FiloIcons.copy, size: 20),
                             label: const Text('Copy code'),
                             onPressed: () async {
+                              if (copyingCode) return;
+                              copyingCode = true;
+                              var message = 'Class code copied.';
                               try {
                                 await Clipboard.setData(
                                   ClipboardData(text: room.joinCode!),
                                 );
-                                if (sheet.mounted)
-                                  showMessage(sheet, 'Class code copied.');
                               } catch (_) {
-                                if (sheet.mounted)
-                                  showMessage(
-                                    sheet,
-                                    'Could not copy the class code. Try again.',
-                                  );
+                                message =
+                                    'Could not copy the class code. Try again.';
                               }
+                              copyingCode = false;
+                              if (sheet.mounted) showMessage(sheet, message);
                             },
                           ),
                           TextButton.icon(
@@ -494,8 +491,9 @@ class _ClassScreenState extends ConsumerState<ClassScreen> {
     if (_sharingCode ||
         room.archived ||
         room.joinCode?.isNotEmpty != true ||
-        widget.profile?.role != AccountRole.instructor)
+        widget.profile?.role != AccountRole.instructor) {
       return;
+    }
     _sharingCode = true;
     try {
       final box = sheet.findRenderObject() as RenderBox?;
@@ -510,8 +508,9 @@ class _ClassScreenState extends ConsumerState<ClassScreen> {
         ),
       );
     } catch (_) {
-      if (sheet.mounted)
+      if (sheet.mounted) {
         showMessage(sheet, 'Could not open sharing. Try again.');
+      }
     } finally {
       _sharingCode = false;
     }
@@ -795,7 +794,7 @@ class _ClassScreenState extends ConsumerState<ClassScreen> {
         );
 
   Widget _stream(PreviewState state, ClassRoom room) {
-    final posts =
+    final allPosts =
         state.posts
             .where(
               (post) =>
@@ -808,10 +807,15 @@ class _ClassScreenState extends ConsumerState<ClassScreen> {
             );
             return date != 0 ? date : b.id.compareTo(a.id);
           });
+    final posts = allPosts
+        .where(
+          (post) => _streamFilter == null || post.postType == _streamFilter,
+        )
+        .toList();
     final live = widget.profile != null;
     final cached = live ? ref.watch(streamPostsProvider(room.id)) : null;
     final sync = live ? ref.watch(postSyncProvider(room.id)) : null;
-    final confirmation = live && posts.isEmpty
+    final confirmation = live && allPosts.isEmpty
         ? ref.watch(streamLoadedProvider(room.id))
         : null;
     final loaded =
@@ -822,14 +826,74 @@ class _ClassScreenState extends ConsumerState<ClassScreen> {
             !sync.hasError &&
             ref.watch(connectivityProvider).asData?.value == true);
     final online = ref.watch(connectivityProvider).asData?.value == true;
+    final bannerPath = room.bannerPath;
+    final hasBanner = bannerPath != null && bannerPath.isNotEmpty;
+    final bannerUrl = live && hasBanner
+        ? ref.watch(classImageProvider(('banners', bannerPath))).asData?.value
+        : null;
     final headers = <Widget>[
       Text(
         'What’s happening in your class.',
         style: TextStyle(color: Theme.of(context).colorScheme.onSurfaceVariant),
       ),
+      const SizedBox(height: FiloSpacing.s16),
+      Card(
+        margin: EdgeInsets.zero,
+        clipBehavior: Clip.antiAlias,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(FiloRadii.large),
+        ),
+        child: ClassBanner(
+          course: room.course,
+          section: room.section,
+          instructor: room.instructor,
+          compact: true,
+          color: hasBanner ? classBannerColor(null) : room.color,
+          image: bannerUrl == null ? null : NetworkImage(bannerUrl),
+        ),
+      ),
       const SizedBox(height: FiloSpacing.screen),
-      if (live && sync!.isLoading && (posts.isNotEmpty || loaded))
-        const FiloLinearProgressIndicator(semanticsLabel: 'Refreshing posts'),
+      SingleChildScrollView(
+        scrollDirection: Axis.horizontal,
+        child: Row(
+          children: [
+            for (final filter in <String?, String>{
+              null: 'All',
+              'announcement': 'Announcements',
+              'material': 'Materials',
+              'assignment': 'Assignments',
+            }.entries)
+              Padding(
+                padding: const EdgeInsets.only(right: FiloSpacing.s8),
+                child: FiloAnimatedChip(
+                  label: Text(filter.value),
+                  selected: _streamFilter == filter.key,
+                  materialTapTargetSize: MaterialTapTargetSize.padded,
+                  onSelected: (_) => setState(() => _streamFilter = filter.key),
+                ),
+              ),
+          ],
+        ),
+      ),
+      const SizedBox(height: FiloSpacing.s16),
+      if (allPosts.isNotEmpty && posts.isEmpty)
+        Padding(
+          padding: const EdgeInsets.symmetric(vertical: FiloSpacing.s16),
+          child: Column(
+            children: [
+              Text(
+                online
+                    ? 'No posts match this filter.'
+                    : 'No saved posts match this filter.',
+                textAlign: TextAlign.center,
+              ),
+              TextButton(
+                onPressed: () => setState(() => _streamFilter = null),
+                child: const Text('Show all posts'),
+              ),
+            ],
+          ),
+        ),
       if (live && ref.watch(connectivityProvider).asData?.value == false)
         const OfflineBanner(),
       if (live &&
@@ -839,15 +903,17 @@ class _ClassScreenState extends ConsumerState<ClassScreen> {
         EmptyState(
           title: 'Could not refresh posts. Retry',
           pose: 'confused',
-          showMascot: posts.isEmpty,
+          showMascot: allPosts.isEmpty,
           bob: false,
           action: TextButton(
             onPressed: online
                 ? () {
-                    if (cached.hasError)
+                    if (cached.hasError) {
                       ref.invalidate(streamPostsProvider(room.id));
-                    if (confirmation?.hasError == true)
+                    }
+                    if (confirmation?.hasError == true) {
                       ref.invalidate(streamLoadedProvider(room.id));
+                    }
                     ref.invalidate(postSyncProvider(room.id));
                   }
                 : null,
@@ -855,7 +921,7 @@ class _ClassScreenState extends ConsumerState<ClassScreen> {
           ),
         ),
       if (live &&
-          posts.isEmpty &&
+          allPosts.isEmpty &&
           !cached!.hasError &&
           !sync!.hasError &&
           !loaded &&
@@ -864,7 +930,7 @@ class _ClassScreenState extends ConsumerState<ClassScreen> {
               confirmation?.isLoading == true))
         const StreamPostSkeleton(),
       if (live &&
-          posts.isEmpty &&
+          allPosts.isEmpty &&
           !online &&
           !loaded &&
           !cached!.isLoading &&
@@ -875,7 +941,7 @@ class _ClassScreenState extends ConsumerState<ClassScreen> {
           pose: 'sleepy',
           bob: false,
         ),
-      if (posts.isEmpty &&
+      if (allPosts.isEmpty &&
           (!live ||
               (loaded &&
                   cached!.hasValue &&
@@ -960,7 +1026,7 @@ class _ClassScreenState extends ConsumerState<ClassScreen> {
             FiloSpacing.screen,
             0,
             FiloSpacing.screen,
-            state.role == PreviewRole.instructor ? 112 : FiloSpacing.screen,
+            FiloSpacing.screen,
           ),
           sliver: SliverList(
             delegate: SliverChildBuilderDelegate(

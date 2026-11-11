@@ -19,27 +19,30 @@ class DeadlineBridge {
   bool get supported =>
       !kIsWeb && defaultTargetPlatform == TargetPlatform.android;
   Future<void> activate(String account, String lease, String database) async {
-    if (supported)
+    if (supported) {
       await channel.invokeMethod<void>('activate', {
         'accountId': account,
         'lease': lease,
         'database': database,
       });
+    }
   }
 
   Future<void> reconcile(String account, String lease) async {
-    if (supported)
+    if (supported) {
       await channel.invokeMethod<void>('reconcile', {
         'accountId': account,
         'lease': lease,
       });
+    }
   }
 
   Future<void> clearAccount(String accountId) async {
-    if (supported)
+    if (supported) {
       await channel.invokeMethod<void>('clearAccount', {
         'accountId': accountId,
       });
+    }
   }
 
   Future<void> clear() async {
@@ -60,8 +63,9 @@ class DeadlineBridge {
         )
       : {'enabled': false, 'exact': false, 'error': false};
   Future<void> openSettings(String section) async {
-    if (supported)
+    if (supported) {
       await channel.invokeMethod<void>('openSettings', {'section': section});
+    }
   }
 
   Future<PhoneGuideCapabilities> guideCapabilities() async {
@@ -70,8 +74,9 @@ class DeadlineBridge {
       'guideCapabilities',
     );
     final sdk = data?['sdk'], xiaomi = data?['xiaomi'];
-    if (sdk is! int || sdk < 0 || xiaomi is! bool)
+    if (sdk is! int || sdk < 0 || xiaomi is! bool) {
       throw StateError('Phone capabilities unavailable');
+    }
     return PhoneGuideCapabilities(sdk, xiaomi);
   }
 
@@ -80,8 +85,9 @@ class DeadlineBridge {
     final result = await channel.invokeMethod<String>('guideOpenSettings', {
       'section': section,
     });
-    if (!['direct', 'app_details', 'failed'].contains(result))
+    if (!['direct', 'app_details', 'failed'].contains(result)) {
       throw StateError('Phone settings unavailable');
+    }
     return result!;
   }
 }
@@ -190,8 +196,9 @@ class DeadlineReminders {
           if (!knownInvalid(old.postId) &&
               old.fireAt.toUtc().isAfter(now) &&
               old.postId != confirmedPostId &&
-              oldContent[old.systemAlarmId] != null)
+              oldContent[old.systemAlarmId] != null) {
             desired.add(oldContent[old.systemAlarmId]!);
+          }
         }
       }
       for (final post in posts.values) {
@@ -246,11 +253,12 @@ class DeadlineReminders {
       _check();
       await _save('deadline_error', '');
     } catch (_) {
-      if (isCurrent())
+      if (isCurrent()) {
         await _save(
           'deadline_error',
           'Could not update deadline reminders. Retry.',
         );
+      }
       rethrow;
     }
   }

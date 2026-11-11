@@ -7,8 +7,9 @@ import 'core/theme/filo_motion.dart';
 import 'core/widgets/component_gallery.dart';
 
 Future<void> main() async {
-  if (!kDebugMode)
+  if (!kDebugMode) {
     throw UnsupportedError('The component gallery is development only.');
+  }
   WidgetsFlutterBinding.ensureInitialized();
   LicenseRegistry.addLicense(() async* {
     yield LicenseEntryWithLineBreaks([

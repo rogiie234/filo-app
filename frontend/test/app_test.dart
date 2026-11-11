@@ -1,5 +1,6 @@
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:filo/app.dart';
+import 'package:filo/core/router/session_navigation_gate.dart';
 import 'package:filo/core/notifications/push_providers.dart';
 import 'package:filo/core/notifications/deadline_providers.dart';
 import 'package:filo/core/supabase/auth_providers.dart';
@@ -30,6 +31,8 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.text('Learning,\ntogether.'), findsOneWidget);
+    expect(find.byType(Router<Object>), findsOneWidget);
+    expect(find.byType(SessionNavigationGate), findsOneWidget);
     expect(find.byType(Scaffold), findsOneWidget);
 
     await tester.pumpWidget(const SizedBox.shrink());

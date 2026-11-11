@@ -38,6 +38,7 @@ dependencies:
   connectivity_plus: ^7.3.2
   image_picker: ^1.1.2
   url_launcher: ^6.3.3
+  shadcn_ui: 0.59.0
 
 dev_dependencies:
   flutter_test:
@@ -53,6 +54,8 @@ flutter:
     - assets/illustrations/classes-empty.png
     - assets/illustrations/notifications-empty.png
     - assets/illustrations/review-empty.png
+    - assets/illustrations/classwork-quiz.png
+    - assets/illustrations/classwork-exam.png
     - assets/illustrations/stream-empty.png
     - assets/illustrations/library-empty-folder.png
     - assets/illustrations/restore-empty.png

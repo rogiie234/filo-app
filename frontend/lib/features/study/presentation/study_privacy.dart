@@ -52,8 +52,9 @@ Future<bool> ensureStudyPrivacy(
     await privacy.accept();
     return current();
   } catch (_) {
-    if (context.mounted)
+    if (context.mounted) {
       showMessage(context, 'Could not save your privacy choice. Try again.');
+    }
     return false;
   }
 }

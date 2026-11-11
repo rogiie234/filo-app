@@ -7,6 +7,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/widgets/filo_icon.dart';
+import '../../../core/widgets/filo_components.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/connectivity/connectivity_provider.dart';
 import '../../../core/supabase/supabase_provider.dart';
@@ -58,24 +59,33 @@ class ClassImage extends ConsumerWidget {
     required this.bucket,
     this.evictOnDispose = false,
     required this.fallback,
+    this.loading,
   });
   final String? url, path;
   final String bucket;
   final bool evictOnDispose;
   final Widget fallback;
+  final Widget? loading;
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final resolved = path != null && path!.isNotEmpty
-        ? ref.watch(classImageProvider((bucket, path!))).asData?.value ?? url
-        : url;
+    final signed = path != null && path!.isNotEmpty
+        ? ref.watch(classImageProvider((bucket, path!)))
+        : null;
+    final resolved = signed?.asData?.value ?? url;
     if (resolved == null || resolved.isEmpty) {
-      return fallback;
+      return signed?.isLoading == true && !signed!.hasError
+          ? loading ?? fallback
+          : fallback;
     }
     if (evictOnDispose) ref.watch(_avatarUrlCache(resolved));
     return Image.network(
       resolved,
       fit: BoxFit.cover,
       excludeFromSemantics: true,
+      frameBuilder: loading == null
+          ? null
+          : (_, child, frame, synchronous) =>
+                synchronous || frame != null ? child : loading!,
       errorBuilder: (_, error, stack) => fallback,
     );
   }
@@ -111,11 +121,16 @@ class FiloAvatar extends ConsumerWidget {
                   photo.bytes,
                   fit: BoxFit.cover,
                   excludeFromSemantics: true,
+                  frameBuilder: (_, child, frame, synchronous) =>
+                      synchronous || frame != null
+                      ? child
+                      : FiloSkeleton(width: size, height: size),
                 )
               : ClassImage(
                   url: url,
                   path: path,
                   bucket: 'avatars',
+                  loading: FiloSkeleton(width: size, height: size),
                   evictOnDispose: true,
                   fallback: ColoredBox(
                     color: Theme.of(context).brightness == Brightness.dark

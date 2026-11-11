@@ -94,8 +94,9 @@ class StudySourceReader {
     if (problem != null) throw LessonReadException('SELECTION', problem);
     final local = files.storage.file(file.relativePath);
     if (!await local.exists()) throw lessonReadFailed;
-    if (await local.length() > LessonTextExtractor.maxFileBytes)
+    if (await local.length() > LessonTextExtractor.maxFileBytes) {
       throw lessonTooLarge;
+    }
     final extraction = AiCancelToken();
     cancel.cancelled.then((_) => extraction.cancel());
     operation.cancelled.then((_) => extraction.cancel());

@@ -4,17 +4,8 @@ import 'package:drift/drift.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../../../data/local/app_database.dart';
+import '../../../data/local/cache_row_json.dart';
 import 'submission_repository.dart';
-
-Map<String, dynamic> _json(Map<String, dynamic> row) => {
-  for (final e in row.entries)
-    e.key.replaceAllMapped(
-      RegExp(r'_([a-z])'),
-      (m) => m[1]!.toUpperCase(),
-    ): (e.key.endsWith('_at') || e.key == 'unsubmit_until') && e.value != null
-        ? DateTime.parse(e.value as String).millisecondsSinceEpoch
-        : e.value,
-};
 
 /// Online draft writes. Confirmed rows are immediately persisted to the same
 /// account database as the offline readers. Selected, unuploaded files belong
@@ -60,7 +51,9 @@ class SubmissionWorkRepository {
         .isFilter('deleted_at', null)
         .single()
         .timeout(const Duration(seconds: 20));
-    final post = CachePost.fromJson(_json(postRow));
+    final post = CachePost.fromJson(
+      cacheRowJson(postRow, extraDateFields: const {'unsubmit_until'}),
+    );
     if (post.kind != 'assignment') {
       throw StateError('Assignment not found.');
     }
@@ -108,7 +101,9 @@ class SubmissionWorkRepository {
   }
 
   Future<CacheSubmissionItem> _cacheItem(Map<String, dynamic> row) async {
-    final item = CacheSubmissionItem.fromJson(_json(row));
+    final item = CacheSubmissionItem.fromJson(
+      cacheRowJson(row, extraDateFields: const {'unsubmit_until'}),
+    );
     if (item.deletedAt != null) {
       await (database.delete(
         database.cacheSubmissionItems,
@@ -411,7 +406,9 @@ class SubmissionWorkRepository {
           .select()
           .single()
           .timeout(const Duration(seconds: 20));
-      final saved = CacheSubmission.fromJson(_json(row));
+      final saved = CacheSubmission.fromJson(
+        cacheRowJson(row, extraDateFields: const {'unsubmit_until'}),
+      );
       await database
           .into(database.cacheSubmissions)
           .insertOnConflictUpdate(saved.toCompanion(false));

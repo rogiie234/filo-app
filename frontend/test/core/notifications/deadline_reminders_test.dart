@@ -227,8 +227,9 @@ void main() {
       final calls = <MethodCall>[];
       messenger.setMockMethodCallHandler(DeadlineBridge.channel, (call) async {
         calls.add(call);
-        if (call.method == 'status')
+        if (call.method == 'status') {
           return {'enabled': true, 'exact': false, 'error': false};
+        }
         return null;
       });
       addTearDown(

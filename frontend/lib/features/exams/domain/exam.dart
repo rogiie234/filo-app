@@ -86,9 +86,6 @@ class StudentQuiz {
       DateTime.tryParse(json['opens_at'] as String? ?? '')?.toUtc();
   DateTime? get closesAt =>
       DateTime.tryParse(json['closes_at'] as String? ?? '')?.toUtc();
-  bool isOpen(DateTime now) =>
-      (opensAt == null || !now.isBefore(opensAt!)) &&
-      (closesAt == null || now.isBefore(closesAt!));
 }
 
 class StudentQuizCatalog {

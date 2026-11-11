@@ -114,10 +114,13 @@ class StudyDecksScreen extends StatelessWidget {
                                                 .read(accountDatabaseProvider)
                                                 .asData
                                                 ?.value !=
-                                            repo.db)
+                                            repo.db) {
                                       return;
-                                    if (await repo.rename(deck.id, title) != 1)
+                                    }
+                                    if (await repo.rename(deck.id, title) !=
+                                        1) {
                                       throw StateError('Deck unavailable');
+                                    }
                                   } else {
                                     final confirmed =
                                         await showFiloConfirmation(
@@ -134,17 +137,19 @@ class StudyDecksScreen extends StatelessWidget {
                                                 .read(accountDatabaseProvider)
                                                 .asData
                                                 ?.value ==
-                                            repo.db)
+                                            repo.db) {
                                       await repo.delete(deck.id);
+                                    }
                                   }
                                 } catch (_) {
-                                  if (context.mounted)
+                                  if (context.mounted) {
                                     showMessage(
                                       context,
                                       action == 'rename'
                                           ? 'Could not rename this deck. Try again.'
                                           : 'Could not delete this deck. Try again.',
                                     );
+                                  }
                                 }
                               },
                             ),
@@ -206,7 +211,7 @@ class _DeckNameState extends State<_DeckName> {
       ),
       ValueListenableBuilder(
         valueListenable: _name,
-        builder: (_, value, __) => TextButton(
+        builder: (_, value, _) => TextButton(
           onPressed: value.text.trim().isEmpty
               ? null
               : () => Navigator.pop(context, value.text.trim()),
@@ -279,10 +284,11 @@ class _DeckGenerateBodyState extends ConsumerState<_DeckGenerateBody> {
     if (_session.working || _authorizing) return;
     setState(() => _authorizing = true);
     try {
-      if (await ensureStudyPrivacy(context, ref) && mounted)
+      if (await ensureStudyPrivacy(context, ref) && mounted) {
         await _session.generate(
           StudyDeckSettings(count: _count, topicFocus: _topic.text.trim()),
         );
+      }
     } finally {
       if (mounted) setState(() => _authorizing = false);
     }

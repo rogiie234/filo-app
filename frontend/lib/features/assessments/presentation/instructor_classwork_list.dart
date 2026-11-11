@@ -342,12 +342,38 @@ class _InstructorClassworkListState
                     ),
                   ),
                   const SizedBox(height: FiloSpacing.s16),
-                  OutlinedButton.icon(
-                    icon: const FiloIcon(FiloIcons.spreadsheet),
-                    label: const Text('Gradebook'),
-                    onPressed: () => Navigator.of(context).push(
-                      FiloInstantRoute<void>(
-                        builder: (_) => GradebookScreen(classId: id),
+                  Material(
+                    color: Theme.of(context).colorScheme.surface,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(FiloRadii.large),
+                      side: BorderSide(
+                        color: Theme.of(context).colorScheme.outlineVariant,
+                      ),
+                    ),
+                    clipBehavior: Clip.antiAlias,
+                    child: ListTile(
+                      contentPadding: const EdgeInsets.symmetric(
+                        horizontal: FiloSpacing.s16,
+                        vertical: FiloSpacing.s8,
+                      ),
+                      leading: CircleAvatar(
+                        backgroundColor: Theme.of(context)
+                            .colorScheme
+                            .primaryContainer,
+                        child: FiloIcon(
+                          FiloIcons.spreadsheet,
+                          color: Theme.of(context)
+                              .colorScheme
+                              .onPrimaryContainer,
+                        ),
+                      ),
+                      title: const Text('Gradebook'),
+                      subtitle: const Text('View class grades'),
+                      trailing: const FiloIcon(FiloIcons.chevronRight),
+                      onTap: () => Navigator.of(context).push(
+                        FiloInstantRoute<void>(
+                          builder: (_) => GradebookScreen(classId: id),
+                        ),
                       ),
                     ),
                   ),
@@ -383,13 +409,6 @@ class _InstructorClassworkListState
                     ),
                   ),
                   const SizedBox(height: FiloSpacing.s20),
-                  if (_refreshing)
-                    const Padding(
-                      padding: EdgeInsets.only(bottom: FiloSpacing.s12),
-                      child: FiloLinearProgressIndicator(
-                        semanticsLabel: 'Refreshing classwork',
-                      ),
-                    ),
                   if (failed || _refreshMessage != null)
                     EmptyState(
                       title: _refreshMessage ?? 'Could not refresh classwork. Saved work is shown when available.',
@@ -469,6 +488,15 @@ class _InstructorClassworkListState
               itemBuilder: (context, index) {
                 final entry = entries[index];
                 final quiz = entry.quiz;
+                final VoidCallback? openResults =
+                    quiz != null && quiz.status == 'published'
+                    ? () => Navigator.of(context).push(
+                        FiloInstantRoute<void>(
+                          builder: (_) =>
+                              InstructorResultsScreen(quizId: quiz.id),
+                        ),
+                      )
+                    : null;
                 return Padding(
                   key: ValueKey(entry.key),
                   padding: const EdgeInsets.only(bottom: FiloSpacing.s12),
@@ -477,31 +505,7 @@ class _InstructorClassworkListState
                           quiz: quiz,
                           now: now,
                           onEdit: () => _open(quiz),
-                          onResults: quiz.status == 'published'
-                              ? () => Navigator.of(context).push(
-                                  FiloInstantRoute<void>(
-                                    builder: (_) => InstructorResultsScreen(
-                                      quizId: quiz.id,
-                                    ),
-                                  ),
-                                )
-                              : null,
-                          onOpen: () {
-                            if (quiz.status == 'published' &&
-                                quiz.closesAt != null &&
-                                !quiz.closesAt!.isAfter(
-                                  DateTime.now().toUtc(),
-                                )) {
-                              Navigator.of(context).push(
-                                FiloInstantRoute<void>(
-                                  builder: (_) =>
-                                      InstructorResultsScreen(quizId: quiz.id),
-                                ),
-                              );
-                            } else {
-                              _open(quiz);
-                            }
-                          },
+                          onOpen: openResults,
                           busy: _deleting.contains(quiz.id),
                           onDelete: widget.archived || quiz.locked || !online
                               ? null

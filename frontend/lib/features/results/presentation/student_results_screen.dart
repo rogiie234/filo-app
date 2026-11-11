@@ -89,7 +89,7 @@ class StudentResultsEntry extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final state = ref.watch(studentResultProvider(quizId));
     final data = state.asData?.value;
-    if (data?.data?.result != null)
+    if (data?.data?.result != null) {
       return FiloButton(
         label: 'View results',
         onPressed: () => Navigator.of(context).push(
@@ -98,6 +98,7 @@ class StudentResultsEntry extends ConsumerWidget {
           ),
         ),
       );
+    }
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [

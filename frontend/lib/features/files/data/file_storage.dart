@@ -30,8 +30,9 @@ class FileStorage {
   }
 
   void ensureAvailable() {
-    if (_blocked.contains(p.normalize(p.absolute(root.path))))
+    if (_blocked.contains(p.normalize(p.absolute(root.path)))) {
       throw const FileProblem('Account unavailable.');
+    }
   }
 
   Future<void> waitForIdle() async {
@@ -115,8 +116,9 @@ class FileStorage {
   Future<int> clearTemporary({bool Function()? isCurrent}) async {
     var removed = 0;
     for (final file in await _disposable()) {
-      if (isCurrent != null && !isCurrent())
+      if (isCurrent != null && !isCurrent()) {
         throw StateError('Account changed');
+      }
       _checkRoot();
       final parent = p.dirname(file.path);
       if (FileSystemEntity.typeSync(parent, followLinks: false) !=
@@ -158,8 +160,9 @@ class FileStorage {
           .create(recursive: true);
       if (cleanTemporary) await storage.clearTemporary(isCurrent: isCurrent);
       storage.ensureAvailable();
-      if (isCurrent != null && !isCurrent())
+      if (isCurrent != null && !isCurrent()) {
         throw StateError('Account changed');
+      }
     } finally {
       storage.releaseTemporary(opening);
     }
@@ -186,14 +189,6 @@ class FileStorage {
     if (free < expected + 1048576) {
       throw const FileProblem('Not enough space on your phone.', kind: 'space');
     }
-  }
-
-  Future<int> usedBytes() async {
-    var bytes = 0;
-    await for (final entry in root.list(recursive: true, followLinks: false)) {
-      if (entry is File) bytes += await entry.length();
-    }
-    return bytes;
   }
 }
 

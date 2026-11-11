@@ -128,8 +128,9 @@ class GradingData {
           !['submitted', 'auto_submitted'].contains(attempt['status']) ||
           attempt['grading_complete'] != true ||
           attempt['total_score'] == null ||
-          returnedOnly && quiz['results_released_at'] == null)
+          returnedOnly && quiz['results_released_at'] == null) {
         continue;
+      }
       earned += attempt['total_score'] as int;
       possible += quiz['total_points'] as int;
       unreturned |= quiz['results_released_at'] == null;
@@ -160,10 +161,12 @@ class GradingData {
     final closes = DateTime.tryParse('${quiz['closes_at'] ?? ''}');
     if (attempt == null &&
         closes != null &&
-        !closes.isAfter((now ?? DateTime.now()).toUtc()))
+        !closes.isAfter((now ?? DateTime.now()).toUtc())) {
       return 'Missed';
-    if (student && quiz['results_released_at'] == null)
+    }
+    if (student && quiz['results_released_at'] == null) {
       return 'Not released yet';
+    }
     if (attempt == null) return 'Not started';
     if (attempt['status'] == 'in_progress') return 'In progress';
     return attempt['grading_complete'] == true ? 'Graded' : 'Essay to grade';
@@ -176,8 +179,9 @@ class GradingData {
       'auto_submitted',
     ].contains(attempt?['status']);
     final visible = !student || quiz['results_released_at'] != null;
-    if (visible && submitted && attempt?['total_score'] != null)
+    if (visible && submitted && attempt?['total_score'] != null) {
       return '${attempt!['total_score']}/${quiz['total_points']}';
+    }
     final status = quizStatus(quiz, studentId, student: student);
     return status == 'Missed' || student && status == 'Not released yet'
         ? status

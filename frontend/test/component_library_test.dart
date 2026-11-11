@@ -6,6 +6,56 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {
+  testWidgets(
+    'sheet toast replaces feedback without blocking and finishes its duration after close',
+    (tester) async {
+      var taps = 0;
+      await tester.pumpWidget(
+        MaterialApp(
+          theme: AppTheme.light,
+          home: Scaffold(
+            body: Builder(
+              builder: (context) => TextButton(
+                onPressed: () => showFiloBottomSheet<void>(
+                  context: context,
+                  title: 'Options',
+                  builder: (sheet) => TextButton(
+                    onPressed: () {
+                      taps++;
+                      showFiloToast(sheet, 'Copied $taps');
+                    },
+                    child: const Text('Copy'),
+                  ),
+                ),
+                child: const Text('Open'),
+              ),
+            ),
+          ),
+        ),
+      );
+      await tester.tap(find.text('Open'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Copy'));
+      await tester.pump();
+      expect(find.text('Copied 1'), findsOneWidget);
+      expect(find.text('Options'), findsOneWidget);
+      expect(find.byType(SnackBar), findsNothing);
+      await tester.tap(find.text('Copy'));
+      await tester.pump();
+      expect(find.text('Copied 1'), findsNothing);
+      expect(find.text('Copied 2'), findsOneWidget);
+      await tester.tap(find.byTooltip('Close'));
+      await tester.pumpAndSettle();
+      expect(find.text('Options'), findsNothing);
+      expect(find.text('Copied 2'), findsOneWidget);
+      await tester.pump(const Duration(milliseconds: 2500));
+      expect(find.text('Copied 2'), findsOneWidget);
+      await tester.pump(const Duration(seconds: 1));
+      expect(find.text('Copied 2'), findsNothing);
+      expect(tester.takeException(), isNull);
+    },
+  );
+
   final binding = TestWidgetsFlutterBinding.ensureInitialized();
   setUp(() {
     binding.platformDispatcher.accessibilityFeaturesTestValue =

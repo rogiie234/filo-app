@@ -71,8 +71,9 @@ void main() {
         await Future.wait([registration, leaving]);
         await f.service.sync();
         expect(f.events, isNot(contains('sign-out')));
-        if (stage != 'delete')
+        if (stage != 'delete') {
           expect(f.events, isNot(contains('delete-token')));
+        }
         if (stage == 'token' || stage == 'registration') {
           expect(f.events.where((e) => e.startsWith('unregister:')), isEmpty);
         }

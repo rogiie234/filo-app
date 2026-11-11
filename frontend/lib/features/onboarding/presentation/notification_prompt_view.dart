@@ -130,7 +130,9 @@ class NotificationPromptView extends StatelessWidget {
       body: Stack(
         fit: StackFit.expand,
         children: [
-          const Positioned.fill(child: EntryBackground(verification: true)),
+          const Positioned.fill(
+            child: EntryBackground(variation: 2, verification: true),
+          ),
           SafeArea(
             child: Column(
               children: [

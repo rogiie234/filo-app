@@ -20,8 +20,9 @@ DateTime inboxDay(DateTime stamp) {
 String inboxDayLabel(BuildContext context, DateTime stamp, DateTime now) {
   final day = inboxDay(stamp), today = inboxDay(now);
   if (day == today) return 'Today';
-  if (day == DateTime(today.year, today.month, today.day - 1))
+  if (day == DateTime(today.year, today.month, today.day - 1)) {
     return 'Yesterday';
+  }
   return MaterialLocalizations.of(context).formatFullDate(day);
 }
 
@@ -97,8 +98,9 @@ class _InboxScreenState extends ConsumerState<InboxScreen> {
       if (!mounted || repo.userId != widget.userId || !repo.isCurrent()) return;
       await repo.markAllRead();
     } catch (_) {
-      if (mounted)
+      if (mounted) {
         setState(() => _writeError = 'Could not save read status. Try again.');
+      }
     } finally {
       if (mounted) setState(() => _marking = false);
     }
@@ -238,134 +240,141 @@ class _InboxScreenState extends ConsumerState<InboxScreen> {
       id: 'inbox',
       hasItems: rows?.isNotEmpty ?? false,
       ready: current && inbox.hasValue && !inbox.isLoading && !inbox.hasError,
-      child: Scaffold(
-        appBar: AppBar(
-          leading: const BackButton(),
-          title: const Text('Notifications'),
-        ),
-        body: Stack(
-          fit: StackFit.expand,
-          children: [
-            const Positioned.fill(
-              child: EntryBackground(verification: true, breeze: true),
-            ),
-            SafeArea(
-              top: false,
-              child: Column(
-                children: [
-                  Expanded(
-                    child: RefreshIndicator(
-                      onRefresh: _refresh,
-                      child: CustomScrollView(
-                        key: const PageStorageKey('notification-inbox'),
-                        physics: const AlwaysScrollableScrollPhysics(),
-                        slivers: [
-                          SliverPadding(
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: FiloSpacing.screen,
-                            ),
-                            sliver: SliverList.list(
-                              children: [
-                                if (offline) const OfflineBanner(),
-                                if (refresh.isLoading && !offline)
-                                  const FiloLinearProgressIndicator(
-                                    semanticsLabel: 'Refreshing notifications',
-                                  ),
-                                if (refresh.hasError && !offline)
-                                  _notice(
-                                    'Could not refresh notifications. Showing saved content.',
-                                    _refresh,
-                                  ),
-                                if (_writeError != null)
-                                  _notice(_writeError!, _markAll),
-                                if (rows == null || rows.isEmpty) content,
-                              ],
-                            ),
-                          ),
-                          if (rows != null && rows.isNotEmpty)
+      child: EntryBackground(
+        verification: true,
+        breeze: true,
+        variation: 6,
+        child: Scaffold(
+          backgroundColor: Colors.transparent,
+          appBar: AppBar(
+            backgroundColor: Colors.transparent,
+            surfaceTintColor: Colors.transparent,
+            elevation: 0,
+            scrolledUnderElevation: 0,
+            leading: const BackButton(),
+            title: const Text('Notifications'),
+          ),
+          body: Stack(
+            fit: StackFit.expand,
+            children: [
+              SafeArea(
+                top: false,
+                child: Column(
+                  children: [
+                    Expanded(
+                      child: RefreshIndicator(
+                        onRefresh: _refresh,
+                        child: CustomScrollView(
+                          key: const PageStorageKey('notification-inbox'),
+                          physics: const AlwaysScrollableScrollPhysics(),
+                          slivers: [
                             SliverPadding(
-                              padding: const EdgeInsets.fromLTRB(
-                                FiloSpacing.screen,
-                                FiloSpacing.s8,
-                                FiloSpacing.screen,
-                                FiloSpacing.screen,
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: FiloSpacing.screen,
                               ),
-                              sliver: SliverList.builder(
-                                itemCount: rows.length,
-                                itemBuilder: (context, index) {
-                                  final row = rows[index];
-                                  final header =
-                                      index == 0 ||
-                                      inboxDay(rows[index - 1].createdAt) !=
-                                          inboxDay(row.createdAt);
-                                  return FiloListItem(
-                                    index: index,
-                                    child: Column(
-                                      crossAxisAlignment:
-                                          CrossAxisAlignment.stretch,
-                                      children: [
-                                        if (header)
-                                          Padding(
-                                            padding: const EdgeInsets.only(
-                                              top: FiloSpacing.s16,
-                                              bottom: FiloSpacing.s12,
-                                            ),
-                                            child: Semantics(
-                                              header: true,
-                                              child: Text(
-                                                inboxDayLabel(
-                                                  context,
-                                                  row.createdAt,
-                                                  _now,
+                              sliver: SliverList.list(
+                                children: [
+                                  if (offline) const OfflineBanner(),
+                                  if (refresh.hasError && !offline)
+                                    _notice(
+                                      'Could not refresh notifications. Showing saved content.',
+                                      _refresh,
+                                    ),
+                                  if (_writeError != null)
+                                    _notice(_writeError!, _markAll),
+                                  if (rows == null || rows.isEmpty) content,
+                                ],
+                              ),
+                            ),
+                            if (rows != null && rows.isNotEmpty)
+                              SliverPadding(
+                                padding: const EdgeInsets.fromLTRB(
+                                  FiloSpacing.screen,
+                                  FiloSpacing.s8,
+                                  FiloSpacing.screen,
+                                  FiloSpacing.screen,
+                                ),
+                                sliver: SliverList.builder(
+                                  itemCount: rows.length,
+                                  itemBuilder: (context, index) {
+                                    final row = rows[index];
+                                    final header =
+                                        index == 0 ||
+                                        inboxDay(rows[index - 1].createdAt) !=
+                                            inboxDay(row.createdAt);
+                                    return FiloListItem(
+                                      index: index,
+                                      child: Column(
+                                        crossAxisAlignment:
+                                            CrossAxisAlignment.stretch,
+                                        children: [
+                                          if (header)
+                                            Padding(
+                                              padding: const EdgeInsets.only(
+                                                top: FiloSpacing.s16,
+                                                bottom: FiloSpacing.s12,
+                                              ),
+                                              child: Semantics(
+                                                header: true,
+                                                child: Text(
+                                                  inboxDayLabel(
+                                                    context,
+                                                    row.createdAt,
+                                                    _now,
+                                                  ),
+                                                  style: theme
+                                                      .textTheme
+                                                      .titleMedium,
                                                 ),
-                                                style:
-                                                    theme.textTheme.titleMedium,
                                               ),
                                             ),
+                                          Padding(
+                                            padding: const EdgeInsets.only(
+                                              bottom: FiloSpacing.s12,
+                                            ),
+                                            child: _InboxRow(
+                                              row: row,
+                                              onTap: _opening
+                                                  ? null
+                                                  : () => _open(row.id),
+                                            ),
                                           ),
-                                        Padding(
-                                          padding: const EdgeInsets.only(
-                                            bottom: FiloSpacing.s12,
-                                          ),
-                                          child: _InboxRow(
-                                            row: row,
-                                            onTap: _opening
-                                                ? null
-                                                : () => _open(row.id),
-                                          ),
-                                        ),
-                                      ],
-                                    ),
-                                  );
-                                },
+                                        ],
+                                      ),
+                                    );
+                                  },
+                                ),
                               ),
-                            ),
-                        ],
+                          ],
+                        ),
                       ),
                     ),
-                  ),
-                  Padding(
-                    padding: const EdgeInsets.fromLTRB(
-                      FiloSpacing.screen,
-                      FiloSpacing.s12,
-                      FiloSpacing.screen,
-                      FiloSpacing.s16,
+                    Padding(
+                      padding: const EdgeInsets.fromLTRB(
+                        FiloSpacing.screen,
+                        FiloSpacing.s12,
+                        FiloSpacing.screen,
+                        FiloSpacing.s16,
+                      ),
+                      child: FiloButton(
+                        label: _marking ? 'Saving\u2026' : 'Mark all as read',
+                        labelVariants: const [
+                          'Mark all as read',
+                          'Saving\u2026',
+                        ],
+                        outlined: true,
+                        minHeight: 56,
+                        busy: _marking,
+                        onPressed: current && unread && !_marking
+                            ? _markAll
+                            : null,
+                      ),
                     ),
-                    child: FiloButton(
-                      label: _marking ? 'Saving\u2026' : 'Mark all as read',
-                      labelVariants: const ['Mark all as read', 'Saving\u2026'],
-                      outlined: true,
-                      minHeight: 56,
-                      busy: _marking,
-                      onPressed: current && unread && !_marking
-                          ? _markAll
-                          : null,
-                    ),
-                  ),
-                ],
+                  ],
+                ),
               ),
-            ),
-          ],
+            ],
+          ),
         ),
       ),
     );

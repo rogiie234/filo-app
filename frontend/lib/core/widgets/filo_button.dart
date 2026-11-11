@@ -18,21 +18,33 @@ class FiloButton extends StatefulWidget {
     this.outlined = false,
     this.text = false,
     this.icon,
+    this.iconOnly = false,
     this.leading,
     this.animateArrow = false,
+    this.animateLabelSize = false,
+    this.labelDuration = FiloAnimation.labelDuration,
+    this.labelSizeCurve = Curves.easeInOutCubic,
+    this.labelInCurve = FiloAnimation.labelInCurve,
     this.busy = false,
     this.showBusyIndicator = true,
     this.minHeight = FiloControlSize.primary,
     this.labelVariants = const [],
-  });
+  }) : assert(!iconOnly || icon != null);
   final bool idlePulse;
   final bool secondary;
   final bool destructive;
   final bool outlined;
   final bool text;
   final IconData? icon;
+  final bool iconOnly;
   final Widget? leading;
   final bool animateArrow;
+
+  /// Slide the trailing icon as a changing label grows or shrinks.
+  final bool animateLabelSize;
+  final Duration labelDuration;
+  final Curve labelSizeCurve;
+  final Curve labelInCurve;
   final bool busy;
 
   /// Keep label/leading feedback visible while still blocking busy actions.
@@ -142,6 +154,60 @@ class _FiloButtonState extends State<FiloButton>
       builder: (context, states, _) {
         final pressed =
             states.contains(WidgetState.pressed) && !disabled && !widget.busy;
+        // Bypass AnimatedSize when disabled: zero-duration resizing can mutate layout.
+        final labelContent = AnimatedSwitcher(
+          key: ValueKey(reduced),
+          switchInCurve: widget.labelInCurve,
+          switchOutCurve: FiloAnimation.labelOutCurve,
+          duration: reduced ? Duration.zero : widget.labelDuration,
+          layoutBuilder: (current, previous) => Stack(
+            alignment: Alignment.center,
+            children: [
+              for (final label in widget.labelVariants)
+                ExcludeSemantics(
+                  child: Opacity(
+                    opacity: 0,
+                    child: Text(
+                      label,
+                      textAlign: TextAlign.center,
+                      style: TextStyle(color: foreground),
+                    ),
+                  ),
+                ),
+              for (final child in previous)
+                if (widget.animateLabelSize)
+                  Positioned(top: 0, child: ExcludeSemantics(child: child))
+                else
+                  ExcludeSemantics(child: child),
+              ?current,
+            ],
+          ),
+          transitionBuilder: (child, animation) {
+            if (reduced) {
+              return child;
+            }
+            return FadeTransition(
+              opacity: animation,
+              child: AnimatedBuilder(
+                animation: animation,
+                child: child,
+                builder: (context, child) => Transform.translate(
+                  offset: Offset(
+                    0,
+                    FiloAnimation.labelRise * (1 - animation.value),
+                  ),
+                  child: child,
+                ),
+              ),
+            );
+          },
+          child: Text(
+            widget.label,
+            key: ValueKey(widget.label),
+            textAlign: TextAlign.center,
+            style: TextStyle(color: foreground),
+          ),
+        );
         final button = DecoratedBox(
           decoration: BoxDecoration(
             color: disabled || flat
@@ -202,11 +268,17 @@ class _FiloButtonState extends State<FiloButton>
                             ? FiloControlSize.compact
                             : widget.minHeight - edge,
                       ),
-                      padding: EdgeInsets.symmetric(
-                        horizontal: FiloSpacing.s20,
-                        vertical: flat ? FiloSpacing.s12 : FiloSpacing.s16,
-                      ),
-                      shape: const StadiumBorder(),
+                      padding: widget.iconOnly
+                          ? EdgeInsets.zero
+                          : EdgeInsets.symmetric(
+                              horizontal: FiloSpacing.s20,
+                              vertical: flat
+                                  ? FiloSpacing.s12
+                                  : FiloSpacing.s16,
+                            ),
+                      shape: widget.iconOnly
+                          ? const CircleBorder()
+                          : const StadiumBorder(),
                       textStyle: Theme.of(context).textTheme.labelLarge,
                     ).copyWith(
                       animationDuration: Duration.zero,
@@ -246,92 +318,59 @@ class _FiloButtonState extends State<FiloButton>
                         opacity: widget.busy && widget.showBusyIndicator
                             ? 0
                             : 1,
-                        child: Row(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: [
-                            if (widget.leading != null) ...[
-                              widget.leading!,
-                              const SizedBox(width: FiloSpacing.s12),
-                            ],
-                            Flexible(
-                              child: AnimatedSwitcher(
-                                key: ValueKey(reduced),
-                                switchInCurve: FiloAnimation.labelInCurve,
-                                switchOutCurve: FiloAnimation.labelOutCurve,
-                                duration: reduced
-                                    ? Duration.zero
-                                    : FiloAnimation.labelDuration,
-                                layoutBuilder: (current, previous) => Stack(
-                                  alignment: Alignment.center,
-                                  children: [
-                                    for (final label in widget.labelVariants)
-                                      ExcludeSemantics(
-                                        child: Opacity(
-                                          opacity: 0,
-                                          child: Text(
-                                            label,
-                                            textAlign: TextAlign.center,
-                                            style: TextStyle(color: foreground),
-                                          ),
-                                        ),
-                                      ),
-                                    for (final child in previous)
-                                      ExcludeSemantics(child: child),
-                                    if (current != null) current,
-                                  ],
+                        child: widget.iconOnly
+                            ? Tooltip(
+                                message: widget.label,
+                                child: Semantics(
+                                  label: widget.label,
+                                  child: ExcludeSemantics(
+                                    child: FiloIcon(widget.icon!, size: 32),
+                                  ),
                                 ),
-                                transitionBuilder: (child, animation) {
-                                  if (reduced) {
-                                    return child;
-                                  }
-                                  return FadeTransition(
-                                    opacity: animation,
-                                    child: AnimatedBuilder(
-                                      animation: animation,
-                                      child: child,
-                                      builder: (context, child) =>
+                              )
+                            : Row(
+                                mainAxisAlignment: MainAxisAlignment.center,
+                                children: [
+                                  if (widget.leading != null) ...[
+                                    widget.leading!,
+                                    const SizedBox(width: FiloSpacing.s12),
+                                  ],
+                                  Flexible(
+                                    child:
+                                        reduced ||
+                                            !widget.animateLabelSize ||
+                                            widget.labelDuration ==
+                                                Duration.zero
+                                        ? labelContent
+                                        : AnimatedSize(
+                                            duration: widget.labelDuration,
+                                            curve: widget.labelSizeCurve,
+                                            child: labelContent,
+                                          ),
+                                  ),
+                                  if (widget.icon != null) ...[
+                                    const SizedBox(width: FiloSpacing.s12),
+                                    FiloMotionTween(
+                                      value: pressed && widget.animateArrow
+                                          ? FiloAnimation.arrowNudge
+                                          : 0,
+                                      duration: reduced
+                                          ? Duration.zero
+                                          : FiloAnimation.pressDuration,
+                                      builder: (context, offset, child) =>
                                           Transform.translate(
-                                            offset: Offset(
-                                              0,
-                                              FiloAnimation.labelRise *
-                                                  (1 - animation.value),
-                                            ),
+                                            offset: Offset(offset, 0),
                                             child: child,
                                           ),
+                                      child: FiloIcon(
+                                        widget.icon,
+                                        color: foreground,
+                                        size: 20,
+                                      ),
                                     ),
-                                  );
-                                },
-                                child: Text(
-                                  widget.label,
-                                  key: ValueKey(widget.label),
-                                  textAlign: TextAlign.center,
-                                  style: TextStyle(color: foreground),
-                                ),
+                                  ],
+                                ],
                               ),
-                            ),
-                            if (widget.icon != null) ...[
-                              const SizedBox(width: FiloSpacing.s12),
-                              FiloMotionTween(
-                                value: pressed && widget.animateArrow
-                                    ? FiloAnimation.arrowNudge
-                                    : 0,
-                                duration: reduced
-                                    ? Duration.zero
-                                    : FiloAnimation.pressDuration,
-                                builder: (context, offset, child) =>
-                                    Transform.translate(
-                                      offset: Offset(offset, 0),
-                                      child: child,
-                                    ),
-                                child: FiloIcon(
-                                  widget.icon,
-                                  color: foreground,
-                                  size: 20,
-                                ),
-                              ),
-                            ],
-                          ],
-                        ),
                       ),
                     ),
                   ],

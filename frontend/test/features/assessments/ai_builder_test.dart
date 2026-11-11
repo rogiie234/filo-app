@@ -1,4 +1,5 @@
 import 'package:drift/native.dart';
+import 'package:filo/core/widgets/filo_widgets.dart';
 import 'package:filo/core/connectivity/connectivity_provider.dart';
 import 'package:filo/data/local/app_database.dart';
 import 'package:filo/features/assessments/application/ai_providers.dart';
@@ -88,7 +89,8 @@ void main() {
       await tester.pumpAndSettle();
       await tester.tap(find.text('Next: Questions'));
       await tester.pumpAndSettle();
-      final generate = find.widgetWithText(OutlinedButton, 'Generate with AI');
+      await tester.pumpAndSettle();
+      final generate = find.widgetWithText(FiloButton, 'Generate with AI');
       await tester.ensureVisible(generate);
       await tester.tap(generate);
       await tester.pumpAndSettle();

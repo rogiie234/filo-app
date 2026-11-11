@@ -2,18 +2,10 @@ import 'package:drift/drift.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../../../data/local/app_database.dart';
+import '../../../data/local/cache_row_json.dart';
 import '../../posts/data/post_repository.dart';
 import '../domain/assignment_file_rules.dart';
 import '../../../core/notifications/deadline_reminders.dart';
-
-Map<String, dynamic> _cacheJson(Map<String, dynamic> row) => {
-  for (final entry in row.entries)
-    entry.key.replaceAllMapped(RegExp(r'_([a-z])'), (m) => m[1]!.toUpperCase()):
-        (entry.key.endsWith('_at') || entry.key == 'unsubmit_until') &&
-            entry.value != null
-        ? DateTime.parse(entry.value as String).millisecondsSinceEpoch
-        : entry.value,
-};
 
 class _ConcurrentSubmissionWrite implements Exception {}
 
@@ -213,7 +205,12 @@ class SubmissionRepository {
             await db
                 .into(db.cacheSubmissions)
                 .insertOnConflictUpdate(
-                  CacheSubmission.fromJson(_cacheJson(row)).toCompanion(false),
+                  CacheSubmission.fromJson(
+                    cacheRowJson(
+                      row,
+                      extraDateFields: const {'unsubmit_until'},
+                    ),
+                  ).toCompanion(false),
                 );
           }
         }
@@ -234,8 +231,12 @@ class SubmissionRepository {
             await db
                 .into(db.cacheSubmissionItems)
                 .insertOnConflictUpdate(
-                  CacheSubmissionItem.fromJson(_cacheJson(row))
-                      .toCompanion(false),
+                  CacheSubmissionItem.fromJson(
+                    cacheRowJson(
+                      row,
+                      extraDateFields: const {'unsubmit_until'},
+                    ),
+                  ).toCompanion(false),
                 );
           }
         }
@@ -249,7 +250,12 @@ class SubmissionRepository {
             await db
                 .into(db.cacheGrades)
                 .insertOnConflictUpdate(
-                  CacheGrade.fromJson(_cacheJson(row)).toCompanion(false),
+                  CacheGrade.fromJson(
+                    cacheRowJson(
+                      row,
+                      extraDateFields: const {'unsubmit_until'},
+                    ),
+                  ).toCompanion(false),
                 );
           }
         }
@@ -363,7 +369,9 @@ class SubmissionRepository {
     if (postRow == null) {
       throw StateError('This item is no longer available.');
     }
-    final post = CachePost.fromJson(_cacheJson(postRow));
+    final post = CachePost.fromJson(
+      cacheRowJson(postRow, extraDateFields: const {'unsubmit_until'}),
+    );
     if (post.kind != 'assignment' || !await _hasAccess(post.classId)) {
       throw StateError('This item is no longer available.');
     }
@@ -390,7 +398,9 @@ class SubmissionRepository {
         await database
             .into(database.cacheSubmissionItems)
             .insertOnConflictUpdate(
-              CacheSubmissionItem.fromJson(_cacheJson(row)).toCompanion(false),
+              CacheSubmissionItem.fromJson(
+                cacheRowJson(row, extraDateFields: const {'unsubmit_until'}),
+              ).toCompanion(false),
             );
       }
     });
@@ -417,7 +427,10 @@ class SubmissionRepository {
           .timeout(const Duration(seconds: 20));
       final raw = result is List ? result.single : result;
       final row = CacheSubmission.fromJson(
-        _cacheJson(Map<String, dynamic>.from(raw as Map)),
+        cacheRowJson(
+          Map<String, dynamic>.from(raw as Map),
+          extraDateFields: const {'unsubmit_until'},
+        ),
       );
       if (row.studentId != userId) {
         throw StateError('Submission belongs to another account');

@@ -35,8 +35,10 @@ class _DeleteAccountScreenState extends ConsumerState<DeleteAccountScreen> {
     if (!mounted ||
         !widget.instructor ||
         ref.read(accountDeletionProvider).busyUser != null ||
-        ref.read(deletionJournalProvider).asData?.value[widget.userId] != null)
+        ref.read(deletionJournalProvider).asData?.value[widget.userId] !=
+            null) {
       return;
+    }
     _confirmation.clear();
     ref.read(accountDeletionProvider.notifier).remember(widget.userId, '');
     ref

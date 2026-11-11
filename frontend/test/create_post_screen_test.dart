@@ -106,11 +106,12 @@ void main() {
         find.byType(CreatePostScreen),
         succeeds ? findsNothing : findsOneWidget,
       );
-      if (!succeeds)
+      if (!succeeds) {
         expect(
           find.textContaining('Posting permission was denied'),
           findsOneWidget,
         );
+      }
     });
   }
 }

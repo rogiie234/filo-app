@@ -48,8 +48,12 @@ class FakeRemoval extends AccountDeletionCleanup {
   FakeRemoval() : super(UserDatabaseManager());
   int removed = 0;
   bool fail = false;
+  bool failBlock = false;
   @override
-  Future<void> block(String id, bool blocked) async {}
+  Future<void> block(String id, bool blocked) async {
+    if (blocked && failBlock) throw StateError('fixture preparation');
+  }
+
   @override
   Future<void> remove(String id) async {
     if (fail) throw StateError('fixture removal');
@@ -143,6 +147,39 @@ void main() {
     );
   }
 
+  for (final status in [401, 404]) {
+    test(
+      'gateway $status is an actionable rejection, not unknown deletion',
+      () async {
+        final client = SupabaseClient(
+          'https://fixture.invalid',
+          'fixture',
+          httpClient: MockClient(
+            (request) async => http.Response(
+              jsonEncode({
+                'code': status == 404 ? 'NOT_FOUND' : 401,
+                'message': 'Gateway refusal',
+              }),
+              status,
+              headers: {'content-type': 'application/json'},
+            ),
+          ),
+        );
+        addTearDown(client.dispose);
+        await expectLater(
+          AccountDeletionRepository(client).request(),
+          throwsA(
+            isA<DeletionRejected>().having(
+              (e) => e.message,
+              'actionable message',
+              contains(status == 404 ? 'unavailable' : 'sign in again'),
+            ),
+          ),
+        );
+      },
+    );
+  }
+
   late MemoryJournal journal;
   late FakeDeletion remote;
   late FakeRemoval cleanup;
@@ -194,6 +231,22 @@ void main() {
         .request('a', 'DELETE');
     expect(remote.calls, 0);
   });
+  test(
+    'local preparation failure rolls back without claiming unknown deletion',
+    () async {
+      await setup();
+      cleanup.failBlock = true;
+      await container
+          .read(accountDeletionProvider.notifier)
+          .request('a', 'DELETE');
+      expect(remote.calls, 0);
+      expect(journal.saved, isEmpty);
+      expect(
+        container.read(accountDeletionProvider).message,
+        "Couldn't delete your account. Try again.",
+      );
+    },
+  );
   test('failed journal prevents remote request', () async {
     await setup();
     journal.fail = true;
@@ -293,7 +346,7 @@ void main() {
       online: false,
       stage: DeletionStage.cleanup,
       sessionCleanup: (_) async {
-        if (fail) throw StateError('native cancellation');
+        if (fail) throw const DeletionCleanupFailure('Clearing reminders');
       },
     );
     final flow = container.read(accountDeletionProvider.notifier);
@@ -301,6 +354,11 @@ void main() {
     expect(journal.saved['a']!.stage, DeletionStage.cleanup);
     expect(cleanup.removed, 0);
     expect(remote.calls, 0);
+    expect(
+      container.read(accountDeletionProvider).message,
+      contains("Clearing reminders didn't finish"),
+    );
+    expect(container.read(accountDeletionProvider).busyUser, isNull);
     fail = false;
     await flow.removeLocal('a');
     expect(journal.saved, isEmpty);

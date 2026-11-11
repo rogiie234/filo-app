@@ -158,15 +158,19 @@ class QuizMonitoring {
             )
             .length;
   String? releaseBlocked(DateTime now) {
-    if (quiz['results_released_at'] != null)
+    if (quiz['results_released_at'] != null) {
       return 'Results are already released.';
+    }
     final opens = DateTime.tryParse('${quiz['opens_at'] ?? ''}');
-    if (opens == null || opens.isAfter(now.toUtc()))
+    if (opens == null || opens.isAfter(now.toUtc())) {
       return 'This quiz has not opened yet.';
-    if (current.any((s) => s.status == 'in_progress'))
+    }
+    if (current.any((s) => s.status == 'in_progress')) {
       return 'Some students are still taking this quiz.';
-    if (current.any((s) => s.submitted && !s.gradingComplete))
+    }
+    if (current.any((s) => s.submitted && !s.gradingComplete)) {
       return 'Grade all essay answers first.';
+    }
     return null;
   }
 
@@ -254,8 +258,9 @@ List<ResultJson> monitoringStudents(
     final x = data.attemptFor(a['student_id'] as String),
         y = data.attemptFor(b['student_id'] as String);
     var order = 0;
-    if (sort == 'Most leaves first')
+    if (sort == 'Most leaves first') {
       order = (y?.leaves ?? 0).compareTo(x?.leaves ?? 0);
+    }
     if (sort == 'Score') {
       final xs = x?.submitted == true ? x?.score : null,
           ys = y?.submitted == true ? y?.score : null;
@@ -265,8 +270,9 @@ List<ResultJson> monitoringStudents(
           ? -1
           : ys.compareTo(xs);
     }
-    if (order == 0)
+    if (order == 0) {
       order = name(a).toLowerCase().compareTo(name(b).toLowerCase());
+    }
     return order != 0
         ? order
         : (a['student_id'] as String).compareTo(b['student_id'] as String);

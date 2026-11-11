@@ -31,6 +31,43 @@ double _contrast(Color a, Color b) =>
     (math.min(a.computeLuminance(), b.computeLuminance()) + .05);
 
 void main() {
+  testWidgets(
+    'course banner keeps course, section and instructor readable at enlarged text',
+    (tester) async {
+      tester.view.physicalSize = const Size(320, 740);
+      tester.view.devicePixelRatio = 1;
+      addTearDown(tester.view.resetPhysicalSize);
+      addTearDown(tester.view.resetDevicePixelRatio);
+      await tester.pumpWidget(
+        MaterialApp(
+          theme: AppTheme.light,
+          builder: (context, child) => MediaQuery(
+            data: MediaQuery.of(context)
+                .copyWith(textScaler: const TextScaler.linear(1.3)),
+            child: child!,
+          ),
+          home: const Scaffold(
+            body: SingleChildScrollView(
+              child: ClassBanner(
+                course: 'Introduction to Computing and Information Systems',
+                section: 'BSIT-3A',
+                instructor: 'Andrea',
+                compact: true,
+              ),
+            ),
+          ),
+        ),
+      );
+      expect(
+        find.text('Introduction to Computing and Information Systems'),
+        findsOneWidget,
+      );
+      expect(find.text('BSIT-3A'), findsOneWidget);
+      expect(find.text('Andrea'), findsOneWidget);
+      expect(tester.takeException(), isNull);
+    },
+  );
+
   test(
     'eight persisted IDs, light variants and safe default remain compatible',
     () {

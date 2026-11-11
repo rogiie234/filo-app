@@ -7,6 +7,7 @@ import 'package:supabase_flutter/supabase_flutter.dart'
 import '../../../core/notifications/push_events.dart';
 import '../../../core/sync/sync_coordinator.dart';
 import '../../../data/local/app_database.dart';
+import '../../../data/local/cache_row_json.dart';
 
 class NotificationUnavailable implements Exception {
   const NotificationUnavailable();
@@ -77,8 +78,9 @@ NotificationDestination notificationDestination(
     case 'class':
       screen = NotificationScreen.classroom;
     case 'class_members':
-      if (!instructor || notice.type != 'join_request')
+      if (!instructor || notice.type != 'join_request') {
         throw const NotificationUnavailable();
+      }
       screen = NotificationScreen.requests;
     default:
       throw const NotificationUnavailable();
@@ -94,14 +96,12 @@ class NotificationDestinationRepository {
     required this.userId,
     required this.online,
     required this.isCurrent,
-    required this.prepare,
   });
   final AppDatabase db;
   final SupabaseClient client;
   final SyncCoordinator sync;
   final String userId;
   final bool Function() online, isCurrent;
-  final Future<void> Function(NotificationDestination) prepare;
 
   void checkAccount() {
     if (!isCurrent()) throw StateError('Account changed');
@@ -133,8 +133,9 @@ class NotificationDestinationRepository {
         final payload = jsonDecode(
           payloads.single.read<String>('payload'),
         ) as Map<String, dynamic>;
-        if (payload['class_id'] is String)
+        if (payload['class_id'] is String) {
           return row.copyWith(classId: Value(payload['class_id'] as String));
+        }
       }
     }
     return row;
@@ -174,6 +175,85 @@ class NotificationDestinationRepository {
     return row;
   }
 
+  // Reuse authorized rows; collection sync belongs to the destination screen.
+  Future<void> _prepare(
+    Map<String, dynamic> room, {
+    Map<String, dynamic>? member,
+    Map<String, dynamic>? post,
+  }) async {
+    checkAccount();
+    final profileIds = <String>{
+      room['owner_id'] as String,
+      if (member != null) member['student_id'] as String,
+      if (member?['decided_by'] != null) member!['decided_by'] as String,
+      if (post != null) post['author_id'] as String,
+    };
+    final missing = <String>[];
+    for (final id in profileIds) {
+      if (await db.readProfile(id) == null) missing.add(id);
+    }
+    final profiles = missing.isEmpty
+        ? <Map<String, dynamic>>[]
+        : await client
+              .from('profiles')
+              .select()
+              .inFilter('id', missing)
+              .timeout(const Duration(seconds: 20));
+    checkAccount();
+    final attachments = post == null
+        ? <Map<String, dynamic>>[]
+        : await client
+              .from('post_attachments')
+              .select()
+              .eq('post_id', post['id'] as String)
+              .isFilter('deleted_at', null)
+              .order('id')
+              .timeout(const Duration(seconds: 20));
+    checkAccount();
+    await db.transaction(() async {
+      checkAccount();
+      for (final profile in profiles) {
+        await db
+            .into(db.cacheProfiles)
+            .insertOnConflictUpdate(
+              CacheProfile.fromJson(cacheRowJson(profile)).toCompanion(false),
+            );
+      }
+      await db
+          .into(db.cacheClasses)
+          .insertOnConflictUpdate(
+            CacheClassesData.fromJson(cacheRowJson(room)).toCompanion(false),
+          );
+      if (member != null) {
+        await db
+            .into(db.cacheClassMembers)
+            .insertOnConflictUpdate(
+              CacheClassMember.fromJson(cacheRowJson(member))
+                  .toCompanion(false),
+            );
+      }
+      if (post != null) {
+        await db
+            .into(db.cachePosts)
+            .insertOnConflictUpdate(
+              CachePost.fromJson(cacheRowJson(post)).toCompanion(false),
+            );
+        await (db.delete(
+          db.cachePostAttachments,
+        )..where((a) => a.postId.equals(post['id'] as String))).go();
+        for (final attachment in attachments) {
+          await db
+              .into(db.cachePostAttachments)
+              .insertOnConflictUpdate(
+                CachePostAttachment.fromJson(cacheRowJson(attachment))
+                    .toCompanion(false),
+              );
+        }
+      }
+      checkAccount();
+    });
+  }
+
   Future<NotificationDestination> resolve(
     String? id, {
     required bool instructor,
@@ -191,8 +271,9 @@ class NotificationDestinationRepository {
     checkAccount();
     if (profile?.role != 'student' ||
         profile?.deletedAt != null ||
-        alarm == null)
+        alarm == null) {
       throw const NotificationUnavailable();
+    }
     if (alarm.linkedDeckId != null) {
       final deck = await (db.select(
         db.flashcardDecks,
@@ -210,15 +291,19 @@ class NotificationDestinationRepository {
       try {
         final room = await _item('classes', alarm.linkedClassId!);
         final List members;
+        Map<String, dynamic>? membership;
         if (online()) {
           members = await client
               .from('class_members')
-              .select('id')
+              .select()
               .eq('class_id', alarm.linkedClassId!)
               .eq('student_id', userId)
               .eq('status', 'active')
+              .isFilter('deleted_at', null)
               .limit(1)
               .timeout(const Duration(seconds: 20));
+          if (members.isNotEmpty)
+            membership = Map<String, dynamic>.from(members.single as Map);
         } else {
           final member =
               await (db.select(db.cacheClassMembers)..where(
@@ -227,8 +312,9 @@ class NotificationDestinationRepository {
                         m.studentId.equals(userId),
                   ))
                   .getSingleOrNull();
-          if (member != null && member.status != 'active')
+          if (member != null && member.status != 'active') {
             throw const NotificationUnavailable();
+          }
           members = member == null ? [] : [member];
         }
         checkAccount();
@@ -241,7 +327,7 @@ class NotificationDestinationRepository {
           room['id'] as String,
           room['id'] as String,
         );
-        if (online()) await prepare(destination);
+        if (online()) await _prepare(room, member: membership);
         checkAccount();
         return destination;
       } on PostgrestException catch (e) {
@@ -274,8 +360,9 @@ class NotificationDestinationRepository {
           (item['kind'] != 'assignment' ||
               !PushEvents.validId(item['class_id']) ||
               item['id'] != assignmentId ||
-              item['deleted_at'] != null))
+              item['deleted_at'] != null)) {
         throw const NotificationUnavailable();
+      }
       final destination = assignmentId != null
           ? NotificationDestination(
               NotificationScreen.assignment,
@@ -287,18 +374,22 @@ class NotificationDestinationRepository {
           ? item
           : await _item('classes', destination.classId);
       final ownsClass = room['owner_id'] == userId;
+      Map<String, dynamic>? membership;
       if (instructor && !ownsClass) throw const NotificationUnavailable();
       if (!ownsClass) {
         final List<dynamic> members;
         if (online()) {
           members = await client
               .from('class_members')
-              .select('id')
+              .select()
               .eq('class_id', destination.classId)
               .eq('student_id', userId)
               .eq('status', 'active')
+              .isFilter('deleted_at', null)
               .limit(1)
               .timeout(const Duration(seconds: 20));
+          if (members.isNotEmpty)
+            membership = Map<String, dynamic>.from(members.single as Map);
         } else {
           members =
               await (db.select(db.cacheClassMembers)..where(
@@ -315,7 +406,12 @@ class NotificationDestinationRepository {
           throw const NotificationUnavailable();
         }
       }
-      if (online()) await prepare(destination);
+      if (online())
+        await _prepare(
+          room,
+          member: membership,
+          post: table == 'posts' ? item : null,
+        );
       checkAccount();
       return destination;
     } on PostgrestException catch (error) {

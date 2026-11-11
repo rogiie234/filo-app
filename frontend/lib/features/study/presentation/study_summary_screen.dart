@@ -28,12 +28,13 @@ class StudySummaryScreen extends ConsumerWidget {
         database.asData?.value != null &&
         !repository.isLoading &&
         !repository.hasError &&
-        repository.asData?.value != null)
+        repository.asData?.value != null) {
       return _SummaryBody(
         key: ObjectKey(database.requireValue),
         notebookId: notebookId,
         repository: repository.requireValue!,
       );
+    }
     return Scaffold(
       appBar: AppBar(title: const Text('Summary')),
       body: studyAsync(
@@ -103,11 +104,13 @@ class _SummaryBodyState extends ConsumerState<_SummaryBody> {
             message: 'Your saved summary will be replaced after a new summary is generated and saved.',
             confirmLabel: 'Summarize again',
             cancelLabel: 'Cancel',
-          ))
+          )) {
         return;
+      }
       if (!mounted) return;
-      if (await ensureStudyPrivacy(context, ref) && mounted)
+      if (await ensureStudyPrivacy(context, ref) && mounted) {
         await _session.generate();
+      }
     } finally {
       if (mounted) setState(() => _authorizing = false);
     }
@@ -118,8 +121,9 @@ class _SummaryBodyState extends ConsumerState<_SummaryBody> {
       await Clipboard.setData(ClipboardData(text: content));
       if (mounted) showMessage(context, 'Summary copied.');
     } catch (_) {
-      if (mounted)
+      if (mounted) {
         showMessage(context, 'Could not copy this summary. Try again.');
+      }
     }
   }
 

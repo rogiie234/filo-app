@@ -94,8 +94,9 @@ class _AttemptDetailScreenState extends ConsumerState<AttemptDetailScreen> {
         final answer = q['answer'] as Map?;
         if (edit != null &&
             edit.points.text == answer?['points_awarded']?.toString() &&
-            edit.feedback.text == (answer?['feedback'] ?? ''))
+            edit.feedback.text == (answer?['feedback'] ?? '')) {
           edit.accept();
+        }
       }
       setState(() => _reconcile = false);
     } catch (e) {
@@ -145,11 +146,12 @@ class _AttemptDetailScreenState extends ConsumerState<AttemptDetailScreen> {
       showMessage(context, message);
       return true;
     } catch (e) {
-      if (mounted)
+      if (mounted) {
         setState(() {
           _error = e.toString();
           _reconcile = e is ResultsFailure && e.uncertain;
         });
+      }
       return false;
     } finally {
       if (mounted) setState(() => _busy = false);
@@ -259,11 +261,12 @@ class _AttemptDetailScreenState extends ConsumerState<AttemptDetailScreen> {
           ),
           FilledButton(
             onPressed: () {
-              if (validateFiloForm(form))
+              if (validateFiloForm(form)) {
                 Navigator.pop(dialog, (
                   int.parse(points.text.trim()),
                   feedback.text,
                 ));
+              }
             },
             child: const Text('Change points'),
           ),
@@ -296,11 +299,12 @@ class _AttemptDetailScreenState extends ConsumerState<AttemptDetailScreen> {
         );
       }
     } catch (e) {
-      if (mounted)
+      if (mounted) {
         setState(() {
           _error = e.toString();
           _reconcile = e is ResultsFailure && e.uncertain;
         });
+      }
     } finally {
       if (mounted) setState(() => _busy = false);
     }
@@ -405,12 +409,13 @@ class _AttemptDetailScreenState extends ConsumerState<AttemptDetailScreen> {
                       onPressed: readOnly
                           ? null
                           : () async {
-                              if (await _leave() && context.mounted)
+                              if (await _leave() && context.mounted) {
                                 await openSecondChance(
                                   context,
                                   widget.quizId,
                                   detail.session.studentId,
                                 );
+                              }
                             },
                       child: const Text('Grant second chance'),
                     ),

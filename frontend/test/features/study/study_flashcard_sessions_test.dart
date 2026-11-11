@@ -83,7 +83,7 @@ void main() {
     calls = 0;
     sources = [];
     submitted = null;
-    invoke = (_, body, __) async => {
+    invoke = (_, body, _) async => {
       'cards': [
         for (final c in _cards) {'front': c.front, 'back': c.back},
       ],
@@ -246,7 +246,7 @@ void main() {
 
   test('cancellation and account changes discard late generations', () async {
     final response = Completer<dynamic>(), started = Completer<void>();
-    invoke = (_, __, ___) {
+    invoke = (_, _, _) {
       started.complete();
       return response.future;
     };
@@ -265,7 +265,7 @@ void main() {
     expect(generation.result, isNull);
     expect(guard.isBusy, isFalse);
     final another = Completer<dynamic>(), dispatched = Completer<void>();
-    invoke = (_, __, ___) {
+    invoke = (_, _, _) {
       dispatched.complete();
       return another.future;
     };
@@ -298,7 +298,7 @@ void main() {
         'AI_UNAVAILABLE',
         'AI_BLOCKED',
       ]) {
-        invoke = (_, __, ___) async => {
+        invoke = (_, _, _) async => {
           'error': {'code': code, 'message': 'PRIVATE'},
         };
         await generation.generate(_settings);

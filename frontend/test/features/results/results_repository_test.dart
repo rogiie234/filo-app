@@ -127,8 +127,9 @@ class FakeResultsRemote implements ResultsRemote {
     if (!writeEntered.isCompleted) writeEntered.complete();
     if (writeGate != null) await writeGate!.future;
     if (writeError != null) throw writeError!;
-    if (name == 'grant_second_chance')
+    if (name == 'grant_second_chance') {
       attempt = {...attempt, 'status': 'voided'};
+    }
   }
 }
 
@@ -460,8 +461,9 @@ void main() {
         final data = next.asData?.value;
         if (data == null) return;
         states.add(data);
-        if (data.data?.result?.score == 8 && !fresh.isCompleted)
+        if (data.data?.result?.score == 8 && !fresh.isCompleted) {
           fresh.complete();
+        }
       });
       addTearDown(subscription.close);
       await fresh.future;

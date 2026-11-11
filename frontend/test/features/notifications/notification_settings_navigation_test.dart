@@ -64,6 +64,7 @@ void main() {
                 .overrideWith((ref) => Stream.value(false)),
             streamPostsProvider('class')
                 .overrideWith((ref) => Stream.value([])),
+            classFileSnapshotsProvider.overrideWith((ref) => {}),
             classFilesProvider('class').overrideWith((ref) => Stream.value([])),
             instructorQuizzesProvider('class')
                 .overrideWith((ref) => Stream.value([])),

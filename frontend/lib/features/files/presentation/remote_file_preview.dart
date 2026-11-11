@@ -30,10 +30,11 @@ class _RemoteFilePreviewState extends State<RemoteFilePreview> {
         throw StateError('Browser unavailable');
       }
     } catch (_) {
-      if (mounted)
+      if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text('Could not open this link. Try again.')),
         );
+      }
     }
   }
 
@@ -43,7 +44,7 @@ class _RemoteFilePreviewState extends State<RemoteFilePreview> {
     body: FutureBuilder<Uri>(
       future: _source,
       builder: (context, snapshot) {
-        if (snapshot.hasError)
+        if (snapshot.hasError) {
           return EmptyState(
             title: 'Could not preview this file. Try again.',
             bob: false,
@@ -52,9 +53,11 @@ class _RemoteFilePreviewState extends State<RemoteFilePreview> {
               child: const Text('Retry'),
             ),
           );
+        }
         final uri = snapshot.data;
-        if (uri == null)
+        if (uri == null) {
           return const Center(child: FiloCircularProgressIndicator());
+        }
         final details = FiloFileDetails.fromName(
           widget.name,
           mimeType: widget.mimeType,

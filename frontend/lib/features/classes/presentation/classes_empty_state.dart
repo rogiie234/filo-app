@@ -11,6 +11,7 @@ class ClassesEmptyState extends StatelessWidget {
     this.pose = 'waving',
     this.bob = true,
     this.action,
+    this.illustrated = false,
   });
   final String title;
   final String message;
@@ -18,8 +19,9 @@ class ClassesEmptyState extends StatelessWidget {
   final String pose;
   final bool bob;
   final Widget? action;
+  final bool illustrated;
   @override
-  Widget build(BuildContext context) => action == null
+  Widget build(BuildContext context) => !illustrated && action == null
       ? EmptyState(
           title: title,
           message: message,
@@ -64,8 +66,10 @@ class ClassesEmptyState extends StatelessWidget {
                   color: Theme.of(context).colorScheme.onSurfaceVariant,
                 ),
               ),
-              const SizedBox(height: FiloSpacing.s20),
-              action!,
+              if (action != null) ...[
+                const SizedBox(height: FiloSpacing.s20),
+                action!,
+              ],
             ],
           ),
         );

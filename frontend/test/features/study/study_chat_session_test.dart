@@ -76,7 +76,7 @@ void main() {
     loadHook = null;
     submitted = null;
     guard = AiRequestGuard(elapsed: () => elapsed);
-    invoke = (_, body, __) async => {
+    invoke = (_, body, _) async => {
       'answer': '**A saved answer**\n- One point',
       'mode': (body['sources'] as List).isEmpty ? 'general' : 'files',
       'truncated': false,
@@ -145,7 +145,7 @@ void main() {
     'cancel ignores late response and retry reuses the unanswered question',
     () async {
       final dispatched = Completer<void>(), reply = Completer<dynamic>();
-      invoke = (_, __, ___) {
+      invoke = (_, _, _) {
         dispatched.complete();
         return reply.future;
       };
@@ -165,7 +165,7 @@ void main() {
       expect(session.draft, 'Explain cells.');
       expect(session.error, studyAiMessages['CANCELLED']);
       elapsed += const Duration(seconds: 3);
-      invoke = (_, __, ___) async => {
+      invoke = (_, _, _) async => {
         'answer': 'New answer',
         'mode': 'general',
         'truncated': false,
@@ -179,7 +179,7 @@ void main() {
   );
 
   test('busy copy is chat-specific after save and an edited retry creates another question', () async {
-    invoke = (_, __, ___) async => {
+    invoke = (_, _, _) async => {
       'error': {'code': 'AI_BUSY'},
     };
     session.setDraft('First question');
@@ -312,7 +312,7 @@ void main() {
 
   test('account change prevents saving a late answer', () async {
     final dispatched = Completer<void>(), reply = Completer<dynamic>();
-    invoke = (_, __, ___) {
+    invoke = (_, _, _) {
       dispatched.complete();
       return reply.future;
     };
@@ -370,7 +370,7 @@ void main() {
         'AI_UNAVAILABLE',
         'AI_BLOCKED',
       ]) {
-        invoke = (_, __, ___) async => {
+        invoke = (_, _, _) async => {
           'error': {'code': code, 'message': 'raw diagnostics'},
         };
         await session.send();
@@ -381,8 +381,7 @@ void main() {
         expect(session.draft, 'Keep this question');
         elapsed += const Duration(seconds: 3);
       }
-      invoke = (_, __, ___) async =>
-          throw StateError('raw transport diagnostics');
+      invoke = (_, _, _) async => throw StateError('raw transport diagnostics');
       await session.send();
       expect(session.error, studyAiMessages['UNKNOWN']);
       expect(session.messages.length, 1);
@@ -394,7 +393,7 @@ void main() {
     () async {
       final reply = Completer<dynamic>();
       final bounded = StudentAiClient(
-        invoke: (_, __, ___) => reply.future,
+        invoke: (_, _, _) => reply.future,
         loadSources: (_) async => [],
         isOnline: () => true,
         currentAccount: () => 'student',
@@ -433,7 +432,7 @@ void main() {
       repo.questionGate = Completer<void>();
       var invoked = false;
       final bounded = StudentAiClient(
-        invoke: (_, __, ___) async {
+        invoke: (_, _, _) async {
           invoked = true;
           return {
             'answer': 'Do not dispatch',

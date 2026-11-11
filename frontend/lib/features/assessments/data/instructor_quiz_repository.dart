@@ -48,18 +48,21 @@ class InstructorQuizRepository {
     List<QuizQuestion> questions,
     AiSourceContext? context,
   ) async {
-    if (!_saving.add(classId))
+    if (!_saving.add(classId)) {
       throw StateError('A save is already in progress.');
+    }
     final cache = FileTextCache(database);
     var added = 0;
     var staged = questions.isEmpty;
     try {
       await _authorize(classId, writing: true);
-      if (client.auth.currentUser?.id != userId)
+      if (client.auth.currentUser?.id != userId) {
         throw StateError('The signed-in account changed.');
+      }
       if (context != null) {
-        if ((await cache.pending(quizId)).isNotEmpty)
+        if ((await cache.pending(quizId)).isNotEmpty) {
           throw StateError('Reconcile pending AI drafts first.');
+        }
         var position = 0;
         await database.transaction(() async {
           for (final question in questions) {
@@ -77,8 +80,9 @@ class InstructorQuizRepository {
       }
       await _remoteAccess(classId, writing: true);
       var fresh = await refreshQuiz(classId, quizId);
-      if (fresh.locked || fresh.row['status'] == 'published')
+      if (fresh.locked || fresh.row['status'] == 'published') {
         throw StateError('AI questions require an unlocked draft assessment.');
+      }
       final pending = await cache.pending(quizId);
       for (final row in pending) {
         _connection();
@@ -165,8 +169,9 @@ class InstructorQuizRepository {
           }
           if (['42501', 'PGRST301', 'PGRST302'].contains(error.code) ||
               error.message.toLowerCase().contains('locked') ||
-              error.message.toLowerCase().contains('started'))
+              error.message.toLowerCase().contains('started')) {
             break;
+          }
         } catch (_) {
           // Keep the uncertain record; a later refresh can bind it without a new insert.
         }
@@ -195,21 +200,25 @@ class InstructorQuizRepository {
     QuizQuestion replacement,
     AiSourceContext context,
   ) async {
-    if (!_saving.add(classId))
+    if (!_saving.add(classId)) {
       throw StateError('A save is already in progress.');
+    }
     try {
       await _remoteAccess(classId, writing: true);
       final fresh = await refreshQuiz(classId, quizId);
-      if (fresh.locked || fresh.row['status'] == 'published')
+      if (fresh.locked || fresh.row['status'] == 'published') {
         throw StateError('AI questions require an unlocked draft assessment.');
+      }
       final original = fresh.questions
           .where((q) => q.id == questionId)
           .firstOrNull;
-      if (original == null || !original.aiGenerated)
+      if (original == null || !original.aiGenerated) {
         throw StateError('This question is no longer available.');
+      }
       if (replacement.type != original.type ||
-          replacement.validationErrors().isNotEmpty)
+          replacement.validationErrors().isNotEmpty) {
         throw StateError('The replacement question is invalid.');
+      }
       replacement.payload['points'] = original.points;
       final position = await client
           .from('questions')
@@ -332,15 +341,18 @@ class InstructorQuizRepository {
     final revision = _listRevisions[classId] ?? 0;
     await _remoteAccess(classId);
     final all = <Map<String, dynamic>>[];
-    for (var offset = 0; ; offset += 200) {
-      final page = await client
+    String? afterId;
+    while (true) {
+      var query = client
           .from('quizzes')
           .select('*,questions(count)')
           .eq('class_id', classId)
           .eq('author_id', userId)
-          .isFilter('deleted_at', null)
-          .order('id')
-          .range(offset, offset + 199)
+          .isFilter('deleted_at', null);
+      if (afterId != null) query = query.gt('id', afterId);
+      final page = await query
+          .order('id', ascending: true)
+          .limit(200)
           .timeout(const Duration(seconds: 20));
       all.addAll(
         page.map((item) {
@@ -352,7 +364,8 @@ class InstructorQuizRepository {
           return row;
         }),
       );
-      if (page.length < 200) break;
+      if (page.isEmpty) break;
+      afterId = page.last['id'] as String;
     }
     await _authorize(classId);
     var committed = false;
@@ -406,14 +419,22 @@ class InstructorQuizRepository {
         throw StateError('This assessment is no longer available.');
       }
       final questions = <QuizQuestion>[];
-      for (var offset = 0; ; offset += 200) {
-        final page = await client
+      int? afterPosition;
+      String? afterQuestion;
+      while (true) {
+        var query = client
             .from('questions')
             .select('*,question_options(*),answer_keys(*)')
-            .eq('quiz_id', quizId)
-            .order('position')
-            .order('id')
-            .range(offset, offset + 199)
+            .eq('quiz_id', quizId);
+        if (afterQuestion != null) {
+          query = query.or(
+            'position.gt.$afterPosition,and(position.eq.$afterPosition,id.gt.$afterQuestion)',
+          );
+        }
+        final page = await query
+            .order('position', ascending: true)
+            .order('id', ascending: true)
+            .limit(200)
             .timeout(const Duration(seconds: 20));
         for (final q in page) {
           final options =
@@ -461,7 +482,9 @@ class InstructorQuizRepository {
             ),
           );
         }
-        if (page.length < 200) break;
+        if (page.isEmpty) break;
+        afterPosition = page.last['position'] as int;
+        afterQuestion = page.last['id'] as String;
       }
       // Refuse a mixed snapshot when settings/content changed during the reads.
       final end = await client
@@ -502,8 +525,9 @@ class InstructorQuizRepository {
         }
       });
       _notify();
-      if (row['status'] == 'published')
+      if (row['status'] == 'published') {
         await FileTextCache(database).deleteForDraft(quizId);
+      }
       return quiz;
     } on PostgrestException catch (e) {
       if (e.code == '42501') {

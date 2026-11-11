@@ -22,6 +22,7 @@ void main() {
         call,
       ) async {
         calls.add(call);
+        return null;
       });
       await ExamScreenSecurity.protect(true);
       await ExamScreenSecurity.protect(false);

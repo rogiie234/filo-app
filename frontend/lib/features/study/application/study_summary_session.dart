@@ -56,10 +56,11 @@ class StudySummarySession extends ChangeNotifier {
       pending = result;
       await _save(valid);
     } catch (failure) {
-      if (valid())
+      if (valid()) {
         error = failure is StudyAiFailure && failure.code == 'AI_BUSY'
             ? studySummaryBusyMessage
             : studyAiFriendlyError(failure);
+      }
     } finally {
       token.cancel();
       if (_current && epoch == _epoch) {

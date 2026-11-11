@@ -141,8 +141,9 @@ final pushRegistrationProvider = Provider<PushRegistration>((ref) {
       final current = currentSession();
       final accountId = client.auth.currentUser?.id;
       try {
-        if (accountId != null)
+        if (accountId != null) {
           await const DeadlineBridge().clearAccount(accountId);
+        }
       } catch (_) {
         _pushStatus('Sign-out cleanup pending: deadline reminders');
       }

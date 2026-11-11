@@ -211,6 +211,7 @@ void main() {
       final container = ProviderContainer(
         overrides: [
           classSyncLifecycleProvider.overrideWith((ref) {}),
+          classFileSnapshotsProvider.overrideWith((ref) => {}),
           classFilesProvider('class').overrideWith((ref) => Stream.value([])),
           postSyncLifecycleProvider('class').overrideWith((ref) {}),
           postSyncProvider('class').overrideWith((ref) async {}),
@@ -281,6 +282,7 @@ void main() {
       final container = ProviderContainer(
         overrides: [
           classSyncLifecycleProvider.overrideWith((ref) {}),
+          classFileSnapshotsProvider.overrideWith((ref) => {}),
           classFilesProvider('class').overrideWith((ref) => Stream.value([])),
           postSyncLifecycleProvider('class').overrideWith((ref) {}),
           postSyncProvider('class').overrideWith((ref) async {

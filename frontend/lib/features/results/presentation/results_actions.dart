@@ -155,12 +155,14 @@ class _SecondChanceScreenState extends ConsumerState<SecondChanceScreen> {
       final repo = await ref.read(instructorResultsRepositoryProvider.future);
       final fresh = await repo!.refreshQuiz(widget.quizId);
       final attempt = fresh.attemptFor(widget.studentId);
-      if (fresh.quiz['results_released_at'] != null)
+      if (fresh.quiz['results_released_at'] != null) {
         throw const ResultsFailure(
           'Results are already released. Create a new quiz instead.',
         );
-      if (attempt == null)
+      }
+      if (attempt == null) {
         throw const ResultsFailure('This student has no attempt to reset.');
+      }
       final name = attempt.studentName;
       if (!mounted) return;
       final accepted = await showFiloConfirmation(

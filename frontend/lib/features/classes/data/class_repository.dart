@@ -1,18 +1,8 @@
 import 'package:drift/drift.dart';
 
 import '../../../data/local/app_database.dart';
+import '../../../data/local/cache_row_json.dart';
 import 'class_remote.dart';
-
-// Drift's generated JSON uses camelCase keys and epoch milliseconds for dates.
-Map<String, dynamic> _cacheJson(ClassRow row) => {
-  for (final entry in row.entries)
-    entry.key.replaceAllMapped(
-      RegExp(r'_([a-z])'),
-      (m) => m[1]!.toUpperCase(),
-    ): entry.key.endsWith('_at') && entry.value != null
-        ? DateTime.parse(entry.value as String).millisecondsSinceEpoch
-        : entry.value,
-};
 
 class ClassRepository {
   ClassRepository(this.database, this.remote, this.userId);
@@ -83,7 +73,9 @@ class ClassRepository {
       for (final profile in profiles) {
         await db
             .into(db.cacheProfiles)
-            .insertOnConflictUpdate(CacheProfile.fromJson(_cacheJson(profile)));
+            .insertOnConflictUpdate(
+              CacheProfile.fromJson(cacheRowJson(profile)),
+            );
       }
       for (final row in changes['classes']!) {
         if (!visible.contains(row['id']) ||
@@ -93,7 +85,7 @@ class ClassRepository {
         await db
             .into(db.cacheClasses)
             .insertOnConflictUpdate(
-              CacheClassesData.fromJson(_cacheJson(row)).toCompanion(false),
+              CacheClassesData.fromJson(cacheRowJson(row)).toCompanion(false),
             );
       }
       for (final row in await db.select(db.cacheClasses).get()) {
@@ -129,7 +121,7 @@ class ClassRepository {
           await db
               .into(db.cacheClassMembers)
               .insertOnConflictUpdate(
-                CacheClassMember.fromJson(_cacheJson(row)),
+                CacheClassMember.fromJson(cacheRowJson(row)),
               );
         }
       }
@@ -171,7 +163,7 @@ class ClassRepository {
                 rows.single['archived_at'] != null))) {
       throw StateError('Class restoration could not be confirmed');
     }
-    final restored = CacheClassesData.fromJson(_cacheJson(rows.single));
+    final restored = CacheClassesData.fromJson(cacheRowJson(rows.single));
     await database
         .into(database.cacheClasses)
         .insertOnConflictUpdate(restored.toCompanion(false));

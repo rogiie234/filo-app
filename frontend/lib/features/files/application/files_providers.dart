@@ -29,24 +29,46 @@ final filesRepositoryProvider = FutureProvider<FilesRepository?>((ref) async {
   return repository;
 });
 
+class LibrarySnapshot {
+  List<LocalFileRecord>? files;
+  List<LocalFolderRecord>? folders;
+}
+
+// Retain display metadata, not SQLite subscriptions, across tab navigation.
+final librarySnapshotProvider = Provider<LibrarySnapshot>((ref) {
+  ref.watch(verifiedUserIdProvider);
+  ref.watch(accountDatabaseProvider);
+  return LibrarySnapshot();
+});
+
 final localFilesProvider = StreamProvider.autoDispose<List<LocalFileRecord>>((
   ref,
 ) async* {
+  final snapshot = ref.watch(librarySnapshotProvider);
   final files = await ref.watch(filesRepositoryProvider.future);
+  if (!ref.mounted) return;
   if (files == null) {
     yield [];
     return;
   }
-  yield* files.watchFiles();
+  yield* files.watchFiles().map((rows) {
+    snapshot.files = List.unmodifiable(rows);
+    return rows;
+  });
 });
 final localFoldersProvider =
     StreamProvider.autoDispose<List<LocalFolderRecord>>((ref) async* {
+      final snapshot = ref.watch(librarySnapshotProvider);
       final files = await ref.watch(filesRepositoryProvider.future);
+      if (!ref.mounted) return;
       if (files == null) {
         yield [];
         return;
       }
-      yield* files.watchFolders();
+      yield* files.watchFolders().map((rows) {
+        snapshot.folders = List.unmodifiable(rows);
+        return rows;
+      });
     });
 final downloadManagerProvider = FutureProvider<DownloadManager?>((ref) async {
   final files = await ref.watch(filesRepositoryProvider.future);
@@ -70,9 +92,20 @@ class ClassFileEntry {
   final CachePostAttachment attachment;
 }
 
+// Retain display data without retaining paused SQLite subscriptions.
+final classFileSnapshotsProvider = Provider<Map<String, List<ClassFileEntry>>>((
+  ref,
+) {
+  ref.watch(verifiedUserIdProvider);
+  ref.watch(accountDatabaseProvider);
+  return {};
+});
+
 final classFilesProvider = StreamProvider.autoDispose
     .family<List<ClassFileEntry>, String>((ref, classId) async* {
+      final snapshots = ref.watch(classFileSnapshotsProvider);
       final db = await ref.watch(accountDatabaseProvider.future);
+      if (!ref.mounted) return;
       if (db == null) {
         yield [];
         return;
@@ -90,9 +123,11 @@ final classFilesProvider = StreamProvider.autoDispose
           OrderingTerm.desc(a.createdAt),
           OrderingTerm.asc(a.id),
         ]);
-      yield* query.watch().map(
-        (rows) => rows
+      yield* query.watch().map((rows) {
+        final entries = rows
             .map((r) => ClassFileEntry(r.readTable(p), r.readTable(a)))
-            .toList(),
-      );
+            .toList();
+        snapshots[classId] = List.unmodifiable(entries);
+        return entries;
+      });
     });

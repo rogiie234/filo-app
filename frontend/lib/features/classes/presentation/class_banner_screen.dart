@@ -1,15 +1,13 @@
-import '../../../core/picked_image_file.dart';
-
 import 'dart:typed_data';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:image_picker/image_picker.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../../../core/connectivity/connectivity_provider.dart';
 import '../../../core/supabase/supabase_provider.dart';
 import '../../../core/widgets/filo_widgets.dart';
+import '../application/class_banner_picker.dart';
 import '../application/class_providers.dart';
 import '../domain/class_banner.dart';
 import 'class_banner.dart';
@@ -34,25 +32,7 @@ class _ClassBannerState extends ConsumerState<ClassBannerScreen> {
   Future<void> _pickBanner() async {
     setState(() => _picking = true);
     try {
-      final image = await ImagePicker().pickImage(
-        source: ImageSource.gallery,
-        maxWidth: 1600,
-        maxHeight: 900,
-        imageQuality: 85,
-        requestFullMetadata: false,
-      );
-      if (image == null) return;
-      await usePickedImage(image, () async {
-        final extension = image.name.split('.').last.toLowerCase();
-        if (!['jpg', 'jpeg', 'png', 'webp'].contains(extension)) {
-          throw const FormatException('Choose a JPG, PNG, or WebP image.');
-        }
-        if (await image.length() > 2097152) {
-          throw const FormatException(
-            'Choose a banner image smaller than 2 MB.',
-          );
-        }
-        final bytes = await image.readAsBytes();
+      await pickClassBanner((bytes, extension) {
         if (!mounted) return;
         setState(() {
           _uploadPath = null;

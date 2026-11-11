@@ -196,8 +196,9 @@ final examLifecycleProvider = Provider.autoDispose<void>((ref) {
   Future<void> flushLeaves() async {
     if (disposed ||
         WidgetsBinding.instance.lifecycleState != AppLifecycleState.resumed ||
-        ref.read(connectivityProvider).asData?.value != true)
+        ref.read(connectivityProvider).asData?.value != true) {
       return;
+    }
     try {
       final sync = await ref.read(syncCoordinatorProvider.future);
       if (!disposed) {

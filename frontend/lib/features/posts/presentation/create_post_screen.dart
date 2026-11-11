@@ -120,344 +120,349 @@ class _CreatePostScreenState extends ConsumerState<CreatePostScreen> {
     final writable = room != null && !room.archived && repository != null;
     return PopScope(
       canPop: !_busy,
-      child: Scaffold(
-        appBar: AppBar(
-          title: Text(widget.postId == null ? 'Create post' : 'Edit post'),
-        ),
-        floatingActionButtonLocation: FloatingActionButtonLocation.centerFloat,
-        floatingActionButton: SizedBox(
-          width: MediaQuery.sizeOf(context).width - FiloSpacing.screen * 2,
-          child: FiloButton(
-            minHeight: 64,
-            busy: _busy,
-            label: _postId != null
-                ? 'Done'
-                : _uncertain
-                ? 'Refresh'
-                : widget.postId != null
-                ? 'Save changes'
-                : 'Post',
-            icon: FiloIcons.send,
-            onPressed:
-                !online ||
-                    !writable ||
-                    _busy ||
-                    (widget.postId != null && !_loaded)
-                ? null
-                : _postId != null
-                ? () => Navigator.of(context).pop()
-                : _uncertain
-                ? _resolve
-                : _post,
+      child: EntryBackground(
+        verification: true,
+        breeze: true,
+        variation: 5,
+        child: Scaffold(
+          backgroundColor: Colors.transparent,
+          appBar: AppBar(
+            backgroundColor: Colors.transparent,
+            surfaceTintColor: Colors.transparent,
+            elevation: 0,
+            scrolledUnderElevation: 0,
+            title: Text(widget.postId == null ? 'Create post' : 'Edit post'),
           ),
-        ),
-        body: Stack(
-          fit: StackFit.expand,
-          children: [
-            Positioned(
-              top: 0,
-              left: 0,
-              right: 0,
-              bottom: -MediaQuery.viewInsetsOf(context).bottom,
-              child: const EntryBackground(verification: true, breeze: true),
+          floatingActionButtonLocation:
+              FloatingActionButtonLocation.centerFloat,
+          floatingActionButton: SizedBox(
+            width: MediaQuery.sizeOf(context).width - FiloSpacing.screen * 2,
+            child: FiloButton(
+              minHeight: 64,
+              busy: _busy,
+              label: _postId != null
+                  ? 'Done'
+                  : _uncertain
+                  ? 'Refresh'
+                  : widget.postId != null
+                  ? 'Save changes'
+                  : 'Post',
+              icon: FiloIcons.send,
+              onPressed:
+                  !online ||
+                      !writable ||
+                      _busy ||
+                      (widget.postId != null && !_loaded)
+                  ? null
+                  : _postId != null
+                  ? () => Navigator.of(context).pop()
+                  : _uncertain
+                  ? _resolve
+                  : _post,
             ),
-            Form(
-              key: _form,
-              child: ListView(
-                keyboardDismissBehavior:
-                    ScrollViewKeyboardDismissBehavior.onDrag,
-                padding: EdgeInsets.fromLTRB(
-                  FiloSpacing.screen,
-                  FiloSpacing.screen,
-                  FiloSpacing.screen,
-                  112 +
-                      MediaQuery.textScalerOf(context).scale(20) +
-                      MediaQuery.paddingOf(context).bottom,
-                ),
-                children: [
-                  AbsorbPointer(
-                    absorbing:
-                        !writable ||
-                        (widget.postId != null && !_loaded) ||
-                        _busy ||
-                        _postId != null ||
-                        _uncertain,
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.stretch,
-                      children: [
-                        Text(
-                          'Share something worth learning.',
-                          style: Theme.of(context).textTheme.titleMedium,
-                        ),
-                        const SizedBox(height: FiloSpacing.screen),
-                        FiloPanel(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              TextFormField(
-                                controller: _title,
-                                maxLength: 120,
-                                decoration: const InputDecoration(
-                                  labelText: 'Title',
-                                ),
-                                validator: (value) =>
-                                    value == null || value.trim().isEmpty
-                                    ? 'Give your post a title.'
-                                    : null,
-                              ),
-                              const SizedBox(height: FiloSpacing.s16),
-                              TextFormField(
-                                controller: _message,
-                                minLines: 4,
-                                maxLines: 8,
-                                maxLength: 5000,
-                                decoration: const InputDecoration(
-                                  labelText: 'Message (optional)',
-                                  alignLabelWithHint: true,
-                                ),
-                              ),
-                            ],
+          ),
+          body: Stack(
+            fit: StackFit.expand,
+            children: [
+              Form(
+                key: _form,
+                child: ListView(
+                  keyboardDismissBehavior:
+                      ScrollViewKeyboardDismissBehavior.onDrag,
+                  padding: EdgeInsets.fromLTRB(
+                    FiloSpacing.screen,
+                    FiloSpacing.screen,
+                    FiloSpacing.screen,
+                    112 +
+                        MediaQuery.textScalerOf(context).scale(20) +
+                        MediaQuery.paddingOf(context).bottom,
+                  ),
+                  children: [
+                    AbsorbPointer(
+                      absorbing:
+                          !writable ||
+                          (widget.postId != null && !_loaded) ||
+                          _busy ||
+                          _postId != null ||
+                          _uncertain,
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.stretch,
+                        children: [
+                          Text(
+                            'Share something worth learning.',
+                            style: Theme.of(context).textTheme.titleMedium,
                           ),
-                        ),
-                        const SizedBox(height: FiloSpacing.screen),
-                        Text(
-                          'Attachments',
-                          style: FiloTypography.strongLabel(context),
-                        ),
-                        const SizedBox(height: FiloSpacing.s12),
-                        Wrap(
-                          spacing: 12,
-                          runSpacing: 8,
-                          children: [
-                            OutlinedButton.icon(
-                              onPressed: _attachments.length < 10
-                                  ? _attach
-                                  : null,
-                              icon: const FiloIcon(FiloIcons.attachment),
-                              label: const Text('Attach file'),
-                            ),
-                            OutlinedButton.icon(
-                              onPressed: _attachments.length < 10
-                                  ? _addLink
-                                  : null,
-                              icon: const FiloIcon(FiloIcons.link),
-                              label: const Text('Add link'),
-                            ),
-                          ],
-                        ),
-                        const SizedBox(height: FiloSpacing.s12),
-                        Text(
-                          'Up to 10 attachments · 25 MB per file',
-                          style: Theme.of(context).textTheme.bodySmall!
-                              .copyWith(
-                                color: Theme.of(context)
-                                    .colorScheme
-                                    .onSurfaceVariant,
-                              ),
-                        ),
-                        for (final attachment in _attachments)
-                          Padding(
-                            padding: const EdgeInsets.only(
-                              top: FiloSpacing.s12,
-                            ),
-                            child: FiloPanel(
-                              padding: const EdgeInsets.fromLTRB(
-                                FiloSpacing.s16,
-                                FiloSpacing.s8,
-                                FiloSpacing.s8,
-                                FiloSpacing.s8,
-                              ),
-                              child: Row(
-                                children: [
-                                  FiloIcon(
-                                    attachment.drive
-                                        ? FiloIcons.drive
-                                        : FiloIcons.attachment,
-                                    size: 20,
+                          const SizedBox(height: FiloSpacing.screen),
+                          FiloPanel(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                TextFormField(
+                                  controller: _title,
+                                  maxLength: 120,
+                                  decoration: const InputDecoration(
+                                    labelText: 'Title',
                                   ),
-                                  const SizedBox(width: FiloSpacing.s8),
-                                  Expanded(
-                                    child: Column(
-                                      crossAxisAlignment:
-                                          CrossAxisAlignment.start,
-                                      children: [
-                                        Text(attachment.name),
-                                        if (attachment.drive) ...[
-                                          const Text(
-                                            'Google Drive - file or document',
-                                          ),
-                                          const Text(
-                                            'Set sharing to Anyone with the link so students can download it.',
-                                          ),
-                                        ],
-                                      ],
-                                    ),
-                                  ),
-                                  IconButton(
-                                    tooltip: 'Remove attachment',
-                                    icon: const FiloIcon(FiloIcons.close),
-                                    onPressed: () => setState(
-                                      () => _attachments.remove(attachment),
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            ),
-                          ),
-                        const SizedBox(height: FiloSpacing.screen),
-                        FiloPanel(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.stretch,
-                            children: [
-                              FiloSwitchListTile(
-                                contentPadding: EdgeInsets.zero,
-                                title: Text(
-                                  'Require submission',
-                                  style: FiloTypography.strongLabel(context),
-                                ),
-                                subtitle: Text(
-                                  widget.postId != null
-                                      ? 'Post type cannot change.'
-                                      : 'Turn this post into an assignment',
-                                ),
-                                value: _submission,
-                                onChanged: widget.postId != null
-                                    ? null
-                                    : (value) =>
-                                          setState(() => _submission = value),
-                              ),
-                              if (_submission) ...[
-                                const Padding(
-                                  padding: EdgeInsets.symmetric(
-                                    vertical: FiloSpacing.s16,
-                                  ),
-                                  child: Divider(height: 1),
-                                ),
-                                Text(
-                                  'Assignment details',
-                                  style: FiloTypography.strongLabel(context),
+                                  validator: (value) =>
+                                      value == null || value.trim().isEmpty
+                                      ? 'Give your post a title.'
+                                      : null,
                                 ),
                                 const SizedBox(height: FiloSpacing.s16),
                                 TextFormField(
-                                  controller: _points,
-                                  keyboardType: TextInputType.number,
+                                  controller: _message,
+                                  minLines: 4,
+                                  maxLines: 8,
+                                  maxLength: 5000,
                                   decoration: const InputDecoration(
-                                    labelText: 'Points',
+                                    labelText: 'Message (optional)',
+                                    alignLabelWithHint: true,
                                   ),
-                                  validator: (value) {
-                                    final points = int.tryParse(value ?? '');
-                                    return points == null ||
-                                            points < 0 ||
-                                            points > 2147483647
-                                        ? 'Enter a nonnegative whole number (up to 2147483647).'
-                                        : null;
-                                  },
-                                ),
-                                const SizedBox(height: FiloSpacing.s16),
-                                OutlinedButton.icon(
-                                  onPressed: _pickDue,
-                                  icon: const FiloIcon(FiloIcons.calendar),
-                                  label: Text(
-                                    _due == null
-                                        ? 'Set due date and time'
-                                        : _dueLabel,
-                                  ),
-                                ),
-                                FiloSwitchListTile(
-                                  contentPadding: EdgeInsets.zero,
-                                  title: const Text('Accept late submissions'),
-                                  value: _late,
-                                  onChanged: (value) =>
-                                      setState(() => _late = value),
-                                ),
-                                const Divider(height: FiloSpacing.screen),
-                                FiloSwitchListTile(
-                                  contentPadding: EdgeInsets.zero,
-                                  title: const Text('Allow file uploads'),
-                                  value: _allowFiles,
-                                  onChanged: (value) =>
-                                      setState(() => _allowFiles = value),
-                                ),
-                                const SizedBox(height: FiloSpacing.s12),
-                                DropdownButtonFormField<int>(
-                                  initialValue: _maxFiles,
-                                  decoration: const InputDecoration(
-                                    labelText: 'Maximum files per submission',
-                                  ),
-                                  items: [
-                                    for (var i = 1; i <= 5; i++)
-                                      DropdownMenuItem(
-                                        value: i,
-                                        child: Text('$i'),
-                                      ),
-                                  ],
-                                  onChanged: _allowFiles
-                                      ? (value) =>
-                                            setState(() => _maxFiles = value!)
-                                      : null,
                                 ),
                               ],
+                            ),
+                          ),
+                          const SizedBox(height: FiloSpacing.screen),
+                          Text(
+                            'Attachments',
+                            style: FiloTypography.strongLabel(context),
+                          ),
+                          const SizedBox(height: FiloSpacing.s12),
+                          Wrap(
+                            spacing: 12,
+                            runSpacing: 8,
+                            children: [
+                              OutlinedButton.icon(
+                                onPressed: _attachments.length < 10
+                                    ? _attach
+                                    : null,
+                                icon: const FiloIcon(FiloIcons.attachment),
+                                label: const Text('Attach file'),
+                              ),
+                              OutlinedButton.icon(
+                                onPressed: _attachments.length < 10
+                                    ? _addLink
+                                    : null,
+                                icon: const FiloIcon(FiloIcons.link),
+                                label: const Text('Add link'),
+                              ),
                             ],
                           ),
-                        ),
-                        const SizedBox(height: FiloSpacing.screen),
-                        Text(
-                          "To share a video, add a link. Video links open in the browser and aren't downloaded.",
-                          style: Theme.of(context).textTheme.bodySmall!
-                              .copyWith(
-                                color: Theme.of(context)
-                                    .colorScheme
-                                    .onSurfaceVariant,
+                          const SizedBox(height: FiloSpacing.s12),
+                          Text(
+                            'Up to 10 attachments · 25 MB per file',
+                            style: Theme.of(context).textTheme.bodySmall!
+                                .copyWith(
+                                  color: Theme.of(context)
+                                      .colorScheme
+                                      .onSurfaceVariant,
+                                ),
+                          ),
+                          for (final attachment in _attachments)
+                            Padding(
+                              padding: const EdgeInsets.only(
+                                top: FiloSpacing.s12,
                               ),
-                        ),
-                      ],
-                    ),
-                  ),
-                  const SizedBox(height: FiloSpacing.screen),
-                  if (!online)
-                    const Text(
-                      'Connect to the internet to post or upload files.',
-                    ),
-                  if (!writable)
-                    const Text(
-                      'An open class owned by you is required to post.',
-                    ),
-                  if (_error != null)
-                    Semantics(liveRegion: true, child: Text(_error!)),
-                  if (_busy) const FiloLinearProgressIndicator(),
-                  if (_postId != null)
-                    for (final a in _attachments)
-                      ListTile(
-                        title: Text(a.name),
-                        subtitle: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              a.ready
-                                  ? 'Ready'
-                                  : a.failed
-                                  ? 'Upload failed'
-                                  : a.uploading
-                                  ? 'Uploading...'
-                                  : 'Waiting',
+                              child: FiloPanel(
+                                padding: const EdgeInsets.fromLTRB(
+                                  FiloSpacing.s16,
+                                  FiloSpacing.s8,
+                                  FiloSpacing.s8,
+                                  FiloSpacing.s8,
+                                ),
+                                child: Row(
+                                  children: [
+                                    FiloIcon(
+                                      attachment.drive
+                                          ? FiloIcons.drive
+                                          : FiloIcons.attachment,
+                                      size: 20,
+                                    ),
+                                    const SizedBox(width: FiloSpacing.s8),
+                                    Expanded(
+                                      child: Column(
+                                        crossAxisAlignment:
+                                            CrossAxisAlignment.start,
+                                        children: [
+                                          Text(attachment.name),
+                                          if (attachment.drive) ...[
+                                            const Text(
+                                              'Google Drive - file or document',
+                                            ),
+                                            const Text(
+                                              'Set sharing to Anyone with the link so students can download it.',
+                                            ),
+                                          ],
+                                        ],
+                                      ),
+                                    ),
+                                    IconButton(
+                                      tooltip: 'Remove attachment',
+                                      icon: const FiloIcon(FiloIcons.close),
+                                      onPressed: () => setState(
+                                        () => _attachments.remove(attachment),
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
                             ),
-                            if (a.uploading)
-                              const FiloLinearProgressIndicator(),
-                          ],
-                        ),
-                        trailing: a.failed
-                            ? TextButton(
-                                onPressed: online && writable && !_busy
-                                    ? () => _retry(a)
-                                    : null,
-                                child: const Text('Retry'),
-                              )
-                            : null,
+                          const SizedBox(height: FiloSpacing.screen),
+                          FiloPanel(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.stretch,
+                              children: [
+                                FiloSwitchListTile(
+                                  contentPadding: EdgeInsets.zero,
+                                  title: Text(
+                                    'Require submission',
+                                    style: FiloTypography.strongLabel(context),
+                                  ),
+                                  subtitle: Text(
+                                    widget.postId != null
+                                        ? 'Post type cannot change.'
+                                        : 'Turn this post into an assignment',
+                                  ),
+                                  value: _submission,
+                                  onChanged: widget.postId != null
+                                      ? null
+                                      : (value) =>
+                                            setState(() => _submission = value),
+                                ),
+                                if (_submission) ...[
+                                  const Padding(
+                                    padding: EdgeInsets.symmetric(
+                                      vertical: FiloSpacing.s16,
+                                    ),
+                                    child: Divider(height: 1),
+                                  ),
+                                  Text(
+                                    'Assignment details',
+                                    style: FiloTypography.strongLabel(context),
+                                  ),
+                                  const SizedBox(height: FiloSpacing.s16),
+                                  TextFormField(
+                                    controller: _points,
+                                    keyboardType: TextInputType.number,
+                                    decoration: const InputDecoration(
+                                      labelText: 'Points',
+                                    ),
+                                    validator: (value) {
+                                      final points = int.tryParse(value ?? '');
+                                      return points == null ||
+                                              points < 0 ||
+                                              points > 2147483647
+                                          ? 'Enter a nonnegative whole number (up to 2147483647).'
+                                          : null;
+                                    },
+                                  ),
+                                  const SizedBox(height: FiloSpacing.s16),
+                                  OutlinedButton.icon(
+                                    onPressed: _pickDue,
+                                    icon: const FiloIcon(FiloIcons.calendar),
+                                    label: Text(
+                                      _due == null
+                                          ? 'Set due date and time'
+                                          : _dueLabel,
+                                    ),
+                                  ),
+                                  FiloSwitchListTile(
+                                    contentPadding: EdgeInsets.zero,
+                                    title: const Text(
+                                      'Accept late submissions',
+                                    ),
+                                    value: _late,
+                                    onChanged: (value) =>
+                                        setState(() => _late = value),
+                                  ),
+                                  const Divider(height: FiloSpacing.screen),
+                                  FiloSwitchListTile(
+                                    contentPadding: EdgeInsets.zero,
+                                    title: const Text('Allow file uploads'),
+                                    value: _allowFiles,
+                                    onChanged: (value) =>
+                                        setState(() => _allowFiles = value),
+                                  ),
+                                  const SizedBox(height: FiloSpacing.s12),
+                                  DropdownButtonFormField<int>(
+                                    initialValue: _maxFiles,
+                                    decoration: const InputDecoration(
+                                      labelText: 'Maximum files per submission',
+                                    ),
+                                    items: [
+                                      for (var i = 1; i <= 5; i++)
+                                        DropdownMenuItem(
+                                          value: i,
+                                          child: Text('$i'),
+                                        ),
+                                    ],
+                                    onChanged: _allowFiles
+                                        ? (value) =>
+                                              setState(() => _maxFiles = value!)
+                                        : null,
+                                  ),
+                                ],
+                              ],
+                            ),
+                          ),
+                          const SizedBox(height: FiloSpacing.screen),
+                          Text(
+                            "To share a video, add a link. Video links open in the browser and aren't downloaded.",
+                            style: Theme.of(context).textTheme.bodySmall!
+                                .copyWith(
+                                  color: Theme.of(context)
+                                      .colorScheme
+                                      .onSurfaceVariant,
+                                ),
+                          ),
+                        ],
                       ),
-                ],
+                    ),
+                    const SizedBox(height: FiloSpacing.screen),
+                    if (!online)
+                      const Text(
+                        'Connect to the internet to post or upload files.',
+                      ),
+                    if (!writable)
+                      const Text(
+                        'An open class owned by you is required to post.',
+                      ),
+                    if (_error != null)
+                      Semantics(liveRegion: true, child: Text(_error!)),
+                    if (_postId != null)
+                      for (final a in _attachments)
+                        ListTile(
+                          title: Text(a.name),
+                          subtitle: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                a.ready
+                                    ? 'Ready'
+                                    : a.failed
+                                    ? 'Upload failed'
+                                    : a.uploading
+                                    ? 'Uploading...'
+                                    : 'Waiting',
+                              ),
+                              if (a.uploading)
+                                const FiloLinearProgressIndicator(),
+                            ],
+                          ),
+                          trailing: a.failed
+                              ? TextButton(
+                                  onPressed: online && writable && !_busy
+                                      ? () => _retry(a)
+                                      : null,
+                                  child: const Text('Retry'),
+                                )
+                              : null,
+                        ),
+                  ],
+                ),
               ),
-            ),
-          ],
+            ],
+          ),
         ),
       ),
     );
@@ -770,8 +775,9 @@ class _CreatePostScreenState extends ConsumerState<CreatePostScreen> {
   }
 
   void _returnToStreamIfReady() {
-    if (!mounted || _postId == null || !_attachments.every((a) => a.ready))
+    if (!mounted || _postId == null || !_attachments.every((a) => a.ready)) {
       return;
+    }
     setState(() => _busy = false);
     Navigator.of(context).pop();
   }

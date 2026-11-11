@@ -1,10 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:shadcn_ui/shadcn_ui.dart';
 import 'package:uuid/uuid.dart';
 
 import '../../../core/connectivity/connectivity_provider.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/widgets/filo_widgets.dart';
+import '../../../core/widgets/entry_background.dart';
 import '../../classes/application/class_providers.dart';
 import '../../classes/presentation/classes_widgets.dart' show OfflineBanner;
 import '../application/instructor_quiz_providers.dart';
@@ -40,10 +42,19 @@ class _AssessmentFormScreenState extends ConsumerState<AssessmentFormScreen> {
   static const _stepLabels = ['Details', 'Settings', 'Questions'];
   final _pageScrolls = List.generate(3, (_) => ScrollController());
   final _closingTimeKey = GlobalKey();
+  final _addQuestionMenuKey = GlobalKey<PopupMenuButtonState<String>>();
   final _forms = List.generate(3, (_) => GlobalKey<FormState>());
   ScrollController get _scroll => _pageScrolls[2];
   int _step = 0;
   bool _viewOnly = false;
+  bool _scheduleWarning = false;
+  String? get _bankCourse => ref
+      .read(classesProvider)
+      .asData
+      ?.value
+      .where((room) => room.id == widget.classId)
+      .firstOrNull
+      ?.course;
 
   void _switchStep(int target) {
     assert(target >= 0 && target < _stepLabels.length);
@@ -53,7 +64,7 @@ class _AssessmentFormScreenState extends ConsumerState<AssessmentFormScreen> {
     });
   }
 
-  Future<bool> _validateStep(int page) async {
+  Future<bool> _validateStep(int page, {bool requireSchedule = false}) async {
     if (_viewOnly) return true;
     final form = _forms[page].currentState;
     if (form == null) return false;
@@ -64,6 +75,11 @@ class _AssessmentFormScreenState extends ConsumerState<AssessmentFormScreen> {
       return false;
     }
     if (page == 1) {
+      if (requireSchedule && missingAssessmentSchedule(_draft!) != null) {
+        _switchStep(1);
+        setState(() => _scheduleWarning = true);
+        if (_pageScrolls[1].hasClients) _pageScrolls[1].jumpTo(0);
+      }
       final opens = _draft!.locked
           ? _savedQuiz?.row['opens_at'] as String?
           : _draft!.settings['opens_at'] as String?;
@@ -88,7 +104,8 @@ class _AssessmentFormScreenState extends ConsumerState<AssessmentFormScreen> {
     if (_busy || _loading || _draft == null) return;
     if (target > _step) {
       for (var page = 0; page < target; page++) {
-        if (!await _validateStep(page) || !mounted) return;
+        if (!await _validateStep(page, requireSchedule: true) || !mounted)
+          return;
       }
     }
     _switchStep(target);
@@ -144,7 +161,10 @@ class _AssessmentFormScreenState extends ConsumerState<AssessmentFormScreen> {
     setState(() => _busy = true);
     try {
       final bank = await ref.read(questionBankRepositoryProvider.future);
-      await bank.save(id, snapshot, creating: true);
+      final course = _bankCourse;
+      if (course == null || course.trim().isEmpty)
+        throw StateError('Course unavailable');
+      await bank.save(id, snapshot, creating: true, course: course);
       _bankIds.remove(q.localId);
       _bankSnapshots.remove(q.localId);
       if (mounted) {
@@ -178,8 +198,9 @@ class _AssessmentFormScreenState extends ConsumerState<AssessmentFormScreen> {
         _draft!.locked ||
         _published ||
         _pendingAi > 0 ||
-        _aiRefreshRequired)
+        _aiRefreshRequired) {
       return false;
+    }
     if ((_draft!.settings['title'] as String).trim().isEmpty) {
       final controller = TextEditingController();
       final title = await showFiloDialog<String>(
@@ -198,8 +219,9 @@ class _AssessmentFormScreenState extends ConsumerState<AssessmentFormScreen> {
             ),
             FilledButton(
               onPressed: () {
-                if (controller.text.trim().isNotEmpty)
+                if (controller.text.trim().isNotEmpty) {
                   Navigator.pop(c, controller.text.trim());
+                }
               },
               child: const Text('Save draft'),
             ),
@@ -253,7 +275,7 @@ class _AssessmentFormScreenState extends ConsumerState<AssessmentFormScreen> {
         try {
           final cache = await ref.read(fileTextCacheProvider.future);
           final pending = await cache?.pending(_draft!.id!) ?? [];
-          if (mounted)
+          if (mounted) {
             setState(() {
               _unpersistedAi = pending.isEmpty && !journaled ? generated : null;
               _aiRefreshRequired = journaled;
@@ -264,20 +286,23 @@ class _AssessmentFormScreenState extends ConsumerState<AssessmentFormScreen> {
                   .where((p) => p['state'] == 'uncertain')
                   .length;
             });
+          }
         } catch (_) {
-          if (mounted)
+          if (mounted) {
             setState(() {
               _unpersistedAi = journaled ? null : generated;
               _aiRefreshRequired = journaled;
               _pendingAi = _unpersistedAi?.questions.length ?? 0;
             });
+          }
         }
-        if (mounted)
+        if (mounted) {
           setState(
             () => _error = _unpersistedAi != null
                 ? 'Questions could not be stored. They are kept on this screen until you leave. Retry saving when storage and connection are available.'
                 : 'AI draft saving could not be confirmed. Check saves before retrying; pending drafts are retained for reconciliation.',
           );
+        }
       }
     } finally {
       if (mounted) setState(() => _busy = false);
@@ -338,7 +363,7 @@ class _AssessmentFormScreenState extends ConsumerState<AssessmentFormScreen> {
         try {
           final cache = await ref.read(fileTextCacheProvider.future);
           final pending = await cache?.pending(_draft!.id!) ?? [];
-          if (mounted)
+          if (mounted) {
             setState(() {
               if (pending.isNotEmpty) _unpersistedAi = null;
               _pendingAi =
@@ -348,11 +373,13 @@ class _AssessmentFormScreenState extends ConsumerState<AssessmentFormScreen> {
                   .where((p) => p['state'] == 'uncertain')
                   .length;
             });
+          }
         } catch (_) {}
-        if (mounted)
+        if (mounted) {
           setState(
             () => _error = 'Draft saves could not be checked. Your confirmed questions are unchanged. Try again after reconnecting.',
           );
+        }
       }
     } finally {
       if (mounted) setState(() => _busy = false);
@@ -392,10 +419,11 @@ class _AssessmentFormScreenState extends ConsumerState<AssessmentFormScreen> {
         });
       }
     } catch (_) {
-      if (mounted)
+      if (mounted) {
         setState(
           () => _error = 'Pending drafts could not be reconciled. Check your connection and try again.',
         );
+      }
     } finally {
       if (mounted) setState(() => _busy = false);
     }
@@ -473,11 +501,12 @@ class _AssessmentFormScreenState extends ConsumerState<AssessmentFormScreen> {
         );
       }
     } catch (_) {
-      if (mounted)
+      if (mounted) {
         setState(() {
           _draft!.reconciliationRequired = true;
           _error = 'Replacement could not be confirmed. The original remains displayed. Reload the saved version before making more changes.';
         });
+      }
     } finally {
       if (mounted) setState(() => _busy = false);
     }
@@ -494,7 +523,7 @@ class _AssessmentFormScreenState extends ConsumerState<AssessmentFormScreen> {
       context: context,
       title: 'Add from question bank',
       scrollBody: false,
-      builder: (_) => const QuestionBankScreen(picking: true),
+      builder: (_) => QuestionBankScreen(picking: true, course: _bankCourse),
     );
     if (!mounted ||
         copies == null ||
@@ -575,11 +604,12 @@ class _AssessmentFormScreenState extends ConsumerState<AssessmentFormScreen> {
             );
           }
         } catch (_) {
-          if (mounted)
+          if (mounted) {
             showMessage(
               context,
               'The question was copied, but its source context could not be copied. Pick sources again for future AI generation.',
             );
+          }
         }
       }
     }
@@ -678,13 +708,14 @@ class _AssessmentFormScreenState extends ConsumerState<AssessmentFormScreen> {
       if (mounted) setState(() => _error = null);
       final cache = FileTextCache(repository.database);
       final pending = await cache.pending(id);
-      if (mounted)
+      if (mounted) {
         setState(() {
           if (pending.isNotEmpty) _unpersistedAi = null;
           _aiRefreshRequired = false;
           _pendingAi = pending.length + (_unpersistedAi?.questions.length ?? 0);
           _uncertainAi = pending.where((p) => p['state'] == 'uncertain').length;
         });
+      }
     } catch (error) {
       if (mounted) {
         setState(
@@ -1022,9 +1053,77 @@ class _AssessmentFormScreenState extends ConsumerState<AssessmentFormScreen> {
     }
   }
 
-  Widget _hint(String text) => Padding(
-    padding: const EdgeInsets.only(top: FiloSpacing.s8),
-    child: Text(text, style: Theme.of(context).textTheme.bodySmall),
+  Widget _section(
+    String title,
+    IconData icon,
+    List<Widget> children, {
+    bool card = true,
+  }) {
+    final content = Column(
+      mainAxisSize: MainAxisSize.min,
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        Row(
+          children: [
+            FiloIcon(icon, color: Theme.of(context).colorScheme.primary),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Semantics(
+                header: true,
+                child: Text(
+                  title,
+                  style: Theme.of(context).textTheme.titleMedium,
+                ),
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 20),
+        ...children,
+      ],
+    );
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 24),
+      child: card
+          ? ShadCard(
+              width: double.infinity,
+              padding: const EdgeInsets.all(20),
+              child: content,
+            )
+          : content,
+    );
+  }
+
+  Widget _settingSwitch(
+    String label, {
+    required bool value,
+    required bool enabled,
+    required ValueChanged<bool> onChanged,
+  }) => ConstrainedBox(
+    constraints: const BoxConstraints(minHeight: 48),
+    child: Row(
+      children: [
+        Expanded(
+          child: Text(label, style: Theme.of(context).textTheme.titleSmall),
+        ),
+        const SizedBox(width: 12),
+        Semantics(
+          label: label,
+          child: SizedBox(
+            width: 52,
+            height: 48,
+            child: ShadSwitch(
+              value: value,
+              enabled: enabled,
+              duration: MediaQuery.disableAnimationsOf(context)
+                  ? Duration.zero
+                  : const Duration(milliseconds: 100),
+              onChanged: onChanged,
+            ),
+          ),
+        ),
+      ],
+    ),
   );
 
   @override
@@ -1044,979 +1143,1213 @@ class _AssessmentFormScreenState extends ConsumerState<AssessmentFormScreen> {
     final editing = !readOnly && !_busy && !_loading;
     final contentEditing = editing && draft?.locked != true;
     final inputTheme = Theme.of(context).inputDecorationTheme;
-    return Theme(
-      data: Theme.of(context).copyWith(
-        inputDecorationTheme: inputTheme.copyWith(
-          contentPadding: const EdgeInsets.symmetric(
-            horizontal: FiloSpacing.s16,
-            vertical: FiloSpacing.s16,
-          ),
-          border: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(FiloRadii.large),
-          ),
-          enabledBorder: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(FiloRadii.large),
-            borderSide: BorderSide(
-              color: FiloThemeTokens.of(context).controlBorder,
-              width: 1.5,
+    final theme = Theme.of(context);
+    final colors = theme.colorScheme;
+    final border = FiloThemeTokens.of(context).controlBorder;
+    return ShadTheme(
+      data: ShadThemeData(
+        brightness: theme.brightness,
+        radius: BorderRadius.circular(FiloRadii.large),
+        textTheme: ShadTextTheme(
+          family: 'Nunito',
+          h3: theme.textTheme.titleMedium,
+          p: theme.textTheme.bodyMedium,
+          small: theme.textTheme.labelLarge,
+          muted: theme.textTheme.bodySmall,
+        ),
+        colorScheme: ShadColorScheme(
+          background: colors.surface,
+          foreground: colors.onSurface,
+          card: colors.surfaceContainerLowest,
+          cardForeground: colors.onSurface,
+          popover: colors.surfaceContainerLowest,
+          popoverForeground: colors.onSurface,
+          primary: colors.primary,
+          primaryForeground: colors.onPrimary,
+          secondary: colors.primaryContainer,
+          secondaryForeground: colors.onPrimaryContainer,
+          muted: colors.surfaceContainer,
+          mutedForeground: colors.onSurfaceVariant,
+          accent: colors.primaryContainer,
+          accentForeground: colors.onPrimaryContainer,
+          destructive: colors.error,
+          destructiveForeground: colors.onError,
+          border: border,
+          input: border,
+          ring: colors.primary,
+          selection: colors.primaryContainer,
+        ),
+      ),
+      child: Theme(
+        data: Theme.of(context).copyWith(
+          inputDecorationTheme: inputTheme.copyWith(
+            contentPadding: const EdgeInsets.symmetric(
+              horizontal: FiloSpacing.s16,
+              vertical: FiloSpacing.s16,
             ),
-          ),
-          focusedBorder: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(FiloRadii.large),
-            borderSide: BorderSide(
-              color: Theme.of(context).colorScheme.primary,
-              width: 2,
+            border: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(FiloRadii.large),
+            ),
+            enabledBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(FiloRadii.large),
+              borderSide: BorderSide(
+                color: FiloThemeTokens.of(context).controlBorder,
+                width: 1.5,
+              ),
+            ),
+            focusedBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(FiloRadii.large),
+              borderSide: BorderSide(
+                color: Theme.of(context).colorScheme.primary,
+                width: 2,
+              ),
             ),
           ),
         ),
-      ),
-      child: PopScope(
-        canPop: _allowPop || (_step == 0 && !_busy && !_dirty),
-        onPopInvokedWithResult: (didPop, _) {
-          if (!didPop) _leave();
-        },
-        child: Scaffold(
-          appBar: AppBar(
-            actions: [
-              PopupMenuButton<String>(
-                tooltip: 'Assessment actions',
-                enabled: !_busy && !_loading,
-                onSelected: (_) => Navigator.of(context).push(
-                  MaterialPageRoute<void>(
-                    builder: (_) => const QuestionBankScreen(),
-                  ),
+        child: PopScope(
+          canPop: _allowPop || (_step == 0 && !_busy && !_dirty),
+          onPopInvokedWithResult: (didPop, _) {
+            if (!didPop) _leave();
+          },
+          child: EntryBackground(
+            verification: true,
+            breeze: true,
+            variation: 0,
+            child: Scaffold(
+              backgroundColor: Colors.transparent,
+              appBar: AppBar(
+                backgroundColor: Colors.transparent,
+                surfaceTintColor: Colors.transparent,
+                elevation: 0,
+                scrolledUnderElevation: 0,
+                title: Text(
+                  readOnly
+                      ? 'Assessment'
+                      : draft?.id == null
+                      ? 'New assessment'
+                      : 'Edit assessment',
                 ),
-                itemBuilder: (_) => const [
-                  PopupMenuItem(value: 'bank', child: Text('Question bank')),
-                ],
+                leading: IconButton(
+                  tooltip: 'Back to classwork',
+                  onPressed: _busy ? null : () => _leave(exitBuilder: true),
+                  icon: const FiloIcon(FiloIcons.back),
+                ),
               ),
-            ],
-            title: Text(
-              readOnly
-                  ? 'Assessment'
-                  : draft?.id == null
-                  ? 'New assessment'
-                  : 'Edit assessment',
-            ),
-            leading: IconButton(
-              tooltip: 'Back to classwork',
-              onPressed: _busy ? null : () => _leave(exitBuilder: true),
-              icon: const FiloIcon(FiloIcons.back),
-            ),
-          ),
-          body: SafeArea(
-            child: _loading && draft == null
-                ? const Center(child: FiloCircularProgressIndicator())
-                : Column(
-                    children: [
-                      if (draft != null)
-                        Padding(
-                          padding: const EdgeInsets.fromLTRB(
-                            FiloSpacing.screen,
-                            FiloSpacing.s12,
-                            FiloSpacing.screen,
-                            FiloSpacing.s8,
-                          ),
-                          child: Row(
-                            children: [
-                              Expanded(
-                                child: Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    Text(
-                                      _stepLabels[_step],
-                                      style: Theme.of(context)
-                                          .textTheme
-                                          .titleLarge,
-                                    ),
-                                    const SizedBox(height: FiloSpacing.s4),
-                                    Text(
-                                      'Step ${_step + 1} of 3',
-                                      style: Theme.of(context)
-                                          .textTheme
-                                          .bodySmall
-                                          ?.copyWith(
-                                            color: Theme.of(context)
-                                                .colorScheme
-                                                .onSurfaceVariant,
-                                          ),
-                                    ),
-                                  ],
-                                ),
-                              ),
-                              if (draft.id != null) ...[
-                                const SizedBox(width: FiloSpacing.s12),
-                                Chip(
-                                  label: Text(
-                                    quizDisplayStatus(
-                                      status: _published
-                                          ? 'published'
-                                          : 'draft',
-                                      opensAt: _savedQuiz?.settings.opensAt,
-                                      closesAt: _savedQuiz?.settings.closesAt,
-                                      now: DateTime.now().toUtc(),
-                                    ).label,
-                                  ),
-                                ),
-                              ],
-                            ],
-                          ),
-                        ),
-                      Expanded(
-                        child: IndexedStack(
-                          index: _step,
-                          children: [
-                            for (
-                              var page = 0;
-                              page < _stepLabels.length;
-                              page++
-                            )
-                              Form(
-                                key: _forms[page],
-                                child: CustomScrollView(
-                                  controller: _pageScrolls[page],
-                                  slivers: [
-                                    SliverPadding(
-                                      padding: const EdgeInsets.fromLTRB(
-                                        FiloSpacing.screen,
-                                        FiloSpacing.s16,
-                                        FiloSpacing.screen,
-                                        FiloSpacing.screen,
-                                      ),
-                                      sliver: SliverToBoxAdapter(
-                                        child: Column(
-                                          crossAxisAlignment:
-                                              CrossAxisAlignment.stretch,
-                                          children: [
-                                            if (!online) const OfflineBanner(),
-                                            if (readOnly)
-                                              const Padding(
-                                                padding: EdgeInsets.only(
-                                                  bottom: FiloSpacing.s16,
-                                                ),
-                                                child: Text(
-                                                  'This class is archived or unavailable. Assessments are read-only.',
+              body: SafeArea(
+                child: _loading && draft == null
+                    ? const Center(child: FiloCircularProgressIndicator())
+                    : Column(
+                        children: [
+                          if (draft != null &&
+                              MediaQuery.viewInsetsOf(context).bottom == 0)
+                            Padding(
+                              padding: const EdgeInsets.fromLTRB(24, 12, 24, 8),
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.stretch,
+                                children: [
+                                  Row(
+                                    children: [
+                                      for (
+                                        var index = 0;
+                                        index < _stepLabels.length;
+                                        index++
+                                      ) ...[
+                                        if (index > 0) const SizedBox(width: 8),
+                                        Expanded(
+                                          child: Semantics(
+                                            selected: _step == index,
+                                            child: Material(
+                                              color: _step == index
+                                                  ? Theme.of(context)
+                                                        .colorScheme
+                                                        .primaryContainer
+                                                  : Theme.of(context)
+                                                        .colorScheme
+                                                        .surface,
+                                              shape: RoundedRectangleBorder(
+                                                borderRadius:
+                                                    BorderRadius.circular(16),
+                                                side: BorderSide(
+                                                  color: _step == index
+                                                      ? Theme.of(context)
+                                                            .colorScheme
+                                                            .primary
+                                                      : Theme.of(context)
+                                                            .colorScheme
+                                                            .outlineVariant,
                                                 ),
                                               ),
-                                            if (draft?.locked == true)
-                                              const Padding(
-                                                padding: EdgeInsets.only(
-                                                  bottom: FiloSpacing.s16,
-                                                ),
-                                                child: Text(
-                                                  'This quiz has already been started. Only the title and closing time can change.',
-                                                ),
-                                              )
-                                            else if (_published)
-                                              const Padding(
-                                                padding: EdgeInsets.only(
-                                                  bottom: FiloSpacing.s16,
-                                                ),
-                                                child: Text(
-                                                  'Students can already see this assessment. Your saved changes will affect it.',
-                                                ),
-                                              ),
-                                            if (_publishProblems
-                                                .isNotEmpty) ...[
-                                              const Text(
-                                                'Before publishing, fix these problems:',
-                                              ),
-                                              for (final problem
-                                                  in _publishProblems)
-                                                TextButton(
-                                                  onPressed: _busy
-                                                      ? null
-                                                      : () => _showProblem(
-                                                          problem,
-                                                        ),
-                                                  child: Text(problem.message),
-                                                ),
-                                            ],
-                                            if (_error != null) ...[
-                                              Text(
-                                                _error!,
-                                                style: TextStyle(
-                                                  color: Theme.of(context)
-                                                      .colorScheme
-                                                      .error,
-                                                ),
-                                              ),
-                                              if (online &&
-                                                  (draft?.reconciliationRequired !=
-                                                          true ||
-                                                      draft?.id != null))
-                                                TextButton(
-                                                  onPressed: _busy || _loading
-                                                      ? null
-                                                      : _reload,
-                                                  child: Text(
-                                                    draft?.reconciliationRequired ==
-                                                            true
-                                                        ? 'Reload saved version'
-                                                        : 'Retry',
-                                                  ),
-                                                ),
-                                              const SizedBox(
-                                                height: FiloSpacing.s16,
-                                              ),
-                                            ],
-                                            if (draft != null) ...[
-                                              if (page == 0) ...[
-                                                TextFormField(
-                                                  key: ValueKey(
-                                                    'title-$_revision',
-                                                  ),
-                                                  initialValue:
-                                                      draft.settings['title']
-                                                          as String?,
-                                                  enabled: editing,
-                                                  maxLength: 120,
-                                                  decoration:
-                                                      const InputDecoration(
-                                                        labelText: 'Title',
+                                              clipBehavior: Clip.antiAlias,
+                                              child: InkWell(
+                                                onTap: _busy || _loading
+                                                    ? null
+                                                    : () => _navigate(index),
+                                                child: Padding(
+                                                  padding:
+                                                      const EdgeInsets.symmetric(
+                                                        horizontal: 4,
+                                                        vertical: 12,
                                                       ),
-                                                  validator: (value) =>
-                                                      value == null ||
-                                                          value.trim().isEmpty
-                                                      ? 'Give your assessment a title.'
-                                                      : null,
-                                                  onChanged: (value) =>
-                                                      setState(() {
-                                                        _questionDirty = true;
-                                                        draft.settings['title'] =
-                                                            value;
-                                                      }),
-                                                ),
-                                                const SizedBox(
-                                                  height: FiloSpacing.s12,
-                                                ),
-                                                Text(
-                                                  'Quiz or Exam',
-                                                  style: Theme.of(context)
-                                                      .textTheme
-                                                      .titleSmall,
-                                                ),
-                                                const SizedBox(
-                                                  height: FiloSpacing.s8,
-                                                ),
-                                                Wrap(
-                                                  spacing: 8,
-                                                  children: [
-                                                    for (final type in [
-                                                      'quiz',
-                                                      'exam',
-                                                    ])
-                                                      FiloAnimatedChip(
-                                                        label: Text(
-                                                          type == 'quiz'
-                                                              ? 'Quiz'
-                                                              : 'Exam',
-                                                        ),
-                                                        selected:
-                                                            draft
-                                                                .settings['type'] ==
-                                                            type,
-                                                        onSelected:
-                                                            contentEditing
-                                                            ? (
-                                                                _,
-                                                              ) => setState(() {
-                                                                draft.settings['type'] =
-                                                                    type;
-                                                                if (!_answersChosenByHand) {
-                                                                  draft.settings['show_correct_answers'] =
-                                                                      type ==
-                                                                      'quiz';
-                                                                }
-                                                              })
-                                                            : null,
-                                                      ),
-                                                  ],
-                                                ),
-                                                _hint(
-                                                  'Quiz shows correct answers by default; Exam hides them. Both use the same rules.',
-                                                ),
-                                                const SizedBox(
-                                                  height: FiloSpacing.s16,
-                                                ),
-                                                TextFormField(
-                                                  key: ValueKey(
-                                                    'minutes-$_revision',
-                                                  ),
-                                                  initialValue:
-                                                      '${draft.settings['time_limit_minutes']}',
-                                                  enabled: contentEditing,
-                                                  keyboardType:
-                                                      TextInputType.number,
-                                                  decoration:
-                                                      const InputDecoration(
-                                                        labelText: 'Time limit (minutes)',
-                                                      ),
-                                                  validator: (value) {
-                                                    if (draft.locked) {
-                                                      return null;
-                                                    }
-                                                    final n = int.tryParse(
-                                                      value ?? '',
-                                                    );
-                                                    return n == null ||
-                                                            n < 1 ||
-                                                            n > 600
-                                                        ? 'Enter 1 to 600 minutes.'
-                                                        : null;
-                                                  },
-                                                  onChanged: (value) => setState(
-                                                    () =>
-                                                        draft.settings['time_limit_minutes'] =
-                                                            int.tryParse(value),
-                                                  ),
-                                                ),
-                                                _hint(
-                                                  'Choose 1 to 600 minutes; each attempt ends when time runs out or the assessment closes, whichever comes first.',
-                                                ),
-                                                const SizedBox(
-                                                  height: FiloSpacing.s20,
-                                                ),
-                                                TextFormField(
-                                                  key: ValueKey(
-                                                    'instructions-$_revision',
-                                                  ),
-                                                  initialValue:
-                                                      draft.settings['instructions']
-                                                          as String?,
-                                                  enabled: contentEditing,
-                                                  maxLength: 5000,
-                                                  minLines: 3,
-                                                  maxLines: 6,
-                                                  decoration:
-                                                      const InputDecoration(
-                                                        labelText: 'Instructions (optional)',
-                                                        alignLabelWithHint:
-                                                            true,
-                                                      ),
-                                                  onChanged: (value) => setState(
-                                                    () =>
-                                                        draft.settings['instructions'] =
-                                                            value.isEmpty
-                                                            ? null
-                                                            : value,
-                                                  ),
-                                                ),
-                                              ],
-                                              if (page == 1) ...[
-                                                _hint(
-                                                  'All dates and times use Philippine time.',
-                                                ),
-                                                const SizedBox(
-                                                  height: FiloSpacing.s16,
-                                                ),
-                                                for (final field in [
-                                                  'opens_at',
-                                                  'closes_at',
-                                                ]) ...[
-                                                  OutlinedButton.icon(
-                                                    key: field == 'closes_at'
-                                                        ? _closingTimeKey
-                                                        : null,
-                                                    style: OutlinedButton.styleFrom(
-                                                      backgroundColor: Theme.of(
-                                                        context,
-                                                      ).colorScheme.surface,
-                                                      alignment:
-                                                          Alignment.centerLeft,
-                                                      padding:
-                                                          const EdgeInsets.all(
-                                                            FiloSpacing.s16,
-                                                          ),
-                                                      minimumSize: const Size(
-                                                        0,
-                                                        64,
-                                                      ),
-                                                      side: BorderSide(
-                                                        color:
-                                                            FiloThemeTokens.of(
-                                                              context,
-                                                            ).controlBorder,
-                                                        width: 1.5,
-                                                      ),
-                                                      shape: RoundedRectangleBorder(
-                                                        borderRadius:
-                                                            BorderRadius.circular(
-                                                              16,
-                                                            ),
-                                                      ),
-                                                    ),
-                                                    icon: const FiloIcon(
-                                                      FiloIcons.calendar,
-                                                    ),
-                                                    onPressed:
-                                                        (field == 'closes_at'
-                                                            ? editing
-                                                            : contentEditing)
-                                                        ? () => _pickDate(field)
-                                                        : null,
-                                                    label: Column(
-                                                      crossAxisAlignment:
-                                                          CrossAxisAlignment
-                                                              .start,
-                                                      children: [
-                                                        Text(
-                                                          field == 'opens_at'
-                                                              ? 'Opens'
-                                                              : 'Closes',
-                                                          style:
-                                                              Theme.of(context)
-                                                                  .textTheme
-                                                                  .bodySmall
-                                                                  ?.copyWith(
-                                                                    color: FiloColors
-                                                                        .secondary,
-                                                                  ),
-                                                        ),
-                                                        const SizedBox(
-                                                          height: 4,
-                                                        ),
-                                                        Text(
-                                                          assessmentDateLabel(
-                                                            draft.settings[field] ==
-                                                                    null
-                                                                ? null
-                                                                : DateTime.parse(
-                                                                    draft.settings[field]
-                                                                        as String,
-                                                                  ),
-                                                          ),
-                                                          style:
-                                                              Theme.of(context)
-                                                                  .textTheme
-                                                                  .titleSmall,
-                                                        ),
-                                                      ],
-                                                    ),
-                                                  ),
-                                                  _hint(
-                                                    field == 'opens_at'
-                                                        ? 'Students can start at this date and time.'
-                                                        : 'Students must finish by this date and time, even if their time limit has not run out.',
-                                                  ),
-                                                  if (draft.settings[field] !=
-                                                          null &&
-                                                      (field == 'closes_at'
-                                                          ? editing
-                                                          : contentEditing))
-                                                    Align(
-                                                      alignment:
-                                                          Alignment.centerRight,
-                                                      child: TextButton(
-                                                        onPressed: () => setState(
-                                                          () =>
-                                                              draft.settings[field] =
-                                                                  null,
-                                                        ),
+                                                  child: Column(
+                                                    children: [
+                                                      CircleAvatar(
+                                                        radius: 12,
+                                                        backgroundColor:
+                                                            _step == index
+                                                            ? Theme.of(context)
+                                                                  .colorScheme
+                                                                  .primary
+                                                            : Theme.of(context)
+                                                                  .colorScheme
+                                                                  .surfaceContainerHighest,
                                                         child: Text(
-                                                          field == 'opens_at'
-                                                              ? 'Clear opening time'
-                                                              : 'Clear closing time',
+                                                          '${index + 1}',
+                                                          style: TextStyle(
+                                                            fontSize: 12,
+                                                            color:
+                                                                _step == index
+                                                                ? Theme.of(
+                                                                        context,
+                                                                      )
+                                                                      .colorScheme
+                                                                      .onPrimary
+                                                                : Theme.of(
+                                                                        context,
+                                                                      )
+                                                                      .colorScheme
+                                                                      .onSurface,
+                                                          ),
                                                         ),
                                                       ),
-                                                    ),
-                                                  const SizedBox(
-                                                    height: FiloSpacing.s8,
-                                                  ),
-                                                ],
-                                                for (final setting in const [
-                                                  (
-                                                    'shuffle_questions',
-                                                    'Shuffle questions',
-                                                    'Give each student a shuffled question order that stays the same when they resume.',
-                                                  ),
-                                                  (
-                                                    'shuffle_options',
-                                                    'Shuffle options',
-                                                    'Shuffle multiple-choice options for each student and keep that order when they resume.',
-                                                  ),
-                                                  (
-                                                    'show_correct_answers',
-                                                    'Show correct answers',
-                                                    'Let students see correct answers when their results are released.',
-                                                  ),
-                                                ]) ...[
-                                                  FiloSwitchListTile(
-                                                    contentPadding:
-                                                        EdgeInsets.zero,
-                                                    title: Text(
-                                                      setting.$2,
-                                                      style: Theme.of(context)
-                                                          .textTheme
-                                                          .titleSmall,
-                                                    ),
-                                                    subtitle: Padding(
-                                                      padding:
-                                                          const EdgeInsets.only(
-                                                            top: FiloSpacing.s8,
-                                                          ),
-                                                      child: Text(
-                                                        setting.$3,
+                                                      const SizedBox(height: 8),
+                                                      Text(
+                                                        _stepLabels[index],
+                                                        textAlign:
+                                                            TextAlign.center,
                                                         style: Theme.of(context)
                                                             .textTheme
-                                                            .bodySmall
-                                                            ?.copyWith(
-                                                              color: FiloColors
-                                                                  .secondary,
-                                                            ),
+                                                            .labelLarge,
                                                       ),
-                                                    ),
-                                                    value:
-                                                        draft.settings[setting
-                                                                .$1]
-                                                            as bool,
-                                                    onChanged: contentEditing
-                                                        ? (
-                                                            value,
-                                                          ) => setState(() {
-                                                            draft.settings[setting
-                                                                    .$1] =
-                                                                value;
-                                                            if (setting.$1 ==
-                                                                'show_correct_answers') {
-                                                              _answersChosenByHand =
-                                                                  true;
-                                                            }
-                                                          })
-                                                        : null,
+                                                    ],
                                                   ),
-                                                  const SizedBox(
-                                                    height: FiloSpacing.s12,
-                                                  ),
-                                                ],
-                                                TextFormField(
-                                                  key: ValueKey(
-                                                    'passing-$_revision',
-                                                  ),
-                                                  initialValue:
-                                                      draft
-                                                          .settings['passing_percent']
-                                                          ?.toString() ??
-                                                      '',
-                                                  enabled: contentEditing,
-                                                  keyboardType:
-                                                      TextInputType.number,
-                                                  decoration:
-                                                      const InputDecoration(
-                                                        labelText: 'Passing score (optional)',
-                                                        suffixText: '%',
-                                                      ),
-                                                  validator: (value) {
-                                                    if (draft.locked) {
-                                                      return null;
-                                                    }
-                                                    if (value == null ||
-                                                        value.trim().isEmpty) {
-                                                      return null;
-                                                    }
-                                                    final percentage =
-                                                        int.tryParse(
-                                                          value.trim(),
-                                                        );
-                                                    return percentage == null ||
-                                                            percentage < 0 ||
-                                                            percentage > 100
-                                                        ? 'Enter a whole percentage from 0 to 100.'
-                                                        : null;
-                                                  },
-                                                  onChanged: (value) => setState(() {
-                                                    // Keep invalid input dirty; validation prevents sending it.
-                                                    draft.settings['passing_percent'] =
-                                                        value.trim().isEmpty
-                                                        ? null
-                                                        : int.tryParse(
-                                                                value.trim(),
-                                                              ) ??
-                                                              value;
-                                                  }),
                                                 ),
-                                                _hint(
-                                                  'Enter a percentage from 0 to 100, or leave blank to set no passing score.',
-                                                ),
-                                              ],
-                                              if (page == 2) ...[
-                                                if (_pendingAi > 0 ||
-                                                    _aiRefreshRequired) ...[
-                                                  Text(
-                                                    _pendingAi == 0
-                                                        ? 'Refresh saved AI drafts before continuing.'
-                                                        : '$_pendingAi AI draft saves need attention.${_uncertainAi > 0 ? ' $_uncertainAi have an unconfirmed outcome; they will not be inserted again automatically.' : ''}',
-                                                  ),
-                                                  TextButton(
-                                                    onPressed:
-                                                        !_busy && _canWrite
-                                                        ? _retryAiDrafts
-                                                        : null,
-                                                    child: const Text(
-                                                      'Check saves / retry failed drafts',
-                                                    ),
-                                                  ),
-                                                  TextButton(
-                                                    onPressed:
-                                                        !_busy && _canWrite
-                                                        ? _stopAiRetries
-                                                        : null,
-                                                    child: const Text(
-                                                      'Stop retrying pending drafts',
-                                                    ),
-                                                  ),
-                                                ],
-                                                if (!draft.locked) ...[
-                                                  OutlinedButton.icon(
-                                                    style: OutlinedButton.styleFrom(
-                                                      backgroundColor:
-                                                          Theme.of(context)
-                                                              .colorScheme
-                                                              .primaryContainer,
-                                                    ),
-                                                    onPressed:
-                                                        contentEditing &&
-                                                            !_published &&
-                                                            _pendingAi == 0 &&
-                                                            !_aiRefreshRequired
-                                                        ? _generateWithAi
-                                                        : null,
-                                                    icon: const Icon(
-                                                      Icons
-                                                          .auto_awesome_outlined,
-                                                    ),
-                                                    label: const Text(
-                                                      'Generate with AI',
-                                                    ),
-                                                  ),
-                                                  if (draft.id == null)
-                                                    const Text(
-                                                      'Your titled draft will be saved before generation.',
-                                                    ),
-                                                  if (_published)
-                                                    const Text(
-                                                      'AI questions must start in a draft assessment.',
-                                                    ),
-                                                  if (!online)
-                                                    const Text(
-                                                      'Connect to the internet to generate questions.',
-                                                    ),
-                                                  const SizedBox(
-                                                    height: FiloSpacing.s12,
-                                                  ),
-                                                ],
-                                                Text(
-                                                  '${draft.questionCount} ${draft.questionCount == 1 ? 'question' : 'questions'} | ${draft.questions.any((q) {
-                                                        final n = int.tryParse(_editor(q).points);
-                                                        return n == null || n < 1 || n > 1000;
-                                                      }) ? 'Points need attention' : '${draft.totalPoints} ${draft.totalPoints == 1 ? 'point' : 'points'}'}',
-                                                ),
-                                                if (draft.questions.isEmpty)
-                                                  const Padding(
-                                                    padding:
-                                                        EdgeInsets.symmetric(
-                                                          vertical:
-                                                              FiloSpacing.s16,
-                                                        ),
-                                                    child: Text(
-                                                      'No questions yet.',
-                                                    ),
-                                                  ),
-                                              ],
-                                            ],
-                                          ],
-                                        ),
-                                      ),
-                                    ),
-                                    if (page == 2 && draft != null)
-                                      SliverPadding(
-                                        padding: const EdgeInsets.fromLTRB(
-                                          FiloSpacing.screen,
-                                          0,
-                                          FiloSpacing.screen,
-                                          FiloSpacing.s12,
-                                        ),
-                                        sliver: SliverToBoxAdapter(
-                                          child: Column(
-                                            crossAxisAlignment:
-                                                CrossAxisAlignment.start,
-                                            children: [
-                                              FiloButton(
-                                                secondary: true,
-                                                onPressed:
-                                                    contentEditing &&
-                                                        online &&
-                                                        !draft
-                                                            .reconciliationRequired
-                                                    ? _addFromBank
-                                                    : null,
-                                                icon: Icons
-                                                    .library_books_outlined,
-                                                label: 'Add from question bank',
-                                              ),
-                                              if (!online)
-                                                const Text(
-                                                  'Connect to read or save questions in the bank.',
-                                                ),
-                                            ],
-                                          ),
-                                        ),
-                                      ),
-                                    if (page == 2 && draft != null)
-                                      SliverPadding(
-                                        padding: const EdgeInsets.fromLTRB(
-                                          FiloSpacing.screen,
-                                          FiloSpacing.s12,
-                                          FiloSpacing.screen,
-                                          0,
-                                        ),
-                                        sliver: SliverReorderableList(
-                                          itemCount: draft.questions.length,
-                                          findChildIndexCallback: (key) {
-                                            if (key is! ValueKey<String>) {
-                                              return null;
-                                            }
-                                            final index = draft.questions
-                                                .indexWhere(
-                                                  (q) => q.localId == key.value,
-                                                );
-                                            return index < 0 ? null : index;
-                                          },
-                                          onReorder: (from, to) {
-                                            if (contentEditing) {
-                                              _move(
-                                                from,
-                                                to > from ? to - 1 : to,
-                                              );
-                                            }
-                                          },
-                                          itemBuilder: (context, index) {
-                                            final q = draft.questions[index];
-                                            return KeyedSubtree(
-                                              key: ValueKey(q.localId),
-                                              child: QuestionCard(
-                                                canRegenerate:
-                                                    !_published &&
-                                                    _pendingAi == 0 &&
-                                                    !_aiRefreshRequired,
-                                                canSaveToBank:
-                                                    online &&
-                                                    !_busy &&
-                                                    !_loading,
-                                                key: _cardKeys.putIfAbsent(
-                                                  q.localId,
-                                                  () => GlobalKey(),
-                                                ),
-                                                question: q,
-                                                editor: _editor(q),
-                                                index: index,
-                                                expanded:
-                                                    _expanded == q.localId,
-                                                enabled: contentEditing,
-                                                onToggle: () {
-                                                  if (!_busy) {
-                                                    setState(
-                                                      () => _expanded =
-                                                          _expanded == q.localId
-                                                          ? null
-                                                          : q.localId,
-                                                    );
-                                                  }
-                                                },
-                                                onChanged: () => setState(
-                                                  () => _questionDirty = true,
-                                                ),
-                                                onAction: (action) =>
-                                                    _questionAction(q, action),
-                                              ),
-                                            );
-                                          },
-                                        ),
-                                      ),
-                                    if (page == 2 && draft != null)
-                                      SliverPadding(
-                                        padding: const EdgeInsets.fromLTRB(
-                                          FiloSpacing.screen,
-                                          0,
-                                          FiloSpacing.screen,
-                                          FiloSpacing.screen,
-                                        ),
-                                        sliver: SliverToBoxAdapter(
-                                          child: PopupMenuButton<String>(
-                                            enabled: contentEditing,
-                                            tooltip: 'Add question',
-                                            onSelected: (type) => setState(() {
-                                              final q =
-                                                  QuizQuestion.newQuestion(
-                                                    type,
-                                                  );
-                                              draft.questions.add(q);
-                                              _expanded = q.localId;
-                                              _questionDirty = true;
-                                              _revealQuestion(q.localId);
-                                            }),
-                                            itemBuilder: (_) => [
-                                              for (final entry
-                                                  in questionTypeLabels.entries)
-                                                PopupMenuItem(
-                                                  value: entry.key,
-                                                  child: Text(entry.value),
-                                                ),
-                                            ],
-                                            child: Container(
-                                              constraints: const BoxConstraints(
-                                                minHeight:
-                                                    FiloControlSize.compact,
-                                              ),
-                                              padding:
-                                                  const EdgeInsets.symmetric(
-                                                    horizontal: FiloSpacing.s16,
-                                                    vertical: FiloSpacing.s12,
-                                                  ),
-                                              decoration: BoxDecoration(
-                                                color: Theme.of(context)
-                                                    .colorScheme
-                                                    .surfaceContainer,
-                                                border: Border.all(
-                                                  color: FiloThemeTokens.of(
-                                                    context,
-                                                  ).controlBorder,
-                                                ),
-                                                borderRadius:
-                                                    BorderRadius.circular(
-                                                      FiloRadii.small,
-                                                    ),
-                                              ),
-                                              child: Row(
-                                                mainAxisSize: MainAxisSize.min,
-                                                children: [
-                                                  Icon(
-                                                    Icons.add,
-                                                    color: Theme.of(context)
-                                                        .colorScheme
-                                                        .primary,
-                                                  ),
-                                                  SizedBox(
-                                                    width: FiloSpacing.s8,
-                                                  ),
-                                                  Flexible(
-                                                    child: Text('Add question'),
-                                                  ),
-                                                  SizedBox(
-                                                    width: FiloSpacing.s8,
-                                                  ),
-                                                  Icon(
-                                                    Icons.expand_more,
-                                                    color: Theme.of(context)
-                                                        .colorScheme
-                                                        .primary,
-                                                  ),
-                                                ],
                                               ),
                                             ),
                                           ),
                                         ),
+                                      ],
+                                    ],
+                                  ),
+                                  const SizedBox(height: 8),
+                                  Row(
+                                    children: [
+                                      Expanded(
+                                        child: Text(
+                                          'Step ${_step + 1} of 3',
+                                          style: Theme.of(context)
+                                              .textTheme
+                                              .bodySmall,
+                                        ),
                                       ),
-                                  ],
-                                ),
+                                      if (draft.id != null)
+                                        Chip(
+                                          label: Text(
+                                            quizDisplayStatus(
+                                              status: _published
+                                                  ? 'published'
+                                                  : 'draft',
+                                              opensAt:
+                                                  _savedQuiz?.settings.opensAt,
+                                              closesAt:
+                                                  _savedQuiz?.settings.closesAt,
+                                              now: DateTime.now().toUtc(),
+                                            ).label,
+                                          ),
+                                        ),
+                                    ],
+                                  ),
+                                ],
                               ),
-                          ],
-                        ),
-                      ),
-                    ],
-                  ),
-          ),
-          bottomNavigationBar: draft == null
-              ? null
-              : SafeArea(
-                  child: Padding(
-                    padding: const EdgeInsets.fromLTRB(
-                      FiloSpacing.screen,
-                      FiloSpacing.s12,
-                      FiloSpacing.screen,
-                      FiloSpacing.s12,
-                    ),
-                    child: Column(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        if (!online && _step == 2 && !readOnly)
-                          const Padding(
-                            padding: EdgeInsets.only(bottom: FiloSpacing.s8),
-                            child: Text(
-                              'Connect to the internet to save or publish.',
                             ),
-                          ),
-                        if (_step < 2) ...[
-                          if (_step > 0)
-                            TextButton(
-                              onPressed: _busy
-                                  ? null
-                                  : () => _navigate(_step - 1),
-                              child: const Text('Back'),
-                            ),
-                          FiloButton(
-                            label: _step == 0
-                                ? 'Next: Settings'
-                                : 'Next: Questions',
-                            onPressed: !_busy && !_loading
-                                ? () => _navigate(_step + 1)
-                                : null,
-                          ),
-                        ] else ...[
-                          Row(
-                            children: [
-                              Expanded(
-                                child: TextButton(
-                                  style: TextButton.styleFrom(
-                                    minimumSize: const Size(
-                                      FiloControlSize.compact,
-                                      FiloControlSize.compact,
+                          Expanded(
+                            child: IndexedStack(
+                              index: _step,
+                              children: [
+                                for (
+                                  var page = 0;
+                                  page < _stepLabels.length;
+                                  page++
+                                )
+                                  Form(
+                                    key: _forms[page],
+                                    child: CustomScrollView(
+                                      controller: _pageScrolls[page],
+                                      slivers: [
+                                        SliverPadding(
+                                          padding: const EdgeInsets.fromLTRB(
+                                            FiloSpacing.screen,
+                                            FiloSpacing.s16,
+                                            FiloSpacing.screen,
+                                            FiloSpacing.screen,
+                                          ),
+                                          sliver: SliverToBoxAdapter(
+                                            child: Column(
+                                              crossAxisAlignment:
+                                                  CrossAxisAlignment.stretch,
+                                              children: [
+                                                if (!online)
+                                                  const OfflineBanner(),
+                                                if (readOnly)
+                                                  const Padding(
+                                                    padding: EdgeInsets.only(
+                                                      bottom: FiloSpacing.s16,
+                                                    ),
+                                                    child: Text(
+                                                      'This class is archived or unavailable. Assessments are read-only.',
+                                                    ),
+                                                  ),
+                                                if (draft?.locked == true)
+                                                  const Padding(
+                                                    padding: EdgeInsets.only(
+                                                      bottom: FiloSpacing.s16,
+                                                    ),
+                                                    child: Text(
+                                                      'This quiz has already been started. Only the title and closing time can change.',
+                                                    ),
+                                                  )
+                                                else if (_published)
+                                                  const Padding(
+                                                    padding: EdgeInsets.only(
+                                                      bottom: FiloSpacing.s16,
+                                                    ),
+                                                    child: Text(
+                                                      'Students can already see this assessment. Your saved changes will affect it.',
+                                                    ),
+                                                  ),
+                                                if (_publishProblems
+                                                    .isNotEmpty) ...[
+                                                  const Text(
+                                                    'Before publishing, fix these problems:',
+                                                  ),
+                                                  for (final problem
+                                                      in _publishProblems)
+                                                    TextButton(
+                                                      onPressed: _busy
+                                                          ? null
+                                                          : () => _showProblem(
+                                                              problem,
+                                                            ),
+                                                      child: Text(
+                                                        problem.message,
+                                                      ),
+                                                    ),
+                                                ],
+                                                if (_error != null) ...[
+                                                  Text(
+                                                    _error!,
+                                                    style: TextStyle(
+                                                      color: Theme.of(context)
+                                                          .colorScheme
+                                                          .error,
+                                                    ),
+                                                  ),
+                                                  if (online &&
+                                                      (draft?.reconciliationRequired !=
+                                                              true ||
+                                                          draft?.id != null))
+                                                    TextButton(
+                                                      onPressed:
+                                                          _busy || _loading
+                                                          ? null
+                                                          : _reload,
+                                                      child: Text(
+                                                        draft?.reconciliationRequired ==
+                                                                true
+                                                            ? 'Reload saved version'
+                                                            : 'Retry',
+                                                      ),
+                                                    ),
+                                                  const SizedBox(
+                                                    height: FiloSpacing.s16,
+                                                  ),
+                                                ],
+                                                if (draft != null) ...[
+                                                  if (_scheduleWarning &&
+                                                      missingAssessmentSchedule(
+                                                            draft,
+                                                          ) !=
+                                                          null)
+                                                    Padding(
+                                                      padding:
+                                                          const EdgeInsets.only(
+                                                            bottom: 20,
+                                                          ),
+                                                      child: Semantics(
+                                                        liveRegion: true,
+                                                        child: ShadAlert.destructive(
+                                                          title: const Text(
+                                                            'Schedule incomplete',
+                                                          ),
+                                                          description: Padding(
+                                                            padding:
+                                                                const EdgeInsets.only(
+                                                                  top: 8,
+                                                                ),
+                                                            child: Text(
+                                                              missingAssessmentSchedule(
+                                                                draft,
+                                                              )!,
+                                                            ),
+                                                          ),
+                                                          bottom: Padding(
+                                                            padding:
+                                                                const EdgeInsets.only(
+                                                                  top: 8,
+                                                                ),
+                                                            child: ShadButton.outline(
+                                                              height: 48,
+                                                              enabled: !_busy,
+                                                              onPressed: () {
+                                                                _switchStep(1);
+                                                                if (_pageScrolls[1]
+                                                                    .hasClients)
+                                                                  _pageScrolls[1]
+                                                                      .jumpTo(
+                                                                        0,
+                                                                      );
+                                                              },
+                                                              child: const Text(
+                                                                'Set dates',
+                                                              ),
+                                                            ),
+                                                          ),
+                                                        ),
+                                                      ),
+                                                    ),
+
+                                                  if (page == 0) ...[
+                                                    _section('Assessment details', FiloIcons.assessment, [
+                                                      TextFormField(
+                                                        key: ValueKey(
+                                                          'title-$_revision',
+                                                        ),
+                                                        initialValue:
+                                                            draft.settings['title']
+                                                                as String?,
+                                                        enabled: editing,
+                                                        maxLength: 120,
+                                                        decoration:
+                                                            const InputDecoration(
+                                                              labelText: 'Assessment title',
+                                                              hintText: 'e.g. Chapter 1 quiz',
+                                                            ),
+                                                        validator: (value) =>
+                                                            value == null ||
+                                                                value
+                                                                    .trim()
+                                                                    .isEmpty
+                                                            ? 'Give your assessment a title.'
+                                                            : null,
+                                                        onChanged: (value) =>
+                                                            setState(() {
+                                                              _questionDirty =
+                                                                  true;
+                                                              draft.settings['title'] =
+                                                                  value;
+                                                            }),
+                                                      ),
+                                                      const SizedBox(
+                                                        height: FiloSpacing.s12,
+                                                      ),
+                                                      Text(
+                                                        'Assessment type',
+                                                        style: Theme.of(context)
+                                                            .textTheme
+                                                            .titleSmall,
+                                                      ),
+                                                      const SizedBox(
+                                                        height: FiloSpacing.s8,
+                                                      ),
+                                                      Row(
+                                                        children: [
+                                                          for (final type in [
+                                                            'quiz',
+                                                            'exam',
+                                                          ])
+                                                            Expanded(
+                                                              child: Padding(
+                                                                padding:
+                                                                    EdgeInsets.only(
+                                                                      right:
+                                                                          type == 'quiz'
+                                                                          ? 8
+                                                                          : 0,
+                                                                    ),
+                                                                child: Semantics(
+                                                                  selected:
+                                                                      draft
+                                                                          .settings['type'] ==
+                                                                      type,
+                                                                  child: ShadButton.secondary(
+                                                                    height: 56,
+                                                                    enabled:
+                                                                        contentEditing,
+                                                                    backgroundColor:
+                                                                        draft.settings['type'] ==
+                                                                            type
+                                                                        ? colors
+                                                                              .primaryContainer
+                                                                        : colors
+                                                                              .surfaceContainer,
+                                                                    foregroundColor:
+                                                                        draft.settings['type'] ==
+                                                                            type
+                                                                        ? colors
+                                                                              .onPrimaryContainer
+                                                                        : colors
+                                                                              .onSurfaceVariant,
+                                                                    trailing:
+                                                                        draft.settings['type'] ==
+                                                                            type
+                                                                        ? const Icon(
+                                                                            Icons.check,
+                                                                            size:
+                                                                                18,
+                                                                          )
+                                                                        : null,
+                                                                    expands:
+                                                                        true,
+                                                                    onPressed: () => setState(() {
+                                                                      draft.settings['type'] =
+                                                                          type;
+                                                                      if (!_answersChosenByHand) {
+                                                                        draft.settings['show_correct_answers'] =
+                                                                            type == 'quiz';
+                                                                      }
+                                                                    }),
+                                                                    child: Text(
+                                                                      type == 'quiz'
+                                                                          ? 'Quiz'
+                                                                          : 'Exam',
+                                                                    ),
+                                                                  ),
+                                                                ),
+                                                              ),
+                                                            ),
+                                                        ],
+                                                      ),
+                                                      const SizedBox(
+                                                        height: FiloSpacing.s16,
+                                                      ),
+                                                    ], card: false),
+                                                    _section(
+                                                      'Time limit',
+                                                      FiloIcons.clock,
+                                                      [
+                                                        TextFormField(
+                                                          key: ValueKey(
+                                                            'minutes-$_revision',
+                                                          ),
+                                                          initialValue:
+                                                              '${draft.settings['time_limit_minutes']}',
+                                                          enabled:
+                                                              contentEditing,
+                                                          keyboardType:
+                                                              TextInputType
+                                                                  .number,
+                                                          decoration:
+                                                              const InputDecoration(
+                                                                labelText: 'Time limit (minutes)',
+                                                                helperText: '1-600 minutes',
+                                                              ),
+                                                          validator: (value) {
+                                                            if (draft.locked) {
+                                                              return null;
+                                                            }
+                                                            final n =
+                                                                int.tryParse(
+                                                                  value ?? '',
+                                                                );
+                                                            return n == null ||
+                                                                    n < 1 ||
+                                                                    n > 600
+                                                                ? 'Enter 1 to 600 minutes.'
+                                                                : null;
+                                                          },
+                                                          onChanged: (value) =>
+                                                              setState(
+                                                                () => draft.settings['time_limit_minutes'] =
+                                                                    int.tryParse(
+                                                                      value,
+                                                                    ),
+                                                              ),
+                                                        ),
+                                                        const SizedBox(
+                                                          height:
+                                                              FiloSpacing.s20,
+                                                        ),
+                                                      ],
+                                                    ),
+                                                    _section(
+                                                      'Instructions',
+                                                      FiloIcons.edit,
+                                                      [
+                                                        TextFormField(
+                                                          key: ValueKey(
+                                                            'instructions-$_revision',
+                                                          ),
+                                                          initialValue:
+                                                              draft.settings['instructions']
+                                                                  as String?,
+                                                          enabled:
+                                                              contentEditing,
+                                                          maxLength: 5000,
+                                                          minLines: 3,
+                                                          maxLines: 6,
+                                                          decoration:
+                                                              const InputDecoration(
+                                                                labelText: 'Instructions (optional)',
+                                                                alignLabelWithHint:
+                                                                    true,
+                                                              ),
+                                                          onChanged: (value) =>
+                                                              setState(
+                                                                () => draft.settings['instructions'] =
+                                                                    value
+                                                                        .isEmpty
+                                                                    ? null
+                                                                    : value,
+                                                              ),
+                                                        ),
+                                                      ],
+                                                      card: false,
+                                                    ),
+                                                  ],
+                                                  if (page == 1) ...[
+                                                    _section('Schedule', FiloIcons.calendar, [
+                                                      for (final field in [
+                                                        'opens_at',
+                                                        'closes_at',
+                                                      ]) ...[
+                                                        OutlinedButton.icon(
+                                                          key:
+                                                              field ==
+                                                                  'closes_at'
+                                                              ? _closingTimeKey
+                                                              : null,
+                                                          style: OutlinedButton.styleFrom(
+                                                            backgroundColor:
+                                                                Theme.of(
+                                                                      context,
+                                                                    )
+                                                                    .colorScheme
+                                                                    .surfaceContainerLowest,
+                                                            alignment: Alignment
+                                                                .centerLeft,
+                                                            padding:
+                                                                const EdgeInsets.all(
+                                                                  16,
+                                                                ),
+                                                            minimumSize:
+                                                                const Size(
+                                                                  0,
+                                                                  80,
+                                                                ),
+                                                            side: BorderSide(
+                                                              color:
+                                                                  _scheduleWarning &&
+                                                                      draft.settings[field] ==
+                                                                          null
+                                                                  ? Theme.of(
+                                                                          context,
+                                                                        )
+                                                                        .colorScheme
+                                                                        .error
+                                                                  : FiloThemeTokens.of(
+                                                                      context,
+                                                                    ).controlBorder,
+                                                            ),
+                                                            shape: RoundedRectangleBorder(
+                                                              borderRadius:
+                                                                  BorderRadius.circular(
+                                                                    16,
+                                                                  ),
+                                                            ),
+                                                          ),
+                                                          icon: FiloIcon(
+                                                            field == 'opens_at'
+                                                                ? FiloIcons
+                                                                      .calendar
+                                                                : FiloIcons
+                                                                      .clock,
+                                                          ),
+                                                          onPressed:
+                                                              (field == 'closes_at'
+                                                                  ? editing
+                                                                  : contentEditing)
+                                                              ? () => _pickDate(
+                                                                  field,
+                                                                )
+                                                              : null,
+                                                          label: Column(
+                                                            crossAxisAlignment:
+                                                                CrossAxisAlignment
+                                                                    .start,
+                                                            children: [
+                                                              Text(
+                                                                field == 'opens_at'
+                                                                    ? 'Start date & time'
+                                                                    : 'End date & time',
+                                                                style: Theme.of(
+                                                                  context,
+                                                                ).textTheme.bodySmall,
+                                                              ),
+                                                              const SizedBox(
+                                                                height: 6,
+                                                              ),
+                                                              Text(
+                                                                assessmentDateLabel(
+                                                                  draft.settings[field] ==
+                                                                          null
+                                                                      ? null
+                                                                      : DateTime.parse(
+                                                                          draft.settings[field]
+                                                                              as String,
+                                                                        ),
+                                                                ),
+                                                                style: Theme.of(
+                                                                  context,
+                                                                ).textTheme.titleMedium,
+                                                              ),
+                                                            ],
+                                                          ),
+                                                        ),
+                                                        if (draft.settings[field] !=
+                                                                null &&
+                                                            (field ==
+                                                                    'closes_at'
+                                                                ? editing
+                                                                : contentEditing))
+                                                          Align(
+                                                            alignment: Alignment
+                                                                .centerRight,
+                                                            child: TextButton(
+                                                              onPressed: () =>
+                                                                  setState(
+                                                                    () =>
+                                                                        draft.settings[field] =
+                                                                            null,
+                                                                  ),
+                                                              child: Text(
+                                                                field == 'opens_at'
+                                                                    ? 'Clear opening time'
+                                                                    : 'Clear closing time',
+                                                              ),
+                                                            ),
+                                                          ),
+                                                        const SizedBox(
+                                                          height:
+                                                              FiloSpacing.s12,
+                                                        ),
+                                                      ],
+                                                    ]),
+                                                    _section(
+                                                      'Question order',
+                                                      FiloIcons.settings,
+                                                      [
+                                                        for (final setting
+                                                            in const [
+                                                              (
+                                                                'shuffle_questions',
+                                                                'Shuffle questions',
+                                                              ),
+                                                              (
+                                                                'shuffle_options',
+                                                                'Shuffle options',
+                                                              ),
+                                                            ]) ...[
+                                                          _settingSwitch(
+                                                            setting.$2,
+                                                            value:
+                                                                draft.settings[setting
+                                                                        .$1]
+                                                                    as bool,
+                                                            enabled:
+                                                                contentEditing,
+                                                            onChanged:
+                                                                (
+                                                                  value,
+                                                                ) => setState(
+                                                                  () =>
+                                                                      draft.settings[setting
+                                                                              .$1] =
+                                                                          value,
+                                                                ),
+                                                          ),
+                                                          if (setting.$1 ==
+                                                              'shuffle_questions')
+                                                            const ShadSeparator.horizontal(
+                                                              margin:
+                                                                  EdgeInsets.symmetric(
+                                                                    vertical: 8,
+                                                                  ),
+                                                            ),
+                                                        ],
+                                                      ],
+                                                    ),
+                                                    _section('Results', FiloIcons.checkCircle, [
+                                                      _settingSwitch(
+                                                        'Show correct answers',
+                                                        value:
+                                                            draft.settings['show_correct_answers']
+                                                                as bool,
+                                                        enabled: contentEditing,
+                                                        onChanged: (value) => setState(() {
+                                                          draft.settings['show_correct_answers'] =
+                                                              value;
+                                                          _answersChosenByHand =
+                                                              true;
+                                                        }),
+                                                      ),
+                                                      const ShadSeparator.horizontal(
+                                                        margin:
+                                                            EdgeInsets.symmetric(
+                                                              vertical: 20,
+                                                            ),
+                                                      ),
+                                                      TextFormField(
+                                                        key: ValueKey(
+                                                          'passing-$_revision',
+                                                        ),
+                                                        initialValue:
+                                                            draft
+                                                                .settings['passing_percent']
+                                                                ?.toString() ??
+                                                            '',
+                                                        enabled: contentEditing,
+                                                        keyboardType:
+                                                            TextInputType
+                                                                .number,
+                                                        decoration:
+                                                            const InputDecoration(
+                                                              labelText: 'Passing score (optional)',
+                                                              hintText: '0-100',
+                                                              suffixText: '%',
+                                                            ),
+                                                        validator: (value) {
+                                                          if (draft.locked) {
+                                                            return null;
+                                                          }
+                                                          if (value == null ||
+                                                              value
+                                                                  .trim()
+                                                                  .isEmpty) {
+                                                            return null;
+                                                          }
+                                                          final percentage =
+                                                              int.tryParse(
+                                                                value.trim(),
+                                                              );
+                                                          return percentage ==
+                                                                      null ||
+                                                                  percentage <
+                                                                      0 ||
+                                                                  percentage >
+                                                                      100
+                                                              ? 'Enter a whole percentage from 0 to 100.'
+                                                              : null;
+                                                        },
+                                                        onChanged: (value) => setState(() {
+                                                          // Keep invalid input dirty; validation prevents sending it.
+                                                          draft.settings['passing_percent'] =
+                                                              value
+                                                                  .trim()
+                                                                  .isEmpty
+                                                              ? null
+                                                              : int.tryParse(
+                                                                      value
+                                                                          .trim(),
+                                                                    ) ??
+                                                                    value;
+                                                        }),
+                                                      ),
+                                                    ]),
+                                                  ],
+                                                  if (page == 2) ...[
+                                                    _section('Build your questions', FiloIcons.sparkle, [
+                                                      Text(
+                                                        '${draft.questionCount} ${draft.questionCount == 1 ? 'question' : 'questions'} | ${draft.questions.any((q) {
+                                                              final n = int.tryParse(_editor(q).points);
+                                                              return n == null || n < 1 || n > 1000;
+                                                            }) ? 'Points need attention' : '${draft.totalPoints} ${draft.totalPoints == 1 ? 'point' : 'points'}'}',
+                                                        style: Theme.of(context)
+                                                            .textTheme
+                                                            .titleMedium,
+                                                      ),
+                                                      const ShadSeparator.horizontal(
+                                                        margin:
+                                                            EdgeInsets.symmetric(
+                                                              vertical: 16,
+                                                            ),
+                                                      ),
+
+                                                      if (_pendingAi > 0 ||
+                                                          _aiRefreshRequired) ...[
+                                                        Text(
+                                                          _pendingAi == 0
+                                                              ? 'Refresh saved AI drafts before continuing.'
+                                                              : '$_pendingAi AI draft saves need attention.${_uncertainAi > 0 ? ' $_uncertainAi have an unconfirmed outcome; they will not be inserted again automatically.' : ''}',
+                                                        ),
+                                                        TextButton(
+                                                          onPressed:
+                                                              !_busy &&
+                                                                  _canWrite
+                                                              ? _retryAiDrafts
+                                                              : null,
+                                                          child: const Text(
+                                                            'Check saves / retry failed drafts',
+                                                          ),
+                                                        ),
+                                                        TextButton(
+                                                          onPressed:
+                                                              !_busy &&
+                                                                  _canWrite
+                                                              ? _stopAiRetries
+                                                              : null,
+                                                          child: const Text(
+                                                            'Stop retrying pending drafts',
+                                                          ),
+                                                        ),
+                                                      ],
+                                                      if (!draft.locked) ...[
+                                                        FiloButton(
+                                                          label: 'Generate with AI',
+                                                          icon:
+                                                              FiloIcons.sparkle,
+                                                          onPressed:
+                                                              contentEditing &&
+                                                                  online &&
+                                                                  !_published &&
+                                                                  _pendingAi ==
+                                                                      0 &&
+                                                                  !_aiRefreshRequired
+                                                              ? _generateWithAi
+                                                              : null,
+                                                        ),
+                                                        if (draft.id == null)
+                                                          const Text(
+                                                            'Your titled draft will be saved before generation.',
+                                                          ),
+                                                        if (_published)
+                                                          const Text(
+                                                            'AI questions must start in a draft assessment.',
+                                                          ),
+                                                        if (!online)
+                                                          const Text(
+                                                            'Connect to the internet to generate questions.',
+                                                          ),
+                                                        const SizedBox(
+                                                          height:
+                                                              FiloSpacing.s12,
+                                                        ),
+                                                      ],
+                                                      if (draft
+                                                          .questions
+                                                          .isEmpty)
+                                                        const Padding(
+                                                          padding:
+                                                              EdgeInsets.symmetric(
+                                                                vertical:
+                                                                    FiloSpacing
+                                                                        .s16,
+                                                              ),
+                                                          child: Text(
+                                                            'No questions yet.',
+                                                          ),
+                                                        ),
+                                                    ]),
+                                                  ],
+                                                ],
+                                              ],
+                                            ),
+                                          ),
+                                        ),
+                                        if (page == 2 && draft != null)
+                                          SliverPadding(
+                                            padding: const EdgeInsets.symmetric(
+                                              horizontal: FiloSpacing.screen,
+                                            ),
+                                            sliver: SliverToBoxAdapter(
+                                              child: _section(
+                                                'Add questions',
+                                                FiloIcons.add,
+                                                [
+                                                  PopupMenuButton<String>(
+                                                    key: _addQuestionMenuKey,
+                                                    enabled: contentEditing,
+                                                    tooltip: 'Add question',
+                                                    onSelected: (type) => setState(() {
+                                                      final q =
+                                                          QuizQuestion.newQuestion(
+                                                            type,
+                                                          );
+                                                      draft.questions.add(q);
+                                                      _expanded = q.localId;
+                                                      _questionDirty = true;
+                                                      _revealQuestion(
+                                                        q.localId,
+                                                      );
+                                                    }),
+                                                    itemBuilder: (_) => [
+                                                      for (final entry
+                                                          in questionTypeLabels
+                                                              .entries)
+                                                        PopupMenuItem(
+                                                          value: entry.key,
+                                                          child: Text(
+                                                            entry.value,
+                                                          ),
+                                                        ),
+                                                    ],
+                                                    child: ShadButton.outline(
+                                                      height: 48,
+                                                      expands: true,
+                                                      enabled: contentEditing,
+                                                      onPressed: () =>
+                                                          _addQuestionMenuKey
+                                                              .currentState
+                                                              ?.showButtonMenu(),
+                                                      leading: const Icon(
+                                                        Icons.add,
+                                                        size: 20,
+                                                      ),
+                                                      trailing: const Icon(
+                                                        Icons.expand_more,
+                                                        size: 20,
+                                                      ),
+                                                      child: const Text(
+                                                        'Add question',
+                                                      ),
+                                                    ),
+                                                  ),
+                                                  const SizedBox(height: 12),
+                                                  ShadButton.outline(
+                                                    height: 48,
+                                                    expands: true,
+                                                    enabled:
+                                                        contentEditing &&
+                                                        online &&
+                                                        !draft
+                                                            .reconciliationRequired,
+                                                    onPressed: _addFromBank,
+                                                    leading: const Icon(
+                                                      Icons
+                                                          .library_books_outlined,
+                                                      size: 20,
+                                                    ),
+                                                    child: const Text(
+                                                      'Add from question bank',
+                                                    ),
+                                                  ),
+                                                  if (!online)
+                                                    const Padding(
+                                                      padding: EdgeInsets.only(
+                                                        top: 12,
+                                                      ),
+                                                      child: Text(
+                                                        'Connect to read or save questions in the bank.',
+                                                      ),
+                                                    ),
+                                                ],
+                                              ),
+                                            ),
+                                          ),
+                                        if (page == 2 && draft != null)
+                                          SliverPadding(
+                                            padding: const EdgeInsets.fromLTRB(
+                                              FiloSpacing.screen,
+                                              FiloSpacing.s12,
+                                              FiloSpacing.screen,
+                                              0,
+                                            ),
+                                            sliver: SliverReorderableList(
+                                              itemCount: draft.questions.length,
+                                              findChildIndexCallback: (key) {
+                                                if (key is! ValueKey<String>) {
+                                                  return null;
+                                                }
+                                                final index = draft.questions
+                                                    .indexWhere(
+                                                      (q) =>
+                                                          q.localId ==
+                                                          key.value,
+                                                    );
+                                                return index < 0 ? null : index;
+                                              },
+                                              onReorder: (from, to) {
+                                                if (contentEditing) {
+                                                  _move(
+                                                    from,
+                                                    to > from ? to - 1 : to,
+                                                  );
+                                                }
+                                              },
+                                              itemBuilder: (context, index) {
+                                                final q =
+                                                    draft.questions[index];
+                                                return KeyedSubtree(
+                                                  key: ValueKey(q.localId),
+                                                  child: QuestionCard(
+                                                    canRegenerate:
+                                                        !_published &&
+                                                        _pendingAi == 0 &&
+                                                        !_aiRefreshRequired,
+                                                    canSaveToBank:
+                                                        online &&
+                                                        !_busy &&
+                                                        !_loading,
+                                                    key: _cardKeys.putIfAbsent(
+                                                      q.localId,
+                                                      () => GlobalKey(),
+                                                    ),
+                                                    question: q,
+                                                    editor: _editor(q),
+                                                    index: index,
+                                                    expanded:
+                                                        _expanded == q.localId,
+                                                    enabled: contentEditing,
+                                                    onToggle: () {
+                                                      if (!_busy) {
+                                                        setState(
+                                                          () => _expanded =
+                                                              _expanded ==
+                                                                  q.localId
+                                                              ? null
+                                                              : q.localId,
+                                                        );
+                                                      }
+                                                    },
+                                                    onChanged: () => setState(
+                                                      () =>
+                                                          _questionDirty = true,
+                                                    ),
+                                                    onAction: (action) =>
+                                                        _questionAction(
+                                                          q,
+                                                          action,
+                                                        ),
+                                                  ),
+                                                );
+                                              },
+                                            ),
+                                          ),
+                                      ],
                                     ),
                                   ),
+                              ],
+                            ),
+                          ),
+                        ],
+                      ),
+              ),
+              bottomNavigationBar: draft == null
+                  ? null
+                  : SafeArea(
+                      child: Padding(
+                        padding: const EdgeInsets.fromLTRB(
+                          FiloSpacing.screen,
+                          FiloSpacing.s12,
+                          FiloSpacing.screen,
+                          FiloSpacing.s12,
+                        ),
+                        child: Column(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            if (!online && _step == 2 && !readOnly)
+                              const Padding(
+                                padding: EdgeInsets.only(
+                                  bottom: FiloSpacing.s8,
+                                ),
+                                child: Text(
+                                  'Connect to the internet to save or publish.',
+                                ),
+                              ),
+                            if (_step < 2) ...[
+                              if (_step > 0)
+                                TextButton(
                                   onPressed: _busy
                                       ? null
                                       : () => _navigate(_step - 1),
                                   child: const Text('Back'),
                                 ),
+                              FiloButton(
+                                label: _step == 0
+                                    ? 'Next: Settings'
+                                    : 'Next: Questions',
+                                onPressed: !_busy && !_loading
+                                    ? () => _navigate(_step + 1)
+                                    : null,
                               ),
-                              if (!readOnly && !_published) ...[
-                                const SizedBox(width: FiloSpacing.s12),
-                                Expanded(
-                                  child: FiloButton(
-                                    label: 'Save draft',
-                                    secondary: true,
-                                    onPressed:
-                                        editing &&
-                                            online &&
-                                            !draft.reconciliationRequired &&
-                                            (_dirty || draft.id == null)
-                                        ? () => _save()
-                                        : null,
+                            ] else ...[
+                              Row(
+                                children: [
+                                  Expanded(
+                                    child: TextButton(
+                                      style: TextButton.styleFrom(
+                                        minimumSize: const Size(
+                                          FiloControlSize.compact,
+                                          FiloControlSize.compact,
+                                        ),
+                                      ),
+                                      onPressed: _busy
+                                          ? null
+                                          : () => _navigate(_step - 1),
+                                      child: const Text('Back'),
+                                    ),
                                   ),
+                                  if (!readOnly && !_published) ...[
+                                    const SizedBox(width: FiloSpacing.s12),
+                                    Expanded(
+                                      child: FiloButton(
+                                        label: 'Save draft',
+                                        secondary: true,
+                                        onPressed:
+                                            editing &&
+                                                online &&
+                                                !draft.reconciliationRequired &&
+                                                (_dirty || draft.id == null)
+                                            ? () => _save()
+                                            : null,
+                                      ),
+                                    ),
+                                  ],
+                                ],
+                              ),
+                              if (!readOnly)
+                                const SizedBox(height: FiloSpacing.s8),
+                              if (!readOnly)
+                                FiloButton(
+                                  label: _published
+                                      ? 'Save changes'
+                                      : 'Publish',
+                                  busy: _busy,
+                                  onPressed:
+                                      editing &&
+                                          online &&
+                                          !draft.reconciliationRequired &&
+                                          (!_published ||
+                                              _dirty ||
+                                              draft.id == null)
+                                      ? (_published ? () => _save() : _publish)
+                                      : null,
                                 ),
-                              ],
                             ],
-                          ),
-                          if (!readOnly) const SizedBox(height: FiloSpacing.s8),
-                          if (!readOnly)
-                            FiloButton(
-                              label: _published ? 'Save changes' : 'Publish',
-                              busy: _busy,
-                              onPressed:
-                                  editing &&
-                                      online &&
-                                      !draft.reconciliationRequired &&
-                                      (!_published ||
-                                          _dirty ||
-                                          draft.id == null)
-                                  ? (_published ? () => _save() : _publish)
-                                  : null,
-                            ),
-                        ],
-                      ],
+                          ],
+                        ),
+                      ),
                     ),
-                  ),
-                ),
+            ),
+          ),
         ),
       ),
     );

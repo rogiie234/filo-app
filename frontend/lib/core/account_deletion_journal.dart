@@ -27,8 +27,9 @@ class DeletionJournalStore {
     if (text == null) return {};
     final json = jsonDecode(text) as Map<String, dynamic>;
     return json.map((id, value) {
-      if (!RegExp(r'^[a-zA-Z0-9-]+$').hasMatch(id))
+      if (!RegExp(r'^[a-zA-Z0-9-]+$').hasMatch(id)) {
         throw const FormatException('Invalid account journal');
+      }
       final row = value as Map<String, dynamic>;
       return MapEntry(
         id,

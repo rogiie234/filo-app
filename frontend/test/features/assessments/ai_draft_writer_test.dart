@@ -26,8 +26,9 @@ class AiTestRepository extends InstructorQuizRepository {
   bool failFinalRefresh = false;
   @override
   Future<InstructorQuiz> refreshQuiz(String classId, String quizId) async {
-    if (failFinalRefresh && remote.isNotEmpty)
+    if (failFinalRefresh && remote.isNotEmpty) {
       throw StateError('Refresh failed');
+    }
     return InstructorQuiz(row, remote.map((q) => q.copy()).toList());
   }
 
@@ -128,8 +129,9 @@ void main() {
               ..remove('id')
               ..remove('position')
               ..remove('ai_generated');
-            if (mode == 'lost-no-match')
+            if (mode == 'lost-no-match') {
               throw const FormatException('Unconfirmed transport outcome');
+            }
             repo.remote.removeWhere((old) => old.id == id);
             repo.remote.add(
               QuizQuestion(
@@ -139,8 +141,9 @@ void main() {
                 payload: payload,
               ),
             );
-            if (mode == 'lost-response')
+            if (mode == 'lost-response') {
               throw const FormatException('Response lost after remote commit');
+            }
             body = {'question_id': id, 'option_ids': []};
           } else {
             throw StateError('Unexpected route');

@@ -155,19 +155,19 @@ class StudyChatRepository {
       content.replaceAll(RegExp(r'\s+'), ' ').runes.take(60),
     );
     var id = chatId;
-    if (id == null) {
-      id = await create(notebookId, title);
-    }
+    id ??= await create(notebookId, title);
     final chat = await find(notebookId, id);
-    if (chat == null || !chat.expiresAt.isAfter(db.now().toUtc()))
+    if (chat == null || !chat.expiresAt.isAfter(db.now().toUtc())) {
       throw StateError('Chat unavailable');
+    }
     final messages = await getMessages(id);
     if (messages.isEmpty && chatId != null) await rename(id, title);
     if (messages.isNotEmpty &&
         messages.last.role == 'user' &&
         messages.last.content == content) {
-      if (!{'files', 'general'}.contains(mode))
+      if (!{'files', 'general'}.contains(mode)) {
         throw ArgumentError('Invalid mode');
+      }
       final now = db.now().toUtc();
       await (db.update(
         db.chatMessages,
@@ -196,15 +196,17 @@ class StudyChatRepository {
     required String mode,
   }) => db.transaction(() async {
     final chat = await find(notebookId, chatId);
-    if (chat == null || !chat.expiresAt.isAfter(db.now().toUtc()))
+    if (chat == null || !chat.expiresAt.isAfter(db.now().toUtc())) {
       throw StateError('Chat unavailable');
+    }
     final messages = await getMessages(chatId);
     if (messages.length >= 2 &&
         messages.last.role == 'assistant' &&
         messages[messages.length - 2].id == questionId &&
         messages.last.content == content &&
-        messages.last.mode == mode)
+        messages.last.mode == mode) {
       return;
+    }
     if (messages.isEmpty ||
         messages.last.id != questionId ||
         messages.last.role != 'user') {
@@ -323,8 +325,9 @@ class StudySummaryRepository {
     requireStudyText(content, 'content', max: 4000);
     await db.transaction(() async {
       void checkCurrent() {
-        if (canCommit != null && !canCommit())
+        if (canCommit != null && !canCommit()) {
           throw StateError('Summary save is no longer current');
+        }
       }
 
       checkCurrent();
@@ -375,15 +378,17 @@ class StudyDeckRepository {
   }) async {
     requireStudyText(title, 'title');
     settings.validate();
-    if (cards.isEmpty || cards.length > settings.count)
+    if (cards.isEmpty || cards.length > settings.count) {
       throw ArgumentError('Invalid card count');
+    }
     for (final card in cards) {
       card.validate();
     }
     return db.transaction(() async {
       void checkCurrent() {
-        if (canCommit != null && !canCommit())
+        if (canCommit != null && !canCommit()) {
           throw StateError('Deck save is no longer current');
+        }
       }
 
       checkCurrent();
@@ -406,8 +411,9 @@ class StudyDeckRepository {
               (i) =>
                   saved[i].front != cards[i].front ||
                   saved[i].back != cards[i].back,
-            ).any((different) => different))
+            ).any((different) => different)) {
           throw StateError('Deck save does not match existing content');
+        }
         checkCurrent();
         return id;
       }
@@ -449,11 +455,13 @@ class StudyDeckRepository {
     String? deckId,
     bool Function()? canCommit,
   }) {
-    if (!{'new', 'learning', 'known'}.contains(status))
+    if (!{'new', 'learning', 'known'}.contains(status)) {
       throw ArgumentError.value(status, 'status');
+    }
     return db.transaction(() async {
-      if (canCommit != null && !canCommit())
+      if (canCommit != null && !canCommit()) {
         throw StateError('Account changed');
+      }
       final changed =
           await (db.update(db.flashcards)..where(
                 (c) =>
@@ -463,8 +471,9 @@ class StudyDeckRepository {
                         : c.deckId.equals(deckId)),
               ))
               .write(FlashcardsCompanion(status: Value(status)));
-      if (canCommit != null && !canCommit())
+      if (canCommit != null && !canCommit()) {
         throw StateError('Account changed');
+      }
       return changed;
     });
   }
@@ -519,17 +528,20 @@ class StudyQuizRepository {
   }) async {
     requireStudyText(title, 'title');
     settings.validate();
-    if (questions.isEmpty || questions.length > settings.count)
+    if (questions.isEmpty || questions.length > settings.count) {
       throw ArgumentError('Invalid question count');
+    }
     for (final question in questions) {
       question.validate();
-      if (!settings.types.contains(question.type))
+      if (!settings.types.contains(question.type)) {
         throw ArgumentError('Unselected question type');
+      }
     }
     return db.transaction(() async {
       void checkCurrent() {
-        if (canCommit != null && !canCommit())
+        if (canCommit != null && !canCommit()) {
           throw StateError('Quiz save is no longer current');
+        }
       }
 
       checkCurrent();
@@ -546,8 +558,9 @@ class StudyQuizRepository {
         if (existing.notebookId != notebookId ||
             existing.title != title.trim() ||
             existing.settings != jsonEncode(settings.toJson()) ||
-            saved.length != questions.length)
+            saved.length != questions.length) {
           throw StateError('Quiz save mismatch');
+        }
         for (var i = 0; i < questions.length; i++) {
           final q = questions[i], row = saved[i];
           if (q.type != row.type ||
@@ -560,8 +573,9 @@ class StudyQuizRepository {
               (q.acceptedAnswers == null
                       ? null
                       : jsonEncode(q.acceptedAnswers)) !=
-                  row.acceptedAnswers)
+                  row.acceptedAnswers) {
             throw StateError('Quiz questions mismatch');
+          }
         }
         checkCurrent();
         return id;
@@ -639,8 +653,9 @@ class StudyAttemptRepository {
     bool Function()? canCommit,
   }) => db.transaction(() async {
     void checkCurrent() {
-      if (canCommit != null && !canCommit())
+      if (canCommit != null && !canCommit()) {
         throw StateError('Attempt is no longer current');
+      }
     }
 
     checkCurrent();
@@ -671,8 +686,9 @@ class StudyAttemptRepository {
       db.practiceAttempts,
     )..where((a) => a.id.equals(id))).getSingleOrNull();
     if (existing != null) {
-      if (existing.quizId != quizId || existing.results != encoded)
+      if (existing.quizId != quizId || existing.results != encoded) {
         throw StateError('Attempt save mismatch');
+      }
       checkCurrent();
       return id;
     }

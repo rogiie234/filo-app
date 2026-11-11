@@ -17,96 +17,126 @@ class FiloNavigationBar extends StatelessWidget {
   final ValueChanged<int> onDestinationSelected;
   final List<NavigationDestination> destinations;
   @override
-  Widget build(BuildContext context) => Material(
-    color:
-        Theme.of(context).navigationBarTheme.backgroundColor ??
-        Theme.of(context).colorScheme.surfaceContainer,
-    child: LayoutBuilder(
-      builder: (context, constraints) {
-        final height =
-            (80 +
-                    24 *
-                        (MediaQuery.textScalerOf(context).scale(14) / 14 - 1) /
-                        .3)
-                .clamp(80.0, 104.0)
-                .toDouble();
-        final rtl = Directionality.of(context) == TextDirection.rtl;
-        final cell = constraints.maxWidth / destinations.length;
-        final target =
-            (rtl ? destinations.length - 1 - selectedIndex : selectedIndex) *
-                cell +
-            cell / 2 -
-            32;
-        return Stack(
-          children: [
-            Positioned(
-              top: 12 + (height - 80) / 2,
-              left: 0,
-              child: ExcludeSemantics(
-                child: FiloMotionTween(
-                  value: target,
-                  duration: FiloAnimation.navigationDuration,
-                  builder: (_, value, child) => Transform.translate(
-                    offset: Offset(value, 0),
-                    child: child,
-                  ),
-                  child: Container(
-                    width: 64,
-                    height: 32,
-                    decoration: BoxDecoration(
-                      color: Theme.of(context).colorScheme.secondaryContainer,
-                      borderRadius: BorderRadius.circular(FiloRadii.pill),
+  Widget build(BuildContext context) => Padding(
+    padding: const EdgeInsets.fromLTRB(12, 8, 12, 8),
+    child: Material(
+      elevation: 2,
+      shadowColor: Theme.of(context).colorScheme.primary.withValues(alpha: .12),
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(FiloRadii.large),
+        side: BorderSide(color: Theme.of(context).colorScheme.outlineVariant),
+      ),
+      clipBehavior: Clip.antiAlias,
+      color:
+          Theme.of(context).navigationBarTheme.backgroundColor ??
+          Theme.of(context).colorScheme.surfaceContainer,
+      child: LayoutBuilder(
+        builder: (context, constraints) {
+          final height =
+              (80 +
+                      24 *
+                          (MediaQuery.textScalerOf(context).scale(14) / 14 -
+                              1) /
+                          .3)
+                  .clamp(80.0, 104.0)
+                  .toDouble();
+          final rtl = Directionality.of(context) == TextDirection.rtl;
+          final cell = constraints.maxWidth / destinations.length;
+          final target =
+              (rtl ? destinations.length - 1 - selectedIndex : selectedIndex) *
+                  cell +
+              cell / 2 -
+              32;
+          return Stack(
+            children: [
+              Positioned(
+                top: 12 + (height - 80) / 2,
+                left: 0,
+                child: ExcludeSemantics(
+                  child: FiloMotionTween(
+                    value: target,
+                    duration: FiloAnimation.navigationDuration,
+                    builder: (_, value, child) => Transform.translate(
+                      offset: Offset(value, 0),
+                      child: child,
+                    ),
+                    child: Container(
+                      width: 64,
+                      height: 32,
+                      decoration: BoxDecoration(
+                        color: Theme.of(context).colorScheme.secondaryContainer,
+                        borderRadius: BorderRadius.circular(FiloRadii.pill),
+                      ),
                     ),
                   ),
                 ),
               ),
-            ),
-            NavigationBar(
-              height: height,
-              backgroundColor: FiloPaint.transparent,
-              surfaceTintColor: FiloPaint.transparent,
-              elevation: 0,
-              indicatorColor: FiloPaint.transparent,
-              animationDuration: Duration.zero,
-              selectedIndex: selectedIndex,
-              onDestinationSelected: onDestinationSelected,
-              destinations: [
-                for (var i = 0; i < destinations.length; i++)
-                  NavigationDestination(
-                    label: destinations[i].label,
-                    tooltip: destinations[i].tooltip,
-                    enabled: destinations[i].enabled,
-                    icon: FiloMotionTween(
-                      value: selectedIndex == i ? 1 : 0,
-                      duration: FiloAnimation.navigationDuration,
-                      builder: (_, value, __) => Stack(
-                        alignment: Alignment.center,
-                        children: [
-                          ExcludeSemantics(
-                            excluding: selectedIndex == i,
-                            child: Opacity(
-                              opacity: 1 - value,
-                              child: destinations[i].icon,
-                            ),
-                          ),
-                          ExcludeSemantics(
-                            excluding: selectedIndex != i,
-                            child: Opacity(
-                              opacity: value,
-                              child:
-                                  destinations[i].selectedIcon ??
-                                  destinations[i].icon,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
+              NavigationBarTheme(
+                data: Theme.of(context).navigationBarTheme.copyWith(
+                  labelTextStyle: WidgetStateProperty.resolveWith(
+                    (states) =>
+                        Theme.of(context).textTheme.labelMedium!.copyWith(
+                          fontWeight: states.contains(WidgetState.selected)
+                              ? FontWeight.w800
+                              : FontWeight.w600,
+                          color: states.contains(WidgetState.disabled)
+                              ? Theme.of(context).colorScheme.onSurface
+                                    .withValues(alpha: .38)
+                              : states.contains(WidgetState.selected)
+                              ? Theme.of(context).colorScheme.primary
+                              : Theme.of(context).colorScheme.onSurfaceVariant,
+                        ),
                   ),
-              ],
-            ),
-          ],
-        );
-      },
+                ),
+                child: NavigationBar(
+                  height: height,
+                  backgroundColor: FiloPaint.transparent,
+                  surfaceTintColor: FiloPaint.transparent,
+                  elevation: 0,
+                  indicatorColor: FiloPaint.transparent,
+                  labelBehavior: NavigationDestinationLabelBehavior.alwaysShow,
+                  animationDuration: Duration.zero,
+                  selectedIndex: selectedIndex,
+                  onDestinationSelected: onDestinationSelected,
+                  destinations: [
+                    for (var i = 0; i < destinations.length; i++)
+                      NavigationDestination(
+                        label: destinations[i].label,
+                        tooltip: destinations[i].tooltip,
+                        enabled: destinations[i].enabled,
+                        icon: FiloMotionTween(
+                          value: selectedIndex == i ? 1 : 0,
+                          duration: FiloAnimation.navigationDuration,
+                          builder: (_, value, _) => Stack(
+                            alignment: Alignment.center,
+                            children: [
+                              ExcludeSemantics(
+                                excluding: selectedIndex == i,
+                                child: Opacity(
+                                  opacity: 1 - value,
+                                  child: destinations[i].icon,
+                                ),
+                              ),
+                              ExcludeSemantics(
+                                excluding: selectedIndex != i,
+                                child: Opacity(
+                                  opacity: value,
+                                  child:
+                                      destinations[i].selectedIcon ??
+                                      destinations[i].icon,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                  ],
+                ),
+              ),
+            ],
+          );
+        },
+      ),
     ),
   );
 }

@@ -5,7 +5,6 @@ import 'package:filo/data/local/app_database.dart';
 import 'package:filo/features/exams/application/student_exam_repository.dart';
 import 'package:filo/features/exams/data/exam_remote.dart';
 import 'package:filo/features/exams/data/exam_store.dart';
-import 'package:filo/features/exams/domain/exam.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 

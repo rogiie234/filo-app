@@ -48,10 +48,12 @@ class FiloFileDetails {
     String? mimeType,
     String? kind,
   }) {
-    if (kind == 'link')
+    if (kind == 'link') {
       return const FiloFileDetails(FiloFileType.link, isFile: false);
-    if (kind == 'text')
+    }
+    if (kind == 'text') {
       return const FiloFileDetails(FiloFileType.text, isFile: false);
+    }
     final basename = name.replaceAll(r'\', '/').split('/').last;
     final dot = basename.lastIndexOf('.');
     final extension = dot > 0 && dot < basename.length - 1
@@ -84,19 +86,22 @@ class FiloFileDetails {
     if (mime == 'application/msword' ||
         mime == 'application/vnd.oasis.opendocument.text' ||
         mime ==
-            'application/vnd.openxmlformats-officedocument.wordprocessingml.document')
+            'application/vnd.openxmlformats-officedocument.wordprocessingml.document') {
       return FiloFileType.doc;
+    }
     if (mime == 'application/vnd.ms-powerpoint' ||
         mime == 'application/vnd.oasis.opendocument.presentation' ||
         mime ==
-            'application/vnd.openxmlformats-officedocument.presentationml.presentation')
+            'application/vnd.openxmlformats-officedocument.presentationml.presentation') {
       return FiloFileType.ppt;
+    }
     if (mime == 'application/vnd.ms-excel' ||
         mime == 'application/vnd.oasis.opendocument.spreadsheet' ||
         mime ==
             'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' ||
-        mime == 'text/csv')
+        mime == 'text/csv') {
       return FiloFileType.xls;
+    }
     if (mime.startsWith('text/')) return FiloFileType.text;
     return FiloFileType.other;
   }

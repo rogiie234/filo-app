@@ -31,8 +31,9 @@ class _StudyNotebookScreenState extends ConsumerState<StudyNotebookScreen> {
         final repo = await ref.read(notebookRepositoryProvider.future);
         if (mounted) await repo?.markOpened(widget.notebookId);
       } catch (_) {
-        if (mounted)
+        if (mounted) {
           showMessage(context, 'Could not update the last-opened time.');
+        }
       }
     });
   }
@@ -46,7 +47,7 @@ class _StudyNotebookScreenState extends ConsumerState<StudyNotebookScreen> {
           ref.watch(studyNotebooksProvider),
           (notebooks) {
             final matches = notebooks.where((n) => n.id == id);
-            if (matches.isEmpty)
+            if (matches.isEmpty) {
               return Column(
                 children: [
                   AppBar(title: const Text('Notebook')),
@@ -60,6 +61,7 @@ class _StudyNotebookScreenState extends ConsumerState<StudyNotebookScreen> {
                   ),
                 ],
               );
+            }
             final notebook = matches.first;
             return Column(
               children: [
@@ -200,10 +202,11 @@ class _StudyNotebookScreenState extends ConsumerState<StudyNotebookScreen> {
                                   return;
                                 }
                                 showStudySourcePicker(context, id).then((_) {
-                                  if (mounted)
+                                  if (mounted) {
                                     ref.invalidate(
                                       studyMissingSourcesProvider(id),
                                     );
+                                  }
                                 });
                               },
                             ),
@@ -262,12 +265,14 @@ class _StudyNotebookScreenState extends ConsumerState<StudyNotebookScreen> {
       final repo = await ref.read(notebookSourceRepositoryProvider.future);
       if (!mounted ||
           repo == null ||
-          ref.read(accountDatabaseProvider).asData?.value != repo.db)
+          ref.read(accountDatabaseProvider).asData?.value != repo.db) {
         return;
+      }
       await repo.remove(sourceId);
     } catch (_) {
-      if (mounted)
+      if (mounted) {
         showMessage(context, 'Could not remove this source. Try again.');
+      }
     }
   }
 }

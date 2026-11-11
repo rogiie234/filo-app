@@ -38,8 +38,7 @@ class GuideUiBridge extends DeadlineBridge {
 }
 
 class GuideMarkerRepo extends AlarmRepository {
-  GuideMarkerRepo(AppDatabase db, bool Function() current)
-    : super(db, current, userId: 'student');
+  GuideMarkerRepo(super.db, super.current) : super(userId: 'student');
   int seen = 0;
   @override
   Future<void> dismissPhoneGuide() async {
@@ -108,10 +107,11 @@ void main() {
           ),
         );
         await tester.tap(find.text('Open guide'));
-        if (settle)
+        if (settle) {
           await tester.pumpAndSettle();
-        else
+        } else {
           await tester.pump(const Duration(milliseconds: 100));
+        }
       }
 
       Future<void> finish(WidgetTester tester) async {
@@ -145,8 +145,9 @@ void main() {
                   find.text('3. Allow Filo under Alarms & reminders.'),
                   findsOneWidget,
                 );
-              } else
+              } else {
                 expect(find.text('Open alarm settings'), findsNothing);
+              }
               if (xiaomi) {
                 await reveal(tester, 'Open autostart settings');
                 expect(
@@ -212,9 +213,9 @@ void main() {
         ) async {
           bridge.caps = const PhoneGuideCapabilities(30, false);
           await launch(tester);
-          if (action == 'Back')
+          if (action == 'Back') {
             await tester.pageBack();
-          else {
+          } else {
             await reveal(tester, action);
             await tester.tap(find.text(action));
           }

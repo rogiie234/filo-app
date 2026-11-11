@@ -44,15 +44,17 @@ class _ExamDevScreenState extends ConsumerState<ExamDevScreen> {
     });
     try {
       final repository = await ref.read(studentExamRepositoryProvider.future);
-      if (repository == null)
+      if (repository == null) {
         throw StateError('Sign in with a verified student account.');
+      }
       await action(repository);
     } catch (e) {
-      if (mounted)
+      if (mounted) {
         setState(
           () =>
               _message = e is StateError ? e.message.toString() : e.toString(),
         );
+      }
     } finally {
       if (mounted) setState(() => _busy = false);
     }
@@ -69,11 +71,12 @@ class _ExamDevScreenState extends ConsumerState<ExamDevScreen> {
 
   @override
   Widget build(BuildContext context) {
-    if (!examDevEnabled)
+    if (!examDevEnabled) {
       return const FiloMotionScope(
         enabled: false,
         child: Scaffold(body: Center(child: Text('Page unavailable'))),
       );
+    }
     ref.watch(examLifecycleProvider);
     ref.watch(examUpdatesProvider);
     final repositoryState = ref.watch(studentExamRepositoryProvider);
@@ -173,7 +176,7 @@ class _ExamDevScreenState extends ConsumerState<ExamDevScreen> {
                       ? 'Time left: ${remaining.inMinutes}:${(remaining.inSeconds % 60).toString().padLeft(2, '0')}'
                       : 'Time left: awaiting verification',
                 ),
-                if (!repository!.clock.verified)
+                if (!repository.clock.verified)
                   const Text(
                     'Reconnect to verify your remaining time before continuing.',
                   ),
@@ -251,8 +254,9 @@ class _ExamDevScreenState extends ConsumerState<ExamDevScreen> {
                             message: "You can't change them afterward.",
                             confirmLabel: 'Submit',
                           );
-                          if (confirmed == true && mounted)
+                          if (confirmed == true && mounted) {
                             await _perform((r) => r.submit());
+                          }
                         },
                 ),
               ],

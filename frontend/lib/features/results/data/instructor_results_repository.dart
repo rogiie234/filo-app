@@ -91,8 +91,9 @@ class InstructorResultsRepository {
         await cache.put('members:$classId', classId, {'members': data.members});
         for (final row in rows) {
           final key = row.read<String>('id');
-          if (key.startsWith('detail:$quizId:') && !details.containsKey(key))
+          if (key.startsWith('detail:$quizId:') && !details.containsKey(key)) {
             await cache.remove(key);
+          }
         }
         for (final entry in details.entries) {
           await cache.put(entry.key, classId, entry.value);
@@ -132,8 +133,9 @@ class InstructorResultsRepository {
       await cache.authorize(quiz['class_id'] as String, instructor: true);
       final detail = AttemptDetail(await remote.detail(quiz, sessionId));
       if (detail.session.id != sessionId ||
-          detail.session.json['quiz_id'] != quizId)
+          detail.session.json['quiz_id'] != quizId) {
         throw resultsUnavailable;
+      }
       await cache.authorize(quiz['class_id'] as String, instructor: true);
       await cache.put(
         'detail:$quizId:$sessionId',
@@ -172,13 +174,16 @@ class InstructorResultsRepository {
     Future<void> Function(ResultJson)? dispatch,
   }) async {
     _connected(action);
-    if (_writing.contains(quizId))
+    if (_writing.contains(quizId)) {
       throw const ResultsFailure('An update is already in progress.');
-    if (await cache.read('uncertain:$quizId', instructor: true) != null)
+    }
+    if (await cache.read('uncertain:$quizId', instructor: true) != null) {
       throw resultsUncertain;
+    }
     // Recheck after awaiting storage so two simultaneous calls cannot both dispatch.
-    if (!_writing.add(quizId))
+    if (!_writing.add(quizId)) {
       throw const ResultsFailure('An update is already in progress.');
+    }
     var dispatched = false;
     var confirmed = false;
     try {
@@ -216,12 +221,13 @@ class InstructorResultsRepository {
       if (dispatched && (confirmed || failure.uncertain)) {
         // Leave the persistent reconciliation marker in place until a complete refresh.
         final data = await cachedQuiz(quizId);
-        if (data != null)
+        if (data != null) {
           await cache.put(
             'uncertain:$quizId',
             data.quiz['class_id'] as String,
             {'action': action.name},
           );
+        }
         throw resultsUncertain;
       }
       if (dispatched) await cache.remove('uncertain:$quizId');
@@ -249,14 +255,16 @@ class InstructorResultsRepository {
       final matches = detail.questions
           .where((q) => (q['answer'] as Map?)?['id'] == answerId)
           .toList();
-      if (matches.length != 1 || matches.single['type'] != 'essay')
+      if (matches.length != 1 || matches.single['type'] != 'essay') {
         throw resultsUnavailable;
+      }
       final maximum = matches.single['points'] as int;
       if (!points.isFinite || points != points.roundToDouble()) {
         throw const ResultsFailure('Enter a whole-number score.');
       }
-      if (points < 0 || points > maximum)
+      if (points < 0 || points > maximum) {
         throw ResultsFailure('Points must be between 0 and $maximum');
+      }
       if (feedback != null && feedback.runes.length > 2000) {
         throw const ResultsFailure(
           'Feedback must be at most 2,000 characters.',
@@ -283,22 +291,26 @@ class InstructorResultsRepository {
     ResultsAction.grade,
     (_) async {
       final detail = await refreshDetail(quizId, sessionId);
-      if (!detail.session.submitted || detail.readOnly)
+      if (!detail.session.submitted || detail.readOnly) {
         throw const ResultsFailure('This attempt is not submitted yet.');
+      }
       final question = detail.questions
           .where((q) => q['id'] == questionId)
           .firstOrNull;
       if (question == null) throw resultsUnavailable;
-      if (!points.isFinite || points != points.roundToDouble())
+      if (!points.isFinite || points != points.roundToDouble()) {
         throw const ResultsFailure('Enter a whole-number score.');
-      if (points < 0 || points > (question['points'] as int))
+      }
+      if (points < 0 || points > (question['points'] as int)) {
         throw ResultsFailure(
           'Points must be between 0 and ${question['points']}',
         );
-      if (feedback != null && feedback.runes.length > 2000)
+      }
+      if (feedback != null && feedback.runes.length > 2000) {
         throw const ResultsFailure(
           'Feedback must be at most 2,000 characters.',
         );
+      }
       return {
         'p_session': sessionId,
         'p_question': questionId,
@@ -314,10 +326,11 @@ class InstructorResultsRepository {
     quizId,
     ResultsAction.secondChance,
     (data) async {
-      if (data.quiz['results_released_at'] != null)
+      if (data.quiz['results_released_at'] != null) {
         throw const ResultsFailure(
           'Results are already released. Create a new quiz instead.',
         );
+      }
       final opens = DateTime.tryParse('${data.quiz['opens_at']}');
       if (!closesAt.toUtc().isAfter(DateTime.now().toUtc()) ||
           opens != null && !closesAt.toUtc().isAfter(opens)) {
@@ -357,10 +370,11 @@ class InstructorResultsRepository {
         throw const ResultsFailure('This student has no attempt to reset.');
       }
       final trimmed = reason.trim();
-      if (trimmed.runes.length < 10)
+      if (trimmed.runes.length < 10) {
         throw const ResultsFailure(
           'Please give a reason of at least 10 characters.',
         );
+      }
       if (proof != null && proof.runes.length > 1000) {
         throw const ResultsFailure(
           'Proof note must be at most 1,000 characters.',

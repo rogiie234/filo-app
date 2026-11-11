@@ -59,11 +59,12 @@ class StudentExamRepository {
 
   void _connected() {
     _check();
-    if (!online())
+    if (!online()) {
       throw const ExamFailure(
         'Connect to the internet to continue.',
         retryable: true,
       );
+    }
   }
 
   Future<ExamSession?> status(String quizId) async {
@@ -72,8 +73,9 @@ class StudentExamRepository {
     final json = await remote.session(quizId);
     _check();
     final session = json == null ? null : ExamSession(json);
-    if (session != null && epoch == _attemptEpoch)
+    if (session != null && epoch == _attemptEpoch) {
       await store.confirmSession(quizId, session);
+    }
     return session;
   }
 
@@ -213,10 +215,11 @@ class StudentExamRepository {
         retryable: true,
       );
     }
-    if (active != null)
+    if (active != null) {
       throw const ExamFailure(
         'Resume your current exam before starting another.',
       );
+    }
     if (pendingQuizId != null && pendingQuizId != quizId) {
       throw const ExamFailure(
         'Resume your current exam before starting another.',
@@ -444,11 +447,13 @@ class StudentExamRepository {
   Future<void> _answer(ExamAnswer answer) async {
     _check();
     final attempt = active;
-    if (attempt == null || _submitting || submissionRequested)
+    if (attempt == null || _submitting || submissionRequested) {
       throw const ExamFailure('This attempt is no longer accepting answers.');
+    }
     final questions = attempt.questions.where((q) => q.id == answer.questionId);
-    if (questions.isEmpty)
+    if (questions.isEmpty) {
       throw const ExamFailure('This question is unavailable.');
+    }
     final question = questions.single;
     if ((question.type == 'multiple_choice' &&
             (answer.boolean != null ||
@@ -505,13 +510,14 @@ class StudentExamRepository {
     notify();
     try {
       await store.requestSubmission(attempt.sessionId);
-      if (!online())
+      if (!online()) {
         throw ExamFailure(
           clock.canEdit
               ? "You're offline. Stay on this screen and reconnect to submit. The timer keeps running."
               : clock.timeoutMessage,
           retryable: true,
         );
+      }
       // A retry checks the existing attempt before sending anything again.
       final requestWall = clock.wallNow().toUtc();
       final requestElapsed = clock.elapsed();
@@ -578,11 +584,12 @@ class StudentExamRepository {
         await _finish(attempt.sessionId, 'Your answers were submitted.');
       } else {
         await reconcile();
-        if (active != null)
+        if (active != null) {
           throw const ExamFailure(
             "We couldn't confirm your submission. Stay on this screen and reconnect to check.",
             retryable: true,
           );
+        }
       }
     } catch (e) {
       if (!current) rethrow;
@@ -617,8 +624,9 @@ class StudentExamRepository {
         }
         if (submissionRequested) {
           _submissionRetry = Timer(const Duration(seconds: 1), () {
-            if (current && online())
+            if (current && online()) {
               unawaited(submit().catchError((Object _) {}));
+            }
           });
         }
         throw error!;
@@ -657,8 +665,9 @@ class StudentExamRepository {
     if (!current ||
         sessionId == null ||
         clock.deadline == null ||
-        !clock.canEdit)
+        !clock.canEdit) {
       return null;
+    }
     final id = const Uuid().v4();
     final leftAt = clock.serverNow.toUtc().toIso8601String();
     return () async {
@@ -669,8 +678,6 @@ class StudentExamRepository {
       });
     };
   }
-
-  Future<void> logLeave() async => await captureLeave()?.call();
 
   void dispose() {
     _disposed = true;

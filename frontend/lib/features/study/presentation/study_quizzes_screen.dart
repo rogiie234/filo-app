@@ -130,16 +130,18 @@ class StudyQuizzesScreen extends StatelessWidget {
                                             .read(accountDatabaseProvider)
                                             .asData
                                             ?.value !=
-                                        repo.db)
+                                        repo.db) {
                                   return;
+                                }
                                 try {
                                   await repo.delete(quiz.id);
                                 } catch (_) {
-                                  if (context.mounted)
+                                  if (context.mounted) {
                                     showMessage(
                                       context,
                                       'Could not delete this quiz. Try again.',
                                     );
+                                  }
                                 }
                               },
                             ),
@@ -224,7 +226,7 @@ class _QuizGenerateBodyState extends ConsumerState<_QuizGenerateBody> {
     if (_session.working || _authorizing) return;
     setState(() => _authorizing = true);
     try {
-      if (await ensureStudyPrivacy(context, ref) && mounted)
+      if (await ensureStudyPrivacy(context, ref) && mounted) {
         await _session.generate(
           StudyQuizSettings(
             count: _count,
@@ -232,6 +234,7 @@ class _QuizGenerateBodyState extends ConsumerState<_QuizGenerateBody> {
             topicFocus: _topic.text.trim(),
           ),
         );
+      }
     } finally {
       if (mounted) setState(() => _authorizing = false);
     }

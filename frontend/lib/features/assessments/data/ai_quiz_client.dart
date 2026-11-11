@@ -104,8 +104,9 @@ class AiQuizClient {
         total < 1 ||
         total > 20 ||
         !['easy', 'medium', 'hard'].contains(context.difficulty) ||
-        context.topicFocus.runes.length > 200)
+        context.topicFocus.runes.length > 200) {
       throw const AiFailure('INVALID_REQUEST');
+    }
     if (regenerateType != null &&
         (total != 1 ||
             counts[regenerateType] != 1 ||

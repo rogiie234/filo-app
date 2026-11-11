@@ -232,8 +232,9 @@ class AppDatabase extends _$AppDatabase {
           studyAlarms,
           alarmSlots,
         ]) {
-          if (!existing.contains(table.actualTableName))
+          if (!existing.contains(table.actualTableName)) {
             await m.createTable(table);
+          }
         }
       }
       if (from < 11) {
@@ -253,8 +254,9 @@ class AppDatabase extends _$AppDatabase {
           practiceQuestions,
           practiceAttempts,
         ]) {
-          if (!existing.contains(table.actualTableName))
+          if (!existing.contains(table.actualTableName)) {
             await m.createTable(table);
+          }
         }
         for (final index in allSchemaEntities.whereType<Index>()) {
           if (index.entityName.startsWith('study_idx_')) {
@@ -271,8 +273,9 @@ class AppDatabase extends _$AppDatabase {
         // Upgrades from older versions can create the current summary table above.
         final columns = await customSelect('PRAGMA table_info(summaries)')
             .get();
-        if (!columns.any((row) => row.read<String>('name') == 'usage_json'))
+        if (!columns.any((row) => row.read<String>('name') == 'usage_json')) {
           await m.addColumn(summaries, summaries.usageJson);
+        }
       }
       if (from < 10) await _createAiTextCache();
       if (from < 9) await _createResultsCache();

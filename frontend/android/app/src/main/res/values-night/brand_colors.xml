@@ -2,4 +2,5 @@
 <resources>
     <color name="filo_splash_background">#0F1A17</color>
     <color name="filo_logo_ink">#DCE9DA</color>
+    <color name="filo_splash_badge">#28483D</color>
 </resources>

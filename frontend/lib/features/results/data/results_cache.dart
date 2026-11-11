@@ -29,7 +29,7 @@ class ResultsCache {
         room.deletedAt == null;
     if (instructor) {
       allowed =
-          allowed && profile?.role == 'instructor' && room?.ownerId == userId;
+          allowed && profile.role == 'instructor' && room.ownerId == userId;
     } else {
       final member =
           await (db.select(db.cacheClassMembers)..where(
@@ -39,7 +39,7 @@ class ResultsCache {
                     m.status.equals('active'),
               ))
               .getSingleOrNull();
-      allowed = allowed && profile?.role == 'student' && member != null;
+      allowed = allowed && profile.role == 'student' && member != null;
     }
     checkAccount();
     if (!allowed) {
@@ -104,8 +104,9 @@ class ResultsCache {
         final session = resultJson(
           jsonDecode(row.read<String>('payload')),
         )['session'];
-        if (session != null)
+        if (session != null) {
           await removeResult(ResultSession(resultJson(session)).id);
+        }
       }
       await db.customStatement(
         'DELETE FROM results_snapshots WHERE class_id=?',
@@ -219,11 +220,13 @@ class ResultsCache {
       final old = await read(key, instructor: false);
       if (old?['session'] != null) {
         final previous = ResultSession(resultJson(old!['session']));
-        if (previous.id != session?.id || result == null)
+        if (previous.id != session?.id || result == null) {
           await removeResult(previous.id);
+        }
       }
-      if (session != null && result != null)
+      if (session != null && result != null) {
         await saveResult(session.id, result);
+      }
       // Observe catalog changes without overwriting the exam repository's state.
       final rows = await db
           .customSelect(

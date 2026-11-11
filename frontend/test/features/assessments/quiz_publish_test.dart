@@ -4,6 +4,21 @@ import 'package:filo/features/assessments/domain/quiz_publish.dart';
 
 void main() {
   final now = DateTime.utc(2026, 10, 22);
+  test('missing schedule warning identifies each missing date', () {
+    final draft = QuizDraft.create('class');
+    expect(
+      missingAssessmentSchedule(draft),
+      'Choose a start and end date and time.',
+    );
+    draft.settings['opens_at'] = now.toIso8601String();
+    expect(missingAssessmentSchedule(draft), 'Choose an end date and time.');
+    draft.settings['closes_at'] = now
+        .add(const Duration(hours: 1))
+        .toIso8601String();
+    expect(missingAssessmentSchedule(draft), isNull);
+    draft.settings['opens_at'] = null;
+    expect(missingAssessmentSchedule(draft), 'Choose a start date and time.');
+  });
   test('publish reports missing schedule and questions together', () {
     final draft = QuizDraft.create('class');
     expect(quizPublishProblems(draft, now).map((p) => p.page), [1, 2]);

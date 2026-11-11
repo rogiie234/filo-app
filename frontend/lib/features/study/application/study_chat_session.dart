@@ -81,14 +81,16 @@ class StudyChatSession extends ChangeNotifier {
         id = chats.isEmpty ? null : chats.first.id;
       }
       if (id != null) {
-        if (await repository.find(notebookId, id) == null)
+        if (await repository.find(notebookId, id) == null) {
           throw const StudyAiFailure('LOAD_FAILED');
+        }
         final saved = await repository.getMessages(id);
         if (!_current || epoch != _epoch) return;
         chatId = id;
         messages = saved;
-        if (saved.isNotEmpty && saved.last.role == 'user')
+        if (saved.isNotEmpty && saved.last.role == 'user') {
           draft = saved.last.content;
+        }
       }
     } catch (_) {
       if (_current && epoch == _epoch) error = studyAiMessages['LOAD_FAILED'];
@@ -216,13 +218,14 @@ class StudyChatSession extends ChangeNotifier {
         },
       );
       if (!valid()) return;
-      if (result.serverTruncated && !result.sources.truncated)
+      if (result.serverTruncated && !result.sources.truncated) {
         notices.add('The AI response reports that text was shortened.');
+      }
       pendingAnswer = result.value;
       _changed();
       await _saveAnswer(epoch);
     } on StudyAiFailure catch (failure) {
-      if (_current && epoch == _epoch)
+      if (_current && epoch == _epoch) {
         error = failure.code == 'AI_BUSY' && saved
             ? studyChatBusyMessage
             : failure.code == 'SAVE_FAILED'
@@ -230,6 +233,7 @@ class StudyChatSession extends ChangeNotifier {
             : failure.code == 'AI_BUSY'
             ? studyAiMessages['AI_UNAVAILABLE']
             : failure.message;
+      }
     } catch (_) {
       if (_current && epoch == _epoch) error = studyAiMessages['LOAD_FAILED'];
     } finally {

@@ -5,6 +5,7 @@ import 'package:flutter/foundation.dart';
 import 'package:supabase_flutter/supabase_flutter.dart' show SupabaseClient;
 
 import '../../data/local/app_database.dart';
+import '../../data/local/cache_row_json.dart';
 import '../../features/classes/data/class_remote.dart';
 import '../../features/classes/data/class_repository.dart';
 import '../../features/drive_backup/data/drive_backup_service.dart';
@@ -18,7 +19,6 @@ import '../../features/results/data/results_failure.dart';
 import '../../features/results/data/student_results_repository.dart';
 import 'outbox_processor.dart';
 import 'sqlite_outbox.dart';
-import '../../features/notifications/data/inbox_repository.dart';
 import '../notifications/deadline_reminders.dart';
 import '../../features/notifications/data/notification_settings_repository.dart';
 
@@ -61,9 +61,6 @@ class SyncCoordinator extends ChangeNotifier {
       lastSynced = DateTime.tryParse(rows.single.read<String>('value'));
     }
   }
-
-  Future<void> queueNotificationRead(String notificationId) =>
-      InboxRepository(db, userId, isCurrent).markRead(notificationId);
 
   Future<void>? _notificationRefresh;
   Future<void> _notificationWork = Future.value();
@@ -145,15 +142,6 @@ class SyncCoordinator extends ChangeNotifier {
           ..where((n) => n.id.equals(id) & n.recipientId.equals(userId)))
         .getSingleOrNull();
   }
-
-  Future<void> queueLeaveEvent(
-    String eventId,
-    String sessionId,
-    DateTime leftAt,
-  ) => SqliteOutbox(db).enqueue(eventId, 'leave_event', {
-    'session_id': sessionId,
-    'left_at': leftAt.toUtc().toIso8601String(),
-  });
 
   Future<void> dispatch(QueuedAction action) async {
     if (!isCurrent() ||
@@ -380,8 +368,9 @@ class SyncCoordinator extends ChangeNotifier {
     String? after;
     while (true) {
       if (!isCurrent() ||
-          currentAccountCheck != null && !await currentAccountCheck!())
+          currentAccountCheck != null && !await currentAccountCheck!()) {
         return;
+      }
       var query = client
           .from('notifications')
           .select('id')
@@ -401,8 +390,9 @@ class SyncCoordinator extends ChangeNotifier {
       after = next;
     }
     if (!isCurrent() ||
-        currentAccountCheck != null && !await currentAccountCheck!())
+        currentAccountCheck != null && !await currentAccountCheck!()) {
       return;
+    }
     await db.transaction(() async {
       final local = await (db.select(
         db.cacheNotifications,
@@ -417,8 +407,9 @@ class SyncCoordinator extends ChangeNotifier {
         ...payloads.map((r) => r.read<String>('id')),
       };
       for (final id in ids.difference(seen)) {
-        if (!isCurrent())
+        if (!isCurrent()) {
           throw StateError('Account changed during reconciliation');
+        }
         await _remove('notifications', id);
         await db.customStatement(
           "DELETE FROM sync_payloads WHERE table_name='notifications' AND id=?",
@@ -516,8 +507,9 @@ class SyncCoordinator extends ChangeNotifier {
             )
             .get();
         for (final row in stale) {
-          if (!isCurrent())
+          if (!isCurrent()) {
             throw StateError('Account changed during reconciliation');
+          }
           final id = row.read<String>('id');
           if (!seen.contains(id)) {
             await _remove(table, id);
@@ -527,8 +519,9 @@ class SyncCoordinator extends ChangeNotifier {
             );
           }
         }
-        if (!isCurrent())
+        if (!isCurrent()) {
           throw StateError('Account changed during reconciliation');
+        }
       });
     }
     if (maximum != null) {
@@ -539,16 +532,6 @@ class SyncCoordinator extends ChangeNotifier {
     }
   }
 
-  Map<String, dynamic> _json(Map<String, dynamic> row) => {
-    for (final entry in row.entries)
-      entry.key.replaceAllMapped(
-        RegExp(r'_([a-z])'),
-        (m) => m[1]!.toUpperCase(),
-      ): (entry.key.endsWith('_at') || entry.key == 'unsubmit_until') &&
-              entry.value != null
-          ? DateTime.parse(entry.value as String).millisecondsSinceEpoch
-          : entry.value,
-  };
   Future<bool> _exists(String table, String key, dynamic id) async =>
       id == null ||
       (await db
@@ -597,7 +580,7 @@ class SyncCoordinator extends ChangeNotifier {
   }
 
   Future<void> _apply(String table, Map<String, dynamic> row) async {
-    final data = _json(row);
+    final data = cacheRowJson(row, extraDateFields: const {'unsubmit_until'});
     switch (table) {
       case 'profiles':
         await db

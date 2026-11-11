@@ -87,37 +87,40 @@ void main() {
         'https://example.supabase.co',
         'key',
         httpClient: MockClient((request) async {
-          final Object body = switch (request.url.pathSegments.last) {
-            'exam_sessions' => {
-              'id': 's',
-              'quiz_id': 'quiz',
-              'status': 'submitted',
-              'grading_complete': false,
-              'question_order': ['essay', 'mc'],
-              'option_orders': {
-                'mc': ['b', 'a'],
-              },
-            },
-            'questions' => [
-              {
-                'id': 'mc',
-                'type': 'multiple_choice',
-                'question_options': [
-                  {'id': 'a', 'position': 0},
-                  {'id': 'b', 'position': 1},
-                ],
-                'answer_keys': {'correct_option_id': 'b'},
-              },
-              {
-                'id': 'essay',
-                'type': 'essay',
-                'question_options': [],
-                'answer_keys': null,
-              },
-            ],
-            'exam_answers' => [],
-            _ => throw StateError('Unexpected request ${request.url}'),
-          };
+          final Object body =
+              request.url.queryParameters['id']?.startsWith('gt.') == true
+              ? []
+              : switch (request.url.pathSegments.last) {
+                  'exam_sessions' => {
+                    'id': 's',
+                    'quiz_id': 'quiz',
+                    'status': 'submitted',
+                    'grading_complete': false,
+                    'question_order': ['essay', 'mc'],
+                    'option_orders': {
+                      'mc': ['b', 'a'],
+                    },
+                  },
+                  'questions' => [
+                    {
+                      'id': 'mc',
+                      'type': 'multiple_choice',
+                      'question_options': [
+                        {'id': 'a', 'position': 0},
+                        {'id': 'b', 'position': 1},
+                      ],
+                      'answer_keys': {'correct_option_id': 'b'},
+                    },
+                    {
+                      'id': 'essay',
+                      'type': 'essay',
+                      'question_options': [],
+                      'answer_keys': null,
+                    },
+                  ],
+                  'exam_answers' => [],
+                  _ => throw StateError('Unexpected request ${request.url}'),
+                };
           return http.Response(
             jsonEncode(body),
             200,
@@ -156,12 +159,16 @@ void main() {
           body = {'owner_id': owner, 'deleted_at': null};
         } else {
           pages++;
-          final offset = int.parse(
-            request.url.queryParameters['offset'] ?? '0',
-          );
+          final after = request.url.queryParameters['id'];
+          expect(request.url.queryParameters['order'], 'id.asc.nullslast');
+          expect(request.url.queryParameters['offset'], isNull);
+          final start = after == null ? 0 : int.parse(after.substring(3)) + 1;
           body = List.generate(
-            offset == 0 ? 200 : 1,
-            (i) => {'id': '${offset + i}', 'student_id': '${offset + i}'},
+            start >= 201 ? 0 : (201 - start > 73 ? 73 : 201 - start),
+            (i) => {
+              'id': '${start + i}'.padLeft(4, '0'),
+              'student_id': '${start + i}',
+            },
           );
         }
         return http.Response(
@@ -175,9 +182,9 @@ void main() {
     addTearDown(client.dispose);
     final remote = SupabaseResultsRemote(client, 'teacher');
     expect((await remote.members('class')).length, 201);
-    expect(pages, 2);
+    expect(pages, 4);
     owner = 'someone-else';
     await expectLater(remote.members('class'), throwsA(isA<Exception>()));
-    expect(pages, 2);
+    expect(pages, 4);
   });
 }

@@ -121,6 +121,57 @@ void main() {
       expect(await storage.root.exists(), isFalse);
     },
   );
+  test('trusted support-directory alias permits owner cleanup and database removal', () async {
+    final owned = await fixture('files/a/blobs/remove.pdf');
+    final database = await fixture('databases/a.sqlite');
+    final other = await fixture('files/b/blobs/keep.pdf');
+    final alias = Link('${root.path}-alias');
+    try {
+      await alias.create(root.path);
+    } on FileSystemException {
+      markTestSkipped('Host does not permit symlink creation');
+      return;
+    }
+    addTearDown(() => alias.delete());
+    final aliasRoot = Directory(alias.path);
+    final aliasManager = UserDatabaseManager(
+      directoryProvider: () async => aliasRoot,
+    );
+    addTearDown(aliasManager.close);
+    final aliasCleanup = AccountDeletionCleanup(
+      aliasManager,
+      directoryProvider: () async => aliasRoot,
+    );
+    addTearDown(
+      () => FileStorage.setBlocked(
+        Directory(p.join(alias.path, 'files/a')),
+        false,
+      ),
+    );
+    await aliasCleanup.remove('a');
+    expect(await owned.exists(), isFalse);
+    expect(await database.exists(), isFalse);
+    expect(await other.exists(), isTrue);
+    await aliasCleanup.remove('a');
+  });
+  test('rejects redirected shared files and database parents', () async {
+    final other = await fixture('elsewhere/a/keep.txt');
+    for (final folder in ['files', 'databases']) {
+      final link = Link(p.join(root.path, folder));
+      try {
+        await link.create(p.join(root.path, 'elsewhere'));
+      } on FileSystemException {
+        markTestSkipped('Host does not permit symlink creation');
+        return;
+      }
+      try {
+        await expectLater(cleanup.remove('a'), throwsStateError);
+        expect(await other.exists(), isTrue);
+      } finally {
+        await link.delete();
+      }
+    }
+  });
   test('does not follow owner symlink into another account', () async {
     final other = await fixture('files/b/keep.txt');
     final link = Link(p.join(root.path, 'files/a'));

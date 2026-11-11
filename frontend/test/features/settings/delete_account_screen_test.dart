@@ -45,13 +45,14 @@ void main() {
     FakeDeletion? remote,
   }) async {
     final store = MemoryJournal();
-    if (stage != null)
+    if (stage != null) {
       store.saved['a'] = DeletionRecord(
         'a',
         's',
         stage,
         instructor: instructor,
       );
+    }
     final repo = remote ?? (await tester.runAsync(() async => FakeDeletion()))!;
     final container = ProviderContainer(
       overrides: [

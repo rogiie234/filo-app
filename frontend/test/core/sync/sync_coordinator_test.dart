@@ -66,9 +66,10 @@ void main() {
             return json(nextPage ? [] : [notice('expired'), notice('recent')]);
           }
           if (nextPage ||
-              request.url.queryParameters['id']?.startsWith('gt.') == true)
+              request.url.queryParameters['id']?.startsWith('gt.') == true) {
             return json([]);
-          if (table == 'profiles')
+          }
+          if (table == 'profiles') {
             return json([
               {
                 'id': user,
@@ -78,6 +79,7 @@ void main() {
                 'updated_at': stamp,
               },
             ]);
+          }
           return json([]);
         }),
       );

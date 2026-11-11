@@ -28,8 +28,9 @@ class StudyQuizScope extends ConsumerWidget {
         repo.asData?.value?.db == db.requireValue &&
         !notebooks.isLoading &&
         !notebooks.hasError &&
-        notebooks.requireValue.any((n) => n.id == notebookId))
+        notebooks.requireValue.any((n) => n.id == notebookId)) {
       return builder(repo.requireValue!);
+    }
     return Scaffold(
       appBar: AppBar(title: const Text('Practice quiz')),
       body: studyAsync(

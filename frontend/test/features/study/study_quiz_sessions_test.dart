@@ -131,7 +131,7 @@ void main() {
     current = online = true;
     calls = 0;
     sources = [];
-    invoke = (_, __, ___) async => output();
+    invoke = (_, _, _) async => output();
     client = StudentAiClient(
       invoke: (function, body, abort) {
         expect(function, 'ai-mock-quiz');
@@ -297,13 +297,13 @@ void main() {
     },
   );
   test('busy uses approved neutral message', () async {
-    invoke = (_, __, ___) async => throw const StudyAiFailure('AI_BUSY');
+    invoke = (_, _, _) async => throw const StudyAiFailure('AI_BUSY');
     await generation.generate(quizSettings);
     expect(generation.error, studyQuizBusyMessage);
   });
   test('cancel and account change ignore late output', () async {
     final pending = Completer<Object?>();
-    invoke = (_, __, ___) => pending.future;
+    invoke = (_, _, _) => pending.future;
     final waiting = generation.generate(quizSettings);
     await Future<void>.delayed(Duration.zero);
     generation.cancel();
@@ -374,7 +374,7 @@ void main() {
       'AI_UNAVAILABLE',
       'AI_BLOCKED',
     ]) {
-      invoke = (_, __, ___) async => throw StudyAiFailure(code);
+      invoke = (_, _, _) async => throw StudyAiFailure(code);
       await generation.generate(quizSettings);
       expect(generation.error, studyAiMessages[code]);
     }
@@ -403,7 +403,7 @@ void main() {
   );
   test('account change during generation drops the response', () async {
     final response = Completer<dynamic>(), started = Completer<void>();
-    invoke = (_, __, ___) {
+    invoke = (_, _, _) {
       started.complete();
       return response.future;
     };

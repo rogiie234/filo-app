@@ -72,8 +72,9 @@ class StudentAiClient {
       if (!summary && (history.isEmpty || history.last['role'] != 'user')) {
         throw const StudyAiFailure('INVALID_REQUEST');
       }
-      if (summary && sources.sources.isEmpty)
+      if (summary && sources.sources.isEmpty) {
         throw const StudyAiFailure('NO_TEXT');
+      }
       return {
         'mode': summary ? 'summary' : 'chat',
         'messages': history,
@@ -135,8 +136,9 @@ class StudentAiClient {
   );
 
   void _requireTopic(PreparedStudySources sources, String topic) {
-    if (sources.sources.isEmpty && topic.trim().isEmpty)
+    if (sources.sources.isEmpty && topic.trim().isEmpty) {
       throw const StudyAiFailure('NO_TEXT');
+    }
   }
 
   Future<StudyAiResult<T>> _request<T>(
@@ -176,14 +178,16 @@ class StudentAiClient {
         final sources = prepareStudySources(selected);
         prepared = sources;
         final body = bodyFor(sources);
-        if (utf8.encode(jsonEncode(body)).length > 524288)
+        if (utf8.encode(jsonEncode(body)).length > 524288) {
           throw const StudyAiFailure('TOO_LARGE');
+        }
         if (isChat) await guard.waitForChat(operation);
         _checkAccount(account, operation);
         if (!isOnline()) throw const StudyAiFailure('OFFLINE');
         // Commit the question against these exact source prefixes before transport.
-        if (beforeDispatch != null)
+        if (beforeDispatch != null) {
           await operation.wait(beforeDispatch(sources, operation));
+        }
         _checkAccount(account, operation);
         if (!isOnline()) throw const StudyAiFailure('OFFLINE');
         if (isChat) guard.markChatDispatched();

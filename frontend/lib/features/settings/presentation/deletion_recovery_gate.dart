@@ -16,7 +16,7 @@ class DeletionRecoveryGate extends ConsumerWidget {
     final journal = ref.watch(deletionJournalProvider);
     final login = ref.watch(loginSessionProvider).asData?.value?.user.id;
     final flow = ref.watch(accountDeletionProvider);
-    if (journal.isLoading || journal.hasError)
+    if (journal.isLoading || journal.hasError) {
       return Navigator(
         key: ValueKey(journal.hasError ? 'recovery-error' : 'recovery-loading'),
         onGenerateRoute: (_) => MaterialPageRoute<void>(
@@ -43,6 +43,7 @@ class DeletionRecoveryGate extends ConsumerWidget {
           ),
         ),
       );
+    }
     final records = journal.requireValue;
     String? target;
     for (final record in records.values) {

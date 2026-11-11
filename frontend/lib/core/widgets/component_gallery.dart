@@ -32,6 +32,7 @@ class ComponentGallery extends StatefulWidget {
 class _ComponentGalleryState extends State<ComponentGallery> {
   final _pendingBannerImage = _GalleryPendingBannerImage();
   final _failedBannerImage = MemoryImage(Uint8List(0));
+  int _cardTaps = 0;
   bool _switch = true;
   bool _filter = true;
   bool _error = false;
@@ -536,12 +537,17 @@ class _ComponentGalleryState extends State<ComponentGallery> {
                     ],
                   ),
                 ),
+                FiloCard(
+                  onTap: () => setState(() => _cardTaps++),
+                  child: Text('Card press feedback: $_cardTaps taps'),
+                ),
+                const FiloCard(child: Text('Read-only card: no press motion')),
                 FiloMotionScope(
                   enabled: false,
                   child: FiloCard(
                     onTap: () {},
                     child: const Text(
-                      'Neutral scope - instant card feedback; no decorative motion',
+                      'Neutral scope - no decorative card motion',
                     ),
                   ),
                 ),
@@ -696,10 +702,11 @@ class _ComponentGalleryState extends State<ComponentGallery> {
       message: 'This changes only the gallery feedback.',
       action: 'Remove',
     );
-    if (mounted)
+    if (mounted) {
       setState(
         () => _result = confirmed ? 'Example confirmed.' : 'Example cancelled.',
       );
+    }
   }
 }
 

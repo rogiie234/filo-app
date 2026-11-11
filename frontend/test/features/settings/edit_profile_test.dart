@@ -206,17 +206,25 @@ void main() {
     expect((await db.readProfile('user-1'))!.privacyVersion, 'original');
   });
 
-  Future<void> reveal(WidgetTester tester, Finder target) =>
-      tester.scrollUntilVisible(
-        target,
-        250,
-        scrollable: find
-            .descendant(
-              of: find.byType(ListView).last,
-              matching: find.byType(Scrollable),
-            )
-            .first,
-      );
+  Future<void> reveal(
+    WidgetTester tester,
+    Finder target, {
+    double delta = 250,
+  }) async {
+    await tester.scrollUntilVisible(
+      target,
+      delta,
+      scrollable: find
+          .descendant(
+            of: find.byType(ListView).last,
+            matching: find.byType(Scrollable),
+          )
+          .first,
+    );
+    await Scrollable.ensureVisible(tester.element(target), alignment: .5);
+    await tester.pumpAndSettle();
+  }
+
   Finder button(String label) => find.byWidgetPredicate(
     (widget) => widget is FiloButton && widget.label == label,
   );
@@ -282,15 +290,24 @@ void main() {
             ),
           );
           await tester.pumpAndSettle();
+          // Decode outside fake time before the saved avatar mounts its placeholder.
+          await tester.runAsync(
+            () => precacheImage(
+              MemoryImage(photo.bytes),
+              tester.element(find.byType(SettingsScreen)),
+            ),
+          );
           await tester.tap(find.text('Edit profile'));
           await tester.pumpAndSettle();
           expect(find.byType(TextFormField), findsNWidgets(2));
+          await reveal(tester, find.text('Role'));
           expect(
             find.byWidgetPredicate(
               (w) => w is FiloIcon && w.icon == FiloIcons.lock,
             ),
             findsNWidgets(2),
           );
+          await reveal(tester, find.byType(TextFormField).first, delta: -250);
           await tester.enterText(find.byType(TextFormField).at(0), ' Changed ');
           await tester.enterText(
             find.byType(TextFormField).at(1),
@@ -306,16 +323,7 @@ void main() {
           );
           network.add(true);
           await tester.pumpAndSettle();
-          await tester.scrollUntilVisible(
-            button('Choose photo'),
-            -250,
-            scrollable: find
-                .descendant(
-                  of: find.byType(ListView).last,
-                  matching: find.byType(Scrollable),
-                )
-                .first,
-          );
+          await reveal(tester, button('Choose photo'), delta: -250);
           await tester.tap(button('Choose photo'));
           await tester.pumpAndSettle();
           await tester.scrollUntilVisible(
@@ -472,8 +480,9 @@ void main() {
         ..pending = Completer<AccountProfile>();
       final accounts = StreamController<String?>.broadcast();
       addTearDown(() async {
-        if (!repository.pending!.isCompleted)
+        if (!repository.pending!.isCompleted) {
           repository.pending!.complete(profile('student', name: 'Late name'));
+        }
         await tester.pumpWidget(const SizedBox.shrink());
         await tester.pump();
         await tester.runAsync(() async {

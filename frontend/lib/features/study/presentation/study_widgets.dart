@@ -22,7 +22,7 @@ Widget studyAsync<T>(
   bool showMascot = false,
 }) {
   // Never render stale account data while its replacement is loading or failing.
-  if (value.isLoading)
+  if (value.isLoading) {
     return const Padding(
       padding: EdgeInsets.all(FiloSpacing.screen),
       child: Center(
@@ -31,7 +31,8 @@ Widget studyAsync<T>(
         ),
       ),
     );
-  if (value.hasError && showMascot)
+  }
+  if (value.hasError && showMascot) {
     return SingleChildScrollView(
       child: EmptyState(
         title: 'Could not read saved study content. Try again.',
@@ -42,7 +43,8 @@ Widget studyAsync<T>(
             : TextButton(onPressed: retry, child: const Text('Retry')),
       ),
     );
-  if (value.hasError)
+  }
+  if (value.hasError) {
     return FiloPanel(
       child: Column(
         children: [
@@ -52,6 +54,7 @@ Widget studyAsync<T>(
         ],
       ),
     );
+  }
   return builder(value.requireValue);
 }
 
@@ -106,7 +109,7 @@ class _NotebookNameDialogState extends State<_NotebookNameDialog> {
       ),
       ValueListenableBuilder<TextEditingValue>(
         valueListenable: controller,
-        builder: (_, value, __) => FilledButton(
+        builder: (_, value, _) => FilledButton(
           onPressed: value.text.trim().isEmpty
               ? null
               : () => Navigator.pop(context, value.text.trim()),
@@ -130,8 +133,9 @@ Future<bool> editNotebook(
       final name = await notebookName(context, initial: notebook.name);
       if (name == null ||
           !context.mounted ||
-          ref.read(accountDatabaseProvider).asData?.value != repo.db)
+          ref.read(accountDatabaseProvider).asData?.value != repo.db) {
         return false;
+      }
       await repo.rename(notebook.id, name);
     } else if (action == 'delete') {
       final confirmed = await showFiloConfirmation(
@@ -144,15 +148,17 @@ Future<bool> editNotebook(
       );
       if (!confirmed ||
           !context.mounted ||
-          ref.read(accountDatabaseProvider).asData?.value != repo.db)
+          ref.read(accountDatabaseProvider).asData?.value != repo.db) {
         return false;
+      }
       await repo.delete(notebook.id);
       return context.mounted &&
           ref.read(accountDatabaseProvider).asData?.value == repo.db;
     }
   } catch (_) {
-    if (context.mounted)
+    if (context.mounted) {
       showMessage(context, 'Could not update this notebook. Try again.');
+    }
   }
   return false;
 }

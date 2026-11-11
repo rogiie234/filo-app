@@ -169,10 +169,12 @@ void main() {
             ),
             findsWidgets,
           );
-          if (preset == FiloStatusPreset.graded)
+          if (preset == FiloStatusPreset.graded) {
             expect(chip.labelStyle!.fontWeight, FontWeight.w800);
-          if (preset == FiloStatusPreset.missing)
+          }
+          if (preset == FiloStatusPreset.missing) {
             expect(chip.side!.color, theme.colorScheme.error);
+          }
           expect(tester.takeException(), isNull);
         }
         await tester.pumpWidget(app(const FiloAiBadge(), theme));

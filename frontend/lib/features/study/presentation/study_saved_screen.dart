@@ -26,8 +26,9 @@ String savedCount(WidgetRef ref, StudyTool tool, String id) {
   };
   if (value.isLoading) return 'Loading saved content...';
   if (value.hasError) return 'Saved count unavailable';
-  if (tool == StudyTool.summary)
+  if (tool == StudyTool.summary) {
     return value.value == null ? 'No summary saved' : '1 summary saved';
+  }
   return studyCount((value.value as List).length, switch (tool) {
     StudyTool.chat => 'chat',
     StudyTool.decks => 'deck',
@@ -97,7 +98,7 @@ class StudySavedScreen extends ConsumerWidget {
 
   Widget _content(BuildContext context, WidgetRef ref) {
     final id = childId;
-    if (tool == StudyTool.summary)
+    if (tool == StudyTool.summary) {
       return studyAsync(
         ref.watch(studySummaryProvider(notebookId)),
         (summary) => summary == null
@@ -106,7 +107,8 @@ class StudySavedScreen extends ConsumerWidget {
         showMascot: _showMascot,
         retry: () => ref.invalidate(studySummaryProvider(notebookId)),
       );
-    if (id != null)
+    }
+    if (id != null) {
       return switch (tool) {
         StudyTool.chat => studyAsync(
           ref.watch(studyMessagesProvider(id)),
@@ -233,6 +235,7 @@ class StudySavedScreen extends ConsumerWidget {
         ),
         _ => const SizedBox.shrink(),
       };
+    }
     void open(String id, String title) => Navigator.of(context).push(
       MaterialPageRoute<void>(
         builder: (_) => StudySavedScreen(

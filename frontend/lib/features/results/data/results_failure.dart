@@ -65,8 +65,9 @@ ResultsFailure resultsFailure(Object error, ResultsAction action) {
       'Feedback must be at most 2000 characters':
           'Feedback must be at most 2,000 characters.',
     };
-    if (messages.containsKey(error.message))
+    if (messages.containsKey(error.message)) {
       return ResultsFailure(messages[error.message]!);
+    }
     if (RegExp(r'^Points must be between 0 and \d+$').hasMatch(error.message)) {
       return ResultsFailure(error.message);
     }
@@ -80,13 +81,15 @@ ResultsFailure resultsFailure(Object error, ResultsAction action) {
           'Class is read-only or inaccessible',
         ].contains(error.message) ||
         error.code == '42501' ||
-        error.code == 'PGRST116')
+        error.code == 'PGRST116') {
       return resultsUnavailable;
+    }
     if (action != ResultsAction.load &&
         (error.code?.startsWith('08') == true ||
             error.code == '57014' ||
-            error.code?.startsWith('5') == true))
+            error.code?.startsWith('5') == true)) {
       return resultsUncertain;
+    }
   } else if (action != ResultsAction.load) {
     // A transport/response decoding failure after dispatch does not prove rollback.
     return resultsUncertain;

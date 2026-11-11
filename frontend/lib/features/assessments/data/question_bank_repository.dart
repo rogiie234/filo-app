@@ -26,21 +26,34 @@ class QuestionBankRepository {
     }
   }
 
-  Future<List<BankQuestion>> list() async {
+  Future<List<BankQuestion>> list({String? course}) async {
     await _access();
     final result = <BankQuestion>[];
-    for (var offset = 0; ; offset += 200) {
-      final rows = await client
+    String? afterCreated, afterId;
+    while (true) {
+      var query = client
           .from('bank_questions')
           .select()
           .eq('owner_id', userId)
-          .isFilter('deleted_at', null)
+          .isFilter('deleted_at', null);
+      if (course != null) {
+        if (course.trim().isEmpty) throw StateError('Choose a course.');
+        query = query.eq('course_key', course.trim().toLowerCase());
+      }
+      if (afterId != null) {
+        query = query.or(
+          'created_at.lt.$afterCreated,and(created_at.eq.$afterCreated,id.gt.$afterId)',
+        );
+      }
+      final rows = await query
           .order('created_at', ascending: false)
-          .order('id')
-          .range(offset, offset + 199)
+          .order('id', ascending: true)
+          .limit(200)
           .timeout(const Duration(seconds: 20));
       result.addAll(rows.map(BankQuestion.new));
-      if (rows.length < 200) return result;
+      if (rows.isEmpty) return result;
+      afterCreated = rows.last['created_at'] as String;
+      afterId = rows.last['id'] as String;
     }
   }
 
@@ -48,17 +61,26 @@ class QuestionBankRepository {
     String id,
     QuizQuestion question, {
     bool creating = false,
+    String? course,
   }) async {
     if (question.validationErrors().isNotEmpty) {
       throw StateError('Check this question before saving.');
     }
-    final content = BankQuestion.content(question);
+    if ((creating && course == null) ||
+        (course != null &&
+            (course.trim().isEmpty || course.trim().length > 120))) {
+      throw StateError('Choose a course of 1 to 120 characters.');
+    }
+    final content = {
+      ...BankQuestion.content(question),
+      if (course != null) 'course': course.trim(),
+    };
     await _access();
     if (creating) {
       // Reuse the same ID after an uncertain response; never overwrite a saved copy.
       final existing = await client
           .from('bank_questions')
-          .select('id,deleted_at')
+          .select('id,deleted_at,course_key')
           .eq('id', id)
           .eq('owner_id', userId)
           .maybeSingle()
@@ -66,6 +88,9 @@ class QuestionBankRepository {
       if (existing != null) {
         if (existing['deleted_at'] != null) {
           throw StateError('This saved copy was deleted.');
+        }
+        if (existing['course_key'] != course!.trim().toLowerCase()) {
+          throw StateError('Saved question belongs to another course.');
         }
         return;
       }
@@ -79,12 +104,13 @@ class QuestionBankRepository {
           .timeout(const Duration(seconds: 20));
       final confirmed = await client
           .from('bank_questions')
-          .select('id')
+          .select('id,course_key')
           .eq('id', id)
           .eq('owner_id', userId)
           .single()
           .timeout(const Duration(seconds: 20));
-      if (confirmed['id'] != id) {
+      if (confirmed['id'] != id ||
+          confirmed['course_key'] != course!.trim().toLowerCase()) {
         throw StateError('Save not confirmed. Retry to check again.');
       }
     } else {

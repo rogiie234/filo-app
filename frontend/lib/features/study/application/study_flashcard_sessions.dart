@@ -74,10 +74,11 @@ class StudyDeckGeneration extends ChangeNotifier {
       _pendingId = const Uuid().v4();
       await _save(valid);
     } catch (failure) {
-      if (valid())
+      if (valid()) {
         error = failure is StudyAiFailure && failure.code == 'AI_BUSY'
             ? studyFlashcardBusyMessage
             : studyAiFriendlyError(failure);
+      }
     } finally {
       token.cancel();
       if (current && epoch == _epoch) {
@@ -213,8 +214,9 @@ class StudyFlashcardSession extends ChangeNotifier {
 
   Future<void> mark(String status) async {
     if (!current || loading || working || card == null) return;
-    if (!{'known', 'learning'}.contains(status))
+    if (!{'known', 'learning'}.contains(status)) {
       throw ArgumentError.value(status);
+    }
     final id = card!.id;
     working = true;
     error = null;

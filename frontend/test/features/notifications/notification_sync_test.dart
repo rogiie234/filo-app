@@ -68,8 +68,9 @@ void main() {
           if (p['select'] == 'id') {
             idPages++;
             if (p.containsKey('id')) {
-              if (outcome == 'failed ids page')
+              if (outcome == 'failed ids page') {
                 return json({'message': 'temporary', 'code': 'XX000'}, 500);
+              }
               if (outcome == 'switched account') current = false;
               return json([]);
             }
@@ -105,8 +106,9 @@ void main() {
           db.cacheNotifications,
         )..where((n) => n.id.equals('stale'))).get();
         expect(stale.isEmpty, outcome == 'success');
-        if (outcome == 'failed ids page')
+        if (outcome == 'failed ids page') {
           expect(sync.errors, contains('notifications'));
+        }
       } finally {
         sync.dispose();
         await db.close();
@@ -159,8 +161,9 @@ void main() {
               ? json({'message': 'offline', 'code': 'XX000'}, 500)
               : json(null);
         }
-        if (deleted || p.containsKey('or') || p.containsKey('id'))
+        if (deleted || p.containsKey('or') || p.containsKey('id')) {
           return json([]);
+        }
         return json([
           p['select'] == 'id' ? {'id': 'notice'} : notice('notice'),
         ]);

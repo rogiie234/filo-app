@@ -17,8 +17,9 @@ class StudySummaryUsage {
               s.retainedCharacters <= 0 ||
               s.originalCharacters < s.retainedCharacters,
         ) ||
-        retainedCharacters > 40000)
+        retainedCharacters > 40000) {
       throw const FormatException('Invalid summary usage');
+    }
   }
 
   factory StudySummaryUsage.fromResult(StudyAiResult<StudyTextAnswer> result) =>
@@ -51,8 +52,9 @@ class StudySummaryUsage {
     if (value == null) return null;
     try {
       final data = jsonDecode(value) as Map<String, dynamic>;
-      if (data['version'] != 1 || data['server_truncated'] is! bool)
+      if (data['version'] != 1 || data['server_truncated'] is! bool) {
         return null;
+      }
       return StudySummaryUsage(
         (data['sources'] as List).map(
           (entry) => StudySourceUsage(

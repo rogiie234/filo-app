@@ -41,7 +41,7 @@ void main() {
           'Set the owner DEV key, verified student token and expected simulation mode in the process environment.',
         );
       }
-      final supabase = SupabaseClient(devUrl, key!);
+      final supabase = SupabaseClient(devUrl, key);
       addTearDown(supabase.dispose);
       final guard = AiRequestGuard();
       addTearDown(guard.close);
@@ -66,8 +66,9 @@ void main() {
       );
       for (final action in ['chat', 'summary', 'flashcards', 'practice_quiz']) {
         if (mode == 'AI_BAD_OUTPUT' &&
-            (action == 'chat' || action == 'summary'))
+            (action == 'chat' || action == 'summary')) {
           continue;
+        }
         final cancel = AiCancelToken();
         final Future<StudyAiResult<dynamic>> request = switch (action) {
           'chat' => client.chat(

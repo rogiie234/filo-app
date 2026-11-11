@@ -53,8 +53,9 @@ class ProfileRepository {
   final SupabaseClient client;
 
   void _requireUser(String userId) {
-    if (client.auth.currentUser?.id != userId)
+    if (client.auth.currentUser?.id != userId) {
       throw StateError('Account changed');
+    }
   }
 
   Future<AccountProfile> edit({

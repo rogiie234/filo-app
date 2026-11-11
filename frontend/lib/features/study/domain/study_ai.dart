@@ -108,8 +108,9 @@ List<Map<String, String>> prepareStudyMessages(List<StudyChatInput> messages) {
 PreparedStudySources prepareStudySources(List<StudyAiSource> sources) {
   if (sources.length > 3) throw const StudyAiFailure('TOO_LARGE');
   for (final source in sources) {
-    if (source.name.trim().isEmpty)
+    if (source.name.trim().isEmpty) {
       throw const StudyAiFailure('INVALID_REQUEST');
+    }
     if (source.name.runes.length > 255) throw const StudyAiFailure('TOO_LARGE');
     if (source.text.trim().isEmpty) throw const StudyAiFailure('NO_TEXT');
   }
@@ -192,12 +193,14 @@ StudyAiBatch<StudyQuestionInput> decodeStudyQuestions(
       index = row['correct_index'] as int;
       options = (row['options'] as List).map((s) => _text(s, 500)).toList();
     } else if (type == 'true_false') {
-      if (row['correct_boolean'] is! bool)
+      if (row['correct_boolean'] is! bool) {
         throw const StudyAiFailure('AI_BAD_OUTPUT');
+      }
       boolean = row['correct_boolean'] as bool;
     } else {
-      if (row['accepted_answers'] is! List)
+      if (row['accepted_answers'] is! List) {
         throw const StudyAiFailure('AI_BAD_OUTPUT');
+      }
       accepted = (row['accepted_answers'] as List)
           .map((s) => _text(s, 200))
           .toList();
@@ -228,8 +231,9 @@ StudyAiBatch<StudyQuestionInput> decodeStudyQuestions(
 Map _object(dynamic data, Set<String> keys) {
   if (data is! Map ||
       data.keys.toSet().difference(keys).isNotEmpty ||
-      !keys.every(data.containsKey))
+      !keys.every(data.containsKey)) {
     throw const StudyAiFailure('AI_BAD_OUTPUT');
+  }
   return data;
 }
 

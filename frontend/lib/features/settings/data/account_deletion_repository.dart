@@ -3,7 +3,10 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import '../../../core/account_deletion_journal.dart';
 
 class DeletionRejected implements Exception {
-  const DeletionRejected();
+  const DeletionRejected([
+    this.message = "Couldn't delete your account. Try again.",
+  ]);
+  final String message;
 }
 
 class OwnedClassesExist extends DeletionRejected {
@@ -30,10 +33,12 @@ class AccountDeletionRepository {
     final count = await client
         .rpc('owned_class_count')
         .timeout(const Duration(seconds: 20));
-    if (isCurrent != null && !isCurrent())
+    if (isCurrent != null && !isCurrent()) {
       throw StateError('Obsolete eligibility');
-    if (count is! int || count < 0)
+    }
+    if (count is! int || count < 0) {
       throw const FormatException('Invalid class count');
+    }
     if (count > 0) return InstructorDeletionEligibility(count);
     final rows = await client
         .from('classes')
@@ -65,10 +70,23 @@ class AccountDeletionRepository {
       status = error.status;
       data = error.details;
     }
-    if (status == 200 && data is Map && data['status'] == 'deleted')
+    if (status == 200 && data is Map && data['status'] == 'deleted') {
       return DeletionStage.cleanup;
-    if (status == 202 && data is Map && data['status'] == 'pending')
+    }
+    if (status == 202 && data is Map && data['status'] == 'pending') {
       return DeletionStage.pending;
+    }
+    // Gateway refusals happen before the deletion handler is invoked.
+    if (status == 404 && data is Map && data['code'] == 'NOT_FOUND') {
+      throw const DeletionRejected(
+        'Account deletion is unavailable in this version. Contact Filo support.',
+      );
+    }
+    if (status == 401) {
+      throw const DeletionRejected(
+        'Your session expired. Please sign in again.',
+      );
+    }
     final error = data is Map ? data['error'] : null;
     final code = error is Map ? error['code'] : null;
     if (status == 409 && code == 'OWNED_CLASSES_EXIST') {

@@ -148,8 +148,9 @@ class _AccountSetupScreenState extends ConsumerState<AccountSetupScreen> {
       final draft = await ref.read(profilePhotoPickerProvider)();
       if (draft == null ||
           !mounted ||
-          ref.read(supabaseClientProvider).auth.currentUser?.id != userId)
+          ref.read(supabaseClientProvider).auth.currentUser?.id != userId) {
         return;
+      }
       if (mounted) {
         setState(() {
           _photo = draft;

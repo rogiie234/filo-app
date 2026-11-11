@@ -42,7 +42,7 @@ void main() {
     online = true;
     reduced = false;
     calls = 0;
-    invoke = (_, body, __) async => {
+    invoke = (_, body, _) async => {
       'cards': [
         for (var i = 1; i <= 3; i++)
           {'front': 'Question $i', 'back': 'Answer $i'},
@@ -87,12 +87,13 @@ void main() {
   Finder button(String text) => find.widgetWithText(FiloButton, text);
   Future<void> tap(WidgetTester tester, Finder finder) async {
     await tester.pump();
-    if (finder.evaluate().isEmpty)
+    if (finder.evaluate().isEmpty) {
       await tester.scrollUntilVisible(
         finder,
         160,
         scrollable: find.byType(Scrollable).first,
       );
+    }
     await Scrollable.ensureVisible(tester.element(finder), alignment: .5);
     await tester.pump();
     expect(finder.hitTestable(), findsOneWidget);
@@ -159,7 +160,7 @@ void main() {
         StudyPrivacy.key,
       ]);
       final response = Completer<dynamic>();
-      invoke = (_, __, ___) => response.future;
+      invoke = (_, _, _) => response.future;
       await tester.pumpWidget(
         app(StudyDeckGenerateScreen(notebookId: notebook)),
       );

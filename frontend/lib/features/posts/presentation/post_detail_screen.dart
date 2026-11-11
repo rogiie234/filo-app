@@ -1,3 +1,5 @@
+import '../../../core/widgets/filo_widgets.dart' show FiloPanel;
+import '../../../core/widgets/entry_background.dart';
 import '../../../core/theme/filo_design_tokens.dart';
 import '../../../core/widgets/filo_motion_widgets.dart';
 
@@ -83,87 +85,112 @@ class _PostDetailScreenState extends ConsumerState<PostDetailScreen> {
       if (item.id == widget.postId) post = item;
     }
     final online = ref.watch(connectivityProvider).asData?.value == true;
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text('Post detail'),
-        actions: [
-          IconButton(
-            tooltip: 'Refresh',
-            onPressed: online
-                ? () {
-                    ref.invalidate(postsProvider(widget.classId));
-                    ref.invalidate(postAttachmentsProvider(widget.postId));
-                    ref.invalidate(postSyncProvider(widget.classId));
-                  }
-                : null,
-            icon: const FiloIcon(FiloIcons.refresh),
-          ),
-        ],
-      ),
-      body:
-          _unavailable ||
-              (post == null &&
-                  posts.hasValue &&
-                  sync.hasValue &&
-                  !sync.hasError &&
-                  !posts.hasError &&
-                  !sync.isLoading &&
-                  online)
-          ? const Center(child: Text('This item is no longer available.'))
-          : ListView(
-              padding: const EdgeInsets.all(FiloSpacing.screen),
-              children: [
-                if (!online)
-                  const Text(
-                    'You’re offline. Cached content is shown. Connect to open attachments.',
-                  ),
-                if (sync.hasError || posts.hasError)
-                  const Text(
-                    'Could not refresh this post. Use Refresh to retry.',
-                  ),
-                if (post == null)
-                  if (posts.isLoading || sync.isLoading)
-                    const Center(child: FiloCircularProgressIndicator())
-                  else
-                    const Text('Connect and refresh to load this post.')
-                else ...[
-                  Text(
-                    post.title,
-                    style: Theme.of(context).textTheme.headlineSmall,
-                  ),
-                  const SizedBox(height: FiloSpacing.s8),
-                  Text(_date(context, post.createdAt)),
-                  if (post.kind == 'assignment') ...[
-                    Text('${post.points ?? 0} points'),
-                    Text(
-                      post.dueAt == null
-                          ? 'No due date'
-                          : 'Due ${_date(context, post.dueAt!)}',
-                    ),
-                  ],
-                  const SizedBox(height: FiloSpacing.screen),
-                  SelectableText(post.body ?? ''),
-                  const SizedBox(height: FiloSpacing.screen),
-                  if (attachments.isLoading)
-                    const FiloLinearProgressIndicator(),
-                  if (attachments.hasError)
-                    TextButton(
-                      onPressed: () => ref.invalidate(
-                        postAttachmentsProvider(widget.postId),
-                      ),
-                      child: const Text('Could not load attachments. Retry'),
-                    ),
-                  for (final attachment
-                      in attachments.asData?.value ?? <CachePostAttachment>[])
-                    PostAttachmentTile(
-                      classId: widget.classId,
-                      postId: widget.postId,
-                      attachment: attachment,
-                      onUnavailable: () => setState(() => _unavailable = true),
-                    ),
-                ],
-              ],
+    return EntryBackground(
+      verification: true,
+      breeze: true,
+      variation: 1,
+      child: Scaffold(
+        backgroundColor: Colors.transparent,
+        appBar: AppBar(
+          backgroundColor: Colors.transparent,
+          surfaceTintColor: Colors.transparent,
+          elevation: 0,
+          scrolledUnderElevation: 0,
+          title: const Text('Post detail'),
+          actions: [
+            IconButton(
+              tooltip: 'Refresh',
+              onPressed: online
+                  ? () {
+                      ref.invalidate(postsProvider(widget.classId));
+                      ref.invalidate(postAttachmentsProvider(widget.postId));
+                      ref.invalidate(postSyncProvider(widget.classId));
+                    }
+                  : null,
+              icon: const FiloIcon(FiloIcons.refresh),
             ),
+          ],
+        ),
+        body:
+            _unavailable ||
+                (post == null &&
+                    posts.hasValue &&
+                    sync.hasValue &&
+                    !sync.hasError &&
+                    !posts.hasError &&
+                    !sync.isLoading &&
+                    online)
+            ? const Center(child: Text('This item is no longer available.'))
+            : ListView(
+                padding: const EdgeInsets.all(FiloSpacing.screen),
+                children: [
+                  if (!online)
+                    const Text(
+                      'You’re offline. Cached content is shown. Connect to open attachments.',
+                    ),
+                  if (sync.hasError || posts.hasError)
+                    const Text(
+                      'Could not refresh this post. Use Refresh to retry.',
+                    ),
+                  if (post == null)
+                    if (posts.isLoading || sync.isLoading)
+                      const Center(child: FiloCircularProgressIndicator())
+                    else
+                      const Text('Connect and refresh to load this post.')
+                  else ...[
+                    FiloPanel(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            post.title,
+                            style: Theme.of(context).textTheme.headlineSmall,
+                          ),
+                          const SizedBox(height: FiloSpacing.s8),
+                          Text(_date(context, post.createdAt)),
+                          if (post.kind == 'assignment') ...[
+                            Text('${post.points ?? 0} points'),
+                            Text(
+                              post.dueAt == null
+                                  ? 'No due date'
+                                  : 'Due ${_date(context, post.dueAt!)}',
+                            ),
+                          ],
+                        ],
+                      ),
+                    ),
+                    const SizedBox(height: FiloSpacing.screen),
+                    FiloPanel(child: SelectableText(post.body ?? '')),
+                    const SizedBox(height: FiloSpacing.screen),
+                    if (attachments.isLoading)
+                      const Center(
+                        child: SizedBox.square(
+                          dimension: 24,
+                          child: FiloCircularProgressIndicator(
+                            semanticsLabel: 'Loading attachments',
+                          ),
+                        ),
+                      ),
+                    if (attachments.hasError)
+                      TextButton(
+                        onPressed: () => ref.invalidate(
+                          postAttachmentsProvider(widget.postId),
+                        ),
+                        child: const Text('Could not load attachments. Retry'),
+                      ),
+                    for (final attachment
+                        in attachments.asData?.value ?? <CachePostAttachment>[])
+                      PostAttachmentTile(
+                        classId: widget.classId,
+                        postId: widget.postId,
+                        attachment: attachment,
+                        onUnavailable: () =>
+                            setState(() => _unavailable = true),
+                      ),
+                  ],
+                ],
+              ),
+      ),
     );
   }
 }

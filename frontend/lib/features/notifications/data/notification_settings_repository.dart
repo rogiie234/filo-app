@@ -131,8 +131,9 @@ class NotificationSettingsRepository {
         row['id'] is! String ||
         row['type'] is! String ||
         row['enabled'] is! bool ||
-        (row['class_id'] != null && row['class_id'] is! String))
+        (row['class_id'] != null && row['class_id'] is! String)) {
       throw StateError('Invalid preference response');
+    }
     DateTime.parse(row['updated_at'] as String);
     return row;
   }
@@ -146,8 +147,9 @@ class NotificationSettingsRepository {
         .get();
     if (old.isNotEmpty &&
         DateTime.parse(old.single.read<String>('updated_at'))
-            .isAfter(DateTime.parse(row['updated_at'] as String)))
+            .isAfter(DateTime.parse(row['updated_at'] as String))) {
       return;
+    }
     await db.customStatement(
       "INSERT OR REPLACE INTO sync_payloads(table_name,id,payload,updated_at) VALUES('notification_settings',?,?,?)",
       [row['id'], jsonEncode(row), row['updated_at']],
@@ -173,8 +175,9 @@ class NotificationSettingsRepository {
       rows.addAll(page.map(_row));
       if (page.length < 200) break;
       final next = page.last['id'] as String;
-      if (after != null && next.compareTo(after) <= 0)
+      if (after != null && next.compareTo(after) <= 0) {
         throw StateError('Non-progressing preference page');
+      }
       after = next;
     }
     await db.transaction(() async {
@@ -186,11 +189,12 @@ class NotificationSettingsRepository {
           )
           .get();
       for (final row in cached) {
-        if (!ids.contains(row.read<String>('id')))
+        if (!ids.contains(row.read<String>('id'))) {
           await db.customStatement(
             "DELETE FROM sync_payloads WHERE table_name='notification_settings' AND id=?",
             [row.read<String>('id')],
           );
+        }
       }
       for (final row in rows) {
         await _store(row);
@@ -209,8 +213,9 @@ class NotificationSettingsRepository {
     String? classId,
     bool enabled,
   ) => _serialize(() async {
-    if (!notificationTypes.containsKey(type))
+    if (!notificationTypes.containsKey(type)) {
       throw ArgumentError('Unknown notification type');
+    }
     if (!online()) throw StateError('Connect to change notification settings');
     final response = await client
         .rpc(
@@ -222,8 +227,9 @@ class NotificationSettingsRepository {
     final row = _row(response);
     if (row['type'] != type ||
         row['class_id'] != classId ||
-        row['enabled'] != enabled)
+        row['enabled'] != enabled) {
       throw StateError('Mismatched preference response');
+    }
     await db.transaction(() async {
       _check();
       await _store(row);

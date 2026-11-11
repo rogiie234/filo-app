@@ -38,8 +38,9 @@ class _InstructorResultsScreenState
     _timer = Timer.periodic(const Duration(seconds: 30), (_) {
       if (mounted &&
           ModalRoute.of(context)?.isCurrent == true &&
-          WidgetsBinding.instance.lifecycleState == AppLifecycleState.resumed)
+          WidgetsBinding.instance.lifecycleState == AppLifecycleState.resumed) {
         unawaited(_refresh());
+      }
     });
   }
 
@@ -87,8 +88,9 @@ class _InstructorResultsScreenState
       );
       final file = temporary.file;
       await file.writeAsString(csv, flush: true);
-      if (!mounted || ref.read(authUserIdProvider).asData?.value != owner)
+      if (!mounted || ref.read(authUserIdProvider).asData?.value != owner) {
         return;
+      }
       final current = ref
           .read(quizMonitoringProvider(widget.quizId))
           .asData

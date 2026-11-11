@@ -335,7 +335,6 @@ void main() {
         userId: accountId,
         online: () => false,
         isCurrent: () => true,
-        prepare: (_) async => fail('Offline tap must not prepare remotely'),
       );
       expect(
         (await destinations.resolveStudyAlarm(alarmId)).screen,

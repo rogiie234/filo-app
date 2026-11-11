@@ -37,48 +37,54 @@ class StudentQuizRow extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final state = studentQuizState(quiz, now);
-    return Material(
-      color: Theme.of(context).colorScheme.surface,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(FiloRadii.large),
-        side: BorderSide(color: Theme.of(context).colorScheme.outline),
-      ),
-      clipBehavior: Clip.antiAlias,
-      child: InkWell(
-        onTap: onTap,
-        child: Padding(
-          padding: const EdgeInsets.all(FiloSpacing.s20),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              Text(quiz.title, style: Theme.of(context).textTheme.titleMedium),
-              if (classLabel != null)
+    return FiloCardTap(
+      enabled: true,
+      child: Material(
+        color: Theme.of(context).colorScheme.surface,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(FiloRadii.large),
+          side: BorderSide(color: Theme.of(context).colorScheme.outline),
+        ),
+        clipBehavior: Clip.antiAlias,
+        child: InkWell(
+          onTap: onTap,
+          child: Padding(
+            padding: const EdgeInsets.all(FiloSpacing.s20),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
                 Text(
-                  classLabel!,
+                  quiz.title,
+                  style: Theme.of(context).textTheme.titleMedium,
+                ),
+                if (classLabel != null)
+                  Text(
+                    classLabel!,
+                    style: TextStyle(
+                      color: Theme.of(context).colorScheme.onSurfaceVariant,
+                    ),
+                  ),
+                const SizedBox(height: FiloSpacing.s8),
+                Wrap(
+                  spacing: 8,
+                  runSpacing: 4,
+                  children: [
+                    Chip(label: Text(quiz.typeLabel)),
+                    StudentQuizStatusChip(state: state),
+                  ],
+                ),
+                const SizedBox(height: FiloSpacing.s8),
+                Text('Closes: ${philippineQuizDate(quiz.closesAt)}'),
+                Text(
+                  '${quiz.points} points',
                   style: TextStyle(
                     color: Theme.of(context).colorScheme.onSurfaceVariant,
                   ),
                 ),
-              const SizedBox(height: FiloSpacing.s8),
-              Wrap(
-                spacing: 8,
-                runSpacing: 4,
-                children: [
-                  Chip(label: Text(quiz.typeLabel)),
-                  StudentQuizStatusChip(state: state),
-                ],
-              ),
-              const SizedBox(height: FiloSpacing.s8),
-              Text('Closes: ${philippineQuizDate(quiz.closesAt)}'),
-              Text(
-                '${quiz.points} points',
-                style: TextStyle(
-                  color: Theme.of(context).colorScheme.onSurfaceVariant,
-                ),
-              ),
-              if (state.pending)
-                const Text('Refresh to check your exam status.'),
-            ],
+                if (state.pending)
+                  const Text('Refresh to check your exam status.'),
+              ],
+            ),
           ),
         ),
       ),

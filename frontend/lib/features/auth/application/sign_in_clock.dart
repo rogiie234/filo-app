@@ -15,8 +15,9 @@ bool? signInClockMismatch(
 }) {
   if (serverDate == null ||
       roundTrip > const Duration(seconds: 5) ||
-      age != null && int.tryParse(age) != 0)
+      age != null && int.tryParse(age) != 0) {
     return null;
+  }
   try {
     final midpoint = requestWall.toUtc().add(
       Duration(microseconds: roundTrip.inMicroseconds ~/ 2),

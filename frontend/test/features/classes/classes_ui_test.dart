@@ -317,8 +317,8 @@ void main() {
       );
       await tester.pump();
       expect(find.text('Your classes'), findsOneWidget);
-      await tester.ensureVisible(find.text('Create class'));
-      await tester.tap(find.text('Create class'));
+      await tester.ensureVisible(find.byTooltip('Create class'));
+      await tester.tap(find.byTooltip('Create class'));
       await tester.pumpAndSettle();
       await tester.tap(find.byTooltip('Back to classes'));
       await tester.pumpAndSettle();
@@ -334,8 +334,8 @@ void main() {
     tester,
   ) async {
     await launch(tester, role: AccountRole.instructor, empty: true);
-    await tester.ensureVisible(find.text('Create class'));
-    await tester.tap(find.text('Create class'));
+    await tester.ensureVisible(find.byTooltip('Create class'));
+    await tester.tap(find.byTooltip('Create class'));
     await tester.pumpAndSettle();
     await tester.ensureVisible(find.byType(TextFormField).at(2));
     await tester.tap(find.byType(TextFormField).at(2));
@@ -368,8 +368,8 @@ void main() {
     tester,
   ) async {
     await launch(tester, role: AccountRole.instructor, empty: true);
-    await tester.ensureVisible(find.text('Create class'));
-    await tester.tap(find.text('Create class'));
+    await tester.ensureVisible(find.byTooltip('Create class'));
+    await tester.tap(find.byTooltip('Create class'));
     await tester.pumpAndSettle();
     final scaffold = tester.widget<Scaffold>(find.byType(Scaffold).last);
     expect(scaffold.bottomNavigationBar, isNull);
@@ -409,8 +409,8 @@ void main() {
           tester.widget<EntryBackground>(find.byType(EntryBackground)).breeze,
           isTrue,
         );
-        await tester.ensureVisible(find.text('Create class'));
-        await tester.tap(find.text('Create class'));
+        await tester.ensureVisible(find.byTooltip('Create class'));
+        await tester.tap(find.byTooltip('Create class'));
         await tester.pumpAndSettle();
         await tester.tap(find.byTooltip('Back to classes'));
         await tester.pump();
@@ -570,7 +570,7 @@ void main() {
     expect(find.textContaining('Preview'), findsNothing);
     expect(find.text('Your classes'), findsOneWidget);
     expect(find.text('Find a class'), findsWidgets);
-    expect(find.text('Join class'), findsOneWidget);
+    expect(find.byTooltip('Join class'), findsOneWidget);
     expect(find.text('Create class'), findsNothing);
     await capture(tester, h, 'student-classes');
     await tester.tap(find.text('Computing'));
@@ -606,7 +606,7 @@ void main() {
     ) async {
       final h = await launch(tester);
       h.repository.joinResult = result;
-      await tester.tap(find.text('Join class'));
+      await tester.tap(find.byTooltip('Join class'));
       await tester.pumpAndSettle();
       await tester.enterText(find.byType(TextField).last, 'filo26');
       await tester.tap(find.text('Request to join'));
@@ -654,8 +654,11 @@ void main() {
       h.repository.failPull = true;
       expect(
         tester
-            .widget<FilledButton>(
-              find.widgetWithText(FilledButton, 'Join class'),
+            .widget<FiloButton>(
+              find.ancestor(
+                of: find.byTooltip('Join class'),
+                matching: find.byType(FiloButton),
+              ),
             )
             .onPressed,
         isNull,
@@ -675,25 +678,86 @@ void main() {
       await tester.pumpAndSettle();
       expect(
         tester
-            .widget<FilledButton>(
-              find.widgetWithText(FilledButton, 'Join class'),
+            .widget<FiloButton>(
+              find.ancestor(
+                of: find.byTooltip('Join class'),
+                matching: find.byType(FiloButton),
+              ),
             )
             .onPressed,
         isNotNull,
       );
     },
   );
+  for (final failCopy in [false, true]) {
+    testClasses(
+      'class code copy keeps options open while showing ${failCopy ? 'failure' : 'success'}',
+      (tester) async {
+        var copies = 0;
+        String? copied;
+        TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+            .setMockMethodCallHandler(SystemChannels.platform, (call) async {
+              if (call.method == 'Clipboard.setData') {
+                copies++;
+                if (failCopy) {
+                  throw PlatformException(code: 'clipboard-unavailable');
+                }
+                copied = (call.arguments as Map)['text'] as String;
+              }
+              return null;
+            });
+        addTearDown(
+          () => TestDefaultBinaryMessengerBinding
+              .instance
+              .defaultBinaryMessenger
+              .setMockMethodCallHandler(SystemChannels.platform, null),
+        );
+        await launch(tester, role: AccountRole.instructor);
+        await tester.tap(find.text('Computing'));
+        await tester.pumpAndSettle();
+        await tester.tap(find.byTooltip('Class menu'));
+        await tester.pumpAndSettle();
+        expect(find.text('Class options'), findsOneWidget);
+        await tester.ensureVisible(find.text('Copy code'));
+        await tester.tap(find.text('Copy code'));
+        await tester.pumpAndSettle();
+        expect(copies, 1);
+        expect(copied, failCopy ? isNull : 'FILO26');
+        expect(find.text('Class options'), findsOneWidget);
+        expect(
+          find.text(
+            failCopy
+                ? 'Could not copy the class code. Try again.'
+                : 'Class code copied.',
+          ),
+          findsOneWidget,
+        );
+        expect(find.byType(SnackBar), findsNothing);
+        await tester.pump(const Duration(seconds: 4));
+        expect(find.text('Class options'), findsOneWidget);
+        expect(find.text('Copy code'), findsOneWidget);
+        await tester.tap(find.byTooltip('Close'));
+        await tester.pumpAndSettle();
+        expect(find.text('Class options'), findsNothing);
+        expect(tester.takeException(), isNull);
+      },
+    );
+  }
+
   testClasses(
     'instructor creates from existing layout and opens Stream with tabs',
     (tester) async {
       final h = await launch(tester, role: AccountRole.instructor, empty: true);
       expect(find.text('Join class'), findsNothing);
-      expect(find.text('Create class'), findsOneWidget);
+      expect(find.byTooltip('Create class'), findsOneWidget);
       await capture(tester, h, 'instructor-classes');
-      await tester.tap(find.text('Create class'));
+      await tester.tap(find.byTooltip('Create class'));
       await tester.pumpAndSettle();
       await capture(tester, h, 'create-class');
-      await tester.tap(find.widgetWithText(FilledButton, 'Create class'));
+      await tester.ensureVisible(
+        find.widgetWithText(FiloButton, 'Create class'),
+      );
+      await tester.tap(find.widgetWithText(FiloButton, 'Create class'));
       await tester.pumpAndSettle();
       expect(find.text('Enter a course.'), findsOneWidget);
       await tester.enterText(
@@ -712,7 +776,10 @@ void main() {
       await tester.pumpAndSettle();
       await tester.tap(teal);
       await tester.pumpAndSettle();
-      await tester.tap(find.widgetWithText(FilledButton, 'Create class'));
+      await tester.ensureVisible(
+        find.widgetWithText(FiloButton, 'Create class'),
+      );
+      await tester.tap(find.widgetWithText(FiloButton, 'Create class'));
       await tester.pumpAndSettle();
       expect(h.repository.creates, 1);
       expect(h.repository.createdValues, {
@@ -736,7 +803,7 @@ void main() {
     'creation retry after failed pull does not create a second class',
     (tester) async {
       final h = await launch(tester, role: AccountRole.instructor, empty: true);
-      await tester.tap(find.text('Create class'));
+      await tester.tap(find.byTooltip('Create class'));
       await tester.pumpAndSettle();
       await tester.enterText(find.byType(TextFormField).at(0), 'Computing');
       await tester.enterText(find.byType(TextFormField).at(1), 'BSIT-3B');
@@ -747,7 +814,10 @@ void main() {
       await tester.tap(find.text('Use school year'));
       await tester.pumpAndSettle();
       h.repository.failPull = true;
-      await tester.tap(find.widgetWithText(FilledButton, 'Create class'));
+      await tester.ensureVisible(
+        find.widgetWithText(FiloButton, 'Create class'),
+      );
+      await tester.tap(find.widgetWithText(FiloButton, 'Create class'));
       await tester.pumpAndSettle();
       expect(find.text('Retry loading class'), findsOneWidget);
       h.repository.failPull = false;
@@ -762,7 +832,7 @@ void main() {
     (tester) async {
       final h = await launch(tester, role: AccountRole.instructor, empty: true);
       h.repository.loseCreateResponse = true;
-      await tester.tap(find.text('Create class'));
+      await tester.tap(find.byTooltip('Create class'));
       await tester.pumpAndSettle();
       await tester.enterText(find.byType(TextFormField).at(0), 'Computing');
       await tester.enterText(find.byType(TextFormField).at(1), 'BSIT-3B');
@@ -772,7 +842,10 @@ void main() {
       expect(find.byType(CupertinoPicker), findsNWidgets(2));
       await tester.tap(find.text('Use school year'));
       await tester.pumpAndSettle();
-      await tester.tap(find.widgetWithText(FilledButton, 'Create class'));
+      await tester.ensureVisible(
+        find.widgetWithText(FiloButton, 'Create class'),
+      );
+      await tester.tap(find.widgetWithText(FiloButton, 'Create class'));
       await tester.pumpAndSettle();
       expect(
         find.widgetWithText(FilledButton, 'Back to classes'),
@@ -825,7 +898,7 @@ void main() {
     (tester) async {
       await launch(tester, scale: 1.3);
       expect(tester.takeException(), isNull);
-      await tester.tap(find.text('Join class'));
+      await tester.tap(find.byTooltip('Join class'));
       await tester.pumpAndSettle();
       expect(tester.takeException(), isNull);
     },

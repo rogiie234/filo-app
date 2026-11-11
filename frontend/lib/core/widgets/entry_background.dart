@@ -7,28 +7,51 @@ class EntryBackground extends StatelessWidget {
   const EntryBackground({
     super.key,
     this.verification = false,
-    bool breeze = false,
-  }) : _breeze = breeze;
+    this.variation = 0,
+    this.child,
+    this.enabled = true,
+    bool this._breeze = false,
+  });
   final bool verification;
+  final Widget? child;
+  final bool enabled;
+
+  /// Stable page composition; never randomized during rebuilds.
+  final int variation;
   // Existing hot-reloaded instances may predate this optional decoration.
   final bool? _breeze;
   bool get breeze => _breeze ?? false;
 
   @override
-  Widget build(BuildContext context) => ExcludeSemantics(
-    child: IgnorePointer(
-      child: RepaintBoundary(
-        child: CustomPaint(
-          painter: _EntryPainter(
-            mint: FiloThemeTokens.of(context).mint,
-            primary: Theme.of(context).colorScheme.primary,
-            verification: verification,
-            breeze: breeze,
+  Widget build(BuildContext context) {
+    if (!enabled && child != null) return child!;
+    final background = ExcludeSemantics(
+      child: IgnorePointer(
+        child: RepaintBoundary(
+          child: CustomPaint(
+            painter: _EntryPainter(
+              mint: FiloThemeTokens.of(context).mint,
+              primary: Theme.of(context).colorScheme.primary,
+              verification: verification,
+              breeze: breeze,
+              variation: variation,
+            ),
           ),
         ),
       ),
-    ),
-  );
+    );
+    if (child == null) return background;
+    return ColoredBox(
+      color: Theme.of(context).scaffoldBackgroundColor,
+      child: Stack(
+        fit: StackFit.expand,
+        children: [
+          Positioned.fill(child: background),
+          child!,
+        ],
+      ),
+    );
+  }
 }
 
 class _EntryPainter extends CustomPainter {
@@ -36,11 +59,13 @@ class _EntryPainter extends CustomPainter {
     required this.mint,
     required this.primary,
     required this.verification,
-    required bool breeze,
-  }) : _breeze = breeze;
+    required this.variation,
+    required bool this._breeze,
+  });
   final Color mint;
   final Color primary;
   final bool verification;
+  final int variation;
   final bool? _breeze;
   bool get breeze => _breeze ?? false;
 
@@ -60,6 +85,28 @@ class _EntryPainter extends CustomPainter {
     paint.shader = null;
     canvas.save();
     canvas.scale(size.width, size.height);
+    canvas.save();
+    if (variation % 3 == 1) {
+      canvas.translate(1, 0);
+      canvas.scale(-1, 1);
+    }
+    paint.color = mint.withValues(alpha: .48);
+    canvas.drawPath(
+      Path()
+        ..moveTo(.35 + (variation % 7) * .035, 0)
+        ..cubicTo(
+          .6,
+          .10 + (variation % 4) * .02,
+          .8,
+          .02,
+          1,
+          .16 + (variation % 5) * .02,
+        )
+        ..lineTo(1, 0)
+        ..close(),
+      paint,
+    );
+    canvas.restore();
     paint.color = mint.withValues(alpha: .65);
     final backWave = verification
         ? (Path()
@@ -239,5 +286,6 @@ class _EntryPainter extends CustomPainter {
       mint != oldDelegate.mint ||
       primary != oldDelegate.primary ||
       verification != oldDelegate.verification ||
-      breeze != oldDelegate.breeze;
+      breeze != oldDelegate.breeze ||
+      variation != oldDelegate.variation;
 }

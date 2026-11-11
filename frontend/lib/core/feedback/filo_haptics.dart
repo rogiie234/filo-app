@@ -13,8 +13,9 @@ abstract final class FiloHaptics {
     final lifecycle = WidgetsBinding.instance.lifecycleState;
     if (!context.mounted ||
         ModalRoute.of(context)?.isCurrent == false ||
-        (lifecycle != null && lifecycle != AppLifecycleState.resumed))
+        (lifecycle != null && lifecycle != AppLifecycleState.resumed)) {
       return;
+    }
     unawaited(_tryFeedback(feedback));
   }
 

@@ -41,8 +41,9 @@ class PushEvents extends ChangeNotifier {
   PushEvent? _inboxOpen;
 
   Future<void> openInbox(String id, String accountId) {
-    if (!validId(id))
+    if (!validId(id)) {
       return Future.error(ArgumentError('Invalid notification'));
+    }
     if (_inboxOpen != null) return _inboxOpen!.completion!.future;
     final event = PushEvent(
       id.toLowerCase(),
@@ -99,8 +100,9 @@ class PushEvents extends ChangeNotifier {
     if (data['kind'] == 'study') {
       if (!validId(data['accountId']) ||
           !validId(data['alarmId']) ||
-          data['nonce'] is! String)
+          data['nonce'] is! String) {
         return;
+      }
       final key =
           'study:${data['accountId']}:${data['alarmId']}:${data['nonce']}';
       if (!_seen.add(key)) return;
@@ -117,8 +119,9 @@ class PushEvents extends ChangeNotifier {
     }
     if (!validId(data['accountId']) ||
         !validId(data['postId']) ||
-        data['nonce'] is! String)
+        data['nonce'] is! String) {
       return;
+    }
     final key =
         'reminder:${data['accountId']}:${data['postId']}:${data['nonce']}';
     if (!_seen.add(key)) return;

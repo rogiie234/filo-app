@@ -52,7 +52,7 @@ void main() {
     copied = null;
     connectivity = StreamController<bool>.broadcast(sync: true);
     guard = AiRequestGuard(elapsed: () => elapsed);
-    invoke = (_, body, __) async => {
+    invoke = (_, body, _) async => {
       'answer': '**Answer**\n- A point',
       'mode': (body['sources'] as List).isEmpty ? 'general' : 'files',
       'truncated': false,
@@ -77,8 +77,9 @@ void main() {
     );
     TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
         .setMockMethodCallHandler(SystemChannels.platform, (call) async {
-          if (call.method == 'Clipboard.setData')
+          if (call.method == 'Clipboard.setData') {
             copied = (call.arguments as Map)['text'] as String;
+          }
           if (call.method == 'Clipboard.hasStrings') return {'value': false};
           return null;
         });
@@ -268,7 +269,7 @@ void main() {
     'thinking cancel preserves the question, late output is ignored, and retry is explicit',
     (tester) async {
       final reply = Completer<dynamic>();
-      invoke = (_, __, ___) => reply.future;
+      invoke = (_, _, _) => reply.future;
       await tester.pumpWidget(app());
       await pumpChat(tester);
       await enter(tester, 'Question');
@@ -301,7 +302,7 @@ void main() {
       expect(calls, 1);
       elapsed = const Duration(seconds: 3);
       await tester.pump(const Duration(seconds: 3));
-      invoke = (_, __, ___) async => {
+      invoke = (_, _, _) async => {
         'answer': 'Retried answer',
         'mode': 'general',
         'truncated': false,

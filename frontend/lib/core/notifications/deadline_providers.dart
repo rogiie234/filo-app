@@ -73,8 +73,9 @@ final deadlineStatusProvider = FutureProvider.autoDispose<Map<String, dynamic>>(
             "SELECT value FROM file_settings WHERE key='deadline_error'",
           )
           .get();
-      if (error.isNotEmpty && error.single.read<String>('value').isNotEmpty)
+      if (error.isNotEmpty && error.single.read<String>('value').isNotEmpty) {
         result['error'] = true;
+      }
     }
     return result;
   },
@@ -92,13 +93,14 @@ final deadlineLifecycleProvider = Provider<void>((ref) {
       } catch (_) {
         /* Study scheduling is independent. */
       }
-      if (service != null)
+      if (service != null) {
         await AlarmRepository(
           service.db,
           service.isCurrent,
           userId: service.userId,
           bridge: bridge,
         ).reconcileStudy();
+      }
     } catch (_) {
       /* Persisted status offers Retry; confirmed work is unaffected. */
     }
@@ -108,7 +110,7 @@ final deadlineLifecycleProvider = Provider<void>((ref) {
   ref.listen(deadlineSessionProvider, (_, next) {
     unawaited(changes?.cancel());
     final service = next.asData?.value;
-    if (service != null)
+    if (service != null) {
       changes = service.db
           .tableUpdates(
             TableUpdateQuery.allOf([
@@ -119,24 +121,28 @@ final deadlineLifecycleProvider = Provider<void>((ref) {
             ]),
           )
           .listen((_) => unawaited(reconcile()));
+    }
   }, fireImmediately: true);
   ref.listen(loginSessionProvider, (previous, next) {
     final before = previous?.asData?.value?.user.id;
     if (before != null &&
         next.asData != null &&
-        before != next.asData?.value?.user.id)
+        before != next.asData?.value?.user.id) {
       unawaited(bridge.clear().catchError((Object _) {}));
+    }
   });
   DeadlineBridge.channel.setMethodCallHandler((call) async {
-    if (call.method == 'tap' && call.arguments is Map && ref.mounted)
+    if (call.method == 'tap' && call.arguments is Map && ref.mounted) {
       ref.read(pushEventsProvider).receiveReminder(call.arguments as Map);
+    }
   });
   unawaited(
     DeadlineBridge.channel
         .invokeMapMethod<dynamic, dynamic>('takeTap')
         .then((tap) {
-          if (tap != null && ref.mounted)
+          if (tap != null && ref.mounted) {
             ref.read(pushEventsProvider).receiveReminder(tap);
+          }
         })
         .catchError((Object _) {}),
   );

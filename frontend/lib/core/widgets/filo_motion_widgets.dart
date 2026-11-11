@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
@@ -57,10 +58,11 @@ class _FiloMotionTweenState extends State<FiloMotionTween>
     if (oldWidget.value != widget.value) {
       _from = _value;
       _to = widget.value;
-      if (FiloMotion.enabled(context) && widget.duration != Duration.zero)
+      if (FiloMotion.enabled(context) && widget.duration != Duration.zero) {
         _controller.forward(from: 0);
-      else
+      } else {
         _controller.value = 1;
+      }
     }
   }
 
@@ -119,7 +121,7 @@ class _FiloCardTapState extends State<FiloCardTap> {
     onPointerUp: (_) => setState(() => _pressed = false),
     onPointerCancel: (_) => setState(() => _pressed = false),
     child: FiloMotionTween(
-      value: _pressed ? .98 : 1,
+      value: _pressed && FiloMotion.enabled(context) ? .98 : 1,
       duration: widget.enabled ? FiloAnimation.cardDuration : Duration.zero,
       builder: (_, value, child) => Transform.scale(scale: value, child: child),
       child: widget.child,
@@ -244,17 +246,14 @@ class FiloAnimatedChip extends StatelessWidget {
         : null;
     final icon = avatar == null
         ? check
-        : Stack(
-            alignment: Alignment.center,
-            children: [avatar!, if (check != null) check],
-          );
+        : Stack(alignment: Alignment.center, children: [avatar!, ?check]);
     final style = ChipAnimationStyle(
       selectAnimation: AnimationStyle.noAnimation,
       enableAnimation: AnimationStyle.noAnimation,
       avatarDrawerAnimation: AnimationStyle.noAnimation,
       deleteDrawerAnimation: AnimationStyle.noAnimation,
     );
-    if (filter)
+    if (filter) {
       return FilterChip(
         label: label,
         selected: selected,
@@ -270,6 +269,7 @@ class FiloAnimatedChip extends StatelessWidget {
         side: side,
         padding: padding,
       );
+    }
     return ChoiceChip(
       label: label,
       selected: selected,
@@ -411,7 +411,7 @@ class FiloSuccessMoment extends StatelessWidget {
         initialValue: 0,
         value: 1,
         duration: FiloAnimation.successDuration,
-        builder: (_, value, __) => SizedBox(
+        builder: (_, value, _) => SizedBox(
           width: 144,
           height: 144,
           child: Stack(
@@ -530,8 +530,9 @@ class FiloListItem extends StatelessWidget {
     final animation = context
         .dependOnInheritedWidgetOfExactType<_ListMotion>()
         ?.animation;
-    if (animation == null || index >= 6 || !FiloMotion.enabled(context))
+    if (animation == null || index >= 6 || !FiloMotion.enabled(context)) {
       return child;
+    }
     return AnimatedBuilder(
       animation: animation,
       child: child,
@@ -549,4 +550,36 @@ class FiloListItem extends StatelessWidget {
       },
     );
   }
+}
+
+/// Avoid flashing loading feedback for local reads that finish immediately.
+class FiloDelayedLoading extends StatefulWidget {
+  const FiloDelayedLoading({super.key, required this.child});
+  final Widget child;
+
+  @override
+  State<FiloDelayedLoading> createState() => _FiloDelayedLoadingState();
+}
+
+class _FiloDelayedLoadingState extends State<FiloDelayedLoading> {
+  late final Timer _timer;
+  bool _visible = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _timer = Timer(const Duration(milliseconds: 250), () {
+      if (mounted) setState(() => _visible = true);
+    });
+  }
+
+  @override
+  void dispose() {
+    _timer.cancel();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) =>
+      _visible ? widget.child : const SizedBox.shrink();
 }

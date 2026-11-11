@@ -7,6 +7,16 @@ class QuizPublishProblem {
   final String? questionId;
 }
 
+String? missingAssessmentSchedule(QuizDraft draft) {
+  final start = DateTime.tryParse(draft.settings['opens_at'] as String? ?? '');
+  final end = DateTime.tryParse(draft.settings['closes_at'] as String? ?? '');
+  if (start == null && end == null)
+    return 'Choose a start and end date and time.';
+  if (start == null) return 'Choose a start date and time.';
+  if (end == null) return 'Choose an end date and time.';
+  return null;
+}
+
 List<QuizPublishProblem> quizPublishProblems(QuizDraft draft, DateTime now) {
   final problems = <QuizPublishProblem>[];
   final opens = DateTime.tryParse(draft.settings['opens_at'] as String? ?? '');

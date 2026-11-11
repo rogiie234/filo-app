@@ -1,3 +1,5 @@
+import '../../../core/widgets/entry_background.dart';
+
 import 'dart:async';
 import 'dart:io';
 
@@ -67,10 +69,14 @@ class _AssignmentDetailScreenState
   final _pickedCopies = <AccountTemporaryFile>{};
   Future<void> _releasePickedCopies({bool leaving = false}) async {
     for (final copy in _pickedCopies.toList()) {
-      if (_pending.any((file) => file.path == copy.file.path && file.uploading))
+      if (_pending.any(
+        (file) => file.path == copy.file.path && file.uploading,
+      )) {
         continue;
-      if (!leaving && _pending.any((file) => file.path == copy.file.path))
+      }
+      if (!leaving && _pending.any((file) => file.path == copy.file.path)) {
         continue;
+      }
       _pickedCopies.remove(copy);
       try {
         await copy.close();
@@ -836,503 +842,555 @@ class _AssignmentDetailScreenState
           });
         }
       },
-      child: Scaffold(
-        appBar: AppBar(
-          title: const Text('Assignment'),
-          actions: [
-            IconButton(
-              tooltip: 'Refresh',
-              onPressed: online && !_busy
-                  ? () async {
-                      ref.invalidate(postsProvider(id));
-                      ref.invalidate(classSubmissionsProvider(id));
-                      ref.invalidate(returnedGradesProvider(id));
-                      ref.invalidate(_assignmentReadyProvider(id));
-                      ref.invalidate(postAttachmentsProvider(widget.postId));
-                      if (_submission != null) {
-                        ref.invalidate(
-                          submissionItemsProvider(_submission!.id),
-                        );
+      child: EntryBackground(
+        verification: true,
+        breeze: true,
+        variation: 1,
+        child: Scaffold(
+          backgroundColor: Colors.transparent,
+          appBar: AppBar(
+            backgroundColor: Colors.transparent,
+            surfaceTintColor: Colors.transparent,
+            elevation: 0,
+            scrolledUnderElevation: 0,
+            title: const Text('Assignment'),
+            actions: [
+              IconButton(
+                tooltip: 'Refresh',
+                onPressed: online && !_busy
+                    ? () async {
+                        ref.invalidate(postsProvider(id));
+                        ref.invalidate(classSubmissionsProvider(id));
+                        ref.invalidate(returnedGradesProvider(id));
+                        ref.invalidate(_assignmentReadyProvider(id));
+                        ref.invalidate(postAttachmentsProvider(widget.postId));
+                        if (_submission != null) {
+                          ref.invalidate(
+                            submissionItemsProvider(_submission!.id),
+                          );
+                        }
+                        await _refresh();
                       }
-                      await _refresh();
-                    }
-                  : null,
-              icon: const FiloIcon(FiloIcons.refresh),
-            ),
-          ],
-        ),
-        body:
-            (_unavailable ||
-                (_seenPost &&
-                    _post == null &&
-                    posts.hasValue &&
-                    !posts.isLoading &&
-                    !posts.hasError))
-            ? const Center(child: Text('This item is no longer available.'))
-            : RefreshIndicator(
-                onRefresh: () async {
-                  await _refresh();
-                },
-                child: ListView(
-                  physics: const AlwaysScrollableScrollPhysics(),
-                  padding: const EdgeInsets.all(FiloSpacing.screen),
-                  children: [
-                    if (!online) const OfflineBanner(),
-                    if (_error != null || failed || sync.hasError) ...[
-                      Text(
-                        _error ?? 'Could not refresh your work. Saved content is shown when available.',
-                      ),
-                      TextButton(
-                        onPressed: online && !_busy
-                            ? () async {
-                                await _refresh();
-                              }
-                            : null,
-                        child: const Text('Refresh and retry'),
-                      ),
-                    ],
-                    if (_post == null)
-                      if (loading || sync.isLoading)
-                        const Center(child: FiloCircularProgressIndicator())
-                      else
-                        const Text(
-                          'No saved assignment on this device. Connect and refresh to load it.',
-                        )
-                    else ...[
-                      Text(
-                        _post!.title,
-                        style: Theme.of(context).textTheme.headlineMedium,
-                      ),
-                      Text('${_post!.points ?? 0} points'),
-                      Text(
-                        _post!.dueAt == null
-                            ? 'No due date'
-                            : 'Due ${_date(_post!.dueAt!)}',
-                      ),
-                      Align(
-                        alignment: Alignment.centerLeft,
-                        child: AssignmentStatusChip(status: status),
-                      ),
-                      const SizedBox(height: FiloSpacing.s16),
-                      SelectableText(_post!.body ?? ''),
-                      const SizedBox(height: FiloSpacing.s16),
-                      if (attachments.isLoading)
-                        const FiloLinearProgressIndicator(),
-                      if (attachments.hasError)
+                    : null,
+                icon: const FiloIcon(FiloIcons.refresh),
+              ),
+            ],
+          ),
+          body:
+              (_unavailable ||
+                  (_seenPost &&
+                      _post == null &&
+                      posts.hasValue &&
+                      !posts.isLoading &&
+                      !posts.hasError))
+              ? const Center(child: Text('This item is no longer available.'))
+              : RefreshIndicator(
+                  onRefresh: () async {
+                    await _refresh();
+                  },
+                  child: ListView(
+                    physics: const AlwaysScrollableScrollPhysics(),
+                    padding: const EdgeInsets.all(FiloSpacing.screen),
+                    children: [
+                      if (!online) const OfflineBanner(),
+                      if (_error != null || failed || sync.hasError) ...[
+                        Text(
+                          _error ?? 'Could not refresh your work. Saved content is shown when available.',
+                        ),
                         TextButton(
-                          onPressed: () => ref.invalidate(
-                            postAttachmentsProvider(widget.postId),
-                          ),
-                          child: const Text(
-                            'Could not load attachments. Retry',
+                          onPressed: online && !_busy
+                              ? () async {
+                                  await _refresh();
+                                }
+                              : null,
+                          child: const Text('Refresh and retry'),
+                        ),
+                      ],
+                      if (_post == null)
+                        if (loading || sync.isLoading)
+                          const Center(child: FiloCircularProgressIndicator())
+                        else
+                          const Text(
+                            'No saved assignment on this device. Connect and refresh to load it.',
+                          )
+                      else ...[
+                        FiloPanel(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                _post!.title,
+                                style: Theme.of(context)
+                                    .textTheme
+                                    .headlineMedium,
+                              ),
+                              Text('${_post!.points ?? 0} points'),
+                              Text(
+                                _post!.dueAt == null
+                                    ? 'No due date'
+                                    : 'Due ${_date(_post!.dueAt!)}',
+                              ),
+                              Align(
+                                alignment: Alignment.centerLeft,
+                                child: AssignmentStatusChip(status: status),
+                              ),
+                            ],
                           ),
                         ),
-                      for (final a
-                          in attachments.asData?.value ??
-                              <CachePostAttachment>[])
-                        PostAttachmentTile(
-                          classId: id,
-                          postId: widget.postId,
-                          attachment: a,
-                          onUnavailable: () =>
-                              setState(() => _unavailable = true),
-                        ),
-                      const SizedBox(height: FiloSpacing.screen),
-                      if (_grade != null)
+                        const SizedBox(height: FiloSpacing.s16),
+                        FiloPanel(child: SelectableText(_post!.body ?? '')),
+                        const SizedBox(height: FiloSpacing.s16),
+                        if (attachments.isLoading)
+                          const Center(
+                            child: SizedBox.square(
+                              dimension: 24,
+                              child: FiloCircularProgressIndicator(
+                                semanticsLabel: 'Loading attachments',
+                              ),
+                            ),
+                          ),
+                        if (attachments.hasError)
+                          TextButton(
+                            onPressed: () => ref.invalidate(
+                              postAttachmentsProvider(widget.postId),
+                            ),
+                            child: const Text(
+                              'Could not load attachments. Retry',
+                            ),
+                          ),
+                        for (final a
+                            in attachments.asData?.value ??
+                                <CachePostAttachment>[])
+                          PostAttachmentTile(
+                            classId: id,
+                            postId: widget.postId,
+                            attachment: a,
+                            onUnavailable: () =>
+                                setState(() => _unavailable = true),
+                          ),
+                        const SizedBox(height: FiloSpacing.screen),
+                        if (_grade != null)
+                          Card(
+                            child: Padding(
+                              padding: const EdgeInsets.all(FiloSpacing.s20),
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    'Your grade',
+                                    style: Theme.of(context)
+                                        .textTheme
+                                        .titleLarge,
+                                  ),
+                                  Text(
+                                    _grade!.score == null
+                                        ? 'Score unavailable'
+                                        : '${_grade!.score}/${_post!.points ?? 0}',
+                                  ),
+                                  if (_grade!.feedback?.isNotEmpty == true)
+                                    SelectableText(_grade!.feedback!),
+                                ],
+                              ),
+                            ),
+                          ),
                         Card(
+                          color: Theme.of(context).colorScheme.surfaceContainer,
                           child: Padding(
                             padding: const EdgeInsets.all(FiloSpacing.s20),
                             child: Column(
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
                                 Text(
-                                  'Your grade',
+                                  'Your work',
                                   style: Theme.of(context).textTheme.titleLarge,
                                 ),
-                                Text(
-                                  _grade!.score == null
-                                      ? 'Score unavailable'
-                                      : '${_grade!.score}/${_post!.points ?? 0}',
-                                ),
-                                if (_grade!.feedback?.isNotEmpty == true)
-                                  SelectableText(_grade!.feedback!),
+                                if (loading)
+                                  const Center(
+                                    child: SizedBox.square(
+                                      dimension: 24,
+                                      child: FiloCircularProgressIndicator(
+                                        semanticsLabel: 'Loading your work',
+                                      ),
+                                    ),
+                                  ),
+                                if (_turnedIn &&
+                                    _submission?.submittedAt != null &&
+                                    _grade == null)
+                                  Center(
+                                    child:
+                                        _celebratedSubmission ==
+                                            '${_submission!.id}:${_submission!.submittedAt!.microsecondsSinceEpoch}'
+                                        ? FiloSuccessMoment(
+                                            key: ValueKey(
+                                              _celebratedSubmission,
+                                            ),
+                                          )
+                                        : const Mascot(
+                                            pose: 'cheerful_note',
+                                            size: 96,
+                                          ),
+                                  ),
+                                if (_turnedIn &&
+                                    _submission?.submittedAt != null)
+                                  Text(
+                                    'Turned in ${_date(_submission!.submittedAt!)}',
+                                  ),
+                                for (final item in _items)
+                                  ListTile(
+                                    contentPadding: EdgeInsets.zero,
+                                    leading: FiloIcon(
+                                      item.kind == 'text'
+                                          ? FiloIcons.notes
+                                          : item.kind == 'link'
+                                          ? FiloIcons.link
+                                          : FiloIcons.file,
+                                    ),
+                                    title: Text(
+                                      item.name ??
+                                          (item.kind == 'text'
+                                              ? 'Text entry'
+                                              : item.url ?? 'File'),
+                                    ),
+                                    subtitle: item.kind == 'text'
+                                        ? Text(
+                                            item.textContent ?? '',
+                                            maxLines: 3,
+                                            overflow: TextOverflow.ellipsis,
+                                          )
+                                        : null,
+                                    onTap: () => _openItem(item),
+                                    trailing: _opening.contains(item.id)
+                                        ? const FiloCircularProgressIndicator()
+                                        : editable
+                                        ? PopupMenuButton<String>(
+                                            tooltip: 'Attachment options',
+                                            enabled: canWrite,
+                                            onSelected: (value) {
+                                              if (value == 'edit') {
+                                                _text(item);
+                                              } else {
+                                                _deleteItem(item);
+                                              }
+                                            },
+                                            itemBuilder: (_) => [
+                                              if (item.kind == 'text')
+                                                const PopupMenuItem(
+                                                  value: 'edit',
+                                                  child: Text('Edit'),
+                                                ),
+                                              const PopupMenuItem(
+                                                value: 'delete',
+                                                child: Text('Delete'),
+                                              ),
+                                            ],
+                                          )
+                                        : null,
+                                  ),
+                                for (final file in _pending)
+                                  Column(
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.start,
+                                    children: [
+                                      Text(file.name),
+                                      if (file.uploading)
+                                        FiloLinearProgressIndicator(
+                                          value: file.progress,
+                                        ),
+                                      if (file.error != null) Text(file.error!),
+                                      if (!file.uploading)
+                                        Wrap(
+                                          spacing: 8,
+                                          children: [
+                                            TextButton(
+                                              onPressed: canWrite
+                                                  ? () => _upload(file)
+                                                  : null,
+                                              child: const Text('Retry'),
+                                            ),
+                                            TextButton(
+                                              onPressed: !_busy
+                                                  ? () => _discard(file)
+                                                  : null,
+                                              child: const Text('Delete'),
+                                            ),
+                                          ],
+                                        ),
+                                    ],
+                                  ),
+                                if (_draftLink != null) ...[
+                                  Text('Unsaved link: $_draftLink'),
+                                  Wrap(
+                                    children: [
+                                      TextButton(
+                                        onPressed: canWrite ? _retryLink : null,
+                                        child: const Text('Retry'),
+                                      ),
+                                      TextButton(
+                                        onPressed: !_busy ? _addLink : null,
+                                        child: const Text('Edit'),
+                                      ),
+                                      TextButton(
+                                        onPressed: !_busy
+                                            ? () => setState(
+                                                () => _draftLink = null,
+                                              )
+                                            : null,
+                                        child: const Text('Delete'),
+                                      ),
+                                    ],
+                                  ),
+                                ],
+                                if (_draftText != null) ...[
+                                  const Text('Unsaved text'),
+                                  Text(
+                                    _draftText!,
+                                    maxLines: 3,
+                                    overflow: TextOverflow.ellipsis,
+                                  ),
+                                  Wrap(
+                                    children: [
+                                      TextButton(
+                                        onPressed: canWrite ? _retryText : null,
+                                        child: const Text('Retry'),
+                                      ),
+                                      TextButton(
+                                        onPressed: !_busy
+                                            ? () => _text(textItem)
+                                            : null,
+                                        child: const Text('Edit'),
+                                      ),
+                                      TextButton(
+                                        onPressed: !_busy
+                                            ? () => setState(() {
+                                                _draftText = null;
+                                                _draftTextItemId = null;
+                                              })
+                                            : null,
+                                        child: const Text('Delete'),
+                                      ),
+                                    ],
+                                  ),
+                                ],
+                                if (confirmed &&
+                                    !loading &&
+                                    _items.isEmpty &&
+                                    _pending.isEmpty &&
+                                    _draftLink == null &&
+                                    _draftText == null)
+                                  const Text(
+                                    'Add a file, link, or text to get started.',
+                                  ),
+                                if (!_turnedIn && _fileRestriction != null)
+                                  Padding(
+                                    padding: const EdgeInsets.symmetric(
+                                      vertical: FiloSpacing.s8,
+                                    ),
+                                    child: Text(_fileRestriction!),
+                                  ),
+                                if (editable) ...[
+                                  if (!online)
+                                    const Text(
+                                      'Connect to the internet to add work.',
+                                    ),
+                                  if (_items
+                                          .where((i) => i.kind == 'link')
+                                          .length >=
+                                      5)
+                                    const Text(
+                                      'You can add up to 5 links. Remove a link before adding another.',
+                                    ),
+                                  if (_post!.allowFiles &&
+                                      _items
+                                                  .where(
+                                                    (i) => i.kind == 'file',
+                                                  )
+                                                  .length +
+                                              _pending.length >=
+                                          _post!.maxFiles)
+                                    Text(
+                                      _post!.maxFiles == 1
+                                          ? 'You can add only 1 file to this assignment. Remove it before adding another.'
+                                          : 'You can add up to ${_post!.maxFiles} files to this assignment. Remove a file before adding another.',
+                                    ),
+                                  Wrap(
+                                    spacing: 8,
+                                    children: [
+                                      if (_post!.allowFiles)
+                                        TextButton.icon(
+                                          onPressed: canWrite
+                                              ? _pickFile
+                                              : null,
+                                          icon: const FiloIcon(
+                                            FiloIcons.attachment,
+                                          ),
+                                          label: const Text('Add file'),
+                                        ),
+                                      TextButton.icon(
+                                        onPressed:
+                                            canWrite &&
+                                                _items
+                                                        .where(
+                                                          (i) =>
+                                                              i.kind == 'link',
+                                                        )
+                                                        .length <
+                                                    5
+                                            ? _addLink
+                                            : null,
+                                        icon: const FiloIcon(FiloIcons.link),
+                                        label: const Text('Add link'),
+                                      ),
+                                      TextButton.icon(
+                                        onPressed: canWrite
+                                            ? () => _text(textItem)
+                                            : null,
+                                        icon: const FiloIcon(FiloIcons.notes),
+                                        label: Text(
+                                          textItem == null
+                                              ? 'Add text'
+                                              : 'Edit text',
+                                        ),
+                                      ),
+                                      if (_post!.allowFiles)
+                                        TextButton.icon(
+                                          onPressed: canWrite
+                                              ? () => _photo(ImageSource.camera)
+                                              : null,
+                                          icon: const FiloIcon(
+                                            FiloIcons.camera,
+                                          ),
+                                          label: const Text('Take photo'),
+                                        ),
+                                      if (_post!.allowFiles)
+                                        TextButton.icon(
+                                          onPressed: canWrite
+                                              ? () =>
+                                                    _photo(ImageSource.gallery)
+                                              : null,
+                                          icon: const FiloIcon(
+                                            FiloIcons.images,
+                                          ),
+                                          label: const Text('Choose photo'),
+                                        ),
+                                    ],
+                                  ),
+                                  if (!_post!.allowFiles)
+                                    const Text(
+                                      'File uploads are turned off for this assignment. Add a link or text instead.',
+                                    ),
+                                  TextField(
+                                    controller: _comment,
+                                    enabled: !_busy,
+                                    minLines: 2,
+                                    maxLines: 5,
+                                    maxLength: 1000,
+                                    decoration: const InputDecoration(
+                                      labelText: 'Private comment',
+                                      hintText:
+                                          'Optional note to your instructor',
+                                    ),
+                                    onChanged: (_) =>
+                                        setState(() => _commentDirty = true),
+                                  ),
+                                  TextButton(
+                                    onPressed: canWrite && _commentDirty
+                                        ? () => _perform(() async {
+                                            final repository = await ref.read(
+                                              submissionWorkRepositoryProvider
+                                                  .future,
+                                            );
+                                            await repository!.saveComment(
+                                              widget.postId,
+                                              _comment.text.trim(),
+                                            );
+                                            _commentDirty = false;
+                                          })
+                                        : null,
+                                    child: const Text('Save comment'),
+                                  ),
+                                ] else if (_submission
+                                        ?.privateComment
+                                        ?.isNotEmpty ==
+                                    true)
+                                  Text(
+                                    'Private comment: ${_submission!.privateComment}',
+                                  ),
                               ],
                             ),
                           ),
                         ),
-                      Card(
-                        color: Theme.of(context).colorScheme.surfaceContainer,
-                        child: Padding(
-                          padding: const EdgeInsets.all(FiloSpacing.s20),
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(
-                                'Your work',
-                                style: Theme.of(context).textTheme.titleLarge,
-                              ),
-                              if (loading) const FiloLinearProgressIndicator(),
-                              if (_turnedIn &&
-                                  _submission?.submittedAt != null &&
-                                  _grade == null)
-                                Center(
-                                  child:
-                                      _celebratedSubmission ==
-                                          '${_submission!.id}:${_submission!.submittedAt!.microsecondsSinceEpoch}'
-                                      ? FiloSuccessMoment(
-                                          key: ValueKey(_celebratedSubmission),
-                                        )
-                                      : const Mascot(
-                                          pose: 'cheerful_note',
-                                          size: 96,
-                                        ),
-                                ),
-                              if (_turnedIn && _submission?.submittedAt != null)
-                                Text(
-                                  'Turned in ${_date(_submission!.submittedAt!)}',
-                                ),
-                              for (final item in _items)
-                                ListTile(
-                                  contentPadding: EdgeInsets.zero,
-                                  leading: FiloIcon(
-                                    item.kind == 'text'
-                                        ? FiloIcons.notes
-                                        : item.kind == 'link'
-                                        ? FiloIcons.link
-                                        : FiloIcons.file,
-                                  ),
-                                  title: Text(
-                                    item.name ??
-                                        (item.kind == 'text'
-                                            ? 'Text entry'
-                                            : item.url ?? 'File'),
-                                  ),
-                                  subtitle: item.kind == 'text'
-                                      ? Text(
-                                          item.textContent ?? '',
-                                          maxLines: 3,
-                                          overflow: TextOverflow.ellipsis,
-                                        )
-                                      : null,
-                                  onTap: () => _openItem(item),
-                                  trailing: _opening.contains(item.id)
-                                      ? const FiloCircularProgressIndicator()
-                                      : editable
-                                      ? PopupMenuButton<String>(
-                                          tooltip: 'Attachment options',
-                                          enabled: canWrite,
-                                          onSelected: (value) {
-                                            if (value == 'edit') {
-                                              _text(item);
-                                            } else {
-                                              _deleteItem(item);
-                                            }
-                                          },
-                                          itemBuilder: (_) => [
-                                            if (item.kind == 'text')
-                                              const PopupMenuItem(
-                                                value: 'edit',
-                                                child: Text('Edit'),
-                                              ),
-                                            const PopupMenuItem(
-                                              value: 'delete',
-                                              child: Text('Delete'),
-                                            ),
-                                          ],
-                                        )
-                                      : null,
-                                ),
-                              for (final file in _pending)
-                                Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    Text(file.name),
-                                    if (file.uploading)
-                                      FiloLinearProgressIndicator(
-                                        value: file.progress,
-                                      ),
-                                    if (file.error != null) Text(file.error!),
-                                    if (!file.uploading)
-                                      Wrap(
-                                        spacing: 8,
-                                        children: [
-                                          TextButton(
-                                            onPressed: canWrite
-                                                ? () => _upload(file)
-                                                : null,
-                                            child: const Text('Retry'),
-                                          ),
-                                          TextButton(
-                                            onPressed: !_busy
-                                                ? () => _discard(file)
-                                                : null,
-                                            child: const Text('Delete'),
-                                          ),
-                                        ],
-                                      ),
-                                  ],
-                                ),
-                              if (_draftLink != null) ...[
-                                Text('Unsaved link: $_draftLink'),
-                                Wrap(
-                                  children: [
-                                    TextButton(
-                                      onPressed: canWrite ? _retryLink : null,
-                                      child: const Text('Retry'),
-                                    ),
-                                    TextButton(
-                                      onPressed: !_busy ? _addLink : null,
-                                      child: const Text('Edit'),
-                                    ),
-                                    TextButton(
-                                      onPressed: !_busy
-                                          ? () => setState(
-                                              () => _draftLink = null,
-                                            )
-                                          : null,
-                                      child: const Text('Delete'),
-                                    ),
-                                  ],
-                                ),
-                              ],
-                              if (_draftText != null) ...[
-                                const Text('Unsaved text'),
-                                Text(
-                                  _draftText!,
-                                  maxLines: 3,
-                                  overflow: TextOverflow.ellipsis,
-                                ),
-                                Wrap(
-                                  children: [
-                                    TextButton(
-                                      onPressed: canWrite ? _retryText : null,
-                                      child: const Text('Retry'),
-                                    ),
-                                    TextButton(
-                                      onPressed: !_busy
-                                          ? () => _text(textItem)
-                                          : null,
-                                      child: const Text('Edit'),
-                                    ),
-                                    TextButton(
-                                      onPressed: !_busy
-                                          ? () => setState(() {
-                                              _draftText = null;
-                                              _draftTextItemId = null;
-                                            })
-                                          : null,
-                                      child: const Text('Delete'),
-                                    ),
-                                  ],
-                                ),
-                              ],
-                              if (confirmed &&
-                                  !loading &&
-                                  _items.isEmpty &&
-                                  _pending.isEmpty &&
-                                  _draftLink == null &&
-                                  _draftText == null)
-                                const Text(
-                                  'Add a file, link, or text to get started.',
-                                ),
-                              if (!_turnedIn && _fileRestriction != null)
-                                Padding(
-                                  padding: const EdgeInsets.symmetric(
-                                    vertical: FiloSpacing.s8,
-                                  ),
-                                  child: Text(_fileRestriction!),
-                                ),
-                              if (editable) ...[
-                                if (!online)
-                                  const Text(
-                                    'Connect to the internet to add work.',
-                                  ),
-                                if (_items
-                                        .where((i) => i.kind == 'link')
-                                        .length >=
-                                    5)
-                                  const Text(
-                                    'You can add up to 5 links. Remove a link before adding another.',
-                                  ),
-                                if (_post!.allowFiles &&
-                                    _items
-                                                .where((i) => i.kind == 'file')
-                                                .length +
-                                            _pending.length >=
-                                        _post!.maxFiles)
-                                  Text(
-                                    _post!.maxFiles == 1
-                                        ? 'You can add only 1 file to this assignment. Remove it before adding another.'
-                                        : 'You can add up to ${_post!.maxFiles} files to this assignment. Remove a file before adding another.',
-                                  ),
-                                Wrap(
-                                  spacing: 8,
-                                  children: [
-                                    if (_post!.allowFiles)
-                                      TextButton.icon(
-                                        onPressed: canWrite ? _pickFile : null,
-                                        icon: const FiloIcon(
-                                          FiloIcons.attachment,
-                                        ),
-                                        label: const Text('Add file'),
-                                      ),
-                                    TextButton.icon(
-                                      onPressed:
-                                          canWrite &&
-                                              _items
-                                                      .where(
-                                                        (i) => i.kind == 'link',
-                                                      )
-                                                      .length <
-                                                  5
-                                          ? _addLink
-                                          : null,
-                                      icon: const FiloIcon(FiloIcons.link),
-                                      label: const Text('Add link'),
-                                    ),
-                                    TextButton.icon(
-                                      onPressed: canWrite
-                                          ? () => _text(textItem)
-                                          : null,
-                                      icon: const FiloIcon(FiloIcons.notes),
-                                      label: Text(
-                                        textItem == null
-                                            ? 'Add text'
-                                            : 'Edit text',
-                                      ),
-                                    ),
-                                    if (_post!.allowFiles)
-                                      TextButton.icon(
-                                        onPressed: canWrite
-                                            ? () => _photo(ImageSource.camera)
-                                            : null,
-                                        icon: const FiloIcon(FiloIcons.camera),
-                                        label: const Text('Take photo'),
-                                      ),
-                                    if (_post!.allowFiles)
-                                      TextButton.icon(
-                                        onPressed: canWrite
-                                            ? () => _photo(ImageSource.gallery)
-                                            : null,
-                                        icon: const FiloIcon(FiloIcons.images),
-                                        label: const Text('Choose photo'),
-                                      ),
-                                  ],
-                                ),
-                                if (!_post!.allowFiles)
-                                  const Text(
-                                    'File uploads are turned off for this assignment. Add a link or text instead.',
-                                  ),
-                                TextField(
-                                  controller: _comment,
-                                  enabled: !_busy,
-                                  minLines: 2,
-                                  maxLines: 5,
-                                  maxLength: 1000,
-                                  decoration: const InputDecoration(
-                                    labelText: 'Private comment',
-                                    hintText:
-                                        'Optional note to your instructor',
-                                  ),
-                                  onChanged: (_) =>
-                                      setState(() => _commentDirty = true),
-                                ),
-                                TextButton(
-                                  onPressed: canWrite && _commentDirty
-                                      ? () => _perform(() async {
-                                          final repository = await ref.read(
-                                            submissionWorkRepositoryProvider
-                                                .future,
-                                          );
-                                          await repository!.saveComment(
-                                            widget.postId,
-                                            _comment.text.trim(),
-                                          );
-                                          _commentDirty = false;
-                                        })
-                                      : null,
-                                  child: const Text('Save comment'),
-                                ),
-                              ] else if (_submission
-                                      ?.privateComment
-                                      ?.isNotEmpty ==
-                                  true)
-                                Text(
-                                  'Private comment: ${_submission!.privateComment}',
-                                ),
-                            ],
+                        if (room?.archived == true)
+                          const Text('This class is archived.'),
+                        if (_closed && !_turnedIn)
+                          Text(
+                            'Submissions closed on ${_date(_post!.dueAt!)}.',
                           ),
-                        ),
-                      ),
-                      if (room?.archived == true)
-                        const Text('This class is archived.'),
-                      if (_closed && !_turnedIn)
-                        Text('Submissions closed on ${_date(_post!.dueAt!)}.'),
-                      if (!online)
-                        Text(
-                          _turnedIn
-                              ? 'Connect to the internet to unsubmit your work.'
-                              : 'Connect to the internet to turn in your work.',
-                        ),
-                      if (_turnedIn && !unsubmitAllowed)
-                        Text(
-                          _grade != null
-                              ? 'Your grade has been returned. You can no longer unsubmit this work.'
-                              : 'The unsubmit window has passed. Your work is turned in and can no longer be changed.',
-                        ),
+                        if (!online)
+                          Text(
+                            _turnedIn
+                                ? 'Connect to the internet to unsubmit your work.'
+                                : 'Connect to the internet to turn in your work.',
+                          ),
+                        if (_turnedIn && !unsubmitAllowed)
+                          Text(
+                            _grade != null
+                                ? 'Your grade has been returned. You can no longer unsubmit this work.'
+                                : 'The unsubmit window has passed. Your work is turned in and can no longer be changed.',
+                          ),
+                      ],
                     ],
-                  ],
-                ),
-              ),
-        bottomNavigationBar: _post == null || _unavailable
-            ? null
-            : SafeArea(
-                child: Padding(
-                  padding: const EdgeInsets.fromLTRB(
-                    FiloSpacing.screen,
-                    FiloSpacing.s12,
-                    FiloSpacing.screen,
-                    FiloSpacing.s16,
                   ),
-                  child: _turnedIn
-                      ? unsubmitAllowed
-                            ? Semantics(
-                                liveRegion: false,
-                                label:
-                                    'Unsubmit. ${seconds ~/ 60} minutes and ${seconds % 60} seconds remaining.',
-                                child: FiloButton(
-                                  label:
-                                      'Unsubmit (${seconds ~/ 60}:${(seconds % 60).toString().padLeft(2, '0')})',
-                                  secondary: true,
-                                  onPressed:
-                                      online &&
-                                          confirmed &&
-                                          !loading &&
-                                          !failed &&
-                                          !_busy &&
-                                          !_reconcile &&
-                                          room != null &&
-                                          !room.archived
-                                      ? _unsubmit
-                                      : null,
-                                ),
-                              )
-                            : const SizedBox.shrink()
-                      : FiloButton(
-                          label: _busy ? 'Saving…' : 'Turn in',
-                          icon: FiloIcons.check,
-                          onPressed:
-                              canWrite &&
-                                  _fileRestriction == null &&
-                                  _items.isNotEmpty &&
-                                  _pending.isEmpty &&
-                                  _draftText == null &&
-                                  _draftLink == null
-                              ? _turnIn
-                              : null,
-                        ),
                 ),
-              ),
+          bottomNavigationBar: _post == null || _unavailable
+              ? null
+              : SafeArea(
+                  child: Padding(
+                    padding: const EdgeInsets.fromLTRB(
+                      FiloSpacing.screen,
+                      FiloSpacing.s12,
+                      FiloSpacing.screen,
+                      FiloSpacing.s16,
+                    ),
+                    child: _turnedIn
+                        ? unsubmitAllowed
+                              ? Semantics(
+                                  liveRegion: false,
+                                  label:
+                                      'Unsubmit. ${seconds ~/ 60} minutes and ${seconds % 60} seconds remaining.',
+                                  child: FiloButton(
+                                    label:
+                                        'Unsubmit (${seconds ~/ 60}:${(seconds % 60).toString().padLeft(2, '0')})',
+                                    secondary: true,
+                                    onPressed:
+                                        online &&
+                                            confirmed &&
+                                            !loading &&
+                                            !failed &&
+                                            !_busy &&
+                                            !_reconcile &&
+                                            room != null &&
+                                            !room.archived
+                                        ? _unsubmit
+                                        : null,
+                                  ),
+                                )
+                              : const SizedBox.shrink()
+                        : FiloButton(
+                            label: _busy ? 'Saving…' : 'Turn in',
+                            icon: FiloIcons.check,
+                            onPressed:
+                                canWrite &&
+                                    _fileRestriction == null &&
+                                    _items.isNotEmpty &&
+                                    _pending.isEmpty &&
+                                    _draftText == null &&
+                                    _draftLink == null
+                                ? _turnIn
+                                : null,
+                          ),
+                  ),
+                ),
+        ),
       ),
     );
   }

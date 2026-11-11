@@ -2,18 +2,9 @@ import 'package:drift/drift.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../../../data/local/app_database.dart';
+import '../../../data/local/cache_row_json.dart';
 import '../../classes/data/class_repository.dart';
 import 'post_attachment_repository.dart';
-
-Map<String, dynamic> _cacheJson(Map<String, dynamic> row) => {
-  for (final entry in row.entries)
-    entry.key.replaceAllMapped(
-      RegExp(r'_([a-z])'),
-      (m) => m[1]!.toUpperCase(),
-    ): entry.key.endsWith('_at') && entry.value != null
-        ? DateTime.parse(entry.value as String).millisecondsSinceEpoch
-        : entry.value,
-};
 
 class PostRepository {
   PostRepository(this.classes, this.client, this.attachments);
@@ -133,7 +124,7 @@ class PostRepository {
           await db
               .into(db.cachePosts)
               .insertOnConflictUpdate(
-                CachePost.fromJson(_cacheJson(row)).toCompanion(false),
+                CachePost.fromJson(cacheRowJson(row)).toCompanion(false),
               );
         }
       }
@@ -152,7 +143,7 @@ class PostRepository {
           await db
               .into(db.cachePostAttachments)
               .insertOnConflictUpdate(
-                CachePostAttachment.fromJson(_cacheJson(row))
+                CachePostAttachment.fromJson(cacheRowJson(row))
                     .toCompanion(false),
               );
         }

@@ -18,7 +18,7 @@ Future<void> showStudySourcePicker(BuildContext context, String notebookId) =>
       title: 'Add up to 3 files',
       scrollBody: false,
       builder: (_) => Consumer(
-        builder: (_, ref, __) => studyAsync(
+        builder: (_, ref, _) => studyAsync(
           ref.watch(accountDatabaseProvider),
           (db) => db == null
               ? const Text('Sign in again to access your files.')
@@ -89,21 +89,25 @@ class _StudySourcePickerState extends ConsumerState<StudySourcePicker> {
         } on LessonReadException catch (error) {
           if (mounted) setState(() => _status[file.id] = error.message);
         } on StudyLimitExceeded {
-          if (mounted)
+          if (mounted) {
             setState(() => _status[file.id] = studySourceLimitMessage);
+          }
         } catch (_) {
-          if (mounted)
+          if (mounted) {
             setState(
               () => _status[file.id] =
                   'This file could not be read. Try adding it again.',
             );
+          }
         }
       }
-      if (mounted)
+      if (mounted) {
         ref.invalidate(studyMissingSourcesProvider(widget.notebookId));
+      }
     } catch (_) {
-      if (mounted)
+      if (mounted) {
         showMessage(context, 'Could not read saved files. Try again.');
+      }
     } finally {
       if (mounted) setState(() => _reading = false);
     }
@@ -207,7 +211,7 @@ class _StudySourcePickerState extends ConsumerState<StudySourcePicker> {
   }
 
   Widget _list(List<LocalFileRecord> files, List<StudySource> sources) {
-    if (files.isEmpty)
+    if (files.isEmpty) {
       return const Center(
         child: Padding(
           padding: EdgeInsets.all(FiloSpacing.screen),
@@ -218,6 +222,7 @@ class _StudySourcePickerState extends ConsumerState<StudySourcePicker> {
           ),
         ),
       );
+    }
     return ListView.builder(
       itemCount: files.length,
       itemBuilder: (_, index) {

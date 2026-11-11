@@ -56,8 +56,9 @@ class _NotificationSettingsScreenState
     try {
       await ref.read(notificationPermissionProvider).openSettings();
     } catch (_) {
-      if (mounted)
+      if (mounted) {
         showMessage(context, 'Could not open phone settings. Try again.');
+      }
     } finally {
       if (mounted) {
         setState(() => _opening = false);
@@ -74,7 +75,7 @@ class _NotificationSettingsScreenState
 
   @override
   Widget build(BuildContext context) {
-    if (widget.focusPhoneSetup && !_phoneFocused)
+    if (widget.focusPhoneSetup && !_phoneFocused) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
         if (mounted && _phoneSetup.currentContext != null) {
           _phoneFocused = true;
@@ -85,6 +86,7 @@ class _NotificationSettingsScreenState
           );
         }
       });
+    }
     final access = ref.watch(notificationAccessProvider);
     ref.listen(notificationAccessProvider, (_, next) {
       if (next.asData?.value == true) {
@@ -185,8 +187,9 @@ class _DeadlineReminderSetupState extends ConsumerState<DeadlineReminderSetup> {
       ref.invalidate(deadlineSessionProvider);
       await (await ref.read(deadlineSessionProvider.future))?.reconcile();
     } catch (_) {
-      if (mounted)
+      if (mounted) {
         showMessage(context, 'Could not update deadline reminders. Retry.');
+      }
     } finally {
       if (mounted) {
         ref.invalidate(deadlineStatusProvider);
@@ -280,8 +283,9 @@ class _NotificationPreferenceControlsState
     Set<String> types,
   ) async {
     if (_saving.containsKey(key) ||
-        ref.read(connectivityProvider).asData?.value != true)
+        ref.read(connectivityProvider).asData?.value != true) {
       return;
+    }
     final repo = ref.read(notificationSettingsRepositoryProvider).asData?.value;
     if (repo == null || !repo.isCurrent()) return;
     setState(() {
@@ -305,8 +309,9 @@ class _NotificationPreferenceControlsState
     }
     setState(() {
       _saving.remove(key);
-      if (failed.isNotEmpty)
+      if (failed.isNotEmpty) {
         _failures[key] = _PreferenceRetry(classId, enabled, failed);
+      }
     });
   }
 
@@ -363,8 +368,9 @@ class _NotificationPreferenceControlsState
       if (_focused ||
           widget.initialClassId == null ||
           rooms == null ||
-          saved == null)
+          saved == null) {
         return;
+      }
       if (!rooms.any((room) => room.id == widget.initialClassId)) return;
       WidgetsBinding.instance.addPostFrameCallback((_) {
         if (!mounted || _focusedClass.currentContext == null) return;
@@ -418,10 +424,6 @@ class _NotificationPreferenceControlsState
             child: Text(
               'You’re offline. Showing saved preferences. Connect to change them.',
             ),
-          ),
-        if (refreshing.isLoading && online)
-          const FiloLinearProgressIndicator(
-            semanticsLabel: 'Refreshing notification preferences',
           ),
         if (refreshing.hasError)
           retryLoad(

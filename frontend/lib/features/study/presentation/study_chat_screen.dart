@@ -102,17 +102,20 @@ class _ChatBodyState extends ConsumerState<_ChatBody> {
         _session.messages.isNotEmpty && _session.messages.last.role == 'user';
     _lastCount = _session.messages.length;
     _hadPending = _session.pendingAnswer != null;
-    if (_input.text != _session.draft)
+    if (_input.text != _session.draft) {
       _input.value = TextEditingValue(
         text: _session.draft,
         selection: TextSelection.collapsed(offset: _session.draft.length),
       );
+    }
     setState(() {});
-    if (added && (nearEnd || ownMessage))
+    if (added && (nearEnd || ownMessage)) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
-        if (mounted && _scroll.hasClients)
+        if (mounted && _scroll.hasClients) {
           _scroll.jumpTo(_scroll.position.maxScrollExtent);
+        }
       });
+    }
   }
 
   @override
@@ -139,8 +142,9 @@ class _ChatBodyState extends ConsumerState<_ChatBody> {
     if (_authorizing || _session.working) return;
     setState(() => _authorizing = true);
     try {
-      if (await ensureStudyPrivacy(context, ref) && mounted)
+      if (await ensureStudyPrivacy(context, ref) && mounted) {
         await _session.send();
+      }
     } finally {
       if (mounted) setState(() => _authorizing = false);
     }
@@ -181,13 +185,15 @@ class _ChatBodyState extends ConsumerState<_ChatBody> {
     if (!mounted || !confirmed) return;
     try {
       if (ref.read(accountDatabaseProvider).asData?.value !=
-          widget.repository.db)
+          widget.repository.db) {
         return;
+      }
       await widget.repository.delete(id);
       if (mounted) await _session.open();
     } catch (_) {
-      if (mounted)
+      if (mounted) {
         showMessage(context, 'Could not delete this chat. Try again.');
+      }
     }
   }
 
@@ -276,10 +282,11 @@ class _ChatBodyState extends ConsumerState<_ChatBody> {
         ),
         body: SafeArea(
           child: studyAsync(ref.watch(studyNotebooksProvider), (notebooks) {
-            if (!notebooks.any((n) => n.id == widget.notebookId))
+            if (!notebooks.any((n) => n.id == widget.notebookId)) {
               return const Center(
                 child: Text('This notebook is no longer available.'),
               );
+            }
             return LayoutBuilder(
               builder: (context, constraints) => Column(
                 children: [
@@ -330,7 +337,7 @@ class _ChatBodyState extends ConsumerState<_ChatBody> {
                                 );
                               }
                               if (_session.working &&
-                                  _session.pendingAnswer == null)
+                                  _session.pendingAnswer == null) {
                                 return Column(
                                   children: [
                                     const Mascot(pose: 'thinking', size: 96),
@@ -363,6 +370,7 @@ class _ChatBodyState extends ConsumerState<_ChatBody> {
                                     ),
                                   ],
                                 );
+                              }
                               return _session.messages.isEmpty &&
                                       _session.pendingAnswer == null
                                   ? Padding(

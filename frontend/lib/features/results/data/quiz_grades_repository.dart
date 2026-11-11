@@ -25,8 +25,9 @@ class QuizGradesRepository {
           .timeout(const Duration(seconds: 20));
       if (room == null ||
           room['deleted_at'] != null ||
-          instructor && room['owner_id'] != cache.userId)
+          instructor && room['owner_id'] != cache.userId) {
         throw resultsUnavailable;
+      }
       if (!instructor) {
         final membership = await remote.client
             .from('class_members')
@@ -46,21 +47,34 @@ class QuizGradesRepository {
         resolved.addAll(quizzes);
       } else {
         final student = StudentResultsRepository(cache, remote, () => true);
-        for (final quiz in quizzes) {
-          final data = await student.refresh(quiz['id'] as String);
-          resolved.add(data.quiz);
-          final session = data.session;
-          if (session != null)
-            attempts.add({
-              ...session.json,
-              'id': session.id,
-              'quiz_id': quiz['id'],
-              'student_id': cache.userId,
-              'total_score': data.result?.score,
-              'grading_complete': data.result != null,
-              'passed': data.result?.passed,
-              'percent': data.result?.percent,
-            });
+        for (var start = 0; start < quizzes.length; start += 3) {
+          // Await every flight before failure eviction; no late cache writes after eviction.
+          final batch = await Future.wait(
+            quizzes
+                .skip(start)
+                .take(3)
+                .map(
+                  (quiz) =>
+                      student.refresh(quiz['id'] as String, knownQuiz: quiz),
+                ),
+            eagerError: false,
+          );
+          for (final data in batch) {
+            resolved.add(data.quiz);
+            final session = data.session;
+            if (session != null) {
+              attempts.add({
+                ...session.json,
+                'id': session.id,
+                'quiz_id': data.quiz['id'],
+                'student_id': cache.userId,
+                'total_score': data.result?.score,
+                'grading_complete': data.result != null,
+                'passed': data.result?.passed,
+                'percent': data.result?.percent,
+              });
+            }
+          }
         }
       }
       await cache.authorize(classId, instructor: instructor);

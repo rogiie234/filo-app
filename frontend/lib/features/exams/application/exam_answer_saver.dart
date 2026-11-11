@@ -49,8 +49,9 @@ class ExamAnswerSaver {
   bool get _current => !_disposed && isCurrent();
 
   Future<void> change(ExamAnswer answer) async {
-    if (!_current || !clock.canEdit || _blocked)
+    if (!_current || !clock.canEdit || _blocked) {
       throw const ExamFailure('This attempt is no longer accepting answers.');
+    }
     final id = answer.questionId;
     final version = (_editVersions[id] ?? 0) + 1;
     _editVersions[id] = version;
@@ -99,8 +100,9 @@ class ExamAnswerSaver {
       _dirty = true;
     }
     if (_running != null) return _running!;
-    if (!_current || _blocked || _paused || !online() || !clock.canSend)
+    if (!_current || _blocked || _paused || !online() || !clock.canSend) {
       return Future.value();
+    }
     final work = _flush();
     _running = work;
     onChanged();
@@ -123,8 +125,9 @@ class ExamAnswerSaver {
         final pending = <StoredAnswer>[];
         for (final answer in snapshot) {
           final id = answer.answer.questionId;
-          if (_debouncing.contains(id) || _invalidQuestions.containsKey(id))
+          if (_debouncing.contains(id) || _invalidQuestions.containsKey(id)) {
             continue;
+          }
           if ((answer.answer.text?.runes.length ?? 0) > 10000) {
             _invalidQuestions[id] = const ExamFailure(
               'Keep your answer within 10,000 characters.',
@@ -172,8 +175,9 @@ class ExamAnswerSaver {
           if (!failure.retryable && !failure.reconcile) {
             for (final answer in pending) {
               final id = answer.answer.questionId;
-              if (_editVersions[id] == versions[id])
+              if (_editVersions[id] == versions[id]) {
                 _invalidQuestions[id] = failure;
+              }
             }
           }
           return;
@@ -191,14 +195,15 @@ class ExamAnswerSaver {
       final seconds = _failures < 3 ? 1 << _failures++ : 8;
       final generation = ++_generation;
       _schedule(Duration(seconds: seconds), () {
-        if (_current && generation == _generation)
+        if (_current && generation == _generation) {
           unawaited(flush(drainText: false));
+        }
       });
     } else if (failure.reconcile) {
       _blocked = true;
       // Reconcile after this flight exits, so refreshing cannot await itself.
       _schedule(Duration.zero, () {
-        if (_current)
+        if (_current) {
           unawaited(
             onReconcile().catchError((Object e) {
               if (_current) {
@@ -207,6 +212,7 @@ class ExamAnswerSaver {
               }
             }),
           );
+        }
       });
     }
   }

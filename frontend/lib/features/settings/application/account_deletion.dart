@@ -37,8 +37,9 @@ final instructorDeletionEligibilityProvider = FutureProvider.autoDispose
     .family<InstructorDeletionEligibility, String>((ref, id) async {
       final session = ref.watch(deletionSessionProvider);
       final online = ref.watch(connectivityProvider).asData?.value == true;
-      if (session?.userId != id || !online)
+      if (session?.userId != id || !online) {
         throw StateError('Eligibility unavailable');
+      }
       return ref
           .watch(accountDeletionRepositoryProvider)
           .eligibility(
@@ -50,35 +51,44 @@ final instructorDeletionEligibilityProvider = FutureProvider.autoDispose
 final accountDeletionCleanupProvider = Provider(
   (ref) => AccountDeletionCleanup(ref.watch(userDatabaseManagerProvider)),
 );
+
+class DeletionCleanupFailure implements Exception {
+  const DeletionCleanupFailure(this.step);
+  final String step;
+}
+
 final deletionSessionCleanupProvider = Provider<Future<void> Function(String)>(
   (ref) => (id) async {
     final client = ref.read(supabaseClientProvider);
-    Object? failure;
+    DeletionCleanupFailure? failure;
     try {
       await stopBackgroundSyncForAccount(id);
-    } catch (error) {
-      failure = error;
+    } catch (_) {
+      failure = const DeletionCleanupFailure('Stopping background work');
     }
     try {
       await const DeadlineBridge().clearAccount(id);
-    } catch (error) {
-      failure ??= error;
+    } catch (_) {
+      failure ??= const DeletionCleanupFailure('Clearing reminders');
     }
     try {
       ref.read(pushEventsProvider).clearAccount(id);
       await ref.read(confirmedProfileProvider.notifier).clearAccount(id);
       ref.invalidate(cachedAccountProfileProvider(id));
       ref.invalidate(accountProfileProvider(id));
-    } catch (error) {
-      failure ??= error;
+    } catch (_) {
+      failure ??= const DeletionCleanupFailure('Clearing the saved profile');
     }
     try {
       await ref.read(pushRegistrationProvider).leaveForDeletion(id);
-    } catch (error) {
-      failure ??= error;
+    } catch (_) {
+      failure ??= const DeletionCleanupFailure(
+        'Clearing notifications and signing out',
+      );
     }
-    if (client.auth.currentUser?.id == id)
-      failure ??= StateError('Local session remains');
+    if (client.auth.currentUser?.id == id) {
+      failure ??= const DeletionCleanupFailure('Signing out');
+    }
     if (failure != null) throw failure;
     if (client.auth.currentUser != null) return;
     ref.invalidate(syncCoordinatorProvider);
@@ -148,8 +158,9 @@ class AccountDeletion extends Notifier<DeletionUi> {
 
   void refreshEligibility(String id) {
     if (state.busyUser != null) return;
-    if (state.errorUser == id)
+    if (state.errorUser == id) {
       state = DeletionUi(errorUser: id, instructor: state.instructor);
+    }
     ref.invalidate(instructorDeletionEligibilityProvider(id));
   }
 
@@ -159,8 +170,9 @@ class AccountDeletion extends Notifier<DeletionUi> {
     bool instructor = false,
   }) async {
     if (state.busyUser != null ||
-        ref.read(connectivityProvider).asData?.value != true)
+        ref.read(connectivityProvider).asData?.value != true) {
       return;
+    }
     final session = ref.read(deletionSessionProvider);
     final records = ref.read(deletionJournalProvider).asData?.value;
     if (records == null) return;
@@ -175,16 +187,18 @@ class AccountDeletion extends Notifier<DeletionUi> {
       );
       return;
     }
-    if (previous?.stage != DeletionStage.pending && confirmation != 'DELETE')
+    if (previous?.stage != DeletionStage.pending && confirmation != 'DELETE') {
       return;
+    }
     instructor = previous?.instructor ?? instructor;
     if (instructor && previous == null) {
       final eligibility = ref.read(instructorDeletionEligibilityProvider(id));
       if (eligibility.isLoading ||
           eligibility.hasError ||
           eligibility.asData?.value.count != 0 ||
-          (state.errorUser == id && state.ownedClassCount != null))
+          (state.errorUser == id && state.ownedClassCount != null)) {
         return;
+      }
     }
     final generation = _generation;
     bool current() =>
@@ -201,12 +215,14 @@ class AccountDeletion extends Notifier<DeletionUi> {
     );
     remember(id, confirmation);
     var recorded = previous != null;
+    var dispatched = false;
     state = DeletionUi(busyUser: id, instructor: instructor);
     try {
       await journal.put(id, record);
       recorded = true;
       await cleanup.block(id, true);
       if (!current()) return;
+      dispatched = true;
       final result = await ref
           .read(accountDeletionRepositoryProvider)
           .request();
@@ -237,7 +253,7 @@ class AccountDeletion extends Notifier<DeletionUi> {
               state = DeletionUi(
                 errorUser: id,
                 instructor: instructor,
-                message: "Couldn't delete your account. Try again.",
+                message: error.message,
               );
             }
           } else {
@@ -254,7 +270,18 @@ class AccountDeletion extends Notifier<DeletionUi> {
         }
       }
     } catch (_) {
-      if (current())
+      if (current()) {
+        // A local preparation failure cannot have sent a deletion request.
+        if (!dispatched && previous == null && recorded) {
+          try {
+            await cleanup.block(id, false);
+            await journal.put(id, null);
+            recorded = false;
+          } catch (_) {
+            // Preserve recovery protection if local rollback cannot finish.
+          }
+        }
+        if (!current()) return;
         state = DeletionUi(
           errorUser: id,
           instructor: instructor,
@@ -262,6 +289,7 @@ class AccountDeletion extends Notifier<DeletionUi> {
               ? "We couldn't confirm whether your account was deleted. Connect and check your account status before trying again."
               : "Couldn't delete your account. Try again.",
         );
+      }
     } finally {
       if (state.busyUser == id) state = const DeletionUi();
     }
@@ -270,26 +298,32 @@ class AccountDeletion extends Notifier<DeletionUi> {
   Future<void> removeLocal(String id) async {
     if (state.busyUser != null ||
         ref.read(deletionJournalProvider).asData?.value[id]?.stage !=
-            DeletionStage.cleanup)
+            DeletionStage.cleanup) {
       return;
+    }
     state = DeletionUi(busyUser: id);
     await _remove(id);
     if (state.busyUser == id) state = const DeletionUi();
   }
 
   Future<void> _remove(String id) async {
+    var step = 'Clearing notifications and signing out';
     try {
       await ref.read(deletionSessionCleanupProvider)(id);
+      step = 'Removing saved files and account data';
       await ref.read(accountDeletionCleanupProvider).remove(id);
+      step = 'Finishing account recovery';
       await ref.read(deletionJournalProvider.notifier).put(id, null);
       if (_draftUser == id) {
         _draftUser = null;
         _draft = '';
       }
-    } catch (_) {
+    } catch (error) {
+      final failedStep = error is DeletionCleanupFailure ? error.step : step;
       state = DeletionUi(
         errorUser: id,
-        message: "Your account was deleted, but Filo couldn't remove all local files from this device. Try removing them again.",
+        message:
+            "Your account was deleted, but Filo couldn't remove all local files from this device. Try removing them again.\n\n$failedStep didn't finish. Close and reopen Filo, then tap Remove local files again.",
       );
     }
   }

@@ -64,7 +64,9 @@ class UserDatabaseManager {
             FileSystemEntityType.directory ||
         !p.equals(
           p.normalize(await parent.resolveSymbolicLinks()),
-          p.normalize(parent.absolute.path),
+          p.normalize(
+            p.join(await support.resolveSymbolicLinks(), 'databases'),
+          ),
         )) {
       throw StateError('Unsafe database directory');
     }

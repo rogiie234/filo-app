@@ -20,22 +20,6 @@ class PostAttachmentRepository {
             ]))
           .watch();
 
-  Future<String> signedFileLink(String attachmentId) async {
-    // Re-read metadata under RLS rather than trusting a stale cached path.
-    final row = await client
-        .from('post_attachments')
-        .select()
-        .eq('id', attachmentId)
-        .isFilter('deleted_at', null)
-        .single();
-    if (row['kind'] != 'file' || row['storage_path'] == null) {
-      throw StateError('Attachment is not an available file');
-    }
-    return client.storage
-        .from('materials')
-        .createSignedUrl(row['storage_path'] as String, 3600);
-  }
-
   Future<List<ClassRow>> readChanges(String classId, DateTime? since) async {
     final rows = <ClassRow>[];
     String? after;

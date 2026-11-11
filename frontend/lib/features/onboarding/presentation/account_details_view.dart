@@ -191,7 +191,7 @@ class AccountDetailsView extends StatelessWidget {
             right: 0,
             // Keep decoration anchored while Scaffold resizes the form for typing.
             bottom: -MediaQuery.viewInsetsOf(context).bottom,
-            child: const EntryBackground(verification: true),
+            child: const EntryBackground(variation: 1, verification: true),
           ),
           SafeArea(
             child: Column(

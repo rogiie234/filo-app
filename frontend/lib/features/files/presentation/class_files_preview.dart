@@ -36,7 +36,7 @@ class _PreviewClassFilesState extends State<PreviewClassFiles> {
           const SizedBox(height: FiloSpacing.s8),
         ],
         Text(
-          'Good ideas, kept together.',
+          'Files shared in this class.',
           style: TextStyle(
             color: Theme.of(context).colorScheme.onSurfaceVariant,
           ),

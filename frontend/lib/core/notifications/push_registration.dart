@@ -116,15 +116,17 @@ class PushRegistration {
       if (!current()) return;
       if (token != null) await unregister(token);
     } catch (_) {
-      if (current())
+      if (current()) {
         onStatus?.call('Sign-out cleanup pending: unregister failed');
+      }
     }
     if (!current()) return;
     try {
       await deleteToken();
     } catch (_) {
-      if (current())
+      if (current()) {
         onStatus?.call('Sign-out cleanup pending: FCM invalidation failed');
+      }
     }
     if (!current()) return;
     _token = _registeredAccount = _registeredToken = null;
@@ -187,8 +189,9 @@ class PushRegistration {
         if (current()) rethrow;
       }
     }
-    if (tokenError != null && (current() || account() == null))
+    if (tokenError != null && (current() || account() == null)) {
       throw tokenError;
+    }
   }
 
   void dispose() {

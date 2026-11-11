@@ -61,10 +61,11 @@ class _SignInScreenState extends ConsumerState<SignInScreen> {
       await ref.read(openDateTimeSettingsProvider)();
     } catch (_) {
       _returningFromSettings = false;
-      if (mounted)
+      if (mounted) {
         setState(
           () => _failure = 'Open your phone\'s Settings, choose Date & time, and turn on automatic date and time.',
         );
+      }
     }
   }
 
@@ -85,11 +86,12 @@ class _SignInScreenState extends ConsumerState<SignInScreen> {
   }
 
   void _showFailure(String message) {
-    if (mounted)
+    if (mounted) {
       setState(() {
         _clockIncorrect = false;
         _failure = message;
       });
+    }
   }
 
   Widget _heading() {

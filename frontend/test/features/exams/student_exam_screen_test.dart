@@ -68,8 +68,9 @@ void main() {
     binding.defaultBinaryMessenger.setMockMethodCallHandler(
       SystemChannels.platform,
       (call) async {
-        if (call.method == 'HapticFeedback.vibrate')
+        if (call.method == 'HapticFeedback.vibrate') {
           haptics.add(call.arguments as String);
+        }
         return null;
       },
     );
@@ -203,8 +204,9 @@ void main() {
           .setMockDecodedMessageHandler<dynamic>(SystemChannels.accessibility, (
             message,
           ) async {
-            if (message['type'] == 'announce')
+            if (message['type'] == 'announce') {
               announcements.add(message['data']['message'] as String);
+            }
             return null;
           });
       addTearDown(

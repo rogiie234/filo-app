@@ -6,6 +6,37 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {
+  testWidgets('illustrated empty state does not require an inline action', (
+    tester,
+  ) async {
+    await tester.pumpWidget(
+      const MaterialApp(
+        home: Scaffold(
+          body: SingleChildScrollView(
+            child: ClassesEmptyState(
+              title: 'No classes yet.',
+              message: 'Create your first class to get started.',
+              illustrated: true,
+              bob: false,
+            ),
+          ),
+        ),
+      ),
+    );
+    expect(
+      find.byWidgetPredicate(
+        (widget) =>
+            widget is Image &&
+            widget.image is ResizeImage &&
+            ((widget.image as ResizeImage).imageProvider as AssetImage)
+                    .assetName ==
+                'assets/illustrations/classes-empty.png',
+      ),
+      findsOneWidget,
+    );
+    expect(find.byType(FiloButton), findsNothing);
+    expect(tester.takeException(), isNull);
+  });
   testWidgets(
     'instructor skeleton uses the compact banner and course-row layout',
     (tester) async {

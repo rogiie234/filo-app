@@ -129,32 +129,69 @@ class SupabaseExamRemote implements ExamRemote {
 
   @override
   Future<List<ExamJson>> quizzes() => _call(() async {
-    final memberships = await client
-        .from('class_members')
-        .select('class_id,classes!inner(id,archived_at,deleted_at)')
-        .eq('student_id', userId)
-        .eq('status', 'active')
-        .isFilter('classes.deleted_at', null);
-    final ids = memberships.map((row) => row['class_id'] as String).toList();
-    if (ids.isEmpty) return [];
-    final rows = await client
-        .from('quizzes')
-        .select()
-        .inFilter('class_id', ids)
-        .eq('status', 'published')
-        .isFilter('deleted_at', null)
-        .order('opens_at');
-    return rows
-        .map(
-          (row) => ExamJson.from(row)
-            ..['class_archived'] =
-                (memberships.firstWhere(
-                      (m) => m['class_id'] == row['class_id'],
-                    )['classes']
-                    as Map)['archived_at'] !=
-                null,
-        )
-        .toList();
+    final memberships = <ExamJson>[];
+    String? afterMember;
+    while (true) {
+      var query = client
+          .from('class_members')
+          .select('id,class_id,classes!inner(id,archived_at,deleted_at)')
+          .eq('student_id', userId)
+          .eq('status', 'active')
+          .isFilter('classes.deleted_at', null);
+      if (afterMember != null) query = query.gt('id', afterMember);
+      final page = await query
+          .order('id', ascending: true)
+          .limit(200)
+          .timeout(const Duration(seconds: 20));
+      if (page.isEmpty) break;
+      memberships.addAll(page);
+      afterMember = page.last['id'] as String;
+    }
+    final classes = {
+      for (final row in memberships)
+        row['class_id'] as String: row['classes'] as Map,
+    };
+    final ids = classes.keys.toList();
+    final rows = <ExamJson>[];
+    // Bound the URL as well as the response; all pages must finish before caching.
+    for (var start = 0; start < ids.length; start += 100) {
+      String? afterQuiz;
+      while (true) {
+        var query = client
+            .from('quizzes')
+            .select()
+            .inFilter('class_id', ids.skip(start).take(100).toList())
+            .eq('status', 'published')
+            .isFilter('deleted_at', null);
+        if (afterQuiz != null) query = query.gt('id', afterQuiz);
+        final page = await query
+            .order('id', ascending: true)
+            .limit(200)
+            .timeout(const Duration(seconds: 20));
+        if (page.isEmpty) break;
+        rows.addAll(
+          page.map(
+            (row) => ExamJson.from(row)
+              ..['class_archived'] =
+                  classes[row['class_id']]!['archived_at'] != null,
+          ),
+        );
+        afterQuiz = page.last['id'] as String;
+      }
+    }
+    rows.sort((a, b) {
+      final opensA = DateTime.tryParse(a['opens_at'] as String? ?? '');
+      final opensB = DateTime.tryParse(b['opens_at'] as String? ?? '');
+      final order = opensA == null
+          ? (opensB == null ? 0 : 1)
+          : opensB == null
+          ? -1
+          : opensB.compareTo(opensA);
+      return order != 0
+          ? order
+          : (a['id'] as String).compareTo(b['id'] as String);
+    });
+    return rows;
   });
   Future<ExamJson> _rpc(String name, ExamJson params) => _call(
     () async => ExamJson.from(await client.rpc(name, params: params) as Map),
@@ -211,8 +248,9 @@ class SupabaseExamRemote implements ExamRemote {
       if (row is! Map ||
           row['question_id'] is! String ||
           row['revision'] is! int ||
-          remaining.remove(row['question_id']) != row['revision'])
+          remaining.remove(row['question_id']) != row['revision']) {
         throw uncertain;
+      }
       final date = row['saved_at'];
       final code = row['error_code'];
       final message = row['error_message'];

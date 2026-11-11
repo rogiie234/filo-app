@@ -4,7 +4,6 @@ import 'package:drift/native.dart';
 import 'package:filo/core/connectivity/connectivity_provider.dart';
 import 'package:filo/core/notifications/push_events.dart';
 import 'package:filo/core/theme/app_theme.dart';
-import 'package:filo/core/widgets/filo_icons.dart';
 import 'package:filo/core/widgets/filo_widgets.dart';
 import 'package:filo/data/local/app_database.dart';
 import 'package:filo/features/notifications/application/notification_providers.dart';
@@ -110,6 +109,7 @@ void main() {
     bool loading = false,
     bool error = false,
     bool refreshError = false,
+    Future<void> Function()? refreshAction,
     bool offline = true,
     String userId = account,
     double scale = 1,
@@ -130,6 +130,7 @@ void main() {
           }),
           inboxRefreshProvider.overrideWith((ref) async {
             if (refreshError) throw StateError('fixture network');
+            await refreshAction?.call();
           }),
           connectivityProvider.overrideWithValue(AsyncData(!offline)),
           pushEventsProvider.overrideWithValue(events),
@@ -157,6 +158,46 @@ void main() {
     });
     return (repo: repo, events: events, rows: rows);
   }
+
+  testWidgets(
+    'cached inbox refreshes silently and preserves failure recovery',
+    (tester) async {
+      final pending = <Completer<void>>[];
+      await launch(
+        tester,
+        initial: [row()],
+        offline: false,
+        refreshAction: () {
+          final request = Completer<void>();
+          pending.add(request);
+          return request.future;
+        },
+      );
+      expect(find.text('Saved announcement'), findsOneWidget);
+      expect(find.text('Refreshing notifications\u2026'), findsNothing);
+      expect(find.byType(FiloLinearProgressIndicator), findsNothing);
+      pending.single.complete();
+      await tester.pump();
+      await tester.pump();
+      expect(find.text('Refreshing notifications\u2026'), findsNothing);
+
+      final refresh = tester
+          .widget<RefreshIndicator>(find.byType(RefreshIndicator))
+          .onRefresh();
+      await tester.pump();
+      expect(find.text('Saved announcement'), findsOneWidget);
+      expect(find.text('Refreshing notifications\u2026'), findsNothing);
+      pending.last.completeError(StateError('fixture network'));
+      await refresh;
+      await tester.pump();
+      expect(find.text('Saved announcement'), findsOneWidget);
+      expect(
+        find.text('Could not refresh notifications. Showing saved content.'),
+        findsOneWidget,
+      );
+      expect(tester.takeException(), isNull);
+    },
+  );
 
   for (final theme in [AppTheme.light, AppTheme.dark]) {
     for (final state in ['loaded', 'empty', 'loading', 'error']) {

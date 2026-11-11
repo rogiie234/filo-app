@@ -100,14 +100,16 @@ class StudyChatBubble extends StatelessWidget {
                               await Clipboard.setData(
                                 ClipboardData(text: content),
                               );
-                              if (context.mounted)
+                              if (context.mounted) {
                                 showMessage(context, 'Answer copied.');
+                              }
                             } catch (_) {
-                              if (context.mounted)
+                              if (context.mounted) {
                                 showMessage(
                                   context,
                                   'Could not copy this answer. Try again.',
                                 );
+                              }
                             }
                           },
                           icon: const Icon(Icons.copy_outlined),

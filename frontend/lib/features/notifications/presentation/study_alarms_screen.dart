@@ -19,8 +19,9 @@ final studyAlarmRepositoryProvider =
       if (!ref.mounted ||
           !base.isCurrent() ||
           profile?.role != 'student' ||
-          profile?.deletedAt != null)
+          profile?.deletedAt != null) {
         throw StateError('Student account unavailable');
+      }
       return AlarmRepository(
         base.db,
         () => ref.mounted && base.isCurrent(),
@@ -78,14 +79,19 @@ class _StudyAlarmsState extends ConsumerState<StudyAlarmsScreen>
       await ref.read(deadlineSessionProvider.future);
       await repo.reconcileStudy();
       final status = await repo.bridge.status();
-      if (mounted && repo.isCurrent())
-        setState(() => {_status = status, _error = null});
+      if (mounted && repo.isCurrent()) {
+        setState(() {
+          _status = status;
+          _error = null;
+        });
+      }
     } catch (_) {
-      if (mounted)
+      if (mounted) {
         setState(() {
           _status = null;
           _error = 'Could not check study alarm scheduling. Retry.';
         });
+      }
     }
   }
 
@@ -96,11 +102,12 @@ class _StudyAlarmsState extends ConsumerState<StudyAlarmsScreen>
       if (repo.db != _boundDb || !repo.isCurrent()) return;
       await repo.toggleStudy(alarm, on);
     } catch (_) {
-      if (mounted)
+      if (mounted) {
         setState(() {
           _status = null;
           _error = 'Could not finish updating this alarm. Saved changes may need scheduling. Retry.';
         });
+      }
       return;
     } finally {
       if (mounted) setState(() => _busy = false);
@@ -121,13 +128,14 @@ class _StudyAlarmsState extends ConsumerState<StudyAlarmsScreen>
     final alarms = ref.watch(studyAlarmsProvider);
     if (!repo.isLoading && !repo.hasError && repo.hasValue) {
       _boundDb ??= repo.requireValue.db;
-      if (_boundDb != repo.requireValue.db)
+      if (_boundDb != repo.requireValue.db) {
         return Scaffold(
           appBar: AppBar(title: const Text('Study alarms')),
           body: const Center(
             child: Text('Account changed. Reopen study alarms.'),
           ),
         );
+      }
     }
     final locale = MaterialLocalizations.of(context);
     return Scaffold(
@@ -187,10 +195,11 @@ class _StudyAlarmsState extends ConsumerState<StudyAlarmsScreen>
                         .read(notificationPermissionProvider)
                         .openSettings();
                   } catch (_) {
-                    if (mounted)
+                    if (mounted) {
                       setState(
                         () => _error = 'Open your phone settings and enable notifications for Filo.',
                       );
+                    }
                   }
                 },
                 child: const Text('Open settings'),
@@ -350,14 +359,18 @@ class _StudyAlarmEditorState extends ConsumerState<StudyAlarmEditor> {
         ],
       );
     } catch (_) {
-      if (mounted)
+      if (mounted) {
         setState(() => _error = 'Could not load optional links. Retry.');
+      }
     }
   }
 
   Future<void> _save() async {
     if (!validateFiloForm(_form)) return;
-    setState(() => {_busy = true, _error = null});
+    setState(() {
+      _busy = true;
+      _error = null;
+    });
     try {
       final repo = await ref.read(studyAlarmRepositoryProvider.future);
       // Activation is separate from the local write, so a native failure cannot lose the alarm.
@@ -442,8 +455,9 @@ class _StudyAlarmEditorState extends ConsumerState<StudyAlarmEditor> {
       await repo.deleteStudy(_id);
       if (mounted) Navigator.pop(context);
     } catch (_) {
-      if (mounted)
+      if (mounted) {
         setState(() => _error = 'Could not finish deleting the alarm. Retry.');
+      }
     } finally {
       if (mounted) setState(() => _busy = false);
     }
@@ -452,7 +466,7 @@ class _StudyAlarmEditorState extends ConsumerState<StudyAlarmEditor> {
   @override
   Widget build(BuildContext context) {
     final account = ref.watch(studyAlarmRepositoryProvider);
-    if (account.isLoading || account.hasError || !account.hasValue)
+    if (account.isLoading || account.hasError || !account.hasValue) {
       return Scaffold(
         appBar: AppBar(title: const Text('Study alarm')),
         body: Center(
@@ -463,14 +477,16 @@ class _StudyAlarmEditorState extends ConsumerState<StudyAlarmEditor> {
               : const FiloCircularProgressIndicator(),
         ),
       );
+    }
     _boundDb ??= account.requireValue.db;
-    if (_boundDb != account.requireValue.db)
+    if (_boundDb != account.requireValue.db) {
       return Scaffold(
         appBar: AppBar(title: const Text('Study alarm')),
         body: const Center(
           child: Text('Account changed. Reopen study alarms.'),
         ),
       );
+    }
     final locale = MaterialLocalizations.of(context);
     final links = [
       const DropdownMenuItem<String>(
@@ -479,13 +495,14 @@ class _StudyAlarmEditorState extends ConsumerState<StudyAlarmEditor> {
       ),
       ..._links,
     ];
-    if (_link != null && !_links.any((l) => l.value == _link))
+    if (_link != null && !_links.any((l) => l.value == _link)) {
       links.add(
         DropdownMenuItem(
           value: _link,
           child: const Text('Saved link (unavailable)'),
         ),
       );
+    }
     return Scaffold(
       appBar: AppBar(
         title: Text(

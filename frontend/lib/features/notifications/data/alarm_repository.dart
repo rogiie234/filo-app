@@ -72,8 +72,9 @@ class AlarmRepository {
         minute > 1439 ||
         days < 0 ||
         days > 127 ||
-        (classId != null && deckId != null))
+        (classId != null && deckId != null)) {
       throw ArgumentError('Invalid study alarm');
+    }
     await _account(() async {
       await db
           .into(db.studyAlarms)
@@ -103,11 +104,12 @@ class AlarmRepository {
           .getSingle();
       if (next <= max.read<int>('n')) next = max.read<int>('n') + 1;
       for (final slot in slots) {
-        if (!wanted.contains(slot.weekday))
+        if (!wanted.contains(slot.weekday)) {
           await (db.delete(db.alarmSlots)..where(
                 (s) => s.alarmId.equals(id) & s.weekday.equals(slot.weekday),
               ))
               .go();
+        }
       }
       for (final day in wanted) {
         if (slots.any((s) => s.weekday == day)) continue;
@@ -161,8 +163,9 @@ class AlarmRepository {
     if (!bridge.supported || !isCurrent()) return;
     try {
       final lease = await setting('deadline_lease');
-      if (lease == null || userId.isEmpty)
+      if (lease == null || userId.isEmpty) {
         throw StateError('Alarm session unavailable');
+      }
       final completed = await bridge.reconcileStudy(userId, lease);
       await _account(() async {
         for (final item in completed) {
@@ -180,11 +183,12 @@ class AlarmRepository {
         await setSetting('study_error', '');
       });
     } catch (_) {
-      if (isCurrent())
+      if (isCurrent()) {
         await setSetting(
           'study_error',
           'Saved, but alarm scheduling failed. Retry.',
         );
+      }
       throw StudySchedulingFailure();
     }
   }
@@ -234,8 +238,9 @@ DateTime nextStudyOnce(DateTime now, int minute) {
       while (true) {
         final before = value.subtract(const Duration(minutes: 1));
         if (before.day != value.day ||
-            before.hour * 60 + before.minute < minute)
+            before.hour * 60 + before.minute < minute) {
           break;
+        }
         value = before;
       }
     }

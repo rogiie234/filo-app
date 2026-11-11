@@ -68,10 +68,11 @@ class _StudyBodyState extends ConsumerState<_StudyBody> {
     final nextCard = _revision != _session.revision;
     _revision = _session.revision;
     setState(() {});
-    if (nextCard)
+    if (nextCard) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
         if (mounted && _scroll.hasClients) _scroll.jumpTo(0);
       });
+    }
   }
 
   @override

@@ -38,12 +38,13 @@ class _ChatHistory extends ConsumerWidget {
               final active = chats
                   .where((chat) => chat.expiresAt.isAfter(now))
                   .toList();
-              if (active.isEmpty)
+              if (active.isEmpty) {
                 return const EmptyState(
                   title: 'No chats yet.',
                   pose: 'reading',
                   bob: false,
                 );
+              }
               return ListView.builder(
                 itemCount: active.length,
                 itemBuilder: (_, index) {

@@ -5,6 +5,7 @@ import 'package:filo/app.dart';
 import 'package:filo/core/connectivity/connectivity_provider.dart';
 import 'package:filo/core/supabase/auth_providers.dart';
 
+import 'dart:async';
 import 'dart:convert';
 
 import 'package:http/http.dart' as http;
@@ -180,6 +181,98 @@ void main() {
         }
         fail('OTP request did not finish');
       }
+
+      testWidgets(
+        'resend confirms only successful delivery and keeps failures actionable',
+        (tester) async {
+          var sends = 0;
+          final pending = Completer<http.Response>();
+          http.Response issued() => http.Response(
+            jsonEncode({
+              'challenge_id': 'challenge-$sends',
+              'resend_after': 60,
+              'expires_in': 600,
+            }),
+            200,
+            headers: {'content-type': 'application/json'},
+          );
+          final client = (await tester.runAsync(
+            () async => SupabaseClient(
+              'https://example.supabase.co',
+              'test-key',
+              httpClient: MockClient((request) async {
+                sends++;
+                if (sends == 2) return pending.future;
+                if (sends == 3) {
+                  return http.Response(
+                    jsonEncode({
+                      'error': {'code': 'OTP_SEND_FAILED'},
+                    }),
+                    502,
+                    headers: {'content-type': 'application/json'},
+                  );
+                }
+                return issued();
+              }),
+            ),
+          ))!;
+          addTearDown(() => tester.runAsync(client.dispose));
+          var now = DateTime(2026);
+          await launch(tester, client: client, now: () => now);
+          const confirmation = 'A new code has been sent. Check your email.';
+          await tester.ensureVisible(find.text('Send code'));
+          await tester.runAsync(() async => tester.tap(find.text('Send code')));
+          await finishRequest(tester);
+          expect(find.text(confirmation), findsNothing);
+
+          Future<void> resend() async {
+            now = now.add(const Duration(seconds: 61));
+            await tester.runAsync(
+              () => Future<void>.delayed(const Duration(milliseconds: 1100)),
+            );
+            await tester.pump();
+            await tester.ensureVisible(find.text('Resend code'));
+            await tester.runAsync(
+              () async => tester.tap(find.text('Resend code')),
+            );
+            await tester.pump();
+          }
+
+          await resend();
+          expect(find.text(confirmation), findsNothing);
+          expect(
+            tester
+                .widget<TextButton>(
+                  find.widgetWithText(TextButton, 'Resend code'),
+                )
+                .onPressed,
+            isNull,
+          );
+          await tester.runAsync(() async => pending.complete(issued()));
+          await finishRequest(tester);
+          expect(find.text(confirmation), findsOneWidget);
+          expect(
+            tester
+                .widget<TextButton>(
+                  find.widgetWithText(TextButton, 'Resend in 60s'),
+                )
+                .onPressed,
+            isNull,
+          );
+          await tester.pump(const Duration(seconds: 4));
+          await resend();
+          await finishRequest(tester);
+          expect(find.text(confirmation), findsNothing);
+          expect(
+            find.text(
+              'We couldn\u2019t send your code. Please try again in a moment.',
+            ),
+            findsOneWidget,
+          );
+          expect(sends, 3);
+          await tester.pumpWidget(const SizedBox.shrink());
+        },
+      );
 
       for (final error in ['OTP_WRONG', 'OTP_EXPIRED', 'OTP_LOCKED']) {
         var verifyRequests = 0;

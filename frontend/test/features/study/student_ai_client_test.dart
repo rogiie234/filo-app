@@ -317,8 +317,9 @@ void main() {
           };
           final api = client(
             invoke: (_, _, _) async {
-              if (throws)
+              if (throws) {
                 throw FunctionException(status: 503, details: envelope);
+              }
               return envelope;
             },
           );

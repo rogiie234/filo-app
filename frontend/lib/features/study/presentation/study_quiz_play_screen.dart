@@ -422,17 +422,7 @@ class StudyQuizHistoryScreen extends StatelessWidget {
                                 '${attempt.score} of ${attempt.total} correct',
                               ),
                               subtitle: Text(
-                                MaterialLocalizations.of(context)
-                                        .formatMediumDate(
-                                          attempt.attemptedAt.toLocal(),
-                                        ) +
-                                    ' - ' +
-                                    MaterialLocalizations.of(context)
-                                        .formatTimeOfDay(
-                                          TimeOfDay.fromDateTime(
-                                            attempt.attemptedAt.toLocal(),
-                                          ),
-                                        ),
+                                '${MaterialLocalizations.of(context).formatMediumDate(attempt.attemptedAt.toLocal())} - ${MaterialLocalizations.of(context).formatTimeOfDay(TimeOfDay.fromDateTime(attempt.attemptedAt.toLocal()))}',
                               ),
                               children: [
                                 QuizAttemptReview(
@@ -476,8 +466,9 @@ class QuizAttemptReview extends StatelessWidget {
         final question = byId[row['question_id']];
         if (question == null ||
             row['correct'] is! bool ||
-            row['answer'] == null)
+            row['answer'] == null) {
           throw const FormatException();
+        }
         quizAnswerText(question, row['answer'] as Object);
       }
       return Column(

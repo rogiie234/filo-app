@@ -14,18 +14,25 @@ class StudentResultsRepository {
 
   Future<StudentResultData?> cached(String quizId) => cache.student(quizId);
 
-  Future<StudentResultData> refresh(String quizId) => _refreshes.putIfAbsent(
-    quizId,
-    () => _refresh(quizId).whenComplete(() {
-      _refreshes.remove(quizId);
-    }),
-  );
+  Future<StudentResultData> refresh(String quizId, {ResultJson? knownQuiz}) =>
+      _refreshes.putIfAbsent(
+        quizId,
+        () => _refresh(quizId, knownQuiz).whenComplete(() {
+          _refreshes.remove(quizId);
+        }),
+      );
 
-  Future<StudentResultData> _refresh(String quizId) async {
+  Future<StudentResultData> _refresh(
+    String quizId,
+    ResultJson? knownQuiz,
+  ) async {
     cache.checkAccount();
     if (!online()) throw ResultsFailure(resultsOffline(ResultsAction.load));
     try {
-      final quiz = await remote.quiz(quizId, instructor: false);
+      // Class grade refresh supplies a freshly RLS-read quiz; standalone reads still fetch it.
+      if (knownQuiz != null && knownQuiz['id'] != quizId)
+        throw const FormatException('Quiz identity mismatch');
+      final quiz = knownQuiz ?? await remote.quiz(quizId, instructor: false);
       await cache.authorize(quiz['class_id'] as String, instructor: false);
       final raw = await remote.mySession(quizId);
       cache.checkAccount();
@@ -65,8 +72,9 @@ class StudentResultsRepository {
         final old = await cache.read('student:$quizId', instructor: false);
         if (old != null) {
           final session = old['session'];
-          if (session != null)
+          if (session != null) {
             await cache.removeResult(ResultSession(resultJson(session)).id);
+          }
           await cache.remove('student:$quizId');
         }
       }

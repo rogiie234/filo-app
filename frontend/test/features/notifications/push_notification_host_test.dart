@@ -1,3 +1,5 @@
+import 'package:go_router/go_router.dart';
+
 import 'dart:async';
 
 import 'package:drift/native.dart';
@@ -34,7 +36,6 @@ class FakeDestinationRepository extends NotificationDestinationRepository {
         userId: fixtures.userId,
         online: () => false,
         isCurrent: () => true,
-        prepare: (_) async {},
       );
   Future<void>? waiting;
   bool failReceipt = false;
@@ -121,6 +122,26 @@ void main() {
     final repository = FakeDestinationRepository(db, client, sync);
     final events = PushEvents();
     final exam = ExamNavigation();
+    final router = GoRouter(
+      routes: [
+        ShellRoute(
+          builder: (context, state, child) => Stack(
+            children: [
+              Offstage(offstage: true, child: child),
+              PushNotificationHost(
+                userId: fixtures.userId,
+                child: ReadyPage(
+                  role: student ? AccountRole.student : AccountRole.instructor,
+                ),
+              ),
+            ],
+          ),
+          routes: [
+            GoRoute(path: '/', builder: (_, _) => const SizedBox.shrink()),
+          ],
+        ),
+      ],
+    );
     await tester.pumpWidget(
       ProviderScope(
         overrides: [
@@ -134,7 +155,8 @@ void main() {
           studentExamRepositoryProvider.overrideWith((ref) async => null),
           examNavigationProvider.overrideWithValue(exam),
         ],
-        child: MaterialApp(
+        child: MaterialApp.router(
+          routerConfig: router,
           theme: AppTheme.light,
           builder: (context, child) => MediaQuery(
             data: MediaQuery.of(context).copyWith(
@@ -144,12 +166,6 @@ void main() {
             ),
             child: child!,
           ),
-          home: PushNotificationHost(
-            userId: fixtures.userId,
-            child: ReadyPage(
-              role: student ? AccountRole.student : AccountRole.instructor,
-            ),
-          ),
         ),
       ),
     );
@@ -157,6 +173,7 @@ void main() {
     addTearDown(() async {
       await tester.pumpWidget(const SizedBox.shrink());
       await tester.pump();
+      router.dispose();
       events.dispose();
       sync.dispose();
       await (() async {
@@ -166,6 +183,44 @@ void main() {
     });
     return (events: events, repository: repository, exam: exam);
   }
+
+  testWidgets('system Back pops account pages and respects guarded routes', (
+    tester,
+  ) async {
+    await launch(tester);
+    final navigator = Navigator.of(tester.element(find.byType(ReadyPage)));
+    navigator.push<void>(
+      MaterialPageRoute(
+        builder: (_) => const Scaffold(body: Text('Open class')),
+      ),
+    );
+    await tester.pumpAndSettle();
+    await tester.binding.handlePopRoute();
+    await tester.pumpAndSettle();
+    expect(find.text('Open class'), findsNothing);
+    expect(find.byType(ReadyPage), findsOneWidget);
+    expect(tester.takeException(), isNull);
+    var guardedBacks = 0;
+    navigator.push<void>(
+      MaterialPageRoute(
+        builder: (_) => PopScope(
+          canPop: false,
+          onPopInvokedWithResult: (didPop, result) {
+            if (!didPop) guardedBacks++;
+          },
+          child: const Scaffold(body: Text('Unsaved form')),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+    await tester.binding.handlePopRoute();
+    await tester.pumpAndSettle();
+    expect(find.text('Unsaved form'), findsOneWidget);
+    expect(guardedBacks, 1);
+    navigator.pop();
+    await tester.pumpAndSettle();
+    expect(find.byType(ReadyPage), findsOneWidget);
+  });
 
   testWidgets('failed opening stays unread and Retry resolves again', (
     tester,

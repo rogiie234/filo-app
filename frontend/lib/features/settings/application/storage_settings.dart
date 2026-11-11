@@ -81,7 +81,7 @@ class StorageSettings extends AsyncNotifier<StorageUsage> {
       state = AsyncData(usage);
       return true;
     } catch (error, stack) {
-      if (_current(generation))
+      if (_current(generation)) {
         state = AsyncError(
           const FileProblem(
             "Couldn't finish clearing the cache. Try again.",
@@ -89,6 +89,7 @@ class StorageSettings extends AsyncNotifier<StorageUsage> {
           ),
           stack,
         );
+      }
       return false;
     } finally {
       if (_current(generation)) _working = false;

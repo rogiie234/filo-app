@@ -1,7 +1,20 @@
 <?xml version="1.0" encoding="utf-8"?>
 <layer-list xmlns:android="http://schemas.android.com/apk/res/android">
-    <item android:width="288dp" android:height="288dp" android:gravity="center">
-        <bitmap android:src="@drawable/filo_splash_logo" android:gravity="fill"
-            android:filter="true" android:tint="@color/filo_logo_ink" />
+    <!-- Android supplies the icon bounds; fixed dp layers can overflow them. -->
+    <item>
+        <inset android:insetLeft="24%" android:insetTop="24%"
+            android:insetRight="24%" android:insetBottom="24%">
+            <shape android:shape="oval">
+                <solid android:color="@color/filo_splash_badge" />
+            </shape>
+        </inset>
+    </item>
+    <item>
+        <inset android:insetLeft="16%" android:insetTop="16%"
+            android:insetRight="16%" android:insetBottom="16%">
+            <bitmap android:src="@drawable/filo_splash_logo" android:gravity="fill"
+                android:filter="true" android:mipMap="true" android:antialias="true"
+                android:tint="@color/filo_logo_ink" />
+        </inset>
     </item>
 </layer-list>

@@ -99,10 +99,11 @@ AllocatedSources allocateAiSources(
     final used = result.characterCount < remaining
         ? result.characterCount
         : remaining;
-    if (used < result.characterCount)
+    if (used < result.characterCount) {
       warnings.add(
         'Only the first $used characters of ${source.name} were used. Pick a smaller file or section for the rest.',
       );
+    }
     if (used > 0) {
       texts.add({
         'file_name': source.name,

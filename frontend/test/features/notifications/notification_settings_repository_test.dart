@@ -145,8 +145,9 @@ void main() {
       final p = jsonDecode(request.body) as Map<String, dynamic>;
       final type = p['p_type'] as String;
       calls.add(type);
-      if (fail && type == 'announcement')
+      if (fail && type == 'announcement') {
         return http.Response('{"message":"fixture","code":"42501"}', 403);
+      }
       return http.Response(
         jsonEncode(
           setting(
@@ -209,9 +210,10 @@ void main() {
   test('stale timestamp cannot overwrite confirmed setting; failed page cannot prune cache', () async {
     var mode = 'initial';
     final f = SettingsFixture((request) {
-      if (mode == 'initial')
+      if (mode == 'initial') {
         return http.Response(jsonEncode([setting('announcement')]), 200);
-      if (mode == 'old')
+      }
+      if (mode == 'old') {
         return http.Response(
           jsonEncode([
             setting(
@@ -222,8 +224,10 @@ void main() {
           ]),
           200,
         );
-      if (request.url.queryParameters.containsKey('id'))
+      }
+      if (request.url.queryParameters.containsKey('id')) {
         return http.Response('{"message":"fixture"}', 500);
+      }
       return http.Response(
         jsonEncode(
           List.generate(

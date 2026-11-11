@@ -111,7 +111,7 @@ class _StudyFlashcardState extends State<StudyFlashcard> {
                     children: [
                       for (final child in previous)
                         ExcludeSemantics(child: child),
-                      if (current != null) current,
+                      ?current,
                     ],
                   ),
                   child: Column(

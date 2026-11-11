@@ -75,10 +75,11 @@ class StudyQuizGeneration extends ChangeNotifier {
       _pendingId = const Uuid().v4();
       await _save(valid);
     } catch (failure) {
-      if (valid())
+      if (valid()) {
         error = failure is StudyAiFailure && failure.code == 'AI_BUSY'
             ? studyQuizBusyMessage
             : studyAiFriendlyError(failure);
+      }
     } finally {
       token.cancel();
       if (current && epoch == _epoch) {

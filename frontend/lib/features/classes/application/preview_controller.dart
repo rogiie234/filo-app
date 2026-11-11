@@ -98,11 +98,6 @@ class PreviewController extends Notifier<PreviewState> {
     return 'Preview request sent. Waiting for approval.';
   }
 
-  void addPost(ClassPost post) {
-    if (state.role != PreviewRole.instructor) return;
-    state = state.copyWith(posts: [post, ...state.posts]);
-  }
-
   void addAssessment(Assessment assessment) {
     if (state.role != PreviewRole.instructor) return;
     state = state.copyWith(assessments: [assessment, ...state.assessments]);

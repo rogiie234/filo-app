@@ -111,8 +111,9 @@ void main() {
       ) {
         if (next.value?.loaded == true &&
             next.value?.refreshing == false &&
-            !ready.isCompleted)
+            !ready.isCompleted) {
           ready.complete();
+        }
       });
       addTearDown(subscription.close);
       await ready.future;
@@ -136,8 +137,9 @@ void main() {
       final removal = container.listen(studentQuizCatalogProvider, (_, next) {
         if (next.value?.loaded == true &&
             next.value!.quizzes.isEmpty &&
-            !removed.isCompleted)
+            !removed.isCompleted) {
           removed.complete();
+        }
       });
       addTearDown(removal.close);
       remote.rows = [];
