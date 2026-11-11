@@ -1,5 +1,6 @@
 // @deno-types="nodemailer-types"
 import nodemailer from "nodemailer";
+import { otpEmail } from "../_shared/otp_email.ts";
 import { authenticate, corsHeaders, generateCode, hashCode, json, otpError, requiredEnv, validDeviceHash } from "../_shared/otp.ts";
 
 Deno.serve(async (req: Request) => {
@@ -32,8 +33,7 @@ Deno.serve(async (req: Request) => {
     if (data.error) return otpError(data);
     try {
       const info = await transport.sendMail({
-        from, to: auth.email, subject: "Your Filo verification code",
-        text: `Your Filo verification code is ${code}. It expires in 10 minutes.`,
+        from, to: auth.email, ...otpEmail(code),
       });
       if (!info.accepted?.length) throw new Error("SMTP recipient not accepted");
     } catch {

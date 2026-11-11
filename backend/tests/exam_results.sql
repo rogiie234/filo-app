@@ -164,6 +164,7 @@ begin
 
   -- Each rejection also checks complete answer and session snapshots unchanged.
   for row in select * from (values
+    (1,4,null::integer,'Points must be between 0 and 2','null score'),
     (1,4,-1,'Points must be between 0 and 2','negative score'),
     (1,4,3,'Points must be between 0 and 2','above maximum'),
     (1,1,1,'Only essay answers are graded by hand','non-essay'),
@@ -177,7 +178,7 @@ begin
     select jsonb_build_object('answer',to_jsonb(a),'session',to_jsonb(s)) into snapshot
       from exam_answers a join exam_sessions s on s.id=a.session_id where a.id=answer_id;
     perform pg_temp.m9_actor(row.actor);
-    perform pg_temp.m9_call(format('select to_jsonb(grade_essay(%L,%s,%L))',answer_id,row.points,'Rejected feedback'),
+    perform pg_temp.m9_call(format('select to_jsonb(grade_essay(%L,%s,%L))',answer_id,coalesce(row.points::text,'null'),'Rejected feedback'),
       row.label,'P0001',row.message);
     select jsonb_build_object('answer',to_jsonb(a),'session',to_jsonb(s)) into after_snapshot
       from exam_answers a join exam_sessions s on s.id=a.session_id where a.id=answer_id;
@@ -199,6 +200,20 @@ select pg_temp.m9_grade('a1',0,null,0,false,'zero and clear feedback');
 select pg_temp.m9_grade('a1',2,repeat('é',2001),2,false,'full marks and oversized Unicode feedback truncation');
 select pg_temp.m9_grade('a2',1,'M9 essay feedback',3,true,'last answered essay completes grading');
 select pg_temp.m9_grade('a1',1,'M9 revised feedback',2,true,'regrade replaces prior points');
+
+do $$
+declare before_state jsonb; after_state jsonb;
+begin
+  perform pg_temp.m9_actor(1);
+  select jsonb_build_object('answer',to_jsonb(a),'session',to_jsonb(s)) into before_state
+    from exam_answers a join exam_sessions s on s.id=a.session_id where a.id=pg_temp.m9_id('a1');
+  perform pg_temp.m9_call(format('select to_jsonb(grade_essay(%L,null))',pg_temp.m9_id('a1')),
+    'null cannot erase existing grade','P0001','Points must be between 0 and 2');
+  select jsonb_build_object('answer',to_jsonb(a),'session',to_jsonb(s)) into after_state
+    from exam_answers a join exam_sessions s on s.id=a.session_id where a.id=pg_temp.m9_id('a1');
+  perform pg_temp.m9_assert(before_state=after_state,'null regrade preserves answer and session');
+end $$;
+
 
 do $$
 declare i integer; r jsonb; review jsonb; item jsonb; order_ids uuid[]; got_ids uuid[]; n integer;

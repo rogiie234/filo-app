@@ -2743,3 +2743,16 @@ mocked deletion test files with the command above. No BE-03 tests were run by as
 Actual Storage/Auth, count/error and two-session creation/restoration checks live in
 workspace qa/M13-SETTINGS-AND-ACCOUNT-ACCEPTANCE.md, not separate guide files. Ordinary
 14-day class recovery stays unchanged unless instructor account deletion is accepted.
+
+
+## Course bank regression - 2026-11-11
+
+After migration20261111090000 in DEV, owner can run entire question_bank_courses.sql as postgres. Uses only a temporary clone and rollback; checks normalized generated course key, limits and legacy soft-delete trigger behavior. Expected PASS result then rollback. NOT RUN by assistant. On interruption run ROLLBACK separately. No real bank/profile fixtures changed; owner RLS and device picker tests remain separate.
+
+
+## Null essay score audit regression - 2026-11-11
+Apply reviewed forward migration 20261111100000_reject_null_essay_score.sql on disposable DEV before maintained exam_results.sql. Added null boundary and null regrade preserving stored answer/session alongside existing zero/max/authorization checks. Whole rollback fixture setup unchanged; ROLLBACK after abort before retry. NOT RUN by assistant. Canonical setup/results/remaining owner checks in qa/results-f8-f9-report.md outside app repository.
+
+
+## Class purge retry rotation regression - 2026-11-11
+After reviewed DEV migration20261111110000, run whole class_purge_rotation.sql as postgres. Uses temp clones of actual claim SQL, rollback only:25failed selections leave class26eligible for next batch; live/recoverable classes excluded, recent permanent request included, anon/authenticated actual claim permission denied. Expected PASS row, then rollback. ROLLBACK separately after abort. NOT RUN by assistant; real Storage/scheduler/failure recovery remains owner verification in workspace qa/classes-f2-f3-f15-report.md. Deploy purge-deleted only after the new migration; do not skip unresolved prior migration history.

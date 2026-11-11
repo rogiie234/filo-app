@@ -22,11 +22,8 @@ Deno.serve(async (req) => {
     { auth: { persistSession: false, autoRefreshToken: false } },
   );
   const started = Date.now();
-  const expiredBefore = new Date(started - 14 * 86400000).toISOString();
-  const { data: classes, error } = await db.from("classes")
-    .select("id").not("deleted_at", "is", null)
-    .or(`deleted_at.lt.${expiredBefore},purge_requested_at.not.is.null`)
-    .order("deleted_at").order("id").limit(25);
+  // Record the batch before network work so failed or deferred classes rotate next run.
+  const { data: classes, error } = await db.rpc("claim_deleted_class_purges");
   if (error) return reply({ error: "Could not load expired classes" }, 500);
   const purged: string[] = [];
   const failed: string[] = [];
