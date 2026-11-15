@@ -1,4 +1,5 @@
 import { createClient } from "npm:@supabase/supabase-js@2";
+import { purgeFetch } from "./request.ts";
 
 // No user JWT is accepted: only the dedicated scheduler secret authorizes purge.
 Deno.serve(async (req) => {
@@ -16,12 +17,13 @@ Deno.serve(async (req) => {
   for (let i = 0; i < expected.length; i++) difference |= expected[i] ^ actual[i];
   if (difference !== 0) return reply({ error: "Unauthorized" }, 401);
 
+  const started = Date.now();
   const db = createClient(
     Deno.env.get("SUPABASE_URL")!,
     Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!,
-    { auth: { persistSession: false, autoRefreshToken: false } },
+    { auth: { persistSession: false, autoRefreshToken: false },
+      global: { fetch: purgeFetch(started + 90000) } },
   );
-  const started = Date.now();
   // Record the batch before network work so failed or deferred classes rotate next run.
   const { data: classes, error } = await db.rpc("claim_deleted_class_purges");
   if (error) return reply({ error: "Could not load expired classes" }, 500);

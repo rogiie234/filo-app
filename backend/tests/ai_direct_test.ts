@@ -1,5 +1,5 @@
 import { captureQuality } from "./ai_quality_trace.ts";
-import { directSchema, generateDirect, parseDirectOutput } from "../supabase/functions/ai-generate-quiz/direct.ts";
+import { directInstructions, directRevision, directSchema, generateDirect, parseDirectOutput } from "../supabase/functions/ai-generate-quiz/direct.ts";
 import { request } from "../supabase/functions/ai-generate-quiz/quality_fixtures.ts";
 import { QuizError, sampleOutput, validateInput, types } from "../supabase/functions/ai-generate-quiz/quiz.ts";
 import type { Input, QuestionType } from "../supabase/functions/ai-generate-quiz/quiz.ts";
@@ -40,7 +40,7 @@ Deno.test("direct comparison generates11mixed items with exactly one call and a 
     assert(!body.systemInstruction.parts[0].text.includes("BLUEPRINT stage"));
     return response(JSON.stringify(grouped()));
   }, "direct");
-  equal(calls, 1); equal(report.error, null); equal(report.summary.pipeline, "direct-v2");
+  equal(calls, 1); equal(report.error, null); equal(report.summary.pipeline, directRevision);
   equal(report.summary.provider_calls, 1); equal(report.summary.returned, 11);
   equal(report.summary.returned_by_type, input().counts);
   equal(report.summary.missing_by_type, { multiple_choice: 0, true_false: 0, identification: 0, essay: 0 });
@@ -63,14 +63,14 @@ Deno.test("direct comparison retains partial valid output without semantic rejec
   assert(report.events.some((e) => e.stage === "result" && e.independently_verified === false));
 });
 
-Deno.test("direct comparison invalid JSON and truncated output fail once with usage retained", async () => {
+Deno.test("direct comparison invalid JSON and truncated output stop after two attempts with usage retained", async () => {
   for (const [text, finish] of [["not json", "STOP"], [JSON.stringify(grouped()), "MAX_TOKENS"], ["[]", "STOP"]]) {
     let calls = 0;
     const report = await captureQuality(input(), "private-key", "fixture-model", async () => {
       calls++; return response(text, finish);
     }, "direct");
-    equal(calls, 1); equal(report.error, "AI_BAD_OUTPUT"); equal(report.result, null);
-    equal(report.summary.tokens.totalTokenCount.observed_total, 150);
+    equal(calls, 2); equal(report.error, "AI_BAD_OUTPUT"); equal(report.result, null);
+    equal(report.summary.tokens.totalTokenCount.observed_total, 300);
   }
 });
 
@@ -175,4 +175,52 @@ Deno.test("direct-v2 malformed groups fail closed and short or excessive groups 
   const schema = directSchema(settings);
   equal(schema.properties.essay.maxItems, 0);
   equal(parseDirectOutput(JSON.stringify(grouped(output(settings))), settings).questions.length, 1);
+});
+
+Deno.test("Bloom mapping preserves every format and recovers malformed or zero usable output once", async () => {
+  for (const phrase of ["Remember / Understand", "Apply / Analyze", "Evaluate / Create", "identification target Evaluate", "original proposal"]) assert(directInstructions.includes(phrase));
+  for (const difficulty of ["easy", "medium", "hard"] as const) {
+    const settings = { ...input(), difficulty };
+    for (const first of ["not json", JSON.stringify(grouped([]))]) {
+      let calls = 0;
+      const result = await generateDirect(settings, "key", "model", Date.now() + 110000, async () => {
+        calls++; return response(calls === 1 ? first : JSON.stringify(grouped(output(settings))));
+      });
+      equal(calls, 2); equal(result.questions.length, 11); equal(result.missing_by_type, { multiple_choice: 0, true_false: 0, identification: 0, essay: 0 });
+    }
+  }
+});
+
+Deno.test("direct reserves finalization time and never retries an aborted provider request", async () => {
+  let calls = 0;
+  try {
+    await generateDirect(input(), "key", "model", Date.now() + 110000, async () => {
+      calls++; throw new DOMException("Aborted", "AbortError");
+    });
+    throw new Error("Expected timeout");
+  } catch (error) { assert(error instanceof QuizError); equal(error.code, "AI_TIMEOUT"); }
+  equal(calls, 1);
+  calls = 0;
+  try {
+    await generateDirect(input(), "key", "model", Date.now() + 9999, async () => { calls++; return response("{}"); });
+  } catch (error) { assert(error instanceof QuizError); equal(error.code, "AI_TIMEOUT"); }
+  equal(calls, 0);
+});
+
+Deno.test("direct regeneration uses Bloom prompt and recovery without changing requested type", async () => {
+  const settings = { ...input(), difficulty: "hard" as const, mode: "regenerate" as const,
+    counts: { multiple_choice: 0, true_false: 0, identification: 0, essay: 1 }, current_prompts: ["Existing prompt"] };
+  let calls = 0;
+  const result = await generateDirect(settings, "key", "model", Date.now() + 110000, async (_url, init) => {
+    const body = JSON.parse(String(init!.body));
+    equal(JSON.parse(body.contents[0].parts[0].text), settings);
+    assert(body.systemInstruction.parts[0].text.includes("Evaluate / Create"));
+    calls++; return response(calls === 1 ? "{}" : JSON.stringify(grouped(output(settings))));
+  });
+  equal(calls, 2); equal(result.questions.length, 1); equal(result.questions[0].type, "essay");
+  calls = 0;
+  try {
+    await generateDirect(settings, "key", "model", Date.now() + 110000, async () => { calls++; return response("", "SAFETY"); });
+  } catch (error) { assert(error instanceof QuizError); equal(error.code, "AI_UNAVAILABLE"); }
+  equal(calls, 1);
 });

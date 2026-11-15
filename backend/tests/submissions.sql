@@ -161,6 +161,30 @@ begin
   perform pg_temp.check_submission(format('select is_late and status=''turned_in'' and submitted_at=now() and unsubmit_until=submitted_at from public.submissions where id=%L',s),'late fields have zero-length window');
   -- Deliberately immediate: detects the now() > (rather than >=) boundary bug.
   perform pg_temp.submission_sql(format('select public.unsubmit(%L)',s),'P0001','late work cannot unsubmit even in same transaction','The unsubmit window has passed');
+  -- Metadata-only Storage regression: no blob upload or HTTP behavior is claimed.
+  perform set_config('storage.allow_delete_query','true',true);
+  update public.submissions set status='draft' where id=s;
+  update public.submission_grades set returned_at=null where submission_id=s;
+  k:=c::text||'/'||p::text||'/'||current_setting('submission_test.u2')||'/storage-guard.txt';
+  perform pg_temp.submission_sql(format('insert into storage.objects(bucket_id,name) values(''submissions'',%L)',k),'00000','draft upload metadata allowed');
+  update public.submission_items set storage_path=k where id=(select id from public.submission_items where submission_id=s and kind='file' and deleted_at is null order by id limit 1);
+  perform pg_temp.submission_actor(1);
+  perform pg_temp.check_submission(format('select count(*)=0 from storage.objects where bucket_id=''submissions'' and name=%L',k),'instructor cannot read draft file');
+  perform pg_temp.submission_actor(2);
+  perform pg_temp.check_submission(format('select count(*)=1 from storage.objects where bucket_id=''submissions'' and name=%L',k),'student reads own draft for upload retry');
+  perform pg_temp.submission_sql(format('update storage.objects set metadata=''{}'' where bucket_id=''submissions'' and name=%L',k),'00000','draft replacement metadata allowed');
+  perform pg_temp.submission_sql(format('update storage.objects set name=%L where bucket_id=''submissions'' and name=%L',k||'-moved',k),'42501','submission file move refused');
+  update public.submissions set status='turned_in' where id=s;
+  perform pg_temp.submission_sql(format('update storage.objects set metadata=''{}'' where bucket_id=''submissions'' and name=%L',k),'42501','turned-in file replacement refused');
+  perform pg_temp.submission_sql(format('delete from storage.objects where bucket_id=''submissions'' and name=%L',k),'42501','turned-in file deletion refused');
+  perform pg_temp.submission_actor(1);
+  perform pg_temp.check_submission(format('select count(*)=1 from storage.objects where bucket_id=''submissions'' and name=%L',k),'instructor reads turned-in file');
+  update public.submissions set status='draft' where id=s;
+  perform pg_temp.check_submission(format('select count(*)=0 from storage.objects where bucket_id=''submissions'' and name=%L',k),'unsubmitted file hidden again');
+  perform pg_temp.submission_actor(3);
+  perform pg_temp.check_submission(format('select count(*)=0 from storage.objects where bucket_id=''submissions'' and name=%L',k),'peer cannot read draft file');
+  perform pg_temp.submission_actor(2);
+  perform pg_temp.submission_sql(format('delete from storage.objects where bucket_id=''submissions'' and name=%L',k),'00000','draft cleanup allowed after unsubmit');
   -- Full checklist 1 also includes peer exam-session isolation.
   insert into public.quizzes(id,class_id,author_id,title) values(q,c,current_setting('submission_test.u1')::uuid,'Exam visibility fixture');
   insert into public.exam_sessions(id,quiz_id,student_id,deadline_at,status,auto_score,grading_complete)
