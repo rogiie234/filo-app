@@ -327,7 +327,6 @@ class SubmissionWorkRepository {
         .select('*,submissions!inner(student_id,post_id)')
         .eq('id', itemId)
         .eq('submissions.student_id', submissions.userId)
-        .isFilter('deleted_at', null)
         .single()
         .timeout(const Duration(seconds: 20));
     final parent = row.remove('submissions') as Map<String, dynamic>;
@@ -336,22 +335,14 @@ class SubmissionWorkRepository {
 
   Future<void> removeItem(String itemId) => _write(() async {
     final (row, postId) = await _ownedItem(itemId);
-    await _draft(postId);
-    if (row['kind'] == 'file') {
-      await client.storage
-          .from('submissions')
-          .remove([row['storage_path'] as String])
-          .timeout(const Duration(seconds: 20));
-    }
-    await _cacheItem(
-      await client
-          .from('submission_items')
-          .update({'deleted_at': DateTime.now().toUtc().toIso8601String()})
-          .eq('id', itemId)
-          .select()
-          .single()
-          .timeout(const Duration(seconds: 20)),
+    final (_, submission, _) = await _draft(postId);
+    await submissions.queueRemoval(
+      itemId,
+      itemId,
+      row['kind'] == 'file' ? row['storage_path'] as String : null,
+      submissionId: submission.id,
     );
+    await submissions.reconcileRemovals(submission.id);
   });
 
   /// Remove a failed upload using the same stable object identity as Retry.
@@ -371,24 +362,25 @@ class SubmissionWorkRepository {
     }
     final path =
         '${post.classId}/${post.id}/${submissions.userId}/$uploadId-$safeName';
-    await client.storage
-        .from('submissions')
-        .remove([path])
-        .timeout(const Duration(seconds: 20));
     final matching = items.where(
       (i) => i.submissionId == submission.id && i.storagePath == path,
     );
     for (final item in matching) {
-      await _cacheItem(
-        await client
-            .from('submission_items')
-            .update({'deleted_at': DateTime.now().toUtc().toIso8601String()})
-            .eq('id', item.id)
-            .select()
-            .single()
-            .timeout(const Duration(seconds: 20)),
+      await submissions.queueRemoval(
+        item.id,
+        item.id,
+        path,
+        submissionId: submission.id,
       );
     }
+    if (matching.isEmpty)
+      await submissions.queueRemoval(
+        uploadId,
+        null,
+        path,
+        submissionId: submission.id,
+      );
+    await submissions.reconcileRemovals(submission.id);
   });
 
   Future<CacheSubmission> saveComment(String postId, String comment) => _write(
@@ -420,8 +412,12 @@ class SubmissionWorkRepository {
     if (!submissions.isOnline()) {
       throw StateError('Connect to the internet to open this file.');
     }
+    final (owned, _) = await _ownedItem(itemId);
+    await submissions.reconcileRemovals(owned['submission_id'] as String);
     final (row, _) = await _ownedItem(itemId);
-    if (row['kind'] != 'file' || row['storage_path'] == null) {
+    if (row['deleted_at'] != null ||
+        row['kind'] != 'file' ||
+        row['storage_path'] == null) {
       throw StateError('File is no longer available.');
     }
     return client.storage

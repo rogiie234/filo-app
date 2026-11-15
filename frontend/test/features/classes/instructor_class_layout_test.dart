@@ -1,5 +1,4 @@
 import 'package:filo/features/classes/presentation/classes_widgets.dart';
-import 'package:filo/features/classes/presentation/classes_empty_state.dart';
 import 'package:filo/core/widgets/filo_widgets.dart';
 import 'package:filo/features/classes/presentation/class_banner.dart';
 import 'package:flutter/material.dart';
@@ -13,27 +12,16 @@ void main() {
       const MaterialApp(
         home: Scaffold(
           body: SingleChildScrollView(
-            child: ClassesEmptyState(
+            child: EmptyState(
               title: 'No classes yet.',
               message: 'Create your first class to get started.',
-              illustrated: true,
               bob: false,
             ),
           ),
         ),
       ),
     );
-    expect(
-      find.byWidgetPredicate(
-        (widget) =>
-            widget is Image &&
-            widget.image is ResizeImage &&
-            ((widget.image as ResizeImage).imageProvider as AssetImage)
-                    .assetName ==
-                'assets/illustrations/classes-empty.png',
-      ),
-      findsOneWidget,
-    );
+    expect(find.byType(Mascot), findsOneWidget);
     expect(find.byType(FiloButton), findsNothing);
     expect(tester.takeException(), isNull);
   });
@@ -72,7 +60,7 @@ void main() {
       MaterialApp(
         home: Scaffold(
           body: SingleChildScrollView(
-            child: ClassesEmptyState(
+            child: EmptyState(
               title: 'No classes yet.',
               message: 'Create your first class to get started.',
               bob: false,
@@ -89,22 +77,12 @@ void main() {
     expect(find.text('Create class'), findsOneWidget);
     expect(
       find.descendant(
-        of: find.byType(ClassesEmptyState),
+        of: find.byType(EmptyState),
         matching: find.byType(FiloPanel),
-      ),
-      findsNothing,
-    );
-    expect(
-      find.byWidgetPredicate(
-        (widget) =>
-            widget is Image &&
-            widget.image is ResizeImage &&
-            ((widget.image as ResizeImage).imageProvider as AssetImage)
-                    .assetName ==
-                'assets/illustrations/classes-empty.png',
       ),
       findsOneWidget,
     );
+    expect(find.byType(Mascot), findsOneWidget);
     await tester.ensureVisible(find.text('Create class'));
     await tester.tap(find.text('Create class'));
     expect(taps, 1);

@@ -61,79 +61,115 @@ class FiloConfirmationDialog extends StatelessWidget {
   final bool confirmDestructive, confirmOutlined;
 
   @override
-  Widget build(BuildContext context) => Dialog(
-    backgroundColor: Theme.of(context).colorScheme.surface,
-    surfaceTintColor: FiloPaint.transparent,
-    insetPadding: const EdgeInsets.symmetric(
-      horizontal: FiloSpacing.screen,
-      vertical: FiloSpacing.screen,
-    ),
-    shape: RoundedRectangleBorder(
-      borderRadius: BorderRadius.circular(FiloRadii.large),
-      side: BorderSide(color: Theme.of(context).colorScheme.outline),
-    ),
-    child: ConstrainedBox(
-      constraints: const BoxConstraints(maxWidth: 400),
-      child: SingleChildScrollView(
-        padding: const EdgeInsets.all(FiloSpacing.screen),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            Center(
-              child: ExcludeSemantics(
-                child: Container(
-                  width: 64,
-                  height: 64,
-                  decoration: BoxDecoration(
-                    color: Theme.of(context).colorScheme.primaryContainer,
-                    borderRadius: BorderRadius.circular(FiloRadii.medium),
-                  ),
-                  child: FiloIcon(
-                    icon,
-                    size: 32,
-                    color: Theme.of(context).colorScheme.primary,
+  Widget build(BuildContext context) => FiloModalDialog(
+    title: title,
+    icon: icon,
+    destructive: confirmDestructive,
+    content: Text(message),
+    actions: [
+      FiloButton(
+        label: cancelIsPrimary ? cancelLabel : confirmLabel,
+        destructive: !cancelIsPrimary && confirmDestructive,
+        outlined: !cancelIsPrimary && confirmOutlined,
+        onPressed: () => Navigator.of(context).pop(!cancelIsPrimary),
+      ),
+      FiloButton(
+        label: cancelIsPrimary ? confirmLabel : cancelLabel,
+        secondary: true,
+        destructive: cancelIsPrimary && confirmDestructive,
+        outlined: cancelIsPrimary && confirmOutlined,
+        onPressed: () => Navigator.of(context).pop(cancelIsPrimary),
+      ),
+    ],
+  );
+}
+
+/// One surface for confirmations and forms; callers keep validation and results.
+class FiloModalDialog extends StatelessWidget {
+  const FiloModalDialog({
+    super.key,
+    required this.title,
+    required this.content,
+    required this.actions,
+    this.icon = FiloIcons.checkCircle,
+    this.destructive = false,
+  });
+  final String title;
+  final Widget content;
+  final List<Widget> actions;
+  final IconData icon;
+  final bool destructive;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final colors = theme.colorScheme;
+    return Dialog(
+      backgroundColor: colors.surface,
+      surfaceTintColor: FiloPaint.transparent,
+      insetPadding: const EdgeInsets.all(FiloSpacing.screen),
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(FiloRadii.large),
+        side: BorderSide(color: colors.outlineVariant),
+      ),
+      child: ConstrainedBox(
+        constraints: const BoxConstraints(maxWidth: 400),
+        child: SingleChildScrollView(
+          padding: const EdgeInsets.all(FiloSpacing.screen),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Align(
+                alignment: Alignment.centerLeft,
+                child: ExcludeSemantics(
+                  child: Container(
+                    padding: const EdgeInsets.all(FiloSpacing.s12),
+                    decoration: BoxDecoration(
+                      color: destructive
+                          ? colors.errorContainer
+                          : colors.primaryContainer,
+                      borderRadius: BorderRadius.circular(FiloRadii.medium),
+                    ),
+                    child: FiloIcon(
+                      icon,
+                      size: 28,
+                      color: destructive
+                          ? colors.onErrorContainer
+                          : colors.onPrimaryContainer,
+                    ),
                   ),
                 ),
               ),
-            ),
-            const SizedBox(height: FiloSpacing.s20),
-            Semantics(
-              namesRoute: true,
-              header: true,
-              child: Text(
-                title,
-                textAlign: TextAlign.center,
-                style: Theme.of(context).textTheme.titleLarge
-                    ?.copyWith(color: Theme.of(context).colorScheme.onSurface),
+              const SizedBox(height: FiloSpacing.s16),
+              Semantics(
+                namesRoute: true,
+                header: true,
+                child: Text(
+                  title,
+                  textAlign: TextAlign.start,
+                  style: theme.textTheme.titleLarge?.copyWith(
+                    color: colors.onSurface,
+                  ),
+                ),
               ),
-            ),
-            const SizedBox(height: FiloSpacing.s12),
-            Text(
-              message,
-              textAlign: TextAlign.center,
-              style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                color: Theme.of(context).colorScheme.onSurfaceVariant,
+              const SizedBox(height: FiloSpacing.s12),
+              DefaultTextStyle(
+                textAlign: TextAlign.start,
+                style: theme.textTheme.bodyMedium!.copyWith(
+                  color: colors.onSurfaceVariant,
+                ),
+                child: content,
               ),
-            ),
-            const SizedBox(height: FiloSpacing.s32),
-            FiloButton(
-              label: cancelIsPrimary ? cancelLabel : confirmLabel,
-              destructive: !cancelIsPrimary && confirmDestructive,
-              outlined: !cancelIsPrimary && confirmOutlined,
-              onPressed: () => Navigator.of(context).pop(!cancelIsPrimary),
-            ),
-            const SizedBox(height: FiloSpacing.s12),
-            FiloButton(
-              label: cancelIsPrimary ? confirmLabel : cancelLabel,
-              secondary: true,
-              destructive: cancelIsPrimary && confirmDestructive,
-              outlined: cancelIsPrimary && confirmOutlined,
-              onPressed: () => Navigator.of(context).pop(cancelIsPrimary),
-            ),
-          ],
+              const SizedBox(height: FiloSpacing.screen),
+              for (var i = 0; i < actions.length; i++) ...[
+                if (i > 0) const SizedBox(height: FiloSpacing.s12),
+                actions[i],
+              ],
+            ],
+          ),
         ),
       ),
-    ),
-  );
+    );
+  }
 }

@@ -19,6 +19,13 @@ class QuestionBankScreen extends ConsumerStatefulWidget {
 class _QuestionBankScreenState extends ConsumerState<QuestionBankScreen> {
   List<BankQuestion>? _rows;
   final _selected = <String>{};
+  @override
+  void dispose() {
+    _searchController.dispose();
+    super.dispose();
+  }
+
+  final _searchController = TextEditingController();
   String _search = '', _type = 'all';
   String? _courseFilter;
   String? _error;
@@ -88,6 +95,7 @@ class _QuestionBankScreenState extends ConsumerState<QuestionBankScreen> {
       title: 'Delete this saved question?',
       message: 'This removes it from your bank. Questions already added to assessments stay unchanged.',
       confirmLabel: 'Delete',
+      confirmDestructive: true,
       cancelLabel: 'Cancel',
       icon: FiloIcons.delete,
     );
@@ -220,12 +228,18 @@ class _QuestionBankScreenState extends ConsumerState<QuestionBankScreen> {
                                     child: Text(courseLabel(course)),
                                   ),
                               ],
-                              onChanged: (value) =>
-                                  setState(() => _courseFilter = value),
+                              onChanged: _rows?.isNotEmpty != true
+                                  ? null
+                                  : (value) =>
+                                        setState(() => _courseFilter = value),
                             ),
                             const SizedBox(height: FiloSpacing.s16),
                           ],
                           TextField(
+                            controller: _searchController,
+                            enabled:
+                                (_rows?.isNotEmpty ?? false) ||
+                                _search.isNotEmpty,
                             decoration: const InputDecoration(
                               labelText: 'Search questions',
                               prefixIcon: Icon(Icons.search),
@@ -250,8 +264,9 @@ class _QuestionBankScreenState extends ConsumerState<QuestionBankScreen> {
                                   child: Text(entry.value),
                                 ),
                             ],
-                            onChanged: (v) =>
-                                setState(() => _type = v ?? 'all'),
+                            onChanged: _rows?.isNotEmpty != true
+                                ? null
+                                : (v) => setState(() => _type = v ?? 'all'),
                           ),
                         ],
                       ),
@@ -260,7 +275,8 @@ class _QuestionBankScreenState extends ConsumerState<QuestionBankScreen> {
                       const Padding(
                         padding: EdgeInsets.all(FiloSpacing.screen),
                         child: EmptyState(
-                          title: "You're offline. Connect, then refresh to use the question bank.",
+                          title: 'Question bank is offline',
+                          body: 'Connect and refresh to load your saved questions.',
                           pose: 'sleepy',
                           bob: false,
                         ),
@@ -269,7 +285,8 @@ class _QuestionBankScreenState extends ConsumerState<QuestionBankScreen> {
                       Padding(
                         padding: const EdgeInsets.all(FiloSpacing.screen),
                         child: EmptyState(
-                          title: _error!,
+                          title: 'Question bank unavailable',
+                          body: _error!,
                           pose: 'confused',
                           bob: false,
                           action: TextButton(
@@ -300,12 +317,25 @@ class _QuestionBankScreenState extends ConsumerState<QuestionBankScreen> {
                     bob: !widget.picking,
                     title: _rows!.isEmpty
                         ? widget.picking
-                              ? 'No saved questions for this course yet.'
-                              : 'Your question bank is empty.'
-                        : 'No matching questions. Try another course, search or question type.',
+                              ? 'No saved course questions'
+                              : 'No saved questions'
+                        : 'No matching questions',
                     message: _rows!.isEmpty
-                        ? 'Save a question from an assessment to reuse it here. Older questions can be assigned to a course in Manage saved questions.'
-                        : '',
+                        ? 'Save a question from an assessment to reuse it here.'
+                        : _search.trim().isNotEmpty
+                        ? 'No matches for "$_search"; check the spelling or clear your search.'
+                        : 'Choose another course or question type.',
+                    primaryAction: _rows!.isEmpty
+                        ? null
+                        : EmptyStateAction(
+                            label: 'Clear search and filters',
+                            onPressed: () => setState(() {
+                              _search = '';
+                              _searchController.clear();
+                              _type = 'all';
+                              _courseFilter = null;
+                            }),
+                          ),
                   ),
                 );
               }

@@ -11,7 +11,7 @@ import 'lesson_text_extractor.dart';
 const aiPrivacyNotice =
     "File text is sent to Google under the free tier's terms. Do not include student names or private data.";
 const aiErrorMessages = {
-  'AI_BUSY': 'The AI assistant is busy right now. Your work is saved. Please try again in a few minutes, or create questions manually.',
+  'AI_BUSY': 'The AI assistant is busy right now. Please try again in a few minutes, or create questions manually.',
   'AI_IN_PROGRESS':
       'Your last request is still being processed. Try again in a minute.',
   'AI_TIMEOUT': 'The AI request timed out. Please try again.',

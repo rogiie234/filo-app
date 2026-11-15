@@ -1,5 +1,7 @@
+import 'dart:convert';
+
 import 'package:drift/drift.dart';
-import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:supabase_flutter/supabase_flutter.dart' hide TableUpdate;
 
 import '../../../data/local/app_database.dart';
 import '../../../data/local/cache_row_json.dart';
@@ -23,6 +25,105 @@ class SubmissionRepository {
   bool _reconciliationRequired = false;
   int _cacheRevision = 0;
   int _activeCacheWrites = 0;
+  final Map<String, Future<void>> _removals = {};
+
+  Future<void> queueRemoval(
+    String key,
+    String? itemId,
+    String? path, {
+    required String submissionId,
+  }) async {
+    await database.customStatement(
+      'INSERT OR REPLACE INTO file_settings(key,value) VALUES(?,?)',
+      [
+        'submission_removal:$key',
+        jsonEncode({
+          'submission_id': submissionId,
+          'item_id': itemId,
+          'path': path,
+        }),
+      ],
+    );
+    database.notifyUpdates({
+      TableUpdate.onTable(database.cacheSubmissionItems),
+    });
+  }
+
+  Future<void> reconcileRemovals(String submissionId) =>
+      _removals[submissionId] ??= _reconcileRemovals(submissionId)
+          .whenComplete(() {
+            _removals.remove(submissionId);
+          });
+
+  Future<void> _reconcileRemovals(String submissionId) async {
+    final rows = await database
+        .customSelect(
+          // Older intents have no submission_id; resolve only their cached item or canonical path.
+          """
+          SELECT f.key,f.value FROM file_settings f
+          WHERE f.key LIKE 'submission_removal:%' AND (
+            json_extract(f.value,'\$.submission_id') = ? OR (
+              json_extract(f.value,'\$.submission_id') IS NULL AND EXISTS (
+                SELECT 1 FROM cache_submissions s JOIN cache_posts p ON p.id=s.post_id
+                WHERE s.id=? AND s.student_id=? AND (
+                  json_extract(f.value,'\$.item_id') IN
+                    (SELECT id FROM cache_submission_items WHERE submission_id=s.id)
+                  OR instr(json_extract(f.value,'\$.path'),p.class_id||'/'||s.post_id||'/'||s.student_id||'/')=1
+                )
+              )
+            )
+          )
+          """,
+          variables: [
+            Variable(submissionId),
+            Variable(submissionId),
+            Variable(userId),
+          ],
+        )
+        .get();
+    if (rows.isEmpty) return;
+    if (!isOnline() || client.auth.currentUser?.id != userId) {
+      throw StateError('Connect to the internet to finish removing your work.');
+    }
+    beginCacheWrite();
+    try {
+      for (final record in rows) {
+        if (client.auth.currentUser?.id != userId)
+          throw StateError('Account changed');
+        final pending = jsonDecode(record.read<String>('value')) as Map;
+        final id = pending['item_id'] as String?;
+        if (id != null) {
+          // Hide metadata before deleting bytes; a lost response replays the same removal.
+          await client
+              .from('submission_items')
+              .update({'deleted_at': DateTime.now().toUtc().toIso8601String()})
+              .eq('id', id)
+              .select('id')
+              .single()
+              .timeout(const Duration(seconds: 20));
+          await (database.delete(
+            database.cacheSubmissionItems,
+          )..where((item) => item.id.equals(id))).go();
+        }
+        final path = pending['path'] as String?;
+        if (path != null) {
+          await client.storage
+              .from('submissions')
+              .remove([path])
+              .timeout(const Duration(seconds: 20));
+        }
+        await database.customStatement(
+          'DELETE FROM file_settings WHERE key=?',
+          [record.read<String>('key')],
+        );
+      }
+    } finally {
+      endCacheWrite();
+      database.notifyUpdates({
+        TableUpdate.onTable(database.cacheSubmissionItems),
+      });
+    }
+  }
 
   // Shared with draft item/comment writes. A pull started before or during a
   // confirmed write must never replace that newer state or advance cursors.
@@ -60,6 +161,9 @@ class SubmissionRepository {
           ..where(
             i.submissionId.equals(submissionId) &
                 i.deletedAt.isNull() &
+                const CustomExpression<bool>(
+                  r"NOT EXISTS (SELECT 1 FROM file_settings WHERE key LIKE 'submission_removal:%' AND json_extract(value, '$.item_id') = cache_submission_items.id)",
+                ) &
                 s.studentId.equals(userId),
           )
           ..orderBy([OrderingTerm.asc(i.sortOrder), OrderingTerm.asc(i.id)]);
@@ -113,13 +217,27 @@ class SubmissionRepository {
   }
 
   Future<void> _pull(String classId) async {
-    final revision = _cacheRevision;
     // Populate post/profile foreign keys and reconcile class access first.
     await posts.sync(classId);
     if (!await _hasAccess(classId)) {
       return;
     }
     final db = database;
+    final submissions = await db
+        .customSelect(
+          'SELECT s.id FROM cache_submissions s JOIN cache_posts p ON p.id=s.post_id WHERE p.class_id=? AND s.student_id=?',
+          variables: [Variable(classId), Variable(userId)],
+        )
+        .get();
+    for (final submission in submissions) {
+      try {
+        await reconcileRemovals(submission.read<String>('id'));
+      } catch (_) {
+        // Keep blocked cleanup hidden and recorded; it must not prevent refreshing class data.
+        if (client.auth.currentUser?.id != userId) rethrow;
+      }
+    }
+    final revision = _cacheRevision;
     final keys = [
       'submissions:$classId',
       'submission_items:$classId',
@@ -330,8 +448,22 @@ class SubmissionRepository {
       throw StateError('A submission change is already in progress.');
     }
     _mutating = true;
+    var dispatched = false;
     try {
+      String? submissionId = params['p_submission'] as String?;
+      if (submissionId == null) {
+        submissionId =
+            (await (database.select(database.cacheSubmissions)..where(
+                      (s) =>
+                          s.postId.equals(params['p_post'] as String) &
+                          s.studentId.equals(userId),
+                    ))
+                    .getSingleOrNull())
+                ?.id;
+      }
+      if (submissionId != null) await reconcileRemovals(submissionId);
       await reconcileBeforeWorkWrite();
+      dispatched = true;
       return await _callMutation(function, params);
     } on PostgrestException {
       // An explicit server refusal is a known outcome, not a transport error.
@@ -339,7 +471,7 @@ class SubmissionRepository {
     } on StateError {
       rethrow;
     } catch (_) {
-      _reconciliationRequired = true;
+      if (dispatched) _reconciliationRequired = true;
       rethrow;
     } finally {
       _mutating = false;

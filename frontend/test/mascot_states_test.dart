@@ -79,7 +79,7 @@ void main() {
       }
       expect(retries, 2);
       await tester.pumpWidget(
-        app(const EmptyState(title: 'No grades yet.', showMascot: false)),
+        app(const EmptyState(title: 'No grades yet', showMascot: false)),
       );
       expect(find.byType(Mascot), findsNothing);
       expect(find.byType(MascotIdle), findsNothing);

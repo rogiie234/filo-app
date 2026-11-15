@@ -22,7 +22,10 @@ import '../../submissions/application/submission_providers.dart';
 import '../../submissions/domain/assignment_status.dart';
 import '../../submissions/presentation/assignment_detail_screen.dart';
 import '../application/grading_providers.dart';
-import 'grade_screen.dart';
+import 'submissions_screen.dart';
+import '../domain/grading_models.dart';
+import '../../results/domain/results.dart';
+import '../../results/presentation/instructor_results_screen.dart';
 import 'todo_widgets.dart';
 
 enum WorkQueueItemType { assignment, quiz }
@@ -40,9 +43,11 @@ class WorkQueueEntry {
     this.points,
     this.type = WorkQueueItemType.assignment,
     this.quiz,
+    this.activityLabel = 'Assignment',
   });
   final WorkQueueItemType type;
   final StudentQuiz? quiz;
+  final String activityLabel;
   final ClassRoom room;
   final String postId, title, group, status;
   final String? studentId, studentName;
@@ -65,30 +70,128 @@ Map<K, T> _firstBy<T, K>(Iterable<T>? rows, K Function(T) key) {
   return result;
 }
 
-/// Badge reads do not construct, format, or sort full queue entries.
-final reviewQueueCountProvider = Provider.autoDispose<int>((ref) {
-  final cards = ref.watch(classCardsProvider);
-  var count = 0;
-  for (final room in cards.value ?? <ClassRoom>[]) {
-    if (room.archived || room.pending) continue;
-    final data = ref.watch(gradingDataProvider(room.id));
-    ref.watch(gradingSyncProvider(room.id));
-    final value = data.value;
-    if (value == null) continue;
-    final grades = _firstBy(value.grades, (g) => g['submission_id']);
-    final postIds = value.assignments.map((p) => p['id']).toSet();
-    for (final sub in value.submissions) {
-      final grade = grades[sub['id']];
-      if (grade?['returned_at'] != null ||
-          (grade == null &&
-              (sub['status'] != 'turned_in' || sub['submitted_at'] == null))) {
-        continue;
-      }
-      if (postIds.contains(sub['post_id'])) count++;
+/// Badge and folders count the same pending student submissions/attempts.
+final reviewQueueCountProvider = Provider.autoDispose<int>(
+  (ref) => ref.watch(workQueueProvider(false)).entries.length,
+);
+
+List<WorkQueueEntry> instructorReviewEntries(
+  ClassRoom room,
+  GradingData data,
+  DateTime now,
+) {
+  final entries = <WorkQueueEntry>[];
+  final grades = _firstBy(data.grades, (g) => g['submission_id']);
+  final posts = _firstBy(data.assignments, (p) => p['id']);
+  final members = _firstBy(data.members, (m) => m['student_id']);
+  for (final sub in data.submissions) {
+    final grade = grades[sub['id']];
+    final post = posts[sub['post_id']];
+    if (post == null ||
+        grade?['returned_at'] != null ||
+        (grade == null &&
+            (sub['status'] != 'turned_in' || sub['submitted_at'] == null)))
+      continue;
+    final profile = members[sub['student_id']]?['profiles'];
+    entries.add(
+      WorkQueueEntry(
+        room,
+        post['id'] as String,
+        post['title'] as String? ?? 'Assignment',
+        grade == null ? 'To grade' : 'Graded, not returned',
+        sub['is_late'] == true ? 'Late' : 'Turned in',
+        studentId: sub['student_id'] as String,
+        studentName: profile is Map
+            ? profile['display_name']?.toString() ?? 'Student'
+            : 'Student',
+        time: DateTime.tryParse('${sub['submitted_at'] ?? ''}'),
+      ),
+    );
+  }
+  final attemptsByQuiz = <Object?, List<Json>>{};
+  for (final attempt in data.quizAttempts) {
+    (attemptsByQuiz[attempt['quiz_id']] ??= []).add(attempt);
+  }
+  for (final quiz in data.quizzes) {
+    if (quiz['status'] != 'published' ||
+        quiz['deleted_at'] != null ||
+        quiz['results_released_at'] != null)
+      continue;
+    final attempts = attemptsByQuiz[quiz['id']] ?? <Json>[];
+    final monitoring = QuizMonitoring({'quiz': quiz, 'sessions': attempts});
+    final blocked = monitoring.releaseBlocked(now);
+    for (final attempt in monitoring.current.where(
+      (a) => a.submitted && !a.released,
+    )) {
+      entries.add(
+        WorkQueueEntry(
+          room,
+          quiz['id'] as String,
+          quiz['title'] as String,
+          !attempt.gradingComplete
+              ? 'To grade'
+              : blocked == null
+              ? 'Ready to release'
+              : 'Awaiting release',
+          !attempt.gradingComplete
+              ? 'Needs grading'
+              : blocked ?? 'Ready to release',
+          studentId: attempt.studentId,
+          studentName: attempt.studentName,
+          time: DateTime.tryParse('${attempt.json['submitted_at'] ?? ''}'),
+          type: WorkQueueItemType.quiz,
+          activityLabel: quiz['type'] == 'exam' ? 'Exam' : 'Quiz',
+        ),
+      );
     }
   }
-  return count;
-});
+  return entries;
+}
+
+class ReviewActivity {
+  ReviewActivity(this.entries);
+  final List<WorkQueueEntry> entries;
+  WorkQueueEntry get first => entries.first;
+  String get id => '${first.room.id}:${first.type.name}:${first.postId}';
+  int get toGrade => entries.where((e) => e.group == 'To grade').length;
+  int get ready => entries
+      .where(
+        (e) =>
+            e.group == 'Graded, not returned' || e.group == 'Ready to release',
+      )
+      .length;
+  int get awaiting => entries.length - toGrade - ready;
+  String get summary => [
+    if (toGrade > 0) '$toGrade to grade',
+    if (ready > 0)
+      '$ready ready to ${first.type == WorkQueueItemType.quiz ? 'release' : 'return'}',
+    if (awaiting > 0) '$awaiting awaiting release',
+  ].join(' / ');
+}
+
+List<ReviewActivity> reviewActivities(Iterable<WorkQueueEntry> entries) {
+  final grouped = <String, List<WorkQueueEntry>>{};
+  for (final entry in entries) {
+    (grouped['${entry.room.id}:${entry.type.name}:${entry.postId}'] ??= []).add(
+      entry,
+    );
+  }
+  final activities = grouped.values.map((rows) {
+    rows.sort(
+      (a, b) => (a.time ?? DateTime(9999)).compareTo(b.time ?? DateTime(9999)),
+    );
+    return ReviewActivity(rows);
+  }).toList();
+  activities.sort((a, b) {
+    final date = (a.first.time ?? DateTime(9999)).compareTo(
+      b.first.time ?? DateTime(9999),
+    );
+    if (date != 0) return date;
+    final title = a.first.title.compareTo(b.first.title);
+    return title != 0 ? title : a.id.compareTo(b.id);
+  });
+  return activities;
+}
 
 final workQueueProvider = Provider.autoDispose.family<WorkQueueData, bool>((
   ref,
@@ -206,54 +309,20 @@ final workQueueProvider = Provider.autoDispose.family<WorkQueueData, bool>((
       if (value == null) {
         continue;
       }
-      final gradesBySubmission = _firstBy(
-        value.grades,
-        (g) => g['submission_id'],
-      );
-      final postsById = _firstBy(value.assignments, (p) => p['id']);
-      final membersByStudent = _firstBy(value.members, (m) => m['student_id']);
-      for (final sub in value.submissions) {
-        final grade = gradesBySubmission[sub['id']];
-        if (grade?['returned_at'] != null ||
-            (grade == null &&
-                (sub['status'] != 'turned_in' ||
-                    sub['submitted_at'] == null))) {
-          continue;
-        }
-        final post = postsById[sub['post_id']];
-        if (post == null) {
-          continue;
-        }
-        final member = membersByStudent[sub['student_id']];
-        final profile = member?['profiles'];
-        final name = profile is Map
-            ? profile['display_name']?.toString()
-            : member?['display_name']?.toString();
-        entries.add(
-          WorkQueueEntry(
-            room,
-            post['id'] as String,
-            post['title'] as String? ?? 'Assignment',
-            grade == null ? 'To grade' : 'Graded, not returned',
-            sub['is_late'] == true ? 'Late' : 'Turned in',
-            studentId: sub['student_id'] as String,
-            studentName: name ?? 'Student',
-            time: DateTime.tryParse(sub['submitted_at']?.toString() ?? ''),
-          ),
-        );
-      }
+      loaded &= value.quizzesLoaded;
+      entries.addAll(instructorReviewEntries(room, value, now));
     }
   }
-  entries.sort(
-    (a, b) => student
-        ? compareStudentWork(
-            a.time,
-            '${a.type.name}:${a.postId}',
-            b.time,
-            '${b.type.name}:${b.postId}',
-          )
-        : (a.time ?? DateTime(9999)).compareTo(b.time ?? DateTime(9999)),
-  );
+  if (student) {
+    entries.sort(
+      (a, b) => compareStudentWork(
+        a.time,
+        '${a.type.name}:${a.postId}',
+        b.time,
+        '${b.type.name}:${b.postId}',
+      ),
+    );
+  }
   return WorkQueueData(entries, loading, failed, loaded);
 });
 
@@ -269,7 +338,6 @@ class WorkQueueScreen extends ConsumerStatefulWidget {
 }
 
 class _WorkQueueScreenState extends ConsumerState<WorkQueueScreen> {
-  final Set<String> _busy = {};
   String _taskFilter = 'All';
   Timer? _clock;
   @override
@@ -343,62 +411,79 @@ class _WorkQueueScreenState extends ConsumerState<WorkQueueScreen> {
             FiloSpacing.s32,
           ),
           children: [
-            Semantics(
-              header: true,
-              child: Text(
-                'To-do',
-                style: Theme.of(context).textTheme.headlineMedium!
-                    .copyWith(color: Theme.of(context).colorScheme.onSurface),
-              ),
-            ),
-            const SizedBox(height: FiloSpacing.s8),
-            Text(
-              'Assignments and quizzes, organized by due date.',
-              style: Theme.of(context).textTheme.bodyLarge!.copyWith(
-                color: Theme.of(context).colorScheme.onSurfaceVariant,
-              ),
-            ),
-            const SizedBox(height: FiloSpacing.s20),
-            Wrap(
-              spacing: 8,
-              runSpacing: 8,
-              children: [
-                for (final filter in ['All', 'To do', 'Done'])
-                  FiloAnimatedChip(
-                    label: Text(filter),
-                    selected: _taskFilter == filter,
-                    selectedColor: Theme.of(context)
-                        .colorScheme
-                        .primaryContainer,
-                    backgroundColor: Theme.of(context).colorScheme.surface,
-                    labelStyle: Theme.of(context).textTheme.labelMedium!
-                        .copyWith(
-                          color: _taskFilter == filter
-                              ? Theme.of(context).colorScheme.onSurface
-                              : Theme.of(context).colorScheme.onSurfaceVariant,
-                        ),
-                    side: BorderSide(
-                      color: _taskFilter == filter
-                          ? Theme.of(context).colorScheme.primary
-                          : FiloThemeTokens.of(context).controlBorder,
+            FiloPanel(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  Semantics(
+                    header: true,
+                    child: Text(
+                      'To-do',
+                      style: Theme.of(context).textTheme.headlineMedium!
+                          .copyWith(
+                            color: Theme.of(context).colorScheme.onSurface,
+                          ),
                     ),
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: FiloSpacing.s12,
-                      vertical: FiloSpacing.s8,
-                    ),
-                    materialTapTargetSize: MaterialTapTargetSize.padded,
-                    onSelected: (_) => setState(() => _taskFilter = filter),
                   ),
-              ],
+                  const SizedBox(height: FiloSpacing.s8),
+                  Text(
+                    'Assignments and quizzes, organized by due date.',
+                    style: Theme.of(context).textTheme.bodyLarge!.copyWith(
+                      color: Theme.of(context).colorScheme.onSurfaceVariant,
+                    ),
+                  ),
+                  const SizedBox(height: FiloSpacing.s20),
+                  Wrap(
+                    spacing: 8,
+                    runSpacing: 8,
+                    children: [
+                      for (final filter in ['All', 'To do', 'Done'])
+                        FiloAnimatedChip(
+                          label: Text(filter),
+                          selected: _taskFilter == filter,
+                          selectedColor: Theme.of(context)
+                              .colorScheme
+                              .primaryContainer,
+                          backgroundColor: Theme.of(context)
+                              .colorScheme
+                              .surface,
+                          labelStyle: Theme.of(context).textTheme.labelMedium!
+                              .copyWith(
+                                color: _taskFilter == filter
+                                    ? Theme.of(context).colorScheme.onSurface
+                                    : Theme.of(context)
+                                          .colorScheme
+                                          .onSurfaceVariant,
+                              ),
+                          side: BorderSide(
+                            color: _taskFilter == filter
+                                ? Theme.of(context).colorScheme.primary
+                                : FiloThemeTokens.of(context).controlBorder,
+                          ),
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: FiloSpacing.s12,
+                            vertical: FiloSpacing.s8,
+                          ),
+                          materialTapTargetSize: MaterialTapTargetSize.padded,
+                          onSelected: empty
+                              ? null
+                              : (_) => setState(() => _taskFilter = filter),
+                        ),
+                    ],
+                  ),
+                ],
+              ),
             ),
-            const SizedBox(height: FiloSpacing.s20),
+            const SizedBox(height: FiloSpacing.screen),
             if (!online) ...const [
               OfflineBanner(),
               SizedBox(height: FiloSpacing.s16),
             ],
             if (queue.failed) ...[
               EmptyState(
-                title: 'Could not refresh work.',
+                title: 'Work could not refresh',
+                body:
+                    'Saved work is shown when available; reconnect and retry.',
                 showMascot: empty,
                 pose: 'confused',
                 bob: false,
@@ -423,19 +508,36 @@ class _WorkQueueScreenState extends ConsumerState<WorkQueueScreen> {
                 ),
               ),
             if (!queue.loading && !queue.failed && visible.isEmpty)
-              TodoEmptyState(
-                mascotPose: !queue.loaded
+              EmptyState(
+                pose: (!queue.loaded || (!online && empty))
                     ? 'sleepy'
+                    : empty
+                    ? 'waiting'
                     : _taskFilter == 'Done'
                     ? 'waiting'
                     : 'clock',
                 bob: queue.loaded,
-                title: !queue.loaded
-                    ? 'No saved work.'
+                title: (!queue.loaded || (!online && empty))
+                    ? 'No saved work'
                     : _taskFilter == 'Done'
-                    ? 'No completed work yet.'
-                    : "You're all caught up.",
-                message: !queue.loaded
+                    ? 'No completed work yet'
+                    : empty
+                    ? 'No work yet'
+                    : _taskFilter == 'To do'
+                    ? "You're all caught up"
+                    : 'No matching work',
+                action: (!queue.loaded || (!online && empty))
+                    ? FiloButton(
+                        label: 'Refresh',
+                        onPressed: online ? _refresh : null,
+                      )
+                    : !empty
+                    ? FiloButton(
+                        label: 'Show all work',
+                        onPressed: () => setState(() => _taskFilter = 'All'),
+                      )
+                    : null,
+                message: (!queue.loaded || (!online && empty))
                     ? 'Connect to the internet and refresh.'
                     : _taskFilter == 'Done'
                     ? 'Submitted work will appear here.'
@@ -557,9 +659,21 @@ class _WorkQueueScreenState extends ConsumerState<WorkQueueScreen> {
               ),
             );
     }
-    final groups = widget.student
-        ? ['Overdue', 'Today', 'This week', 'Later', 'Done']
-        : ['To grade', 'Graded, not returned'];
+    final activities = reviewActivities(queue.entries);
+    final byClass = <String, List<ReviewActivity>>{};
+    for (final activity in activities) {
+      (byClass[activity.first.room.id] ??= []).add(activity);
+    }
+    final rooms = byClass.values.map((rows) => rows.first.first.room).toList()
+      ..sort((a, b) {
+        final date = (byClass[a.id]!.first.first.time ?? DateTime(9999))
+            .compareTo(byClass[b.id]!.first.first.time ?? DateTime(9999));
+        if (date != 0) return date;
+        final title = '${a.course} / ${a.section}'.compareTo(
+          '${b.course} / ${b.section}',
+        );
+        return title != 0 ? title : a.id.compareTo(b.id);
+      });
     final body = FiloFirstListLoad(
       id: 'instructor-work-queue',
       ready: queue.loaded && !queue.loading && !queue.failed,
@@ -590,7 +704,9 @@ class _WorkQueueScreenState extends ConsumerState<WorkQueueScreen> {
             if (!online) const OfflineBanner(),
             if (queue.failed)
               EmptyState(
-                title: 'Could not refresh work.',
+                title: 'Work could not refresh',
+                body:
+                    'Saved work is shown when available; reconnect and retry.',
                 pose: 'confused',
                 bob: false,
                 showMascot: queue.entries.isEmpty,
@@ -612,178 +728,82 @@ class _WorkQueueScreenState extends ConsumerState<WorkQueueScreen> {
             if (!queue.loading &&
                 !queue.failed &&
                 queue.entries.isEmpty &&
-                queue.loaded)
-              Padding(
-                padding: const EdgeInsets.symmetric(
-                  vertical: FiloSpacing.screen,
-                ),
-                child: Column(
-                  children: [
-                    ExcludeSemantics(
-                      child: AspectRatio(
-                        aspectRatio: 1.5,
-                        child: ColorFiltered(
-                          colorFilter: const ColorFilter.matrix([
-                            1,
-                            0,
-                            0,
-                            0,
-                            0,
-                            0,
-                            1,
-                            0,
-                            0,
-                            0,
-                            0,
-                            0,
-                            1,
-                            0,
-                            0,
-                            0,
-                            0,
-                            0,
-                            12,
-                            -2700,
-                          ]),
-                          child: Image.asset(
-                            'assets/illustrations/review-empty.png',
-                            fit: BoxFit.contain,
-                            cacheWidth:
-                                (360 * MediaQuery.devicePixelRatioOf(context))
-                                    .ceil(),
-                            errorBuilder: (_, _, _) =>
-                                const Icon(Icons.assignment_outlined, size: 48),
-                          ),
-                        ),
-                      ),
-                    ),
-                    const SizedBox(height: FiloSpacing.s16),
-                    Text(
-                      'Nothing to grade right now.',
-                      textAlign: TextAlign.center,
-                      style: Theme.of(context).textTheme.titleLarge,
-                    ),
-                  ],
-                ),
+                queue.loaded &&
+                online)
+              const EmptyState(
+                title: 'No work to review',
+                body: 'Student work will appear here when it is ready for your review.',
+                pose: 'waiting',
               ),
             if (!queue.loading &&
                 !queue.failed &&
                 queue.entries.isEmpty &&
-                !queue.loaded)
+                (!queue.loaded || !online))
               EmptyState(
                 pose: queue.loaded ? 'clock' : 'sleepy',
                 bob: queue.loaded,
-                title: !queue.loaded
-                    ? 'No saved work. Connect to the internet and refresh.'
-                    : widget.student
-                    ? "You're all caught up."
-                    : 'Nothing to grade right now.',
-              ),
-            for (final group in groups)
-              if (queue.entries.any((e) => e.group == group)) ...[
-                Padding(
-                  padding: const EdgeInsets.symmetric(
-                    vertical: FiloSpacing.s16,
-                  ),
-                  child: Text(
-                    group,
-                    style: Theme.of(context).textTheme.titleLarge,
-                  ),
+                title: 'No saved work',
+                body: 'Connect and refresh to load work for review.',
+                primaryAction: EmptyStateAction(
+                  label: 'Refresh',
+                  onPressed: online ? _refresh : null,
                 ),
-                for (final entry in queue.entries.where(
-                  (e) => e.group == group,
-                ))
-                  FiloListItem(
-                    index: queue.entries.indexOf(entry),
-                    child: FiloCardTap(
-                      enabled: true,
-                      child: Card(
-                        margin: const EdgeInsets.only(bottom: FiloSpacing.s12),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(FiloRadii.large),
-                          side: BorderSide(
-                            color: Theme.of(context).colorScheme.outlineVariant,
-                          ),
-                        ),
-                        child: ListTile(
-                          contentPadding: const EdgeInsets.all(FiloSpacing.s16),
-                          titleTextStyle: Theme.of(context)
-                              .textTheme
-                              .titleMedium,
-                          isThreeLine: true,
-                          leading: FiloIcon(
-                            widget.student
-                                ? FiloIcons.assessment
-                                : FiloIcons.person,
-                          ),
-                          title: Text(
-                            widget.student ? entry.title : entry.studentName!,
-                          ),
-                          subtitle: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              if (!widget.student) Text(entry.title),
-                              Text(
-                                '${entry.room.section} • ${entry.room.course}',
-                              ),
-                              Text(
-                                entry.time == null
-                                    ? (widget.student
-                                          ? 'No due date'
-                                          : 'No work turned in')
-                                    : '${widget.student ? 'Due' : 'Turned in'} ${MaterialLocalizations.of(context).formatMediumDate(entry.time!.toLocal())} ${MaterialLocalizations.of(context).formatTimeOfDay(TimeOfDay.fromDateTime(entry.time!.toLocal()))}',
-                              ),
-                              if (widget.student)
-                                Text('${entry.points ?? 0} points'),
-                              Chip(
-                                avatar: FiloIcon(
-                                  entry.status == 'Late' ||
-                                          entry.status == 'Missing'
-                                      ? FiloIcons.clock
-                                      : FiloIcons.checkCircle,
-                                  size: 16,
-                                ),
-                                label: Text(
-                                  entry.group == 'Graded, not returned'
-                                      ? 'Graded (not returned)'
-                                      : entry.status,
-                                ),
-                              ),
-                              if (!widget.student &&
-                                  group == 'Graded, not returned')
-                                TextButton(
-                                  onPressed:
-                                      online &&
-                                          !_busy.contains(
-                                            '${entry.room.id}:${entry.postId}',
-                                          )
-                                      ? () => _return(entry)
-                                      : null,
-                                  child: const Text('Return assignment grades'),
-                                ),
-                            ],
-                          ),
-                          onTap: () => Navigator.of(context).push(
-                            widget.student
-                                ? MaterialPageRoute<void>(
-                                    builder: (_) => AssignmentDetailScreen(
-                                      classId: entry.room.id,
-                                      postId: entry.postId,
-                                    ),
-                                  )
-                                : FiloInstantRoute<void>(
-                                    builder: (_) => GradeScreen(
-                                      classId: entry.room.id,
-                                      postId: entry.postId,
-                                      studentId: entry.studentId!,
-                                    ),
-                                  ),
-                          ),
-                        ),
-                      ),
-                    ),
+              ),
+            for (final room in rooms)
+              Card(
+                key: ValueKey('review-class:${room.id}'),
+                child: ExpansionTile(
+                  key: PageStorageKey('review-class:${room.id}'),
+                  leading: const FiloIcon(FiloIcons.folder),
+                  title: Text('${room.course} / ${room.section}'),
+                  subtitle: Text(
+                    [
+                      if (room.schoolYear?.isNotEmpty == true) room.schoolYear!,
+                      'Pending submissions: ${byClass[room.id]!.fold<int>(0, (count, activity) => count + activity.entries.length)}',
+                    ].join(' / '),
                   ),
-              ],
+                  children: [
+                    for (final activity in byClass[room.id]!)
+                      ListTile(
+                        key: ValueKey(activity.id),
+                        contentPadding: const EdgeInsets.all(FiloSpacing.s16),
+                        leading: const FiloIcon(FiloIcons.folder),
+                        title: Text(
+                          '${activity.first.title} / ${activity.first.activityLabel}',
+                        ),
+                        subtitle: Text(
+                          [
+                            activity.summary,
+                            if (activity.awaiting > 0)
+                              activity.entries
+                                  .firstWhere(
+                                    (e) => e.group == 'Awaiting release',
+                                  )
+                                  .status,
+                          ].join('\n'),
+                        ),
+                        trailing: const FiloIcon(FiloIcons.chevronRight),
+                        onTap: () async {
+                          await Navigator.of(context).push(
+                            MaterialPageRoute<void>(
+                              builder: (_) =>
+                                  activity.first.type == WorkQueueItemType.quiz
+                                  ? InstructorResultsScreen(
+                                      quizId: activity.first.postId,
+                                    )
+                                  : SubmissionsScreen(
+                                      classId: room.id,
+                                      postId: activity.first.postId,
+                                    ),
+                            ),
+                          );
+                          if (mounted)
+                            ref.invalidate(gradingSyncProvider(room.id));
+                        },
+                      ),
+                  ],
+                ),
+              ),
           ],
         ),
       ),
@@ -806,84 +826,5 @@ class _WorkQueueScreenState extends ConsumerState<WorkQueueScreen> {
               body: body,
             ),
           );
-  }
-
-  Future<void> _return(WorkQueueEntry entry) async {
-    final key = '${entry.room.id}:${entry.postId}';
-    setState(() => _busy.add(key));
-    try {
-      if (ref.read(connectivityProvider).asData?.value != true) {
-        return;
-      }
-      final repository = await ref.read(gradingRepositoryProvider.future);
-      if (repository == null) {
-        throw StateError('Sign in required');
-      }
-      await repository.refresh(entry.room.id);
-      final data = await repository.read(entry.room.id);
-      final ids = data.submissions
-          .where((s) => s['post_id'] == entry.postId)
-          .map((s) => s['id'])
-          .toSet();
-      final count = data.grades
-          .where(
-            (g) => ids.contains(g['submission_id']) && g['returned_at'] == null,
-          )
-          .length;
-      if (!mounted) {
-        return;
-      }
-      if (count == 0) {
-        showMessage(context, 'No grades to return.');
-        return;
-      }
-      final confirmed = await showFiloDialog<bool>(
-        context: context,
-        animate: false,
-        builder: (dialog) => AlertDialog(
-          title: Text('Return $count graded ${count == 1 ? 'work' : 'works'}?'),
-          content: Text(
-            count == 1
-                ? 'This student will be able to see their score and feedback.'
-                : 'These students will be able to see their scores and feedback.',
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(dialog, false),
-              child: const Text('Cancel'),
-            ),
-            FilledButton(
-              onPressed: () => Navigator.pop(dialog, true),
-              child: const Text('Return'),
-            ),
-          ],
-        ),
-      );
-      if (confirmed != true ||
-          ref.read(connectivityProvider).asData?.value != true) {
-        return;
-      }
-      final returned = await repository.returnAll(entry.room.id, entry.postId);
-      if (mounted && returned > 0) FiloHaptics.confirmed(context);
-      if (mounted) {
-        showMessage(
-          context,
-          returned == 0
-              ? 'No grades to return.'
-              : '$returned ${returned == 1 ? 'grade' : 'grades'} returned.',
-        );
-      }
-    } catch (_) {
-      if (mounted) {
-        showMessage(
-          context,
-          "We couldn't confirm the update. Refresh to check the grade before trying again.",
-        );
-      }
-    } finally {
-      if (mounted) {
-        setState(() => _busy.remove(key));
-      }
-    }
   }
 }

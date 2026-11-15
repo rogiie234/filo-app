@@ -1,3 +1,5 @@
+import '../../../core/widgets/filo_widgets.dart';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
@@ -42,7 +44,11 @@ class StudyDeckScope extends ConsumerWidget {
                 (_) => studyAsync(
                   notebooks,
                   (_) => const Center(
-                    child: Text('This notebook is no longer available.'),
+                    child: EmptyState(
+                      title: 'Notebook unavailable',
+                      body: 'Return to your notebooks to choose another one.',
+                      pose: 'waiting',
+                    ),
                   ),
                   retry: () => ref.invalidate(studyNotebooksProvider),
                 ),

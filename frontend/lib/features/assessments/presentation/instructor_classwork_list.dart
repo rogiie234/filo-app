@@ -27,10 +27,12 @@ class InstructorClassworkList extends ConsumerStatefulWidget {
     required this.archived,
     required this.active,
     this.showHeading = true,
+    this.onCreate,
   });
   final String classId;
   final bool archived, active;
   final bool showHeading;
+  final VoidCallback? onCreate;
   @override
   ConsumerState<InstructorClassworkList> createState() =>
       _InstructorClassworkListState();
@@ -189,6 +191,7 @@ class _InstructorClassworkListState
           : 'This assessment will no longer be available in the class. Students will no longer be able to open it or start an attempt.',
       confirmLabel: draft ? 'Delete draft' : 'Delete assessment',
       cancelLabel: 'Cancel',
+      confirmDestructive: true,
       icon: FiloIcons.delete,
     );
     if (!confirmed || !mounted) return;
@@ -308,8 +311,7 @@ class _InstructorClassworkListState
     final indexForKey = {
       for (var i = 0; i < entries.length; i++) entries[i].key: i,
     };
-    final filteredEmpty =
-        _filter != 'All' && (assignments.isNotEmpty || quizzes.isNotEmpty);
+    final filteredEmpty = _filter != 'All';
     final now = DateTime.now().toUtc();
     return RefreshIndicator(
       onRefresh: _refresh,
@@ -401,8 +403,12 @@ class _InstructorClassworkListState
                             child: ClassworkFilterChip(
                               label: filter,
                               selected: _filter == filter,
-                              onSelected: () =>
-                                  setState(() => _filter = filter),
+                              onSelected:
+                                  assignments.isEmpty &&
+                                      quizzes.isEmpty &&
+                                      _filter == 'All'
+                                  ? null
+                                  : () => setState(() => _filter = filter),
                             ),
                           ),
                       ],
@@ -411,7 +417,12 @@ class _InstructorClassworkListState
                   const SizedBox(height: FiloSpacing.s20),
                   if (failed || _refreshMessage != null)
                     EmptyState(
-                      title: _refreshMessage ?? 'Could not refresh classwork. Saved work is shown when available.',
+                      title: 'Classwork could not refresh',
+                      body: _refreshMessage ?? 'Saved classwork is shown when available; reconnect and retry.',
+                      primaryAction: EmptyStateAction(
+                        label: 'Retry',
+                        onPressed: online && !_refreshing ? _refresh : null,
+                      ),
                       pose: 'confused',
                       bob: false,
                       showMascot: entries.isEmpty,
@@ -432,29 +443,32 @@ class _InstructorClassworkListState
                       ),
                     ),
                   if (entries.isEmpty && complete && !loading && !failed)
-                    filteredEmpty
-                        ? const Padding(
-                            padding: EdgeInsets.symmetric(
-                              vertical: FiloSpacing.screen,
+                    EmptyState(
+                      pose: 'folder',
+                      title: filteredEmpty
+                          ? 'No matching classwork'
+                          : online
+                          ? 'No classwork yet'
+                          : 'No saved classwork',
+                      body: filteredEmpty
+                          ? 'Choose another category or show all classwork.'
+                          : !online
+                          ? 'Connect and refresh to load classwork on this device.'
+                          : widget.archived
+                          ? 'This class is archived and read-only.'
+                          : 'Create a quiz or exam for your class when you are ready.',
+                      primaryAction: filteredEmpty
+                          ? EmptyStateAction(
+                              label: 'Show all classwork',
+                              onPressed: () => setState(() => _filter = 'All'),
+                            )
+                          : widget.archived || widget.onCreate == null
+                          ? null
+                          : EmptyStateAction(
+                              label: 'New assessment',
+                              onPressed: online ? widget.onCreate : null,
                             ),
-                            child: FiloIllustratedEmptyState(
-                              asset: 'assets/illustrations/review-empty.png',
-                              title: 'No classwork matches this filter.',
-                            ),
-                          )
-                        : FiloIllustratedEmptyState(
-                            asset: 'assets/illustrations/review-empty.png',
-                            title: _filter == 'Assignments'
-                                ? 'No assignments yet'
-                                : _filter == 'All'
-                                ? 'No classwork yet'
-                                : 'No assessments yet',
-                            message: widget.archived
-                                ? 'This class is archived and read-only.'
-                                : _filter == 'Assignments'
-                                ? 'Assignments will appear here when you create them.'
-                                : "Create a quiz or exam for your class. Save a draft or publish when you're ready.",
-                          ),
+                    ),
                 ],
               ),
             ),

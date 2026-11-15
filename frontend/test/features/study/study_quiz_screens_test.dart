@@ -11,8 +11,6 @@ import 'package:filo/data/local/database_providers.dart';
 import 'package:filo/features/study/application/student_ai_providers.dart';
 import 'package:filo/features/study/data/student_ai_client.dart';
 import 'package:filo/features/study/data/study_repositories.dart';
-import 'package:filo/features/study/domain/study_ai.dart';
-import 'package:filo/features/study/domain/study_inputs.dart';
 import 'package:filo/features/study/presentation/study_quizzes_screen.dart';
 import 'package:filo/features/study/presentation/study_quiz_play_screen.dart';
 

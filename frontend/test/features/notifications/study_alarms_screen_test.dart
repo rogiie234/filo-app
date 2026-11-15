@@ -149,7 +149,7 @@ void main() {
         ),
       );
       await tester.pumpAndSettle();
-      expect(find.text('No study alarms yet.'), findsOneWidget);
+      expect(find.text('No study alarms yet'), findsOneWidget);
       expect(
         find.text('Approximate alarms. Delivery may be delayed.'),
         findsOneWidget,
@@ -204,7 +204,7 @@ void main() {
       await tester.pumpAndSettle();
       await tester.tap(find.text('Delete'));
       await tester.pumpAndSettle();
-      expect(find.text('No study alarms yet.'), findsOneWidget);
+      expect(find.text('No study alarms yet'), findsOneWidget);
       expect(tester.takeException(), isNull);
       await tester.pumpWidget(const SizedBox());
       await tester.pump();
@@ -237,13 +237,13 @@ void main() {
         ),
       );
       await tester.pump();
-      expect(find.text('No study alarms yet.'), findsNothing);
+      expect(find.text('No study alarms yet'), findsNothing);
       expect(find.byType(CircularProgressIndicator), findsOneWidget);
       pending.completeError(StateError('Fixture storage unavailable'));
       await tester.pumpAndSettle();
-      expect(find.text('No study alarms yet.'), findsNothing);
+      expect(find.text('No study alarms yet'), findsNothing);
       expect(
-        find.text('Could not load study alarms. Sign in or retry.'),
+        find.text('Study alarms unavailable'),
         findsOneWidget,
       );
       await tester.pumpWidget(const SizedBox());

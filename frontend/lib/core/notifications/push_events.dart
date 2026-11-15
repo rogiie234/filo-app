@@ -1,7 +1,6 @@
 import 'dart:async';
 
 import 'package:flutter/widgets.dart';
-import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../features/onboarding/data/profile_repository.dart';
@@ -143,7 +142,20 @@ class PushEvents extends ChangeNotifier {
       return foreign;
     });
     final index = _pending.indexWhere((e) => allowOpen || !e.open);
-    return index < 0 ? null : _pending.removeAt(index);
+    if (index < 0) return null;
+    final event = _pending.removeAt(index);
+    if (event.id != null && event.completion == null) {
+      // Cold-start and account-bound Firebase callbacks may describe one tap.
+      _seen.add('push:$accountId:${event.id}:${event.open}');
+      _pending.removeWhere(
+        (other) =>
+            other.id == event.id &&
+            other.open == event.open &&
+            other.completion == null &&
+            (other.accountId == null || other.accountId == accountId),
+      );
+    }
+    return event;
   }
 
   void retry(PushEvent event) {

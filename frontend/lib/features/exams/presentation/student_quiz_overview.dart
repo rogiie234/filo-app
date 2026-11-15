@@ -138,6 +138,10 @@ class StudentQuizOverview extends StatelessWidget {
                         FiloIcons.info,
                         'Have enough battery and mobile data or Wi-Fi.',
                       ),
+                      (
+                        FiloIcons.shield,
+                        'Leaving this app for at least one second counts as an exit, including calls and screen locking. New attempts warn at 4 exits and automatically submit at 5.',
+                      ),
                     ])
                       Padding(
                         padding: const EdgeInsets.symmetric(
@@ -170,11 +174,25 @@ class StudentQuizOverview extends StatelessWidget {
               ),
             ],
           ],
-          if (message != null) ...[
+          if (q == null && !loading)
+            EmptyState(
+              title: online ? 'Quiz unavailable' : 'Quiz not saved',
+              body:
+                  message ??
+                  (online
+                      ? 'Refresh to check whether this quiz is still available.'
+                      : 'Connect and refresh to load this quiz.'),
+              showMascot: false,
+              primaryAction: EmptyStateAction(
+                label: 'Try again',
+                onPressed: busy || !online ? null : onRetry ?? onRefresh,
+              ),
+            ),
+          if (message != null && q != null) ...[
             const SizedBox(height: FiloSpacing.s16),
             Semantics(liveRegion: true, child: Text(message!)),
           ],
-          if (onRetry != null) ...[
+          if (onRetry != null && q != null) ...[
             const SizedBox(height: FiloSpacing.s8),
             TextButton(
               onPressed: busy ? null : onRetry,

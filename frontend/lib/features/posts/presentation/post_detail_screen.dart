@@ -1,12 +1,9 @@
-import '../../../core/widgets/filo_widgets.dart' show FiloPanel;
+import '../../../core/widgets/filo_widgets.dart';
 import '../../../core/widgets/entry_background.dart';
-import '../../../core/theme/filo_design_tokens.dart';
-import '../../../core/widgets/filo_motion_widgets.dart';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import '../../../core/widgets/filo_icon.dart';
 import '../../../core/connectivity/connectivity_provider.dart';
 import '../../../core/supabase/supabase_provider.dart';
 import '../../../data/local/app_database.dart';
@@ -120,7 +117,13 @@ class _PostDetailScreenState extends ConsumerState<PostDetailScreen> {
                     !posts.hasError &&
                     !sync.isLoading &&
                     online)
-            ? const Center(child: Text('This item is no longer available.'))
+            ? const Center(
+                child: EmptyState(
+                  title: 'Item unavailable',
+                  body: 'Return to the previous screen and refresh to check for updates.',
+                  pose: 'waiting',
+                ),
+              )
             : ListView(
                 padding: const EdgeInsets.all(FiloSpacing.screen),
                 children: [
@@ -172,11 +175,16 @@ class _PostDetailScreenState extends ConsumerState<PostDetailScreen> {
                         ),
                       ),
                     if (attachments.hasError)
-                      TextButton(
-                        onPressed: () => ref.invalidate(
-                          postAttachmentsProvider(widget.postId),
+                      EmptyState(
+                        title: 'Attachments unavailable',
+                        body: 'Retry to load the files and links attached to this item.',
+                        showMascot: false,
+                        primaryAction: EmptyStateAction(
+                          label: 'Retry',
+                          onPressed: () => ref.invalidate(
+                            postAttachmentsProvider(widget.postId),
+                          ),
                         ),
-                        child: const Text('Could not load attachments. Retry'),
                       ),
                     for (final attachment
                         in attachments.asData?.value ?? <CachePostAttachment>[])

@@ -194,14 +194,18 @@ class SupabaseExamRemote implements ExamRemote {
     return rows;
   });
   Future<ExamJson> _rpc(String name, ExamJson params) => _call(
-    () async => ExamJson.from(await client.rpc(name, params: params) as Map),
+    () async => ExamJson.from(
+      await client
+              .rpc(name, params: params)
+              .timeout(const Duration(seconds: 20))
+          as Map,
+    ),
   );
   @override
   Future<ExamJson?> session(String quizId) => _call(() async {
-    final value = await client.rpc(
-      'get_my_session',
-      params: {'p_quiz': quizId},
-    );
+    final value = await client
+        .rpc('get_my_session', params: {'p_quiz': quizId})
+        .timeout(const Duration(seconds: 20));
     return value == null ? null : ExamJson.from(value as Map);
   });
   @override
@@ -212,29 +216,33 @@ class SupabaseExamRemote implements ExamRemote {
       _rpc('get_exam', {'p_session': sessionId});
   @override
   Future<void> save(String sessionId, ExamAnswer answer) => _call(() async {
-    await client.rpc('save_answer', params: answer.params(sessionId));
+    await client
+        .rpc('save_answer', params: answer.params(sessionId))
+        .timeout(const Duration(seconds: 20));
   });
   @override
   Future<List<ExamSaveReceipt>> saveBatch(
     String sessionId,
     List<StoredAnswer> answers,
   ) => _call(() async {
-    final raw = await client.rpc(
-      'save_answers',
-      params: {
-        'p_session': sessionId,
-        'p_answers': [
-          for (final stored in answers)
-            {
-              'question_id': stored.answer.questionId,
-              'revision': stored.revision,
-              'option_id': stored.answer.optionId,
-              'bool_answer': stored.answer.boolean,
-              'text_answer': stored.answer.text,
-            },
-        ],
-      },
-    );
+    final raw = await client
+        .rpc(
+          'save_answers',
+          params: {
+            'p_session': sessionId,
+            'p_answers': [
+              for (final stored in answers)
+                {
+                  'question_id': stored.answer.questionId,
+                  'revision': stored.revision,
+                  'option_id': stored.answer.optionId,
+                  'bool_answer': stored.answer.boolean,
+                  'text_answer': stored.answer.text,
+                },
+            ],
+          },
+        )
+        .timeout(const Duration(seconds: 20));
     const uncertain = ExamFailure(
       "We couldn't confirm your saved answers. Try again.",
       retryable: true,

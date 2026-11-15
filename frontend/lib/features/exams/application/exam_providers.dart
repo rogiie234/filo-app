@@ -16,6 +16,10 @@ import 'student_exam_repository.dart';
 import 'exam_screen_security.dart';
 import 'exam_leave_tracker.dart';
 
+final examWindowStateProvider = StreamProvider.autoDispose<ExamWindowState>(
+  (ref) => ExamScreenSecurity.windowStates(),
+);
+
 final studentExamRepositoryProvider = FutureProvider<StudentExamRepository?>((
   ref,
 ) async {
@@ -32,6 +36,12 @@ final studentExamRepositoryProvider = FutureProvider<StudentExamRepository?>((
         ref.read(verifiedUserIdProvider).asData?.value == userId,
     online: () => ref.read(connectivityProvider).asData?.value == true,
     protectScreen: ExamScreenSecurity.protect,
+    isWindowBlocked: () => ExamScreenSecurity.multiWindow,
+    flushLeaveEvents: () async {
+      final sync = await ref.read(syncCoordinatorProvider.future);
+      await sync?.run();
+      await sync?.run();
+    },
   );
   ref.onDispose(repository.dispose);
   return repository;
@@ -200,6 +210,9 @@ final examLifecycleProvider = Provider.autoDispose<void>((ref) {
       return;
     }
     try {
+      final repository = await future;
+      if (!disposed && repository?.forcedSubmission == true)
+        await repository!.recover();
       final sync = await ref.read(syncCoordinatorProvider.future);
       if (!disposed) {
         await sync?.run();

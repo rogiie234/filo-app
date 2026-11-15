@@ -38,6 +38,12 @@ class _RemoteFilePreviewState extends State<RemoteFilePreview> {
     }
   }
 
+  void _retry() {
+    setState(() {
+      _source = widget.load();
+    });
+  }
+
   @override
   Widget build(BuildContext context) => Scaffold(
     appBar: AppBar(title: Text(widget.name)),
@@ -46,12 +52,10 @@ class _RemoteFilePreviewState extends State<RemoteFilePreview> {
       builder: (context, snapshot) {
         if (snapshot.hasError) {
           return EmptyState(
-            title: 'Could not preview this file. Try again.',
+            title: 'Preview unavailable',
+            body: 'Retry to load a preview of this file.',
             bob: false,
-            action: TextButton(
-              onPressed: () => setState(() => _source = widget.load()),
-              child: const Text('Retry'),
-            ),
+            action: TextButton(onPressed: _retry, child: const Text('Retry')),
           );
         }
         final uri = snapshot.data;
@@ -70,9 +74,13 @@ class _RemoteFilePreviewState extends State<RemoteFilePreview> {
             child: Center(
               child: Image.network(
                 uri.toString(),
-                errorBuilder: (_, _, _) => TextButton(
-                  onPressed: () => setState(() => _source = widget.load()),
-                  child: const Text('Could not preview this file. Retry'),
+                errorBuilder: (_, _, _) => EmptyState(
+                  title: 'Image preview unavailable',
+                  body: 'Retry to load a preview of this image.',
+                  primaryAction: EmptyStateAction(
+                    label: 'Retry',
+                    onPressed: _retry,
+                  ),
                 ),
               ),
             ),

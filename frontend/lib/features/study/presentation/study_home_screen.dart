@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/widgets/filo_widgets.dart';
+import '../../../core/widgets/entry_background.dart';
 import '../../../data/local/app_database.dart';
 import '../../../data/local/database_providers.dart';
 import '../application/study_providers.dart';
@@ -11,7 +12,8 @@ import 'study_widgets.dart';
 import '../../notifications/presentation/study_alarms_screen.dart';
 
 class StudyHomeScreen extends ConsumerStatefulWidget {
-  const StudyHomeScreen({super.key});
+  const StudyHomeScreen({super.key, this.embedded = false});
+  final bool embedded;
   @override
   ConsumerState<StudyHomeScreen> createState() => _StudyHomeScreenState();
 }
@@ -66,68 +68,93 @@ class _StudyHomeScreenState extends ConsumerState<StudyHomeScreen> {
   @override
   Widget build(BuildContext context) {
     final notebooks = ref.watch(studyNotebooksProvider);
-    return FiloFirstListLoad(
-      id: 'study',
-      hasItems: notebooks.asData?.value.isNotEmpty ?? false,
-      ready: notebooks.hasValue && !notebooks.isLoading && !notebooks.hasError,
-      child: ListView(
-        padding: const EdgeInsets.all(FiloSpacing.screen),
-        children: [
-          const StudyOfflineBanner(),
-          Row(
-            children: [
-              Expanded(
-                child: Text(
-                  'AI Study',
-                  style: Theme.of(context).textTheme.headlineMedium,
-                ),
-              ),
-              IconButton(
-                tooltip: 'Study alarms',
-                onPressed: () => Navigator.push(
-                  context,
-                  MaterialPageRoute<void>(
-                    builder: (_) => const StudyAlarmsScreen(),
-                  ),
-                ),
-                icon: const Icon(Icons.alarm),
-              ),
-            ],
-          ),
-          const SizedBox(height: FiloSpacing.s16),
-          FiloButton(
-            label: 'New notebook',
-            icon: FiloIcons.add,
-            onPressed:
-                _creating ||
-                    notebooks.isLoading ||
-                    !notebooks.hasValue ||
-                    notebooks.hasError
-                ? null
-                : _create,
-          ),
-          const SizedBox(height: FiloSpacing.screen),
-          studyAsync(
-            notebooks,
-            (items) => Column(
+    return EntryBackground(
+      enabled: !widget.embedded,
+      variation: 4,
+      child: FiloFirstListLoad(
+        id: 'study',
+        hasItems: notebooks.asData?.value.isNotEmpty ?? false,
+        ready:
+            notebooks.hasValue && !notebooks.isLoading && !notebooks.hasError,
+        child: ListView(
+          padding: const EdgeInsets.all(FiloSpacing.screen),
+          children: [
+            const StudyOfflineBanner(),
+            Row(
               children: [
-                if (items.isEmpty)
-                  const EmptyState(
-                    pose: 'reading',
-                    title: 'Start your first notebook.',
-                    message: 'Keep your files and study tools together.',
+                Expanded(
+                  child: Text(
+                    'AI Study',
+                    style: Theme.of(context).textTheme.headlineMedium,
                   ),
-                for (final notebook in items)
-                  FiloListItem(
-                    index: items.indexOf(notebook),
-                    child: _NotebookTile(notebook: notebook),
+                ),
+                IconButton(
+                  tooltip: 'Study alarms',
+                  onPressed: () => Navigator.push(
+                    context,
+                    MaterialPageRoute<void>(
+                      builder: (_) => const StudyAlarmsScreen(),
+                    ),
                   ),
+                  icon: const Icon(Icons.alarm),
+                ),
               ],
             ),
-            retry: () => ref.invalidate(studyNotebooksProvider),
-            showMascot: true,
-          ),
-        ],
+            const SizedBox(height: FiloSpacing.s8),
+            Text(
+              'Keep your files and study tools together.',
+              style: Theme.of(context).textTheme.bodyLarge?.copyWith(
+                color: Theme.of(context).colorScheme.onSurfaceVariant,
+              ),
+            ),
+            const SizedBox(height: FiloSpacing.s20),
+            if (notebooks.asData?.value.isNotEmpty ?? false)
+              FiloButton(
+                label: 'New notebook',
+                icon: FiloIcons.add,
+                onPressed:
+                    _creating ||
+                        notebooks.isLoading ||
+                        !notebooks.hasValue ||
+                        notebooks.hasError
+                    ? null
+                    : _create,
+              ),
+            const SizedBox(height: FiloSpacing.screen),
+            Semantics(
+              header: true,
+              child: Text(
+                'Your notebooks',
+                style: Theme.of(context).textTheme.titleLarge,
+              ),
+            ),
+            const SizedBox(height: FiloSpacing.s12),
+            studyAsync(
+              notebooks,
+              (items) => Column(
+                children: [
+                  if (items.isEmpty)
+                    EmptyState(
+                      primaryAction: EmptyStateAction(
+                        label: 'New notebook',
+                        onPressed: _creating ? null : _create,
+                      ),
+                      pose: 'reading',
+                      title: 'Start your first notebook.',
+                      message: 'Create a notebook to collect sources and start studying.',
+                    ),
+                  for (final notebook in items)
+                    FiloListItem(
+                      index: items.indexOf(notebook),
+                      child: _NotebookTile(notebook: notebook),
+                    ),
+                ],
+              ),
+              retry: () => ref.invalidate(studyNotebooksProvider),
+              showMascot: true,
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -149,8 +176,25 @@ class _NotebookTile extends ConsumerWidget {
             horizontal: FiloSpacing.s4,
           ),
           child: ListTile(
-            leading: const FiloIcon(FiloIcons.folder),
-            title: Text(notebook.name),
+            contentPadding: const EdgeInsets.symmetric(
+              horizontal: FiloSpacing.s16,
+              vertical: FiloSpacing.s8,
+            ),
+            leading: Container(
+              padding: const EdgeInsets.all(FiloSpacing.s12),
+              decoration: BoxDecoration(
+                color: Theme.of(context).colorScheme.primaryContainer,
+                borderRadius: BorderRadius.circular(FiloRadii.medium),
+              ),
+              child: Icon(
+                FiloIcons.book,
+                color: Theme.of(context).colorScheme.onPrimaryContainer,
+              ),
+            ),
+            title: Text(
+              notebook.name,
+              style: Theme.of(context).textTheme.titleMedium,
+            ),
             subtitle: Text(
               '${sources.isLoading
                   ? 'Loading sources...'

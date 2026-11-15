@@ -5,6 +5,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../core/ai/ai_request_providers.dart';
 import '../../../core/connectivity/connectivity_provider.dart';
 import '../../../core/widgets/filo_widgets.dart';
+import '../../../core/widgets/entry_background.dart';
 import '../../../data/local/database_providers.dart';
 import '../application/student_ai_providers.dart';
 import '../application/study_quiz_sessions.dart';
@@ -26,136 +27,183 @@ String quizTypeLabel(String type) => switch (type) {
 class StudyQuizzesScreen extends StatelessWidget {
   const StudyQuizzesScreen({super.key, required this.notebookId});
   final String notebookId;
+  void _generate(BuildContext context) => Navigator.push(
+    context,
+    MaterialPageRoute<void>(
+      builder: (_) => StudyQuizGenerateScreen(notebookId: notebookId),
+    ),
+  );
   @override
   Widget build(BuildContext context) => StudyQuizScope(
     notebookId: notebookId,
     builder: (repo) => Consumer(
-      builder: (context, ref, _) => Scaffold(
-        appBar: AppBar(title: const Text('Practice quiz')),
-        body: SafeArea(
-          child: ListView(
-            padding: const EdgeInsets.all(FiloSpacing.screen),
-            children: [
-              const StudyOfflineBanner(),
-              studyAsync(
-                ref.watch(studyQuizzesProvider(notebookId)),
-                (quizzes) => Column(
-                  crossAxisAlignment: CrossAxisAlignment.stretch,
-                  children: [
-                    FiloButton(
-                      label: 'Generate practice quiz',
-                      icon: FiloIcons.sparkle,
-                      onPressed: quizzes.length >= 10
-                          ? null
-                          : () => Navigator.push(
-                              context,
-                              MaterialPageRoute<void>(
-                                builder: (_) => StudyQuizGenerateScreen(
-                                  notebookId: notebookId,
-                                ),
-                              ),
-                            ),
-                    ),
-                    if (quizzes.length >= 10) const Text(studyQuizLimitMessage),
-                    const SizedBox(height: FiloSpacing.screen),
-                    if (quizzes.isEmpty)
-                      const EmptyState(
-                        title: 'No practice quizzes saved yet.',
-                        pose: 'reading',
+      builder: (context, ref, _) => EntryBackground(
+        variation: 4,
+        child: Scaffold(
+          backgroundColor: Colors.transparent,
+          appBar: AppBar(
+            backgroundColor: Colors.transparent,
+            surfaceTintColor: Colors.transparent,
+            elevation: 0,
+            scrolledUnderElevation: 0,
+            title: const Text('Practice quiz'),
+          ),
+          body: SafeArea(
+            child: ListView(
+              padding: const EdgeInsets.all(FiloSpacing.screen),
+              children: [
+                const StudyOfflineBanner(),
+                studyAsync(
+                  ref.watch(studyQuizzesProvider(notebookId)),
+                  (quizzes) => Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      if (quizzes.isNotEmpty)
+                        FiloButton(
+                          label: 'Generate practice quiz',
+                          icon: FiloIcons.sparkle,
+                          onPressed: quizzes.length >= 10
+                              ? null
+                              : () => _generate(context),
+                        ),
+                      if (quizzes.length >= 10)
+                        const Text(studyQuizLimitMessage),
+                      const SizedBox(height: FiloSpacing.screen),
+                      Semantics(
+                        header: true,
+                        child: Text(
+                          'Saved practice quizzes',
+                          style: Theme.of(context).textTheme.titleLarge,
+                        ),
                       ),
-                    for (final quiz in quizzes)
-                      Padding(
-                        padding: const EdgeInsets.only(bottom: FiloSpacing.s12),
-                        child: FiloPanel(
-                          padding: EdgeInsets.zero,
-                          child: ListTile(
-                            contentPadding: const EdgeInsets.all(
-                              FiloSpacing.s16,
-                            ),
-                            title: Text(quiz.title),
-                            subtitle: studyAsync(
-                              ref.watch(studyQuestionsProvider(quiz.id)),
-                              (questions) => Text(
-                                studyCount(questions.length, 'question'),
+                      const SizedBox(height: FiloSpacing.s12),
+                      if (quizzes.isEmpty)
+                        EmptyState(
+                          primaryAction: EmptyStateAction(
+                            label: 'Generate practice quiz',
+                            onPressed: () => _generate(context),
+                          ),
+                          title: 'No practice quizzes yet',
+                          body: 'Generate a quiz from your sources or a topic to start practicing.',
+                          pose: 'reading',
+                        ),
+                      for (final quiz in quizzes)
+                        Padding(
+                          padding: const EdgeInsets.only(
+                            bottom: FiloSpacing.s12,
+                          ),
+                          child: FiloPanel(
+                            padding: EdgeInsets.zero,
+                            child: ListTile(
+                              contentPadding: const EdgeInsets.all(
+                                FiloSpacing.s16,
                               ),
-                              retry: () => ref.invalidate(
-                                studyQuestionsProvider(quiz.id),
-                              ),
-                            ),
-                            onTap: () => Navigator.push(
-                              context,
-                              MaterialPageRoute<void>(
-                                builder: (_) => StudyQuizPlayScreen(
-                                  notebookId: notebookId,
-                                  quizId: quiz.id,
+                              leading: Container(
+                                padding: const EdgeInsets.all(FiloSpacing.s12),
+                                decoration: BoxDecoration(
+                                  color: Theme.of(context)
+                                      .colorScheme
+                                      .primaryContainer,
+                                  borderRadius: BorderRadius.circular(
+                                    FiloRadii.medium,
+                                  ),
+                                ),
+                                child: Icon(
+                                  Icons.quiz_outlined,
+                                  color: Theme.of(context)
+                                      .colorScheme
+                                      .onPrimaryContainer,
                                 ),
                               ),
-                            ),
-                            trailing: PopupMenuButton<String>(
-                              tooltip: 'Options for ${quiz.title}',
-                              itemBuilder: (_) => const [
-                                PopupMenuItem(
-                                  value: 'history',
-                                  child: Text('History'),
+                              title: Text(
+                                quiz.title,
+                                style: Theme.of(context).textTheme.titleMedium,
+                              ),
+                              subtitle: studyAsync(
+                                ref.watch(studyQuestionsProvider(quiz.id)),
+                                (questions) => Text(
+                                  studyCount(questions.length, 'question'),
                                 ),
-                                PopupMenuItem(
-                                  value: 'delete',
-                                  child: Text('Delete quiz'),
+                                retry: () => ref.invalidate(
+                                  studyQuestionsProvider(quiz.id),
                                 ),
-                              ],
-                              onSelected: (action) async {
-                                if (action == 'history') {
-                                  Navigator.push(
-                                    context,
-                                    MaterialPageRoute<void>(
-                                      builder: (_) => StudyQuizHistoryScreen(
-                                        notebookId: notebookId,
-                                        quizId: quiz.id,
-                                      ),
-                                    ),
-                                  );
-                                  return;
-                                }
-                                final confirmed = await showFiloConfirmation(
-                                  context,
-                                  title: 'Delete this quiz?',
-                                  message: 'This quiz, its questions and all its attempts will be deleted from this device.',
-                                  confirmLabel: 'Delete quiz',
-                                  cancelLabel: 'Cancel',
-                                  icon: FiloIcons.delete,
-                                );
-                                if (!confirmed ||
-                                    !context.mounted ||
-                                    ref
-                                            .read(accountDatabaseProvider)
-                                            .asData
-                                            ?.value !=
-                                        repo.db) {
-                                  return;
-                                }
-                                try {
-                                  await repo.delete(quiz.id);
-                                } catch (_) {
-                                  if (context.mounted) {
-                                    showMessage(
+                              ),
+                              onTap: () => Navigator.push(
+                                context,
+                                MaterialPageRoute<void>(
+                                  builder: (_) => StudyQuizPlayScreen(
+                                    notebookId: notebookId,
+                                    quizId: quiz.id,
+                                  ),
+                                ),
+                              ),
+                              trailing: PopupMenuButton<String>(
+                                tooltip: 'Options for ${quiz.title}',
+                                itemBuilder: (_) => const [
+                                  PopupMenuItem(
+                                    value: 'history',
+                                    child: Text('History'),
+                                  ),
+                                  PopupMenuItem(
+                                    value: 'delete',
+                                    child: Text('Delete quiz'),
+                                  ),
+                                ],
+                                onSelected: (action) async {
+                                  if (action == 'history') {
+                                    Navigator.push(
                                       context,
-                                      'Could not delete this quiz. Try again.',
+                                      MaterialPageRoute<void>(
+                                        builder: (_) => StudyQuizHistoryScreen(
+                                          notebookId: notebookId,
+                                          quizId: quiz.id,
+                                        ),
+                                      ),
                                     );
+                                    return;
                                   }
-                                }
-                              },
+                                  final confirmed = await showFiloConfirmation(
+                                    context,
+                                    title: 'Delete this quiz?',
+                                    message: 'This quiz, its questions and all its attempts will be deleted from this device.',
+                                    confirmLabel: 'Delete quiz',
+                                    cancelLabel: 'Cancel',
+                                    confirmDestructive: true,
+                                    icon: FiloIcons.delete,
+                                  );
+                                  if (!confirmed ||
+                                      !context.mounted ||
+                                      ref
+                                              .read(accountDatabaseProvider)
+                                              .asData
+                                              ?.value !=
+                                          repo.db) {
+                                    return;
+                                  }
+                                  try {
+                                    await repo.delete(quiz.id);
+                                  } catch (_) {
+                                    if (context.mounted) {
+                                      showMessage(
+                                        context,
+                                        'Could not delete this quiz. Try again.',
+                                      );
+                                    }
+                                  }
+                                },
+                              ),
                             ),
                           ),
                         ),
-                      ),
-                  ],
+                    ],
+                  ),
+                  retry: () => ref.invalidate(studyQuizzesProvider(notebookId)),
+                  showMascot: true,
                 ),
-                retry: () => ref.invalidate(studyQuizzesProvider(notebookId)),
-                showMascot: true,
-              ),
-              const SizedBox(height: FiloSpacing.s16),
-              const Text('AI can make mistakes. Check important answers.'),
-            ],
+                const SizedBox(height: FiloSpacing.s16),
+                const Text('AI can make mistakes. Check important answers.'),
+              ],
+            ),
           ),
         ),
       ),
@@ -283,168 +331,192 @@ class _QuizGenerateBodyState extends ConsumerState<_QuizGenerateBody> {
           });
         }
       },
-      child: Scaffold(
-        appBar: AppBar(title: const Text('Generate practice quiz')),
-        body: SafeArea(
-          child: ListView(
-            padding: const EdgeInsets.all(FiloSpacing.screen),
-            children: [
-              const StudyOfflineBanner(),
-              if (result == null) ...[
-                const Text('How many questions?'),
-                const SizedBox(height: FiloSpacing.s8),
-                DropdownButtonFormField<int>(
-                  initialValue: _count,
-                  decoration: const InputDecoration(
-                    labelText: 'Number of questions',
-                  ),
-                  items: [
-                    for (final i in [5, 10, 15, 20])
-                      DropdownMenuItem(value: i, child: Text('$i')),
-                  ],
-                  onChanged: _session.working || _authorizing
-                      ? null
-                      : (value) => setState(() => _count = value!),
-                ),
-                for (final type in studyQuestionTypes)
-                  CheckboxListTile(
-                    title: Text(quizTypeLabel(type)),
-                    value: _types.contains(type),
-                    onChanged: _session.working || _authorizing
-                        ? null
-                        : (selected) => setState(() {
-                            if (selected == true) {
-                              _types.add(type);
-                            } else {
-                              _types.remove(type);
-                            }
-                          }),
-                  ),
-                const SizedBox(height: FiloSpacing.s16),
-                TextField(
-                  controller: _topic,
-                  enabled: !_session.working && !_authorizing,
-                  decoration: const InputDecoration(
-                    labelText: 'Topic (optional with sources)',
-                  ),
-                  inputFormatters: [
-                    TextInputFormatter.withFunction(
-                      (old, next) => next.text.runes.length <= 200 ? next : old,
-                    ),
-                  ],
-                  onChanged: (_) => setState(() {}),
-                ),
-                Text('${_topic.text.runes.length}/200 characters'),
-                const SizedBox(height: FiloSpacing.screen),
-              ],
-              if (_session.working) ...[
-                if (!_session.saving) const Mascot(pose: 'thinking', size: 120),
-                Semantics(
-                  liveRegion: true,
-                  child: Text(
-                    _session.saving
-                        ? 'Saving quiz...'
-                        : 'Preparing your practice quiz...',
-                  ),
-                ),
-                if (!MediaQuery.disableAnimationsOf(context))
-                  const Padding(
-                    padding: EdgeInsets.all(FiloSpacing.s16),
-                    child: Center(
-                      child: FiloCircularProgressIndicator(
-                        semanticsLabel: 'Preparing practice quiz',
-                      ),
-                    ),
-                  ),
-                if (!_session.saving)
-                  FiloButton(label: 'Cancel', onPressed: _session.cancel),
-                const Text(
-                  'Cancel stops waiting on this phone. The server may still finish.',
-                ),
-              ] else if (result == null)
-                FiloButton(
-                  label: 'Generate',
-                  icon: FiloIcons.sparkle,
-                  onPressed: reason == null && !_authorizing ? _generate : null,
-                ),
-              if (reason != null && result == null)
-                Padding(
-                  padding: const EdgeInsets.only(top: FiloSpacing.s12),
-                  child: Text(reason),
-                ),
-              if (sources.hasError || quizzes.hasError)
-                TextButton(
-                  onPressed: () {
-                    ref.invalidate(studySourcesProvider(widget.notebookId));
-                    ref.invalidate(studyQuizzesProvider(widget.notebookId));
-                  },
-                  child: const Text('Retry loading notebook'),
-                ),
-              if (result != null) ...[
-                const SizedBox(height: FiloSpacing.s16),
-                Text(
-                  _session.savedId == null
-                      ? 'Quiz not confirmed saved'
-                      : 'Quiz saved.',
-                ),
-                Text(
-                  '${studyCount(result.value.items.length, 'question')} prepared.',
-                ),
-                if (result.value.dropped > 0)
-                  Text(
-                    '${result.value.dropped} invalid ${result.value.dropped == 1 ? 'question was' : 'questions were'} dropped.',
-                  ),
-                if (result.value.missing > 0)
-                  Text(
-                    '${result.value.missing} requested ${result.value.missing == 1 ? 'question was' : 'questions were'} not returned.',
-                  ),
-                for (final usage in result.sources.usage)
-                  if (usage.truncated)
-                    Text(
-                      'Only the first ${usage.retainedCharacters} characters of ${usage.name} were used.',
-                    ),
-                const SizedBox(height: FiloSpacing.s16),
-                if (_session.hasUnsaved)
-                  ExpansionTile(
-                    title: const Text('Prepared questions'),
-                    children: [
-                      for (final question in result.value.items)
-                        ListTile(
-                          title: Text(question.prompt),
-                          subtitle: Text(question.explanation),
+      child: EntryBackground(
+        variation: 4,
+        child: Scaffold(
+          backgroundColor: Colors.transparent,
+          appBar: AppBar(
+            backgroundColor: Colors.transparent,
+            surfaceTintColor: Colors.transparent,
+            elevation: 0,
+            scrolledUnderElevation: 0,
+            title: const Text('Generate practice quiz'),
+          ),
+          body: SafeArea(
+            child: ListView(
+              padding: const EdgeInsets.all(FiloSpacing.screen),
+              children: [
+                const StudyOfflineBanner(),
+                if (result == null)
+                  FiloPanel(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: [
+                        Text(
+                          'How many questions?',
+                          style: Theme.of(context).textTheme.titleMedium,
                         ),
-                    ],
-                  ),
-                if (_session.hasUnsaved && !_session.working)
-                  FiloButton(
-                    label: 'Try saving again',
-                    onPressed: _session.retrySave,
-                  ),
-                if (_session.savedId != null)
-                  FiloButton(
-                    label: 'Take quiz',
-                    onPressed: () => Navigator.pushReplacement(
-                      context,
-                      MaterialPageRoute<void>(
-                        builder: (_) => StudyQuizPlayScreen(
-                          notebookId: widget.notebookId,
-                          quizId: _session.savedId!,
+                        const SizedBox(height: FiloSpacing.s8),
+                        DropdownButtonFormField<int>(
+                          initialValue: _count,
+                          decoration: const InputDecoration(
+                            labelText: 'Number of questions',
+                          ),
+                          items: [
+                            for (final i in [5, 10, 15, 20])
+                              DropdownMenuItem(value: i, child: Text('$i')),
+                          ],
+                          onChanged: _session.working || _authorizing
+                              ? null
+                              : (value) => setState(() => _count = value!),
                         ),
-                      ),
+                        for (final type in studyQuestionTypes)
+                          CheckboxListTile(
+                            title: Text(quizTypeLabel(type)),
+                            value: _types.contains(type),
+                            onChanged: _session.working || _authorizing
+                                ? null
+                                : (selected) => setState(() {
+                                    if (selected == true) {
+                                      _types.add(type);
+                                    } else {
+                                      _types.remove(type);
+                                    }
+                                  }),
+                          ),
+                        const SizedBox(height: FiloSpacing.s16),
+                        TextField(
+                          controller: _topic,
+                          enabled: !_session.working && !_authorizing,
+                          decoration: const InputDecoration(
+                            labelText: 'Topic (optional with sources)',
+                          ),
+                          inputFormatters: [
+                            TextInputFormatter.withFunction(
+                              (old, next) =>
+                                  next.text.runes.length <= 200 ? next : old,
+                            ),
+                          ],
+                          onChanged: (_) => setState(() {}),
+                        ),
+                        Text('${_topic.text.runes.length}/200 characters'),
+                        const SizedBox(height: FiloSpacing.screen),
+                      ],
                     ),
                   ),
-              ],
-              if (_session.error != null)
-                Padding(
-                  padding: const EdgeInsets.only(top: FiloSpacing.s16),
-                  child: Semantics(
+                const SizedBox(height: FiloSpacing.s16),
+                if (_session.working) ...[
+                  if (!_session.saving)
+                    const Mascot(pose: 'thinking', size: 120),
+                  Semantics(
                     liveRegion: true,
-                    child: Text(_session.error!),
+                    child: Text(
+                      _session.saving
+                          ? 'Saving quiz...'
+                          : 'Preparing your practice quiz...',
+                    ),
                   ),
-                ),
-              const SizedBox(height: FiloSpacing.s16),
-              const Text('AI can make mistakes. Check important answers.'),
-            ],
+                  if (!MediaQuery.disableAnimationsOf(context))
+                    const Padding(
+                      padding: EdgeInsets.all(FiloSpacing.s16),
+                      child: Center(
+                        child: FiloCircularProgressIndicator(
+                          semanticsLabel: 'Preparing practice quiz',
+                        ),
+                      ),
+                    ),
+                  if (!_session.saving)
+                    FiloButton(label: 'Cancel', onPressed: _session.cancel),
+                  const Text(
+                    'Cancel stops waiting on this phone. The server may still finish.',
+                  ),
+                ] else if (result == null)
+                  FiloButton(
+                    label: 'Generate',
+                    icon: FiloIcons.sparkle,
+                    onPressed: reason == null && !_authorizing
+                        ? _generate
+                        : null,
+                  ),
+                if (reason != null && result == null)
+                  Padding(
+                    padding: const EdgeInsets.only(top: FiloSpacing.s12),
+                    child: Text(reason),
+                  ),
+                if (sources.hasError || quizzes.hasError)
+                  TextButton(
+                    onPressed: () {
+                      ref.invalidate(studySourcesProvider(widget.notebookId));
+                      ref.invalidate(studyQuizzesProvider(widget.notebookId));
+                    },
+                    child: const Text('Retry loading notebook'),
+                  ),
+                if (result != null) ...[
+                  const SizedBox(height: FiloSpacing.s16),
+                  Text(
+                    _session.savedId == null
+                        ? 'Quiz not confirmed saved'
+                        : 'Quiz saved.',
+                  ),
+                  Text(
+                    '${studyCount(result.value.items.length, 'question')} prepared.',
+                  ),
+                  if (result.value.dropped > 0)
+                    Text(
+                      '${result.value.dropped} invalid ${result.value.dropped == 1 ? 'question was' : 'questions were'} dropped.',
+                    ),
+                  if (result.value.missing > 0)
+                    Text(
+                      '${result.value.missing} requested ${result.value.missing == 1 ? 'question was' : 'questions were'} not returned.',
+                    ),
+                  for (final usage in result.sources.usage)
+                    if (usage.truncated)
+                      Text(
+                        'Only the first ${usage.retainedCharacters} characters of ${usage.name} were used.',
+                      ),
+                  const SizedBox(height: FiloSpacing.s16),
+                  if (_session.hasUnsaved)
+                    ExpansionTile(
+                      title: const Text('Prepared questions'),
+                      children: [
+                        for (final question in result.value.items)
+                          ListTile(
+                            title: Text(question.prompt),
+                            subtitle: Text(question.explanation),
+                          ),
+                      ],
+                    ),
+                  if (_session.hasUnsaved && !_session.working)
+                    FiloButton(
+                      label: 'Try saving again',
+                      onPressed: _session.retrySave,
+                    ),
+                  if (_session.savedId != null)
+                    FiloButton(
+                      label: 'Take quiz',
+                      onPressed: () => Navigator.pushReplacement(
+                        context,
+                        MaterialPageRoute<void>(
+                          builder: (_) => StudyQuizPlayScreen(
+                            notebookId: widget.notebookId,
+                            quizId: _session.savedId!,
+                          ),
+                        ),
+                      ),
+                    ),
+                ],
+                if (_session.error != null)
+                  Padding(
+                    padding: const EdgeInsets.only(top: FiloSpacing.s16),
+                    child: Semantics(
+                      liveRegion: true,
+                      child: Text(_session.error!),
+                    ),
+                  ),
+                const SizedBox(height: FiloSpacing.s16),
+                const Text('AI can make mistakes. Check important answers.'),
+              ],
+            ),
           ),
         ),
       ),

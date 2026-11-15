@@ -1,4 +1,4 @@
-import '../../../core/widgets/filo_motion_widgets.dart';
+import '../../../core/widgets/filo_widgets.dart';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -24,18 +24,15 @@ class DeletionRecoveryGate extends ConsumerWidget {
             body: SafeArea(
               child: Center(
                 child: journal.hasError
-                    ? Column(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          const Text(
-                            'Could not load account recovery. Try again.',
-                          ),
-                          TextButton(
-                            onPressed: () =>
-                                ref.invalidate(deletionJournalProvider),
-                            child: const Text('Retry'),
-                          ),
-                        ],
+                    ? EmptyState(
+                        title: 'Account recovery unavailable',
+                        body: 'Retry to load the saved recovery status before continuing.',
+                        pose: 'confused',
+                        primaryAction: EmptyStateAction(
+                          label: 'Retry',
+                          onPressed: () =>
+                              ref.invalidate(deletionJournalProvider),
+                        ),
                       )
                     : const FiloCircularProgressIndicator(),
               ),

@@ -1,3 +1,5 @@
+import '../../../core/widgets/entry_background.dart';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
@@ -159,138 +161,160 @@ class _PhoneLimitsGuideState extends ConsumerState<PhoneLimitsGuideScreen> {
       onPopInvokedWithResult: (didPop, result) {
         if (!didPop) _close();
       },
-      child: Scaffold(
-        appBar: AppBar(title: const Text('Alarm setup')),
-        body: SafeArea(
-          child: ListView(
-            padding: const EdgeInsets.all(FiloSpacing.screen),
-            children: [
-              if (!current) ...[
-                if (repository.isLoading)
-                  const Center(
-                    child: FiloCircularProgressIndicator(
-                      semanticsLabel: 'Loading alarm setup',
-                    ),
-                  )
-                else ...[
-                  const Text('Account unavailable. Reopen alarm setup.'),
-                  TextButton(
-                    onPressed: () => ref.invalidate(alarmRepositoryProvider),
-                    child: const Text('Try again'),
-                  ),
-                ],
-              ] else ...[
-                Text(
-                  phoneGuideHeading,
-                  style: Theme.of(context).textTheme.headlineMedium,
-                ),
-                const SizedBox(height: FiloSpacing.s16),
-                const Text(phoneGuideIntroduction),
-                if (!access.isLoading &&
-                    !access.hasError &&
-                    access.asData?.value == false) ...[
-                  const SizedBox(height: FiloSpacing.s16),
-                  const Text(
-                    'Notifications are off for Filo. Turn them on in your phone settings.',
-                  ),
-                  TextButton(
-                    onPressed: _opening || _closing
-                        ? null
-                        : () async {
-                            setState(() => _opening = true);
-                            try {
-                              await ref
-                                  .read(notificationPermissionProvider)
-                                  .openSettings();
-                            } catch (_) {
-                              if (mounted) setState(() => _manual = true);
-                            } finally {
-                              if (mounted) setState(() => _opening = false);
-                            }
-                          },
-                    child: const Text('Open settings'),
-                  ),
-                ],
-                if (capability.isLoading)
-                  const Padding(
-                    padding: EdgeInsets.all(FiloSpacing.screen),
-                    child: Center(
+      child: EntryBackground(
+        verification: true,
+        breeze: true,
+        variation: 2,
+        child: Scaffold(
+          backgroundColor: Colors.transparent,
+          appBar: AppBar(
+            backgroundColor: Colors.transparent,
+            surfaceTintColor: Colors.transparent,
+            elevation: 0,
+            scrolledUnderElevation: 0,
+            title: const Text('Alarm setup'),
+          ),
+          body: SafeArea(
+            child: ListView(
+              padding: const EdgeInsets.all(FiloSpacing.screen),
+              children: [
+                if (!current) ...[
+                  if (repository.isLoading)
+                    const Center(
                       child: FiloCircularProgressIndicator(
-                        semanticsLabel: 'Checking phone setup steps',
+                        semanticsLabel: 'Loading alarm setup',
                       ),
+                    )
+                  else ...[
+                    const EmptyState(
+                      title: 'Alarm setup unavailable',
+                      body: 'Reopen alarm setup for your current account.',
+                      pose: 'confused',
                     ),
-                  )
-                else if (capability.hasError) ...[
-                  const Text('Could not check phone setup steps. Try again.'),
-                  TextButton(
-                    onPressed: () =>
-                        ref.invalidate(phoneGuideCapabilitiesProvider),
-                    child: const Text('Try again'),
-                  ),
-                ] else ...[
-                  if (capability.requireValue.exactStep)
-                    _step(
-                      'Exact-alarm access',
-                      const [
-                        'Tap Open alarm settings.',
-                        'Select Filo if a list of apps appears.',
-                        'Allow Filo under Alarms & reminders.',
-                        'Return to Filo.',
-                      ],
-                      'Open alarm settings',
-                      'alarm',
-                      allowed:
-                          !status.isLoading &&
-                          !status.hasError &&
-                          status.asData?.value['exact'] == true,
-                    ),
-                  if (capability.requireValue.xiaomi) ...[
-                    _step(
-                      'Autostart — Xiaomi, Redmi and POCO',
-                      const [
-                        'Tap Open autostart settings.',
-                        'Find Filo under Autostart or Background autostart.',
-                        'Turn on the switch for Filo.',
-                        'Return to Filo.',
-                      ],
-                      'Open autostart settings',
-                      'autostart',
-                    ),
-                    _step(
-                      'Battery — Xiaomi, Redmi and POCO',
-                      const [
-                        'Tap Open battery settings.',
-                        'Select Filo if a list of apps appears.',
-                        'Open its battery settings and choose No restrictions.',
-                        'Return to Filo.',
-                      ],
-                      'Open battery settings',
-                      'battery',
-                    ),
-                  ],
-                ],
-                if (status.hasError || access.hasError)
-                  TextButton(
-                    onPressed: _refresh,
-                    child: const Text('Try again'),
-                  ),
-                if (_manual) ...[
-                  const SizedBox(height: FiloSpacing.s16),
-                  const Text(phoneGuideFallback),
-                  if (_retrySection != null)
                     TextButton(
-                      onPressed: _opening ? null : () => _open(_retrySection!),
+                      onPressed: () => ref.invalidate(alarmRepositoryProvider),
                       child: const Text('Try again'),
                     ),
+                  ],
+                ] else ...[
+                  Text(
+                    phoneGuideHeading,
+                    style: Theme.of(context).textTheme.headlineMedium,
+                  ),
+                  const SizedBox(height: FiloSpacing.s16),
+                  const Text(phoneGuideIntroduction),
+                  if (!access.isLoading &&
+                      !access.hasError &&
+                      access.asData?.value == false) ...[
+                    const SizedBox(height: FiloSpacing.s16),
+                    const Text(
+                      'Notifications are off for Filo. Turn them on in your phone settings.',
+                    ),
+                    TextButton(
+                      onPressed: _opening || _closing
+                          ? null
+                          : () async {
+                              setState(() => _opening = true);
+                              try {
+                                await ref
+                                    .read(notificationPermissionProvider)
+                                    .openSettings();
+                              } catch (_) {
+                                if (mounted) setState(() => _manual = true);
+                              } finally {
+                                if (mounted) setState(() => _opening = false);
+                              }
+                            },
+                      child: const Text('Open settings'),
+                    ),
+                  ],
+                  if (capability.isLoading)
+                    const Padding(
+                      padding: EdgeInsets.all(FiloSpacing.screen),
+                      child: Center(
+                        child: FiloCircularProgressIndicator(
+                          semanticsLabel: 'Checking phone setup steps',
+                        ),
+                      ),
+                    )
+                  else if (capability.hasError) ...[
+                    const EmptyState(
+                      title: 'Phone setup unavailable',
+                      body: 'Retry to check alarm setup steps on this phone.',
+                      pose: 'confused',
+                    ),
+                    TextButton(
+                      onPressed: () =>
+                          ref.invalidate(phoneGuideCapabilitiesProvider),
+                      child: const Text('Try again'),
+                    ),
+                  ] else ...[
+                    if (capability.requireValue.exactStep)
+                      _step(
+                        'Exact-alarm access',
+                        const [
+                          'Tap Open alarm settings.',
+                          'Select Filo if a list of apps appears.',
+                          'Allow Filo under Alarms & reminders.',
+                          'Return to Filo.',
+                        ],
+                        'Open alarm settings',
+                        'alarm',
+                        allowed:
+                            !status.isLoading &&
+                            !status.hasError &&
+                            status.asData?.value['exact'] == true,
+                      ),
+                    if (capability.requireValue.xiaomi) ...[
+                      _step(
+                        'Autostart — Xiaomi, Redmi and POCO',
+                        const [
+                          'Tap Open autostart settings.',
+                          'Find Filo under Autostart or Background autostart.',
+                          'Turn on the switch for Filo.',
+                          'Return to Filo.',
+                        ],
+                        'Open autostart settings',
+                        'autostart',
+                      ),
+                      _step(
+                        'Battery — Xiaomi, Redmi and POCO',
+                        const [
+                          'Tap Open battery settings.',
+                          'Select Filo if a list of apps appears.',
+                          'Open its battery settings and choose No restrictions.',
+                          'Return to Filo.',
+                        ],
+                        'Open battery settings',
+                        'battery',
+                      ),
+                    ],
+                  ],
+                  if (status.hasError || access.hasError)
+                    TextButton(
+                      onPressed: _refresh,
+                      child: const Text('Try again'),
+                    ),
+                  if (_manual) ...[
+                    const SizedBox(height: FiloSpacing.s16),
+                    const Text(phoneGuideFallback),
+                    if (_retrySection != null)
+                      TextButton(
+                        onPressed: _opening
+                            ? null
+                            : () => _open(_retrySection!),
+                        child: const Text('Try again'),
+                      ),
+                  ],
                 ],
+                const SizedBox(height: FiloSpacing.screen),
+                FiloButton(label: 'Done', onPressed: _closing ? null : _close),
+                TextButton(
+                  onPressed: _closing ? null : _close,
+                  child: const Text('Not now'),
+                ),
               ],
-              const SizedBox(height: FiloSpacing.screen),
-              FiloButton(label: 'Done', onPressed: _closing ? null : _close),
-              TextButton(
-                onPressed: _closing ? null : _close,
-                child: const Text('Not now'),
-              ),
-            ],
+            ),
           ),
         ),
       ),

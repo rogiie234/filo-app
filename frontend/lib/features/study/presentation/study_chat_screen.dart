@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../core/ai/ai_request_providers.dart';
 import '../../../core/connectivity/connectivity_provider.dart';
 import '../../../core/widgets/filo_widgets.dart';
+import '../../../core/widgets/entry_background.dart';
 import '../../../data/local/database_providers.dart';
 import '../application/student_ai_providers.dart';
 import '../application/study_chat_session.dart';
@@ -30,18 +31,28 @@ class StudyChatScreen extends ConsumerWidget {
         repo.isLoading ||
         repo.hasError ||
         repo.asData?.value == null) {
-      return Scaffold(
-        appBar: AppBar(title: const Text('Chat')),
-        body: studyAsync(
-          db,
-          (value) => value == null
-              ? const Center(child: Text('Sign in again to open your chats.'))
-              : studyAsync(
-                  repo,
-                  (_) => const SizedBox.shrink(),
-                  retry: () => ref.invalidate(studyChatRepositoryProvider),
-                ),
-          retry: () => ref.invalidate(accountDatabaseProvider),
+      return EntryBackground(
+        variation: 4,
+        child: Scaffold(
+          backgroundColor: Colors.transparent,
+          appBar: AppBar(
+            backgroundColor: Colors.transparent,
+            surfaceTintColor: Colors.transparent,
+            elevation: 0,
+            scrolledUnderElevation: 0,
+            title: const Text('Chat'),
+          ),
+          body: studyAsync(
+            db,
+            (value) => value == null
+                ? const Center(child: Text('Sign in again to open your chats.'))
+                : studyAsync(
+                    repo,
+                    (_) => const SizedBox.shrink(),
+                    retry: () => ref.invalidate(studyChatRepositoryProvider),
+                  ),
+            retry: () => ref.invalidate(accountDatabaseProvider),
+          ),
         ),
       );
     }
@@ -180,6 +191,7 @@ class _ChatBodyState extends ConsumerState<_ChatBody> {
       message: 'This chat and its messages will be deleted from this device.',
       confirmLabel: 'Delete chat',
       cancelLabel: 'Cancel',
+      confirmDestructive: true,
       icon: FiloIcons.delete,
     );
     if (!mounted || !confirmed) return;
@@ -256,253 +268,283 @@ class _ChatBodyState extends ConsumerState<_ChatBody> {
           if (mounted) Navigator.pop(context);
         });
       },
-      child: Scaffold(
-        appBar: AppBar(
-          title: const Text('Chat'),
-          actions: [
-            PopupMenuButton<String>(
-              tooltip: 'Chat options',
-              enabled: !_session.working && !_authorizing,
-              onSelected: _menu,
-              itemBuilder: (_) => [
-                const PopupMenuItem(value: 'new', child: Text('New chat')),
-                const PopupMenuItem(value: 'history', child: Text('History')),
-                PopupMenuItem(
-                  value: 'delete',
-                  enabled: _session.chatId != null,
-                  child: const Text('Delete chat'),
-                ),
-                const PopupMenuItem(
-                  value: 'privacy',
-                  child: Text('AI Study privacy'),
-                ),
-              ],
-            ),
-          ],
-        ),
-        body: SafeArea(
-          child: studyAsync(ref.watch(studyNotebooksProvider), (notebooks) {
-            if (!notebooks.any((n) => n.id == widget.notebookId)) {
-              return const Center(
-                child: Text('This notebook is no longer available.'),
-              );
-            }
-            return LayoutBuilder(
-              builder: (context, constraints) => Column(
-                children: [
-                  Padding(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: FiloSpacing.screen,
-                      vertical: FiloSpacing.s12,
-                    ),
-                    child: Text(
-                      modeLabel,
-                      style: Theme.of(context).textTheme.titleSmall,
-                    ),
+      child: EntryBackground(
+        variation: 4,
+        child: Scaffold(
+          backgroundColor: Colors.transparent,
+          appBar: AppBar(
+            backgroundColor: Colors.transparent,
+            surfaceTintColor: Colors.transparent,
+            elevation: 0,
+            scrolledUnderElevation: 0,
+            title: const Text('Chat'),
+            actions: [
+              PopupMenuButton<String>(
+                tooltip: 'Chat options',
+                enabled: !_session.working && !_authorizing,
+                onSelected: _menu,
+                itemBuilder: (_) => [
+                  const PopupMenuItem(value: 'new', child: Text('New chat')),
+                  const PopupMenuItem(value: 'history', child: Text('History')),
+                  PopupMenuItem(
+                    value: 'delete',
+                    enabled: _session.chatId != null,
+                    child: const Text('Delete chat'),
                   ),
-                  Expanded(
-                    child: _session.loading
-                        ? const Center(
-                            child: FiloCircularProgressIndicator(
-                              semanticsLabel: 'Opening saved chat',
-                            ),
-                          )
-                        : ListView.builder(
-                            controller: _scroll,
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: FiloSpacing.screen,
-                            ),
-                            itemCount:
-                                _session.messages.length +
-                                (_session.pendingAnswer != null ? 1 : 0) +
-                                1,
-                            itemBuilder: (_, index) {
-                              if (index < _session.messages.length) {
-                                final m = _session.messages[index];
-                                return StudyChatBubble(
-                                  key: ValueKey(m.id),
-                                  content: m.content,
-                                  role: m.role,
-                                  mode: m.mode,
-                                  time: m.createdAt,
-                                );
-                              }
-                              if (index == _session.messages.length &&
-                                  _session.pendingAnswer != null) {
-                                return StudyChatBubble(
-                                  content: _session.pendingAnswer!.answer,
-                                  role: 'assistant',
-                                  mode: _session.pendingAnswer!.mode,
-                                  unsaved: true,
-                                );
-                              }
-                              if (_session.working &&
-                                  _session.pendingAnswer == null) {
-                                return Column(
-                                  children: [
-                                    const Mascot(pose: 'thinking', size: 96),
-                                    Semantics(
-                                      liveRegion: true,
-                                      child: const Text(
-                                        'Preparing an answer...',
-                                      ),
-                                    ),
-                                    if (!MediaQuery.disableAnimationsOf(
-                                      context,
-                                    ))
-                                      const Padding(
-                                        padding: EdgeInsets.all(
-                                          FiloSpacing.s12,
-                                        ),
-                                        child: SizedBox(
-                                          width: 20,
-                                          height: 20,
-                                          child: FiloCircularProgressIndicator(
-                                            strokeWidth: 2,
-                                          ),
-                                        ),
-                                      )
-                                    else
-                                      const Text('...'),
-                                    TextButton(
-                                      onPressed: _session.cancel,
-                                      child: const Text('Cancel'),
-                                    ),
-                                  ],
-                                );
-                              }
-                              return _session.messages.isEmpty &&
-                                      _session.pendingAnswer == null
-                                  ? Padding(
-                                      padding: const EdgeInsets.all(
-                                        FiloSpacing.s16,
-                                      ),
-                                      child: EmptyState(
-                                        title:
-                                            'Ask a question to start a chat.',
-                                        pose: _session.error == null
-                                            ? 'reading'
-                                            : 'confused',
-                                        bob: _session.error == null,
-                                      ),
-                                    )
-                                  : const SizedBox.shrink();
-                            },
-                          ),
-                  ),
-                  ConstrainedBox(
-                    constraints: BoxConstraints(
-                      maxHeight: constraints.maxHeight * .55,
-                    ),
-                    child: SingleChildScrollView(
-                      padding: const EdgeInsets.fromLTRB(
-                        FiloSpacing.screen,
-                        FiloSpacing.s8,
-                        FiloSpacing.screen,
-                        FiloSpacing.s16,
-                      ),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.stretch,
-                        children: [
-                          const StudyOfflineBanner(),
-                          const Text(
-                            'AI can make mistakes. Check important answers.',
-                          ),
-                          const SizedBox(height: FiloSpacing.s8),
-                          for (final notice in _session.notices) Text(notice),
-                          if (_session.error != null)
-                            Semantics(
-                              liveRegion: true,
-                              child: Text(_session.error!),
-                            ),
-                          if (_session.error ==
-                                  studyAiMessages['LOAD_FAILED'] &&
-                              _session.messages.isEmpty)
-                            TextButton(
-                              onPressed: () => _session.open(
-                                id: _session.chatId,
-                                latest: _session.chatId == null,
-                              ),
-                              child: const Text('Try again'),
-                            ),
-                          if (_session.pendingAnswer != null)
-                            TextButton(
-                              onPressed: _session.working
-                                  ? null
-                                  : _session.retrySave,
-                              child: const Text('Try saving again'),
-                            ),
-                          Container(
-                            decoration: BoxDecoration(
-                              color: Theme.of(context).colorScheme.surface,
-                              borderRadius: BorderRadius.circular(
-                                FiloRadii.pill,
-                              ),
-                              border: Border.all(
-                                color: Theme.of(context).colorScheme.outline,
-                              ),
-                            ),
-                            child: Row(
-                              crossAxisAlignment: CrossAxisAlignment.end,
-                              children: [
-                                IconButton(
-                                  tooltip: 'Add source files',
-                                  onPressed:
-                                      _session.working ||
-                                          _authorizing ||
-                                          _session.pendingAnswer != null
-                                      ? null
-                                      : () => showStudySourcePicker(
-                                          context,
-                                          widget.notebookId,
-                                        ),
-                                  icon: const Icon(Icons.attach_file),
-                                ),
-                                Expanded(
-                                  child: TextField(
-                                    controller: _input,
-                                    enabled:
-                                        !_session.working &&
-                                        !_authorizing &&
-                                        !_session.loading &&
-                                        _session.pendingAnswer == null,
-                                    minLines: 1,
-                                    maxLines: 4,
-                                    onChanged: _session.setDraft,
-                                    decoration: const InputDecoration(
-                                      labelText: 'Ask a study question...',
-                                      border: InputBorder.none,
-                                      enabledBorder: InputBorder.none,
-                                      focusedBorder: InputBorder.none,
-                                    ),
-                                  ),
-                                ),
-                                IconButton(
-                                  tooltip: 'Send message',
-                                  onPressed:
-                                      blocked || _session.draft.trim().isEmpty
-                                      ? null
-                                      : _send,
-                                  icon: const Icon(Icons.send_rounded),
-                                ),
-                              ],
-                            ),
-                          ),
-                          if (reason != null)
-                            Padding(
-                              padding: const EdgeInsets.only(
-                                top: FiloSpacing.s8,
-                              ),
-                              child: Text(reason),
-                            ),
-                        ],
-                      ),
-                    ),
+                  const PopupMenuItem(
+                    value: 'privacy',
+                    child: Text('AI Study privacy'),
                   ),
                 ],
               ),
-            );
-          }, retry: () => ref.invalidate(studyNotebooksProvider)),
+            ],
+          ),
+          body: SafeArea(
+            child: studyAsync(ref.watch(studyNotebooksProvider), (notebooks) {
+              if (!notebooks.any((n) => n.id == widget.notebookId)) {
+                return const Center(
+                  child: EmptyState(
+                    title: 'Notebook unavailable',
+                    body: 'Return to your notebooks to choose another one.',
+                    pose: 'waiting',
+                  ),
+                );
+              }
+              return LayoutBuilder(
+                builder: (context, constraints) => Column(
+                  children: [
+                    Padding(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: FiloSpacing.screen,
+                        vertical: FiloSpacing.s12,
+                      ),
+                      child: FiloPanel(
+                        padding: const EdgeInsets.all(FiloSpacing.s12),
+                        child: Row(
+                          children: [
+                            Icon(
+                              Icons.auto_stories_outlined,
+                              color: Theme.of(context).colorScheme.primary,
+                            ),
+                            const SizedBox(width: FiloSpacing.s12),
+                            Expanded(
+                              child: Text(
+                                modeLabel,
+                                style: Theme.of(context).textTheme.titleSmall,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                    Expanded(
+                      child: _session.loading
+                          ? const Center(
+                              child: FiloCircularProgressIndicator(
+                                semanticsLabel: 'Opening saved chat',
+                              ),
+                            )
+                          : ListView.builder(
+                              controller: _scroll,
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: FiloSpacing.screen,
+                              ),
+                              itemCount:
+                                  _session.messages.length +
+                                  (_session.pendingAnswer != null ? 1 : 0) +
+                                  1,
+                              itemBuilder: (_, index) {
+                                if (index < _session.messages.length) {
+                                  final m = _session.messages[index];
+                                  return StudyChatBubble(
+                                    key: ValueKey(m.id),
+                                    content: m.content,
+                                    role: m.role,
+                                    mode: m.mode,
+                                    time: m.createdAt,
+                                  );
+                                }
+                                if (index == _session.messages.length &&
+                                    _session.pendingAnswer != null) {
+                                  return StudyChatBubble(
+                                    content: _session.pendingAnswer!.answer,
+                                    role: 'assistant',
+                                    mode: _session.pendingAnswer!.mode,
+                                    unsaved: true,
+                                  );
+                                }
+                                if (_session.working &&
+                                    _session.pendingAnswer == null) {
+                                  return Column(
+                                    children: [
+                                      const Mascot(pose: 'thinking', size: 96),
+                                      Semantics(
+                                        liveRegion: true,
+                                        child: const Text(
+                                          'Preparing an answer...',
+                                        ),
+                                      ),
+                                      if (!MediaQuery.disableAnimationsOf(
+                                        context,
+                                      ))
+                                        const Padding(
+                                          padding: EdgeInsets.all(
+                                            FiloSpacing.s12,
+                                          ),
+                                          child: SizedBox(
+                                            width: 20,
+                                            height: 20,
+                                            child:
+                                                FiloCircularProgressIndicator(
+                                                  strokeWidth: 2,
+                                                ),
+                                          ),
+                                        )
+                                      else
+                                        const Text('...'),
+                                      TextButton(
+                                        onPressed: _session.cancel,
+                                        child: const Text('Cancel'),
+                                      ),
+                                    ],
+                                  );
+                                }
+                                return _session.messages.isEmpty &&
+                                        _session.pendingAnswer == null
+                                    ? Padding(
+                                        padding: const EdgeInsets.all(
+                                          FiloSpacing.s16,
+                                        ),
+                                        child: EmptyState(
+                                          title: _session.error == null
+                                              ? 'Start a conversation'
+                                              : 'Chat unavailable',
+                                          body: _session.error ?? 'Type a question below to study with your sources or general knowledge.',
+                                          pose: _session.error == null
+                                              ? 'reading'
+                                              : 'confused',
+                                          bob: _session.error == null,
+                                        ),
+                                      )
+                                    : const SizedBox.shrink();
+                              },
+                            ),
+                    ),
+                    ConstrainedBox(
+                      constraints: BoxConstraints(
+                        maxHeight: constraints.maxHeight * .55,
+                      ),
+                      child: SingleChildScrollView(
+                        padding: const EdgeInsets.fromLTRB(
+                          FiloSpacing.screen,
+                          FiloSpacing.s8,
+                          FiloSpacing.screen,
+                          FiloSpacing.s16,
+                        ),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.stretch,
+                          children: [
+                            const StudyOfflineBanner(),
+                            const Text(
+                              'AI can make mistakes. Check important answers.',
+                            ),
+                            const SizedBox(height: FiloSpacing.s8),
+                            for (final notice in _session.notices) Text(notice),
+                            if (_session.error != null)
+                              Semantics(
+                                liveRegion: true,
+                                child: Text(_session.error!),
+                              ),
+                            if (_session.error ==
+                                    studyAiMessages['LOAD_FAILED'] &&
+                                _session.messages.isEmpty)
+                              TextButton(
+                                onPressed: () => _session.open(
+                                  id: _session.chatId,
+                                  latest: _session.chatId == null,
+                                ),
+                                child: const Text('Try again'),
+                              ),
+                            if (_session.pendingAnswer != null)
+                              TextButton(
+                                onPressed: _session.working
+                                    ? null
+                                    : _session.retrySave,
+                                child: const Text('Try saving again'),
+                              ),
+                            Container(
+                              padding: const EdgeInsets.all(FiloSpacing.s8),
+                              decoration: BoxDecoration(
+                                color: Theme.of(context).colorScheme.surface,
+                                borderRadius: BorderRadius.circular(
+                                  FiloRadii.large,
+                                ),
+                                border: Border.all(
+                                  color: Theme.of(context).colorScheme.outline,
+                                ),
+                              ),
+                              child: Row(
+                                crossAxisAlignment: CrossAxisAlignment.end,
+                                children: [
+                                  IconButton(
+                                    tooltip: 'Add source files',
+                                    onPressed:
+                                        _session.working ||
+                                            _authorizing ||
+                                            _session.pendingAnswer != null
+                                        ? null
+                                        : () => showStudySourcePicker(
+                                            context,
+                                            widget.notebookId,
+                                          ),
+                                    icon: const Icon(Icons.attach_file),
+                                  ),
+                                  Expanded(
+                                    child: TextField(
+                                      controller: _input,
+                                      enabled:
+                                          !_session.working &&
+                                          !_authorizing &&
+                                          !_session.loading &&
+                                          _session.pendingAnswer == null,
+                                      minLines: 1,
+                                      maxLines: 4,
+                                      onChanged: _session.setDraft,
+                                      decoration: const InputDecoration(
+                                        labelText: 'Ask a study question...',
+                                        border: InputBorder.none,
+                                        enabledBorder: InputBorder.none,
+                                        focusedBorder: InputBorder.none,
+                                      ),
+                                    ),
+                                  ),
+                                  IconButton.filled(
+                                    tooltip: 'Send message',
+                                    onPressed:
+                                        blocked || _session.draft.trim().isEmpty
+                                        ? null
+                                        : _send,
+                                    icon: const Icon(Icons.send_rounded),
+                                  ),
+                                ],
+                              ),
+                            ),
+                            if (reason != null)
+                              Padding(
+                                padding: const EdgeInsets.only(
+                                  top: FiloSpacing.s8,
+                                ),
+                                child: Text(reason),
+                              ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              );
+            }, retry: () => ref.invalidate(studyNotebooksProvider)),
+          ),
         ),
       ),
     );

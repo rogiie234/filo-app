@@ -29,7 +29,10 @@ class StudyAnswerText extends StatelessWidget {
       );
     }
     return SelectableText.rich(
-      TextSpan(style: Theme.of(context).textTheme.bodyLarge, children: spans),
+      TextSpan(
+        style: Theme.of(context).textTheme.bodyLarge?.copyWith(height: 1.55),
+        children: spans,
+      ),
     );
   }
 }

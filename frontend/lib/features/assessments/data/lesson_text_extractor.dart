@@ -3,7 +3,6 @@ import 'dart:convert';
 import 'dart:io';
 import 'dart:isolate';
 import 'dart:typed_data';
-import 'dart:ui' show Size;
 
 import 'package:archive/archive.dart';
 import 'package:crypto/crypto.dart';

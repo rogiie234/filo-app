@@ -129,18 +129,29 @@ void main() {
             find.text("You're offline. Showing saved content."),
             findsOneWidget,
           );
+          await tester.scrollUntilVisible(find.text('New notebook'), 200, scrollable: find.byType(Scrollable).first);
+          await tester.pumpAndSettle();
           await tester.tap(find.text('New notebook'));
           await tester.pumpAndSettle();
+          final create = find.byWidgetPredicate(
+            (widget) =>
+                widget is FiloButton && widget.label == 'Create notebook',
+          );
+          expect(tester.widget<FiloButton>(create).onPressed, isNull);
+          await tester.enterText(find.byType(TextField), '   ');
+          await tester.pump();
+          expect(tester.widget<FiloButton>(create).onPressed, isNull);
           await tester.enterText(find.byType(TextField), 'Biology');
           await tester.pump();
-          await tester.tap(find.text('Create notebook'));
+          await tester.ensureVisible(create);
+          await tester.tap(create);
           await settleStudy(tester);
-          expect(find.text('General knowledge'), findsOneWidget);
+          expect(find.text('No sources added'), findsOneWidget);
           for (final entry in {
-            'Chat': 'Ask a question to start a chat.',
-            'Summary': 'Generate a short summary of your sources.',
-            'Flashcards': 'Generate flashcards to review the main ideas.',
-            'Practice quiz': 'No practice quizzes saved yet.',
+            'Chat': 'Start a conversation',
+            'Summary': 'Ready for a summary?',
+            'Flashcards': 'No flashcards yet',
+            'Practice quiz': 'No practice quizzes yet',
           }.entries) {
             await tester.scrollUntilVisible(
               find.text(entry.key),
@@ -162,7 +173,11 @@ void main() {
           await tester.pumpAndSettle();
           await tester.enterText(find.byType(TextField), 'Science');
           await tester.pump();
-          await tester.tap(find.text('Save'));
+          final save = find.byWidgetPredicate(
+            (widget) => widget is FiloButton && widget.label == 'Save',
+          );
+          await tester.ensureVisible(save);
+          await tester.tap(save);
           await settleStudy(tester);
           expect(find.text('Science'), findsOneWidget);
           await tester.tap(find.byTooltip('Notebook options').last);

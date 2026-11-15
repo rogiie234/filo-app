@@ -122,7 +122,7 @@ void main() {
       await tester.pumpWidget(app(StudyDecksScreen(notebookId: notebook)));
       await pumpDeck(tester);
       expect(
-        find.text('Generate flashcards to review the main ideas.'),
+        find.text('No flashcards yet'),
         findsOneWidget,
       );
       await tap(tester, button('Generate flashcards'));
@@ -258,7 +258,7 @@ void main() {
       await tap(tester, find.text('Renamed'));
       await tap(tester, find.byTooltip('Delete card'));
       await tap(tester, button('Delete card'));
-      expect(find.text('This deck has no cards.'), findsOneWidget);
+      expect(find.text('No cards in this deck'), findsOneWidget);
       expect(await db.select(db.flashcards).get(), isEmpty);
       await tester.pageBack();
       await pumpDeck(tester);

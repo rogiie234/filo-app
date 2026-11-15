@@ -4,6 +4,8 @@ import 'package:drift/drift.dart';
 
 import '../../../data/local/app_database.dart';
 import '../domain/exam.dart';
+import '../domain/exam_integrity.dart';
+import '../../../core/sync/sqlite_outbox.dart';
 
 class StoredAttempt {
   const StoredAttempt(this.attempt, this.serverAtReceipt, this.deviceAtReceipt);
@@ -21,6 +23,56 @@ class StoredAnswer {
 class ExamStore {
   ExamStore(this.db);
   final AppDatabase db;
+  Future<ExamIntegrity> integrity(String sessionId) async {
+    final row = await db
+        .customSelect(
+          'SELECT payload FROM exam_integrity_state WHERE session_id=?',
+          variables: [Variable(sessionId)],
+        )
+        .getSingleOrNull();
+    return row == null
+        ? const ExamIntegrity()
+        : ExamIntegrity.fromJson(
+            Map<String, dynamic>.from(
+              jsonDecode(row.read<String>('payload')) as Map,
+            ),
+          );
+  }
+
+  Future<ExamIntegrity> mergeIntegrity(
+    String sessionId,
+    Map<String, dynamic> data,
+  ) => db.transaction(() async {
+    final exists = await db
+        .customSelect(
+          'SELECT session_id FROM exam_active_attempt WHERE session_id=?',
+          variables: [Variable(sessionId)],
+        )
+        .getSingleOrNull();
+    final merged = (await integrity(sessionId)).merge(data);
+    if (exists == null) return merged;
+    await db.customStatement(
+      'INSERT OR REPLACE INTO exam_integrity_state(session_id,payload) VALUES (?,?)',
+      [sessionId, jsonEncode(merged.toJson())],
+    );
+    if (merged.atLimit) await requestSubmission(sessionId);
+    return merged;
+  });
+
+  Future<ExamIntegrity> queueLeave(
+    String id,
+    String sessionId,
+    String leftAt,
+  ) => db.transaction(() async {
+    final state = await mergeIntegrity(sessionId, {
+      'leave_event_ids': [id],
+    });
+    await SqliteOutbox(
+      db,
+    ).enqueue(id, 'leave_event', {'session_id': sessionId, 'left_at': leftAt});
+    return state;
+  });
+
   Future<void> requestSubmission(String sessionId) => db.customStatement(
     'INSERT OR IGNORE INTO exam_submission_intent(session_id) VALUES (?)',
     [sessionId],
@@ -42,6 +94,7 @@ class ExamStore {
 
   Future<void> confirmSession(String quizId, ExamSession session) =>
       db.transaction(() async {
+        await mergeIntegrity(session.id, session.json);
         final rows = await db
             .customSelect(
               'SELECT payload FROM student_quiz_catalog WHERE id=?',
@@ -129,7 +182,7 @@ class ExamStore {
   Future<List<StoredAttempt>> attempts() async {
     final rows = await db
         .customSelect(
-          'SELECT * FROM exam_active_attempt ORDER BY saved_at DESC',
+          'SELECT a.*, i.payload AS integrity_payload FROM exam_active_attempt a LEFT JOIN exam_integrity_state i ON i.session_id=a.session_id ORDER BY a.saved_at DESC',
         )
         .get();
     return rows
@@ -142,6 +195,9 @@ class ExamStore {
               'deadline_at': row.read<String>('deadline_at'),
               'server_now': row.read<String>('server_now'),
               'questions': jsonDecode(row.read<String>('questions')),
+              if (row.readNullable<String>('integrity_payload')
+                  case final String payload)
+                ...Map<String, dynamic>.from(jsonDecode(payload) as Map),
             }),
             DateTime.parse(row.read<String>('server_now')),
             DateTime.parse(row.read<String>('device_fetch_at')),
@@ -173,6 +229,7 @@ class ExamStore {
         deviceAtReceipt.toIso8601String(),
       ],
     );
+    await mergeIntegrity(attempt.sessionId, attempt.json);
     for (final answer in attempt.savedAnswers) {
       // Pending local edits win over older server answers during reconciliation.
       await db.customStatement(

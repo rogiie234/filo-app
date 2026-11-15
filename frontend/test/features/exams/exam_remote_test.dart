@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 
 import 'package:flutter_test/flutter_test.dart';
@@ -15,6 +16,57 @@ import 'package:filo/core/sync/outbox_processor.dart';
 import 'exam_test_support.dart';
 
 void main() {
+  test(
+    'all exam RPCs bound stalled requests with retryable connection failures',
+    () async {
+      var requests = 0;
+      final client = SupabaseClient(
+        'https://example.supabase.co',
+        'key',
+        authOptions: const AuthClientOptions(autoRefreshToken: false),
+        httpClient: MockClient((request) {
+          requests++;
+          return Completer<http.Response>().future;
+        }),
+      );
+      addTearDown(client.dispose);
+      final remote = SupabaseExamRemote(client, 'student');
+      final pending = <Future<dynamic>>[
+        remote.session('quiz'),
+        remote.start('quiz'),
+        remote.exam('session'),
+        remote.save(
+          'session',
+          const ExamAnswer(questionId: 'q', text: 'Answer'),
+        ),
+        remote.saveBatch('session', [
+          const StoredAnswer(
+            ExamAnswer(questionId: 'q', text: 'Answer'),
+            1,
+            false,
+          ),
+        ]),
+        remote.submit('session'),
+      ];
+      await Future.wait([
+        for (final operation in pending)
+          expectLater(
+            operation,
+            throwsA(
+              isA<ExamFailure>()
+                  .having((failure) => failure.retryable, 'retryable', isTrue)
+                  .having(
+                    (failure) => failure.connection,
+                    'connection',
+                    isTrue,
+                  ),
+            ),
+          ),
+      ]);
+      expect(requests, 6);
+    },
+  );
+
   test(
     'batch adapter sends exact fields and parses success and item errors',
     () async {

@@ -342,9 +342,14 @@ class _GradeScreenState extends ConsumerState<GradeScreen> {
           body: state.when(
             loading: () => const GradingSkeleton(),
             error: (_, _) => Center(
-              child: TextButton(
-                onPressed: _refresh,
-                child: const Text("Couldn't load grades. Try again."),
+              child: EmptyState(
+                title: 'Grades unavailable',
+                body: "Couldn't load grades. Try again.",
+                showMascot: false,
+                primaryAction: EmptyStateAction(
+                  label: 'Retry',
+                  onPressed: !online ? null : _refresh,
+                ),
               ),
             ),
             data: (data) {
@@ -352,12 +357,15 @@ class _GradeScreenState extends ConsumerState<GradeScreen> {
                 return sync.isLoading
                     ? const GradingSkeleton()
                     : Center(
-                        child: TextButton(
-                          onPressed: _refresh,
-                          child: Text(
-                            online
-                                ? "Couldn't load grades. Try again."
-                                : 'Connect to the internet to load grades',
+                        child: EmptyState(
+                          title: 'Grades unavailable',
+                          body: online
+                              ? "Couldn't load grades. Try again."
+                              : 'Connect to the internet to load grades',
+                          showMascot: false,
+                          primaryAction: EmptyStateAction(
+                            label: 'Retry',
+                            onPressed: !online ? null : _refresh,
                           ),
                         ),
                       );
@@ -365,10 +373,16 @@ class _GradeScreenState extends ConsumerState<GradeScreen> {
               final assignment = data.assignment(widget.postId);
               if (assignment == null) {
                 return Center(
-                  child: Text(
-                    online
-                        ? 'This item is no longer available.'
-                        : 'Connect to the internet to load grades',
+                  child: EmptyState(
+                    title: online ? 'Item unavailable' : 'Grades not saved',
+                    body: online
+                        ? 'Return to the class and refresh to check this item.'
+                        : 'Connect and refresh to load grades.',
+                    showMascot: false,
+                    primaryAction: EmptyStateAction(
+                      label: 'Refresh',
+                      onPressed: online ? _refresh : null,
+                    ),
                   ),
                 );
               }
@@ -422,9 +436,14 @@ class _GradeScreenState extends ConsumerState<GradeScreen> {
                     children: [
                       if (!online) const OfflineBanner(),
                       if (sync.hasError)
-                        TextButton(
-                          onPressed: _refresh,
-                          child: const Text("Couldn't load grades. Try again."),
+                        EmptyState(
+                          title: 'Grades unavailable',
+                          body: "Couldn't load grades. Try again.",
+                          showMascot: false,
+                          primaryAction: EmptyStateAction(
+                            label: 'Retry',
+                            onPressed: !online ? null : _refresh,
+                          ),
                         ),
                       if (_archived) const Text('This class is archived.'),
                       Text(
@@ -451,7 +470,11 @@ class _GradeScreenState extends ConsumerState<GradeScreen> {
                           padding: EdgeInsets.symmetric(
                             vertical: FiloSpacing.s16,
                           ),
-                          child: Text('No work turned in.'),
+                          child: EmptyState(
+                            title: 'No work turned in',
+                            body: 'Submitted files, links and text will appear here after turn-in.',
+                            showMascot: false,
+                          ),
                         ),
                       ...items.map((raw) {
                         final item = Map<String, dynamic>.from(raw as Map);

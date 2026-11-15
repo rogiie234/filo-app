@@ -1,3 +1,5 @@
+import '../../../core/widgets/entry_background.dart';
+
 import 'package:flutter/material.dart';
 
 import '../../../core/theme/animation_constants.dart';
@@ -16,62 +18,65 @@ class SessionLoadingView extends StatelessWidget {
   final String statusText;
 
   @override
-  Widget build(BuildContext context) => SafeArea(
-    child: LayoutBuilder(
-      builder: (context, viewport) => SingleChildScrollView(
-        padding: const EdgeInsets.fromLTRB(
-          FiloSpacing.screen,
-          FiloSpacing.screen,
-          FiloSpacing.screen,
-          FiloSpacing.s32,
-        ),
-        child: ConstrainedBox(
-          constraints: BoxConstraints(
-            minHeight: (viewport.maxHeight - 56)
-                .clamp(0.0, double.infinity)
-                .toDouble(),
+  Widget build(BuildContext context) => EntryBackground(
+    verification: true,
+    child: SafeArea(
+      child: LayoutBuilder(
+        builder: (context, viewport) => SingleChildScrollView(
+          padding: const EdgeInsets.fromLTRB(
+            FiloSpacing.screen,
+            FiloSpacing.screen,
+            FiloSpacing.screen,
+            FiloSpacing.s32,
           ),
-          child: Center(
-            child: ConstrainedBox(
-              constraints: const BoxConstraints(maxWidth: 440),
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Mascot(
-                    pose: 'sleepy',
-                    size: (viewport.maxWidth - 80)
-                        .clamp(156.0, 240.0)
-                        .toDouble(),
-                  ),
-                  const SizedBox(height: FiloSpacing.screen),
-                  Text(
-                    'One moment\u2026',
-                    textAlign: TextAlign.center,
-                    style: Theme.of(context).textTheme.headlineMedium,
-                  ),
-                  const SizedBox(height: FiloSpacing.s12),
-                  Text(
-                    statusText,
-                    textAlign: TextAlign.center,
-                    style: Theme.of(context).textTheme.bodyLarge!.copyWith(
-                      color: Theme.of(context).colorScheme.onSurfaceVariant,
+          child: ConstrainedBox(
+            constraints: BoxConstraints(
+              minHeight: (viewport.maxHeight - 56)
+                  .clamp(0.0, double.infinity)
+                  .toDouble(),
+            ),
+            child: Center(
+              child: ConstrainedBox(
+                constraints: const BoxConstraints(maxWidth: 440),
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Mascot(
+                      pose: 'sleepy',
+                      size: (viewport.maxWidth - 80)
+                          .clamp(156.0, 240.0)
+                          .toDouble(),
                     ),
-                  ),
-                  const SizedBox(height: FiloSpacing.s32),
-                  const _LoadingDots(),
-                  if (message != null) ...[
-                    const SizedBox(height: FiloSpacing.s16),
+                    const SizedBox(height: FiloSpacing.screen),
                     Text(
-                      message!,
+                      'One moment\u2026',
                       textAlign: TextAlign.center,
-                      style: TextStyle(
-                        color: error
-                            ? Theme.of(context).colorScheme.error
-                            : Theme.of(context).colorScheme.onSurfaceVariant,
+                      style: Theme.of(context).textTheme.headlineMedium,
+                    ),
+                    const SizedBox(height: FiloSpacing.s12),
+                    Text(
+                      statusText,
+                      textAlign: TextAlign.center,
+                      style: Theme.of(context).textTheme.bodyLarge!.copyWith(
+                        color: Theme.of(context).colorScheme.onSurfaceVariant,
                       ),
                     ),
+                    const SizedBox(height: FiloSpacing.s32),
+                    const _LoadingDots(),
+                    if (message != null) ...[
+                      const SizedBox(height: FiloSpacing.s16),
+                      Text(
+                        message!,
+                        textAlign: TextAlign.center,
+                        style: TextStyle(
+                          color: error
+                              ? Theme.of(context).colorScheme.error
+                              : Theme.of(context).colorScheme.onSurfaceVariant,
+                        ),
+                      ),
+                    ],
                   ],
-                ],
+                ),
               ),
             ),
           ),

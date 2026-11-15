@@ -9,6 +9,7 @@ import '../../../core/theme/app_theme.dart';
 import '../../../core/widgets/filo_widgets.dart';
 import '../../classes/application/class_providers.dart';
 import '../application/exam_providers.dart';
+import '../application/exam_screen_security.dart';
 import '../../results/application/results_providers.dart';
 import '../../results/presentation/student_results_screen.dart';
 import '../application/student_exam_repository.dart';
@@ -59,6 +60,8 @@ class _StudentExamScreenState extends ConsumerState<StudentExamScreen> {
   bool _startBlocked = false;
   String? _expirySession;
   DialogRoute<bool>? _confirmationRoute;
+  DialogRoute<bool>? _exitWarningRoute;
+  bool _exitWarningScheduled = false;
   String? _message, _session;
   StudentExamRepository? _repository;
   final _edits = <String, ExamAnswer>{};
@@ -334,6 +337,72 @@ class _StudentExamScreenState extends ConsumerState<StudentExamScreen> {
     super.dispose();
   }
 
+  void _checkExitWarning(StudentExamRepository? repository, bool multiWindow) {
+    if (repository == null) return;
+    final open = _exitWarningRoute;
+    if (open != null &&
+        (repository.forcedSubmission || repository.active == null)) {
+      _exitWarningRoute = null;
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted && open.isActive)
+          Navigator.of(context).removeRoute(open, false);
+      });
+    }
+    if (_exitWarningScheduled ||
+        _exitWarningRoute != null ||
+        multiWindow ||
+        !repository.integrity.needsWarning)
+      return;
+    _exitWarningScheduled = true;
+    final sessionId = repository.active?.sessionId;
+    WidgetsBinding.instance.addPostFrameCallback((_) async {
+      _exitWarningScheduled = false;
+      if (!mounted ||
+          sessionId == null ||
+          repository.active?.sessionId != sessionId ||
+          !repository.integrity.needsWarning ||
+          ExamScreenSecurity.multiWindow ||
+          WidgetsBinding.instance.lifecycleState != null &&
+              WidgetsBinding.instance.lifecycleState !=
+                  AppLifecycleState.resumed)
+        return;
+      final route = DialogRoute<bool>(
+        context: context,
+        barrierDismissible: false,
+        builder: (dialog) => PopScope(
+          canPop: false,
+          child: FiloModalDialog(
+            title: 'Keep this assessment open',
+            icon: FiloIcons.shield,
+            content: const Text(
+              "You've left this assessment 4 times. Leaving once more will automatically submit your current answers.",
+            ),
+            actions: [
+              FiloButton(
+                label: 'Continue assessment',
+                onPressed: () => Navigator.of(dialog).pop(true),
+              ),
+            ],
+          ),
+        ),
+      );
+      _exitWarningRoute = route;
+      final acknowledged = await Navigator.of(context).push(route);
+      if (_exitWarningRoute == route) _exitWarningRoute = null;
+      if (acknowledged == true && repository.active?.sessionId == sessionId) {
+        try {
+          await repository.acknowledgeExitWarning();
+        } catch (_) {
+          if (mounted)
+            showMessage(
+              context,
+              'Could not save this warning acknowledgement. Try again.',
+            );
+        }
+      }
+    });
+  }
+
   @override
   Widget build(BuildContext context) {
     ref.listen(connectivityProvider, (previous, next) {
@@ -357,6 +426,8 @@ class _StudentExamScreenState extends ConsumerState<StudentExamScreen> {
     final r = repositoryState.value;
     if (r != null) _repository = r;
     final attempt = r?.active;
+    final windowState = ref.watch(examWindowStateProvider).asData?.value;
+    _checkExitWarning(r, windowState?.multiWindow == true);
     final online = ref.watch(connectivityProvider).value == true;
     final catalog = ref.watch(studentQuizCatalogProvider);
     final now =
@@ -490,10 +561,12 @@ class _StudentExamScreenState extends ConsumerState<StudentExamScreen> {
                                     : 'Your answers were submitted.')
                               : completion,
                         ),
-                        if (completion == 'Your answers were submitted.')
+                        if (completion == 'Your answers were submitted.' ||
+                            r?.completionExitLimit == true)
                           StudentResultsEntry(quizId: widget.request.quizId),
                         if (_essay &&
-                            completion == 'Your answers were submitted.') ...[
+                            (completion == 'Your answers were submitted.' ||
+                                r?.completionExitLimit == true)) ...[
                           const SizedBox(height: FiloSpacing.s12),
                           const Text(
                             'Essay answers also need to be graded before results are available.',
@@ -515,16 +588,12 @@ class _StudentExamScreenState extends ConsumerState<StudentExamScreen> {
                             ),
                           ),
                         const SizedBox(height: FiloSpacing.s16),
-                        Semantics(
-                          liveRegion: true,
-                          child: Text(
-                            _message ??
-                                r?.error?.message ??
-                                (repositoryState.hasError
-                                    ? "We couldn't reopen your exam. Check your connection and try again."
-                                    : 'Loading your exam...'),
+                        if (!_busy && !repositoryState.isLoading)
+                          EmptyState(
+                            title: 'Exam unavailable',
+                            body: _message ?? r?.error?.message ?? "We couldn't reopen your exam; check your connection and try again.",
+                            showMascot: false,
                           ),
-                        ),
                         const SizedBox(height: FiloSpacing.s16),
                         if (!_busy &&
                             !repositoryState.isLoading &&
@@ -623,7 +692,11 @@ class _StudentExamScreenState extends ConsumerState<StudentExamScreen> {
     final answered = attempt.questions
         .where((q) => examAnswerPresent(answers[q.id]))
         .length;
+    final windowState = ref.watch(examWindowStateProvider).asData?.value;
+    final windowBlocked = windowState?.multiWindow == true;
     final editable =
+        !windowBlocked &&
+        !r.forcedSubmission &&
         !_busy &&
         r.current &&
         !r.submitting &&
@@ -662,115 +735,167 @@ class _StudentExamScreenState extends ConsumerState<StudentExamScreen> {
           status: status,
         ),
         Expanded(
-          child: ListView.builder(
-            key: PageStorageKey('exam-questions-${attempt.sessionId}'),
-            padding: const EdgeInsets.fromLTRB(
-              FiloSpacing.screen,
-              FiloSpacing.s8,
-              FiloSpacing.screen,
-              FiloSpacing.screen,
-            ),
-            keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.manual,
-            itemCount: attempt.questions.length + 2,
-            itemBuilder: (context, index) {
-              if (index == 0) {
-                return Column(
-                  crossAxisAlignment: CrossAxisAlignment.stretch,
-                  children: [
-                    if (_resumed && !expired)
-                      const Text('Your exam has resumed with the time left.'),
-                    if (!r.clock.verified)
-                      const Text(
-                        'Reconnect to verify your remaining time before continuing.',
-                      ),
-                    if (!online && !expired && r.clock.verified)
-                      const Text(
-                        'The timer keeps running while you reconnect.',
-                      ),
-                    if (expired) Text(r.clock.timeoutMessage),
-                    if (_message ?? r.error?.message ?? r.saver?.error?.message
-                        case final String message
-                        when !expired ||
-                            !message.startsWith(
-                              "Time's up. Reconnect to check your submission.",
-                            ))
-                      Semantics(liveRegion: true, child: Text(message)),
-                    if (_unsaved.isNotEmpty && _writes == 0)
-                      TextButton(
-                        onPressed: _writes == 0 && !_busy && r.clock.canEdit
-                            ? _retryAnswers
-                            : null,
-                        child: const Text('Try again'),
-                      ),
-                    if (answersState.hasError) ...[
-                      const Text(
-                        "We couldn't reopen your exam. Check your connection and try again.",
-                      ),
-                      TextButton(
-                        onPressed: () => ref.invalidate(examAnswersProvider),
-                        child: const Text('Try again'),
-                      ),
-                    ],
-                    if (answersState.isLoading && !answersState.hasValue)
-                      const Center(
-                        child: SizedBox.square(
-                          dimension: 24,
-                          child: FiloCircularProgressIndicator(
-                            semanticsLabel: 'Loading saved answers',
-                          ),
+          child: r.forcedSubmission || windowBlocked
+              ? ColoredBox(
+                  color: Theme.of(context).colorScheme.surface,
+                  child: Center(
+                    child: SingleChildScrollView(
+                      padding: const EdgeInsets.all(FiloSpacing.screen),
+                      child: Semantics(
+                        liveRegion: true,
+                        child: Column(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                          Text(
+                          r.forcedSubmission
+                              ? (online
+                                    ? 'Exit limit reached. Submitting your answers...'
+                                    : 'Exit limit reached. Reconnect to finish submitting.')
+                              : 'Return to fullscreen to continue.',
+                          textAlign: TextAlign.center,
+                        ),
+                        if (r.forcedSubmission && r.error != null) ...[
+                          const SizedBox(height: FiloSpacing.s12),
+                          Text(r.error!.message, textAlign: TextAlign.center),
+                          FiloButton(label: 'Retry submission',
+                            onPressed: !online || r.submitting || _busy ? null : _open),
+                        ],
+                        ],
                         ),
                       ),
-                    if (r.error != null ||
-                        r.saver?.error != null ||
-                        expired ||
-                        !r.clock.verified)
-                      TextButton(
-                        onPressed: _busy ? null : _open,
-                        child: const Text('Try again'),
-                      ),
-                  ],
-                );
-              }
-              if (index <= attempt.questions.length) {
-                final question = attempt.questions[index - 1];
-                return Padding(
-                  key: ValueKey('${attempt.sessionId}:${question.id}'),
-                  padding: const EdgeInsets.only(top: FiloSpacing.s16),
-                  child: ExamQuestionCard(
-                    question: question,
-                    number: index,
-                    answer: answers[question.id],
-                    enabled: editable,
-                    onChanged: (answer) => unawaited(_answer(answer)),
+                    ),
                   ),
-                );
-              }
-              return Padding(
-                padding: const EdgeInsets.only(top: FiloSpacing.screen),
-                child: FiloButton(
-                  label: r.submitting ? 'Submitting...' : 'Submit',
-                  leading: r.submitting
-                      ? SizedBox(
-                          width: 20,
-                          height: 20,
-                          child: FiloCircularProgressIndicator(
-                            strokeWidth: 2,
-                            color: Theme.of(context).colorScheme.onPrimary,
-                          ),
-                        )
-                      : null,
-                  busy: _busy || r.submitting,
-                  onPressed:
-                      !_busy &&
-                          !r.submitting &&
-                          ((editable && (_writes > 0 || _unsaved.isEmpty)) ||
-                              (online && (expired || r.submissionRequested)))
-                      ? _submit
-                      : null,
+                )
+              : ListView.builder(
+                  key: PageStorageKey('exam-questions-${attempt.sessionId}'),
+                  padding: const EdgeInsets.fromLTRB(
+                    FiloSpacing.screen,
+                    FiloSpacing.s8,
+                    FiloSpacing.screen,
+                    FiloSpacing.screen,
+                  ),
+                  keyboardDismissBehavior:
+                      ScrollViewKeyboardDismissBehavior.manual,
+                  itemCount: attempt.questions.length + 2,
+                  itemBuilder: (context, index) {
+                    if (index == 0) {
+                      return Column(
+                        crossAxisAlignment: CrossAxisAlignment.stretch,
+                        children: [
+                          if (r.integrity.limit != null &&
+                              r.integrity.count >= 4)
+                            Text(
+                              '${r.integrity.count} of ${r.integrity.limit} exits used',
+                            ),
+                          if (windowState != null &&
+                              !windowState.overlaySupported)
+                            const Text(
+                              'This Android version cannot hide third-party floating overlays.',
+                            ),
+                          if (_resumed && !expired)
+                            const Text(
+                              'Your exam has resumed with the time left.',
+                            ),
+                          if (!r.clock.verified)
+                            const Text(
+                              'Reconnect to verify your remaining time before continuing.',
+                            ),
+                          if (!online && !expired && r.clock.verified)
+                            const Text(
+                              'The timer keeps running while you reconnect.',
+                            ),
+                          if (expired) Text(r.clock.timeoutMessage),
+                          if (_message ??
+                                  r.error?.message ??
+                                  r.saver?.error?.message
+                              case final String message
+                              when !expired ||
+                                  !message.startsWith(
+                                    "Time's up. Reconnect to check your submission.",
+                                  ))
+                            Semantics(liveRegion: true, child: Text(message)),
+                          if (_unsaved.isNotEmpty && _writes == 0)
+                            TextButton(
+                              onPressed:
+                                  _writes == 0 && !_busy && r.clock.canEdit
+                                  ? _retryAnswers
+                                  : null,
+                              child: const Text('Try again'),
+                            ),
+                          if (answersState.hasError) ...[
+                            const Text(
+                              "We couldn't reopen your exam. Check your connection and try again.",
+                            ),
+                            TextButton(
+                              onPressed: () =>
+                                  ref.invalidate(examAnswersProvider),
+                              child: const Text('Try again'),
+                            ),
+                          ],
+                          if (answersState.isLoading && !answersState.hasValue)
+                            const Center(
+                              child: SizedBox.square(
+                                dimension: 24,
+                                child: FiloCircularProgressIndicator(
+                                  semanticsLabel: 'Loading saved answers',
+                                ),
+                              ),
+                            ),
+                          if (r.error != null ||
+                              r.saver?.error != null ||
+                              expired ||
+                              !r.clock.verified)
+                            TextButton(
+                              onPressed: _busy ? null : _open,
+                              child: const Text('Try again'),
+                            ),
+                        ],
+                      );
+                    }
+                    if (index <= attempt.questions.length) {
+                      final question = attempt.questions[index - 1];
+                      return Padding(
+                        key: ValueKey('${attempt.sessionId}:${question.id}'),
+                        padding: const EdgeInsets.only(top: FiloSpacing.s16),
+                        child: ExamQuestionCard(
+                          question: question,
+                          number: index,
+                          answer: answers[question.id],
+                          enabled: editable,
+                          onChanged: (answer) => unawaited(_answer(answer)),
+                        ),
+                      );
+                    }
+                    return Padding(
+                      padding: const EdgeInsets.only(top: FiloSpacing.screen),
+                      child: FiloButton(
+                        label: r.submitting ? 'Submitting...' : 'Submit',
+                        leading: r.submitting
+                            ? SizedBox(
+                                width: 20,
+                                height: 20,
+                                child: FiloCircularProgressIndicator(
+                                  strokeWidth: 2,
+                                  color: Theme.of(context)
+                                      .colorScheme
+                                      .onPrimary,
+                                ),
+                              )
+                            : null,
+                        busy: _busy || r.submitting,
+                        onPressed:
+                            !_busy &&
+                                !r.submitting &&
+                                ((editable &&
+                                        (_writes > 0 || _unsaved.isEmpty)) ||
+                                    (online &&
+                                        (expired || r.submissionRequested)))
+                            ? _submit
+                            : null,
+                      ),
+                    );
+                  },
                 ),
-              );
-            },
-          ),
         ),
       ],
     );

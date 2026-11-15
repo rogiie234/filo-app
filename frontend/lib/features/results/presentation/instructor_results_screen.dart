@@ -26,6 +26,7 @@ class InstructorResultsScreen extends ConsumerStatefulWidget {
 
 class _InstructorResultsScreenState
     extends ConsumerState<InstructorResultsScreen> {
+  final _searchController = TextEditingController();
   String _search = '', _filter = 'All', _sort = 'Name';
   bool _busy = false;
   bool _exporting = false;
@@ -46,6 +47,7 @@ class _InstructorResultsScreenState
 
   @override
   void dispose() {
+    _searchController.dispose();
     _timer?.cancel();
     _lifecycle?.dispose();
     super.dispose();
@@ -233,6 +235,8 @@ class _InstructorResultsScreenState
                 ],
                 const SizedBox(height: FiloSpacing.screen),
                 TextField(
+                  controller: _searchController,
+                  enabled: data.members.isNotEmpty || _search.isNotEmpty,
                   decoration: const InputDecoration(
                     labelText: 'Search students',
                     prefixIcon: Icon(Icons.search),
@@ -254,7 +258,9 @@ class _InstructorResultsScreenState
                       FiloAnimatedChip.filter(
                         label: Text(label),
                         selected: _filter == label,
-                        onSelected: (_) => setState(() => _filter = label),
+                        onSelected: data.members.isEmpty
+                            ? null
+                            : (_) => setState(() => _filter = label),
                       ),
                   ],
                 ),
@@ -267,14 +273,32 @@ class _InstructorResultsScreenState
                     for (final label in ['Name', 'Score', 'Most leaves first'])
                       DropdownMenuItem(value: label, child: Text(label)),
                   ],
-                  onChanged: (value) => setState(() => _sort = value ?? 'Name'),
+                  onChanged: data.members.isEmpty
+                      ? null
+                      : (value) => setState(() => _sort = value ?? 'Name'),
                 ),
                 const SizedBox(height: FiloSpacing.s16),
                 if (rows.isEmpty)
-                  Text(
-                    data.members.isEmpty
-                        ? 'No active students in this class.'
-                        : 'No students match your search or filter.',
+                  EmptyState(
+                    showMascot: false,
+                    title: data.members.isEmpty
+                        ? 'No active students'
+                        : 'No matching students',
+                    body: data.members.isEmpty
+                        ? 'Results will appear after students join and take this assessment.'
+                        : _search.trim().isNotEmpty
+                        ? 'No matches for "$_search"; check the spelling or clear your search.'
+                        : 'Choose another status or show all students.',
+                    primaryAction: data.members.isEmpty
+                        ? null
+                        : EmptyStateAction(
+                            label: 'Clear search and filters',
+                            onPressed: () => setState(() {
+                              _search = '';
+                              _searchController.clear();
+                              _filter = 'All';
+                            }),
+                          ),
                   ),
                 for (final member in rows)
                   Builder(

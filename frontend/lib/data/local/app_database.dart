@@ -45,7 +45,7 @@ class AppDatabase extends _$AppDatabase {
   final DateTime Function() now;
 
   @override
-  int get schemaVersion => 14;
+  int get schemaVersion => 15;
 
   Future<void> _createAppSettings() => customStatement(
     'CREATE TABLE IF NOT EXISTS app_settings (key TEXT PRIMARY KEY, value TEXT NOT NULL)',
@@ -87,6 +87,13 @@ class AppDatabase extends _$AppDatabase {
       END
     ''');
   }
+
+  Future<void> _createExamIntegrity() => customStatement("""
+    CREATE TABLE IF NOT EXISTS exam_integrity_state (
+      session_id TEXT PRIMARY KEY REFERENCES exam_active_attempt(session_id) ON DELETE CASCADE,
+      payload TEXT NOT NULL
+    )
+  """);
 
   Future<void> _createExamSubmissionIntent() => customStatement('''
     CREATE TABLE IF NOT EXISTS exam_submission_intent (
@@ -216,12 +223,14 @@ class AppDatabase extends _$AppDatabase {
       await _createStudentQuizCache();
       await _createExamStorage();
       await _createExamSubmissionIntent();
+      await _createExamIntegrity();
       await _createInstructorQuizCache();
       await _createGradingCache();
       await _createDriveBackup();
       await _createFileSyncState();
     },
     onUpgrade: (m, from, to) async {
+      if (from >= 6 && from < 15) await _createExamIntegrity();
       if (from < 14) await _createAppSettings();
       if (from < 13) {
         final existing = (await customSelect(
@@ -280,7 +289,10 @@ class AppDatabase extends _$AppDatabase {
       if (from < 10) await _createAiTextCache();
       if (from < 9) await _createResultsCache();
       if (from < 7) await _createStudentQuizCache();
-      if (from < 6) await _createExamStorage();
+      if (from < 6) {
+        await _createExamStorage();
+        await _createExamIntegrity();
+      }
       if (from < 8) await _createExamSubmissionIntent();
       if (from < 5) await _createInstructorQuizCache();
       if (from < 2) await _createGradingCache();

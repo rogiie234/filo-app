@@ -76,6 +76,13 @@ class SubmissionsScreen extends ConsumerStatefulWidget {
 }
 
 class _SubmissionsScreenState extends ConsumerState<SubmissionsScreen> {
+  @override
+  void dispose() {
+    _searchController.dispose();
+    super.dispose();
+  }
+
+  final _searchController = TextEditingController();
   String _search = '', _filter = 'All';
   bool _busy = false;
   String? _error;
@@ -187,9 +194,14 @@ class _SubmissionsScreenState extends ConsumerState<SubmissionsScreen> {
         body: state.when(
           loading: () => const GradingSkeleton(),
           error: (_, _) => Center(
-            child: TextButton(
-              onPressed: _refresh,
-              child: const Text("Couldn't load grades. Try again."),
+            child: EmptyState(
+              title: 'Grades unavailable',
+              body: "Couldn't load grades. Try again.",
+              showMascot: false,
+              primaryAction: EmptyStateAction(
+                label: 'Retry',
+                onPressed: !online ? null : _refresh,
+              ),
             ),
           ),
           data: (data) {
@@ -197,12 +209,15 @@ class _SubmissionsScreenState extends ConsumerState<SubmissionsScreen> {
               return sync.isLoading
                   ? const GradingSkeleton()
                   : Center(
-                      child: TextButton(
-                        onPressed: _refresh,
-                        child: Text(
-                          online
-                              ? "Couldn't load grades. Try again."
-                              : 'Connect to the internet to load grades',
+                      child: EmptyState(
+                        title: 'Grades unavailable',
+                        body: online
+                            ? "Couldn't load grades. Try again."
+                            : 'Connect to the internet to load grades',
+                        showMascot: false,
+                        primaryAction: EmptyStateAction(
+                          label: 'Retry',
+                          onPressed: !online ? null : _refresh,
                         ),
                       ),
                     );
@@ -210,10 +225,18 @@ class _SubmissionsScreenState extends ConsumerState<SubmissionsScreen> {
             final assignment = data.assignment(widget.postId);
             if (assignment == null) {
               return Center(
-                child: Text(
-                  online
-                      ? 'This item is no longer available.'
-                      : 'Connect to the internet to load grades',
+                child: EmptyState(
+                  title: online ? 'Item unavailable' : 'Grades not saved',
+                  body: online
+                      ? 'Return to the class and refresh to check this item.'
+                      : 'Connect and refresh to load grades.',
+                  showMascot: false,
+                  primaryAction: online
+                      ? null
+                      : EmptyStateAction(
+                          label: 'Retry',
+                          onPressed: !online ? null : _refresh,
+                        ),
                 ),
               );
             }
@@ -249,9 +272,14 @@ class _SubmissionsScreenState extends ConsumerState<SubmissionsScreen> {
                 children: [
                   if (!online) const OfflineBanner(),
                   if (sync.hasError)
-                    TextButton(
-                      onPressed: _refresh,
-                      child: const Text("Couldn't load grades. Try again."),
+                    EmptyState(
+                      title: 'Grades unavailable',
+                      body: "Couldn't load grades. Try again.",
+                      showMascot: false,
+                      primaryAction: EmptyStateAction(
+                        label: 'Retry',
+                        onPressed: !online ? null : _refresh,
+                      ),
                     ),
                   if (archived) const Text('This class is archived.'),
                   Text(
@@ -277,6 +305,8 @@ class _SubmissionsScreenState extends ConsumerState<SubmissionsScreen> {
                         .toList(),
                   ),
                   TextField(
+                    controller: _searchController,
+                    enabled: members.isNotEmpty || _search.isNotEmpty,
                     decoration: const InputDecoration(
                       labelText: 'Search students',
                       prefixIcon: FiloIcon(FiloIcons.search),
@@ -290,7 +320,9 @@ class _SubmissionsScreenState extends ConsumerState<SubmissionsScreen> {
                           (s) => FiloAnimatedChip.filter(
                             label: Text(s),
                             selected: _filter == s,
-                            onSelected: (_) => setState(() => _filter = s),
+                            onSelected: members.isEmpty
+                                ? null
+                                : (_) => setState(() => _filter = s),
                           ),
                         )
                         .toList(),
@@ -321,14 +353,31 @@ class _SubmissionsScreenState extends ConsumerState<SubmissionsScreen> {
                   ))
                     const Padding(
                       padding: EdgeInsets.all(FiloSpacing.s12),
-                      child: Text(
-                        "No submissions yet.\nStudents' work will appear here after they turn it in.",
+                      child: EmptyState(
+                        title: 'No submissions yet',
+                        body: 'Student work will appear here after turn-in.',
+                        showMascot: false,
                       ),
                     ),
-                  if (visible.isEmpty)
-                    const Padding(
-                      padding: EdgeInsets.all(FiloSpacing.screen),
-                      child: Text('No matching results.'),
+                  if (visible.isEmpty &&
+                      (_search.trim().isNotEmpty || _filter != 'All'))
+                    Padding(
+                      padding: const EdgeInsets.all(FiloSpacing.screen),
+                      child: EmptyState(
+                        title: 'No matching students',
+                        body: _search.trim().isEmpty
+                            ? 'Choose another status or show all students.'
+                            : 'No matches for "$_search"; check the spelling or clear your search.',
+                        showMascot: false,
+                        primaryAction: EmptyStateAction(
+                          label: 'Clear search and filters',
+                          onPressed: () => setState(() {
+                            _search = '';
+                            _searchController.clear();
+                            _filter = 'All';
+                          }),
+                        ),
+                      ),
                     ),
                   ...visible.map((m) {
                     final id = m['student_id'].toString(), s = status(m);

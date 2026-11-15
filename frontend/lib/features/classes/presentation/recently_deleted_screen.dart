@@ -71,7 +71,7 @@ class _RecentlyDeletedState extends ConsumerState<RecentlyDeletedScreen> {
       context,
       title: 'Permanently delete ${room.section}?',
       message: 'This permanently deletes this class, posts, submissions, quizzes, grades, and server files. It cannot be undone. Once deletion starts, this class cannot be restored, even if cleanup needs a retry. Downloaded files stay on devices.',
-      confirmLabel: 'Confirm',
+      confirmLabel: 'Delete permanently',
       confirmDestructive: true,
       confirmOutlined: true,
       cancelLabel: 'Cancel',
@@ -181,38 +181,18 @@ class _RecentlyDeletedState extends ConsumerState<RecentlyDeletedScreen> {
                       const Center(child: FiloCircularProgressIndicator()),
                     ],
                     error: (_, _) => [
-                      const Text(
-                        'Could not load deleted classes. Pull down to retry.',
+                      const EmptyState(
+                        title: 'Deleted classes unavailable',
+                        body: 'Pull down to retry loading deleted classes.',
+                        pose: 'confused',
                       ),
                     ],
                     data: (items) => [
                       if (items.isEmpty && !sync.hasError)
-                        Center(
-                          child: Padding(
-                            padding: const EdgeInsets.symmetric(
-                              vertical: FiloSpacing.screen,
-                            ),
-                            child: Column(
-                              children: [
-                                ExcludeSemantics(
-                                  child: Image.asset(
-                                    'assets/illustrations/restore-empty.png',
-                                    width: 360,
-                                    fit: BoxFit.contain,
-                                    errorBuilder: (_, _, _) => const Icon(
-                                      Icons.restore_rounded,
-                                      size: 40,
-                                    ),
-                                  ),
-                                ),
-                                const SizedBox(height: FiloSpacing.s12),
-                                const Text(
-                                  'No recently deleted classes.',
-                                  textAlign: TextAlign.center,
-                                ),
-                              ],
-                            ),
-                          ),
+                        const EmptyState(
+                          title: 'No deleted classes',
+                          body: 'Classes you delete appear here during their recovery period.',
+                          pose: 'waiting',
                         ),
                       for (final room in items)
                         Builder(

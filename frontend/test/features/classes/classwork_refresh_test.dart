@@ -263,7 +263,7 @@ void main() {
       await tester.pump();
       await tester.pump();
       expect(find.text('Assignment 1'), findsOneWidget);
-      expect(find.text('No posts yet'), findsNothing);
+      expect(find.text('No class updates yet'), findsNothing);
       reloadGate.complete();
       await tester.pumpAndSettle();
       cards.add([]);
@@ -333,7 +333,7 @@ void main() {
         await tester.pump(const Duration(milliseconds: 50));
       }
       expect(
-        find.text('No posts yet'),
+        find.text('No class updates yet'),
         knownEmpty ? findsOneWidget : findsNothing,
       );
       expect(
@@ -344,7 +344,7 @@ void main() {
       for (var i = 0; i < 8; i++) {
         await tester.pump(const Duration(milliseconds: 50));
       }
-      expect(find.text('No posts yet'), findsOneWidget);
+      expect(find.text('No class updates yet'), findsOneWidget);
       expect(find.byType(StreamPostSkeleton), findsNothing);
       await tester.pumpWidget(const SizedBox.shrink());
     });

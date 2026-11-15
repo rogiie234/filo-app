@@ -93,10 +93,15 @@ void main() {
       await tester.ensureVisible(material);
       await tester.tap(material);
       await tester.pumpAndSettle();
-      expect(find.text('No saved posts match this filter.'), findsOneWidget);
+      expect(find.text('No matching updates'), findsOneWidget);
       expect(find.text('No posts yet'), findsNothing);
-      await tester.ensureVisible(find.text('Show all posts'));
-      await tester.tap(find.text('Show all posts'));
+      await tester.scrollUntilVisible(
+        find.text('Show all updates'),
+        100,
+        scrollable: find.byType(Scrollable).first,
+      );
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Show all updates'));
       await tester.pumpAndSettle();
       await tester.drag(
         find.byType(CustomScrollView).first,

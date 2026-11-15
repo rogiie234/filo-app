@@ -1,3 +1,4 @@
+import '../../../core/widgets/filo_widgets.dart';
 import '../../../core/theme/filo_design_tokens.dart';
 import '../../../core/theme/filo_motion.dart';
 import '../../../core/widgets/filo_motion_widgets.dart';
@@ -112,19 +113,12 @@ class _AiQuizSheetState extends ConsumerState<AiQuizSheet> {
     final accepted = await showFiloDialog<bool>(
       context: context,
       barrierDismissible: false,
-      builder: (c) => AlertDialog(
-        title: const Text('Before using AI'),
-        content: const Text(aiPrivacyNotice),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(c, false),
-            child: const Text('Cancel'),
-          ),
-          FilledButton(
-            onPressed: () => Navigator.pop(c, true),
-            child: const Text('OK'),
-          ),
-        ],
+      builder: (c) => const FiloConfirmationDialog(
+        title: 'Before using AI',
+        message: aiPrivacyNotice,
+        confirmLabel: 'OK',
+        cancelLabel: 'Cancel',
+        icon: FiloIcons.sparkle,
       ),
     );
     if (!mounted || accepted != true) return;
@@ -440,7 +434,11 @@ class _AiQuizSheetState extends ConsumerState<AiQuizSheet> {
                                 Expanded(
                                   child: entries.isEmpty
                                       ? const Center(
-                                          child: Text('No class files yet.'),
+                                          child: EmptyState(
+                                            title: 'No class files yet',
+                                            body: 'Choose a file from your phone or add class materials first.',
+                                            pose: 'waiting',
+                                          ),
                                         )
                                       : ListView(
                                           children: [
@@ -583,6 +581,13 @@ class _AiQuizSheetState extends ConsumerState<AiQuizSheet> {
             Text(
               'Regenerate one ${_label(widget.regenerateType!)} question · $_difficulty',
             ),
+          const SizedBox(height: FiloSpacing.s8),
+          Text(switch (_difficulty) {
+            'easy' =>
+              'Remember and understand: recall facts and explain ideas.',
+            'medium' => 'Apply and analyze: use ideas in new cases and examine relationships.',
+            _ => 'Evaluate and create: judge using criteria or develop a justified solution. Objective questions focus on evaluation.',
+          }),
           const SizedBox(height: FiloSpacing.s16),
           const Text(aiPrivacyNotice),
           if (!_acknowledged && !_initializing)

@@ -32,27 +32,15 @@ Widget studyAsync<T>(
       ),
     );
   }
-  if (value.hasError && showMascot) {
-    return SingleChildScrollView(
-      child: EmptyState(
-        title: 'Could not read saved study content. Try again.',
-        pose: 'confused',
-        bob: false,
-        action: retry == null
-            ? null
-            : TextButton(onPressed: retry, child: const Text('Retry')),
-      ),
-    );
-  }
   if (value.hasError) {
-    return FiloPanel(
-      child: Column(
-        children: [
-          const Text('Could not read saved study content. Try again.'),
-          if (retry != null)
-            TextButton(onPressed: retry, child: const Text('Retry')),
-        ],
-      ),
+    return EmptyState(
+      title: 'Study content unavailable',
+      body: 'Retry to read study content saved on this device.',
+      pose: 'confused',
+      showMascot: showMascot,
+      primaryAction: retry == null
+          ? null
+          : EmptyStateAction(label: 'Retry', onPressed: retry),
     );
   }
   return builder(value.requireValue);
@@ -92,29 +80,40 @@ class _NotebookNameDialogState extends State<_NotebookNameDialog> {
   }
 
   @override
-  Widget build(BuildContext context) => AlertDialog(
-    title: Text(widget.initial == null ? 'New notebook' : 'Rename'),
-    scrollable: true,
-    content: TextField(
-      controller: controller,
-      autofocus: true,
-      maxLength: 255,
-      textCapitalization: TextCapitalization.sentences,
-      decoration: const InputDecoration(labelText: 'Notebook name'),
+  Widget build(BuildContext context) => FiloModalDialog(
+    title: widget.initial == null ? 'New notebook' : 'Rename',
+    icon: FiloIcons.book,
+    content: Column(
+      mainAxisSize: MainAxisSize.min,
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        if (widget.initial == null) ...[
+          const Text('Keep your files and study tools together.'),
+          const SizedBox(height: FiloSpacing.s16),
+        ],
+        TextField(
+          controller: controller,
+          autofocus: true,
+          maxLength: 255,
+          textCapitalization: TextCapitalization.sentences,
+          decoration: const InputDecoration(labelText: 'Notebook name'),
+        ),
+      ],
     ),
     actions: [
-      TextButton(
-        onPressed: () => Navigator.pop(context),
-        child: const Text('Cancel'),
-      ),
       ValueListenableBuilder<TextEditingValue>(
         valueListenable: controller,
-        builder: (_, value, _) => FilledButton(
+        builder: (_, value, _) => FiloButton(
+          label: widget.initial == null ? 'Create notebook' : 'Save',
           onPressed: value.text.trim().isEmpty
               ? null
               : () => Navigator.pop(context, value.text.trim()),
-          child: Text(widget.initial == null ? 'Create notebook' : 'Save'),
         ),
+      ),
+      FiloButton(
+        secondary: true,
+        label: 'Cancel',
+        onPressed: () => Navigator.pop(context),
       ),
     ],
   );
@@ -144,6 +143,7 @@ Future<bool> editNotebook(
         message: 'Delete this notebook and everything in it? Your original files are not affected.',
         confirmLabel: 'Delete',
         cancelLabel: 'Cancel',
+        confirmDestructive: true,
         icon: FiloIcons.delete,
       );
       if (!confirmed ||

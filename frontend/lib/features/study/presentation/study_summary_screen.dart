@@ -5,6 +5,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../core/ai/ai_request_providers.dart';
 import '../../../core/connectivity/connectivity_provider.dart';
 import '../../../core/widgets/filo_widgets.dart';
+import '../../../core/widgets/entry_background.dart';
 import '../../../data/local/database_providers.dart';
 import '../application/student_ai_providers.dart';
 import '../application/study_providers.dart';
@@ -35,18 +36,28 @@ class StudySummaryScreen extends ConsumerWidget {
         repository: repository.requireValue!,
       );
     }
-    return Scaffold(
-      appBar: AppBar(title: const Text('Summary')),
-      body: studyAsync(
-        database,
-        (db) => db == null
-            ? const Center(child: Text('Sign in again to open your summary.'))
-            : studyAsync(
-                repository,
-                (_) => const SizedBox.shrink(),
-                retry: () => ref.invalidate(studySummaryRepositoryProvider),
-              ),
-        retry: () => ref.invalidate(accountDatabaseProvider),
+    return EntryBackground(
+      variation: 4,
+      child: Scaffold(
+        backgroundColor: Colors.transparent,
+        appBar: AppBar(
+          backgroundColor: Colors.transparent,
+          surfaceTintColor: Colors.transparent,
+          elevation: 0,
+          scrolledUnderElevation: 0,
+          title: const Text('Summary'),
+        ),
+        body: studyAsync(
+          database,
+          (db) => db == null
+              ? const Center(child: Text('Sign in again to open your summary.'))
+              : studyAsync(
+                  repository,
+                  (_) => const SizedBox.shrink(),
+                  retry: () => ref.invalidate(studySummaryRepositoryProvider),
+                ),
+          retry: () => ref.invalidate(accountDatabaseProvider),
+        ),
       ),
     );
   }
@@ -167,124 +178,164 @@ class _SummaryBodyState extends ConsumerState<_SummaryBody> {
           });
         }
       },
-      child: Scaffold(
-        appBar: AppBar(title: const Text('Summary')),
-        body: ListView(
-          padding: const EdgeInsets.all(FiloSpacing.screen),
-          children: [
-            const StudyOfflineBanner(),
-            studyAsync(
-              summary,
-              (saved) => Column(
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  if (saved != null) ...[
-                    Text(
-                      'Saved ${MaterialLocalizations.of(context).formatMediumDate(saved.updatedAt.toLocal())}',
-                      style: Theme.of(context).textTheme.labelLarge,
+      child: EntryBackground(
+        variation: 4,
+        child: Scaffold(
+          backgroundColor: Colors.transparent,
+          appBar: AppBar(
+            backgroundColor: Colors.transparent,
+            surfaceTintColor: Colors.transparent,
+            elevation: 0,
+            scrolledUnderElevation: 0,
+            title: const Text('Summary'),
+          ),
+          body: ListView(
+            padding: const EdgeInsets.all(FiloSpacing.screen),
+            children: [
+              const StudyOfflineBanner(),
+              FiloPanel(
+                child: Row(
+                  children: [
+                    Icon(
+                      Icons.subject_rounded,
+                      color: Theme.of(context).colorScheme.primary,
+                      size: 32,
                     ),
-                    const SizedBox(height: FiloSpacing.s12),
-                    FiloPanel(child: StudyAnswerText(saved.content)),
-                    _usage(StudySummaryUsage.decode(saved.usageJson)),
-                    Align(
-                      alignment: Alignment.centerRight,
-                      child: TextButton.icon(
-                        onPressed: () => _copy(saved.content),
-                        icon: const Icon(Icons.copy_outlined),
-                        label: const Text('Copy summary'),
+                    const SizedBox(width: FiloSpacing.s16),
+                    Expanded(
+                      child: Text(
+                        'Summary',
+                        style: Theme.of(context).textTheme.titleLarge,
                       ),
-                    ),
-                  ] else
-                    Padding(
-                      padding: const EdgeInsets.symmetric(
-                        vertical: FiloSpacing.screen,
-                      ),
-                      child: EmptyState(
-                        title: 'Generate a short summary of your sources.',
-                        pose: _session.error == null ? 'reading' : 'confused',
-                        bob: !_session.working && _session.error == null,
-                      ),
-                    ),
-                  if (pending != null) ...[
-                    const SizedBox(height: FiloSpacing.s16),
-                    const Text('New summary — not confirmed saved'),
-                    FiloPanel(child: StudyAnswerText(pending.value.answer)),
-                    _usage(StudySummaryUsage.fromResult(pending)),
-                    TextButton.icon(
-                      onPressed: () => _copy(pending.value.answer),
-                      icon: const Icon(Icons.copy_outlined),
-                      label: const Text('Copy unsaved summary'),
-                    ),
-                    FiloButton(
-                      label: 'Try saving again',
-                      onPressed: _session.working ? null : _session.retrySave,
                     ),
                   ],
-                  const SizedBox(height: FiloSpacing.s16),
-                  const Text('AI can make mistakes. Check important answers.'),
-                  const SizedBox(height: FiloSpacing.s16),
-                  if (_session.working) ...[
-                    if (!_session.saving)
-                      const Mascot(pose: 'thinking', size: 120),
-                    Semantics(
-                      liveRegion: true,
-                      child: Text(
-                        _session.saving
-                            ? 'Saving summary...'
-                            : 'Preparing your summary...',
-                      ),
-                    ),
-                    if (!MediaQuery.disableAnimationsOf(context))
-                      const Padding(
-                        padding: EdgeInsets.all(FiloSpacing.s16),
-                        child: Center(
-                          child: FiloCircularProgressIndicator(
-                            semanticsLabel: 'Preparing summary',
-                          ),
-                        ),
-                      ),
-                    if (!_session.saving) ...[
-                      FiloButton(label: 'Cancel', onPressed: _session.cancel),
-                      const SizedBox(height: FiloSpacing.s8),
-                      const Text(
-                        'Cancel stops waiting on this phone. The server may still finish.',
-                      ),
-                    ],
-                  ] else if (pending == null)
-                    FiloButton(
-                      label: saved == null
-                          ? 'Summarize sources'
-                          : 'Summarize again',
-                      icon: FiloIcons.sparkle,
-                      onPressed: reason != null || _authorizing
-                          ? null
-                          : () => _generate(saved != null),
-                    ),
-                ],
-              ),
-              retry: () =>
-                  ref.invalidate(studySummaryProvider(widget.notebookId)),
-            ),
-            if (reason != null)
-              Padding(
-                padding: const EdgeInsets.only(top: FiloSpacing.s12),
-                child: Text(reason),
-              ),
-            if (sources.hasError)
-              TextButton(
-                onPressed: () =>
-                    ref.invalidate(studySourcesProvider(widget.notebookId)),
-                child: const Text('Retry loading sources'),
-              ),
-            if (_session.error != null)
-              Padding(
-                padding: const EdgeInsets.only(top: FiloSpacing.s12),
-                child: Semantics(
-                  liveRegion: true,
-                  child: Text(_session.error!),
                 ),
               ),
-          ],
+              const SizedBox(height: FiloSpacing.screen),
+              studyAsync(
+                summary,
+                (saved) => Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    if (saved != null) ...[
+                      Text(
+                        'Saved ${MaterialLocalizations.of(context).formatMediumDate(saved.updatedAt.toLocal())}',
+                        style: Theme.of(context).textTheme.labelLarge,
+                      ),
+                      const SizedBox(height: FiloSpacing.s12),
+                      FiloPanel(child: StudyAnswerText(saved.content)),
+                      _usage(StudySummaryUsage.decode(saved.usageJson)),
+                      Align(
+                        alignment: Alignment.centerRight,
+                        child: TextButton.icon(
+                          onPressed: () => _copy(saved.content),
+                          icon: const Icon(Icons.copy_outlined),
+                          label: const Text('Copy summary'),
+                        ),
+                      ),
+                    ] else
+                      Padding(
+                        padding: const EdgeInsets.symmetric(
+                          vertical: FiloSpacing.screen,
+                        ),
+                        child: EmptyState(
+                          primaryAction: pending != null || _session.working
+                              ? null
+                              : EmptyStateAction(
+                                  label: 'Summarize sources',
+                                  onPressed: reason != null || _authorizing
+                                      ? null
+                                      : () => _generate(false),
+                                ),
+                          title: _session.error == null
+                              ? 'Ready for a summary?'
+                              : 'Summary unavailable',
+                          body: _session.error ?? 'Add readable sources, then summarize their main ideas.',
+                          pose: _session.error == null ? 'reading' : 'confused',
+                          bob: !_session.working && _session.error == null,
+                        ),
+                      ),
+                    if (pending != null) ...[
+                      const SizedBox(height: FiloSpacing.s16),
+                      const Text('New summary — not confirmed saved'),
+                      FiloPanel(child: StudyAnswerText(pending.value.answer)),
+                      _usage(StudySummaryUsage.fromResult(pending)),
+                      TextButton.icon(
+                        onPressed: () => _copy(pending.value.answer),
+                        icon: const Icon(Icons.copy_outlined),
+                        label: const Text('Copy unsaved summary'),
+                      ),
+                      FiloButton(
+                        label: 'Try saving again',
+                        onPressed: _session.working ? null : _session.retrySave,
+                      ),
+                    ],
+                    const SizedBox(height: FiloSpacing.s16),
+                    const Text(
+                      'AI can make mistakes. Check important answers.',
+                    ),
+                    const SizedBox(height: FiloSpacing.s16),
+                    if (_session.working) ...[
+                      if (!_session.saving)
+                        const Mascot(pose: 'thinking', size: 120),
+                      Semantics(
+                        liveRegion: true,
+                        child: Text(
+                          _session.saving
+                              ? 'Saving summary...'
+                              : 'Preparing your summary...',
+                        ),
+                      ),
+                      if (!MediaQuery.disableAnimationsOf(context))
+                        const Padding(
+                          padding: EdgeInsets.all(FiloSpacing.s16),
+                          child: Center(
+                            child: FiloCircularProgressIndicator(
+                              semanticsLabel: 'Preparing summary',
+                            ),
+                          ),
+                        ),
+                      if (!_session.saving) ...[
+                        FiloButton(label: 'Cancel', onPressed: _session.cancel),
+                        const SizedBox(height: FiloSpacing.s8),
+                        const Text(
+                          'Cancel stops waiting on this phone. The server may still finish.',
+                        ),
+                      ],
+                    ] else if (pending == null && saved != null)
+                      FiloButton(
+                        label: 'Summarize again',
+                        icon: FiloIcons.sparkle,
+                        onPressed: reason != null || _authorizing
+                            ? null
+                            : () => _generate(true),
+                      ),
+                  ],
+                ),
+                retry: () =>
+                    ref.invalidate(studySummaryProvider(widget.notebookId)),
+              ),
+              if (reason != null)
+                Padding(
+                  padding: const EdgeInsets.only(top: FiloSpacing.s12),
+                  child: Text(reason),
+                ),
+              if (sources.hasError)
+                TextButton(
+                  onPressed: () =>
+                      ref.invalidate(studySourcesProvider(widget.notebookId)),
+                  child: const Text('Retry loading sources'),
+                ),
+              if (_session.error != null)
+                Padding(
+                  padding: const EdgeInsets.only(top: FiloSpacing.s12),
+                  child: Semantics(
+                    liveRegion: true,
+                    child: Text(_session.error!),
+                  ),
+                ),
+            ],
+          ),
         ),
       ),
     );

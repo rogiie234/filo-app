@@ -5,7 +5,42 @@ import 'package:flutter/services.dart';
 
 import '../data/exam_remote.dart';
 
+class ExamWindowState {
+  const ExamWindowState({
+    this.multiWindow = false,
+    this.overlaySupported = false,
+  });
+  final bool multiWindow, overlaySupported;
+}
+
 class ExamScreenSecurity {
+  static bool multiWindow = false;
+  static Stream<ExamWindowState> windowStates() async* {
+    if (kIsWeb || defaultTargetPlatform != TargetPlatform.android) {
+      multiWindow = false;
+      yield const ExamWindowState();
+      return;
+    }
+    try {
+      await for (final raw in const EventChannel(
+        'com.filo.filo/exam_window',
+      ).receiveBroadcastStream()) {
+        final state = Map<String, dynamic>.from(raw as Map);
+        multiWindow = state['multi_window'] == true;
+        yield ExamWindowState(
+          multiWindow: multiWindow,
+          overlaySupported: state['overlay_supported'] == true,
+        );
+      }
+    } on PlatformException {
+      multiWindow = false;
+      yield const ExamWindowState();
+    } on MissingPluginException {
+      multiWindow = false;
+      yield const ExamWindowState();
+    }
+  }
+
   static const channel = MethodChannel('com.filo.filo/exam');
 
   static Future<void> protect(bool enabled) async {

@@ -1,3 +1,5 @@
+import '../../../core/widgets/entry_background.dart';
+
 import 'dart:io';
 
 import 'package:file_picker/file_picker.dart';
@@ -66,28 +68,40 @@ class DriveBackupScreen extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final backup = ref.watch(driveBackupProvider);
-    return Scaffold(
-      appBar: AppBar(title: const Text('Drive backup')),
-      body: SafeArea(
-        top: false,
-        child: backup.when(
-          loading: () => const Center(
-            child: FiloCircularProgressIndicator(
-              semanticsLabel: 'Loading Drive backup',
+    return EntryBackground(
+      verification: true,
+      breeze: true,
+      variation: 1,
+      child: Scaffold(
+        backgroundColor: Colors.transparent,
+        appBar: AppBar(
+          backgroundColor: Colors.transparent,
+          surfaceTintColor: Colors.transparent,
+          elevation: 0,
+          scrolledUnderElevation: 0,
+          title: const Text('Drive backup'),
+        ),
+        body: SafeArea(
+          top: false,
+          child: backup.when(
+            loading: () => const Center(
+              child: FiloCircularProgressIndicator(
+                semanticsLabel: 'Loading Drive backup',
+              ),
             ),
+            error: (_, _) => _BackupUnavailable(
+              message: 'Could not open backup.',
+              onRetry: () => ref.invalidate(driveBackupProvider),
+            ),
+            data: (service) => service == null
+                ? const _BackupUnavailable(
+                    message: 'Sign in to use Drive backup.',
+                  )
+                : ListenableBuilder(
+                    listenable: service,
+                    builder: (context, _) => _content(context, ref, service),
+                  ),
           ),
-          error: (_, _) => _BackupUnavailable(
-            message: 'Could not open backup.',
-            onRetry: () => ref.invalidate(driveBackupProvider),
-          ),
-          data: (service) => service == null
-              ? const _BackupUnavailable(
-                  message: 'Sign in to use Drive backup.',
-                )
-              : ListenableBuilder(
-                  listenable: service,
-                  builder: (context, _) => _content(context, ref, service),
-                ),
         ),
       ),
     );
@@ -451,7 +465,8 @@ class _BackupUnavailable extends StatelessWidget {
       child: ConstrainedBox(
         constraints: const BoxConstraints(maxWidth: 480),
         child: EmptyState(
-          title: message,
+          title: 'Backup unavailable',
+          body: message,
           pose: 'confused',
           bob: false,
           action: onRetry == null

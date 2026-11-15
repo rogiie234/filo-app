@@ -68,7 +68,8 @@ class DriveBackupService extends ChangeNotifier {
     this.accountIsCurrent, {
     this.managedByOutbox = false,
     this.backgroundAccountCheck,
-  });
+    DriveApi? api,
+  }) : _api = api;
   final AppDatabase db;
   final String userId;
   final GoogleSignIn google;
@@ -179,7 +180,7 @@ class DriveBackupService extends ChangeNotifier {
     final local = files.storage.file(row.relativePath);
     final digest = (await md5.bind(local.openRead()).first).toString();
     await enqueue(local, row.name, localFileId: row.id);
-    await run();
+    await run(localFileId: row.id);
     final done = jobs
         .where(
           (job) =>
@@ -449,7 +450,7 @@ class DriveBackupService extends ChangeNotifier {
     return folderId!;
   }
 
-  Future<void> run() async {
+  Future<void> run({String? localFileId}) async {
     if (!active || busy || !enabled || !_foreground) {
       return;
     }
@@ -464,7 +465,14 @@ class DriveBackupService extends ChangeNotifier {
       }
       final api = await _connectedApi();
       final folder = await _folder(api);
-      for (final job in jobs.where((j) => j['status'] != 'complete').toList()) {
+      for (final job
+          in jobs
+              .where(
+                (j) =>
+                    j['status'] != 'complete' &&
+                    (localFileId == null || j['local_file_id'] == localFileId),
+              )
+              .toList()) {
         await _upload(api, folder, job);
       }
       if (!active) {
@@ -605,8 +613,7 @@ class DriveBackupService extends ChangeNotifier {
         }
         final response = await api.uploadChunk(session, chunk, offset, size);
         if (response.status == 200 || response.status == 201) {
-          await _verifyComplete(api, fileId, job, timer.elapsedMilliseconds);
-          return;
+          break;
         }
         if (response.status != 308) api.requireSuccess(response);
         final next = DriveApi.receivedBytes(response);
@@ -624,11 +631,11 @@ class DriveBackupService extends ChangeNotifier {
         job['uploaded'] = offset;
         _publish();
       }
-      // A completed byte range still needs provider completion evidence.
-      await _verifyComplete(api, fileId, job, timer.elapsedMilliseconds);
     } finally {
       await input.close();
     }
+    // Close the snapshot before confirmed completion removes it (Windows locks open files).
+    await _verifyComplete(api, fileId, job, timer.elapsedMilliseconds);
   }
 
   Future<void> _verifyComplete(

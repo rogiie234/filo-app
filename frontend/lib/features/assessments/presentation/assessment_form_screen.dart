@@ -47,7 +47,13 @@ class _AssessmentFormScreenState extends ConsumerState<AssessmentFormScreen> {
   ScrollController get _scroll => _pageScrolls[2];
   int _step = 0;
   bool _viewOnly = false;
-  bool _scheduleWarning = false;
+  String? get _scheduleError => assessmentScheduleOrderError(
+    (_draft?.locked == true
+            ? _savedQuiz?.row['opens_at']
+            : _draft?.settings['opens_at'])
+        as String?,
+    _draft?.settings['closes_at'] as String?,
+  );
   String? get _bankCourse => ref
       .read(classesProvider)
       .asData
@@ -64,7 +70,7 @@ class _AssessmentFormScreenState extends ConsumerState<AssessmentFormScreen> {
     });
   }
 
-  Future<bool> _validateStep(int page, {bool requireSchedule = false}) async {
+  Future<bool> _validateStep(int page) async {
     if (_viewOnly) return true;
     final form = _forms[page].currentState;
     if (form == null) return false;
@@ -75,26 +81,11 @@ class _AssessmentFormScreenState extends ConsumerState<AssessmentFormScreen> {
       return false;
     }
     if (page == 1) {
-      if (requireSchedule && missingAssessmentSchedule(_draft!) != null) {
+      if (_scheduleError != null) {
         _switchStep(1);
-        setState(() => _scheduleWarning = true);
-        if (_pageScrolls[1].hasClients) _pageScrolls[1].jumpTo(0);
-      }
-      final opens = _draft!.locked
-          ? _savedQuiz?.row['opens_at'] as String?
-          : _draft!.settings['opens_at'] as String?;
-      final closes = _draft!.settings['closes_at'] as String?;
-      if (opens != null &&
-          closes != null &&
-          !DateTime.parse(closes).isAfter(DateTime.parse(opens))) {
-        _switchStep(1);
-        setState(() => _error = 'Closing time must be after the opening time.');
         final target = _closingTimeKey.currentContext;
         if (target != null) await revealAssessmentField(target);
         return false;
-      }
-      if (_error == 'Closing time must be after the opening time.') {
-        setState(() => _error = null);
       }
     }
     return true;
@@ -104,8 +95,7 @@ class _AssessmentFormScreenState extends ConsumerState<AssessmentFormScreen> {
     if (_busy || _loading || _draft == null) return;
     if (target > _step) {
       for (var page = 0; page < target; page++) {
-        if (!await _validateStep(page, requireSchedule: true) || !mounted)
-          return;
+        if (!await _validateStep(page) || !mounted) return;
       }
     }
     _switchStep(target);
@@ -191,7 +181,7 @@ class _AssessmentFormScreenState extends ConsumerState<AssessmentFormScreen> {
   bool _aiRefreshRequired = false;
   AiGeneratedBatch? _unpersistedAi;
 
-  Future<bool> _prepareAi() async {
+  Future<bool> _prepareAi({bool saveEdits = false}) async {
     if (_busy ||
         !_canWrite ||
         _draft == null ||
@@ -237,12 +227,48 @@ class _AssessmentFormScreenState extends ConsumerState<AssessmentFormScreen> {
       });
       await WidgetsBinding.instance.endOfFrame;
     }
-    await _save();
-    return mounted &&
-        _draft?.id != null &&
-        !_dirty &&
-        _canWrite &&
-        !_draft!.locked;
+    if (saveEdits) {
+      await _save();
+      return mounted &&
+          _draft?.id != null &&
+          !_dirty &&
+          _canWrite &&
+          !_draft!.locked;
+    }
+    if (_draft!.id != null) return true;
+    if (!await _validateStep(0) || !mounted) return false;
+    if (!await _validateStep(1) || !mounted) return false;
+    final shell = QuizDraft.create(widget.classId)
+      ..settings.addAll(_draft!.settings);
+    setState(() => _busy = true);
+    try {
+      final repository = await ref.read(
+        instructorQuizRepositoryProvider.future,
+      );
+      if (repository == null) throw const AiFailure('AUTH');
+      final saved = await repository.save(shell);
+      if (!mounted) return false;
+      setState(() {
+        _draft!.mergeAiSaved(saved);
+        _savedQuiz = saved;
+        _published = saved.row['status'] == 'published';
+        _error = null;
+      });
+      return _canWrite && !_draft!.locked;
+    } catch (error) {
+      if (mounted)
+        setState(() {
+          if (error is QuizReconciliationRequired ||
+              shell.reconciliationRequired) {
+            _draft!.id = shell.id;
+            _draft!.reconciliationRequired = true;
+          }
+          _error = quizFriendlyError(error);
+        });
+      return false;
+    } finally {
+      if (mounted) setState(() => _busy = false);
+    }
   }
 
   Future<void> _generateWithAi() async {
@@ -311,8 +337,10 @@ class _AssessmentFormScreenState extends ConsumerState<AssessmentFormScreen> {
 
   Future<void> _acceptAiReport(AiDraftSaveReport report) async {
     final previous = _draft!.questions.map((q) => q.id).toSet();
-    _accept(report.saved);
     setState(() {
+      _draft!.mergeAiSaved(report.saved);
+      _savedQuiz = report.saved;
+      _published = report.saved.row['status'] == 'published';
       _unpersistedAi = null;
       _aiRefreshRequired = false;
       _pendingAi = report.pending;
@@ -337,13 +365,6 @@ class _AssessmentFormScreenState extends ConsumerState<AssessmentFormScreen> {
 
   Future<void> _retryAiDrafts() async {
     if (_busy || !_canWrite || _draft?.id == null) return;
-    if (_questionDirty || _draft?.isDirty == true) {
-      showMessage(
-        context,
-        'Save or discard your current edits before checking AI draft saves.',
-      );
-      return;
-    }
     setState(() => _busy = true);
     try {
       final repository = await ref.read(
@@ -388,10 +409,6 @@ class _AssessmentFormScreenState extends ConsumerState<AssessmentFormScreen> {
 
   Future<void> _stopAiRetries() async {
     if (_busy || !_canWrite || _draft?.id == null) return;
-    if (_questionDirty || _draft?.isDirty == true) {
-      showMessage(context, 'Save or discard current edits first.');
-      return;
-    }
     final confirmed = await showFiloConfirmation(
       context,
       title: 'Stop retrying pending drafts?',
@@ -410,8 +427,10 @@ class _AssessmentFormScreenState extends ConsumerState<AssessmentFormScreen> {
       final saved = await repository.refreshQuiz(widget.classId, _draft!.id!);
       await FileTextCache(repository.database).abandonPending(_draft!.id!);
       if (mounted) {
-        _accept(saved);
         setState(() {
+          _draft!.mergeAiSaved(saved);
+          _savedQuiz = saved;
+          _published = saved.row['status'] == 'published';
           _unpersistedAi = null;
           _pendingAi = 0;
           _uncertainAi = 0;
@@ -430,7 +449,7 @@ class _AssessmentFormScreenState extends ConsumerState<AssessmentFormScreen> {
   }
 
   Future<void> _regenerateAi(QuizQuestion question) async {
-    if (!await _prepareAi() || question.id == null) return;
+    if (!await _prepareAi(saveEdits: true) || question.id == null) return;
     if (_draft!.questions.length > 100 ||
         _draft!.questions.fold<int>(0, (n, q) => n + q.prompt.runes.length) >
             40000) {
@@ -569,6 +588,7 @@ class _AssessmentFormScreenState extends ConsumerState<AssessmentFormScreen> {
         title: 'Delete this question?',
         message: 'This question will be removed when you save.',
         confirmLabel: 'Delete',
+        confirmDestructive: true,
         cancelLabel: 'Cancel',
         icon: FiloIcons.delete,
       );
@@ -814,24 +834,48 @@ class _AssessmentFormScreenState extends ConsumerState<AssessmentFormScreen> {
     final civil = utcToManila(
       current == null ? DateTime.now().toUtc() : DateTime.parse(current),
     );
-    final first = DateTime(civil.year < 2000 ? civil.year : 2000);
-    final last = DateTime(civil.year > 2100 ? civil.year : 2100, 12, 31);
+    var first = DateTime(civil.year < 2000 ? civil.year : 2000);
+    var last = DateTime(civil.year > 2100 ? civil.year : 2100, 12, 31);
+    final opens = DateTime.tryParse(
+      (_draft!.locked
+                  ? _savedQuiz?.row['opens_at']
+                  : _draft!.settings['opens_at'])
+              as String? ??
+          '',
+    );
+    if (field == 'closes_at' && opens != null) {
+      first = DateUtils.dateOnly(
+        utcToManila(opens).add(const Duration(minutes: 1)),
+      );
+      if (last.isBefore(first)) last = first;
+    }
+    final day = DateTime(civil.year, civil.month, civil.day);
     final date = await showDatePicker(
       context: context,
-      initialDate: DateTime(civil.year, civil.month, civil.day),
+      initialDate: day.isBefore(first) ? first : day,
       helpText: 'Select date (Philippine time)',
       firstDate: first,
       lastDate: last,
     );
     if (date == null || !mounted) return;
-    final time = await showTimePicker(
+    final openingCivil = opens == null ? null : utcToManila(opens);
+    final minimum =
+        field == 'closes_at' &&
+            openingCivil != null &&
+            DateUtils.isSameDay(date, openingCivil)
+        ? openingCivil.hour * 60 + openingCivil.minute + 1
+        : 0;
+    final time = await showDialog<TimeOfDay>(
       context: context,
-      initialTime: TimeOfDay(hour: civil.hour, minute: civil.minute),
-      helpText: 'Select time',
+      builder: (_) => _AssessmentTimePicker(
+        initial: TimeOfDay(hour: civil.hour, minute: civil.minute),
+        minimum: minimum,
+      ),
     );
     if (time == null || !mounted) return;
-    setState(
-      () => _draft!.settings[field] = manilaToUtc(
+    _changeSchedule(
+      field,
+      manilaToUtc(
         date.year,
         date.month,
         date.day,
@@ -839,6 +883,17 @@ class _AssessmentFormScreenState extends ConsumerState<AssessmentFormScreen> {
         time.minute,
       ).toIso8601String(),
     );
+  }
+
+  void _changeSchedule(String field, String? value) {
+    setState(() {
+      _draft!.settings[field] = value;
+      if (_publishProblems.isNotEmpty) {
+        _publishProblems
+          ..clear()
+          ..addAll(quizPublishProblems(_draft!, DateTime.now().toUtc()));
+      }
+    });
   }
 
   bool get _canWrite =>
@@ -1474,59 +1529,6 @@ class _AssessmentFormScreenState extends ConsumerState<AssessmentFormScreen> {
                                                   ),
                                                 ],
                                                 if (draft != null) ...[
-                                                  if (_scheduleWarning &&
-                                                      missingAssessmentSchedule(
-                                                            draft,
-                                                          ) !=
-                                                          null)
-                                                    Padding(
-                                                      padding:
-                                                          const EdgeInsets.only(
-                                                            bottom: 20,
-                                                          ),
-                                                      child: Semantics(
-                                                        liveRegion: true,
-                                                        child: ShadAlert.destructive(
-                                                          title: const Text(
-                                                            'Schedule incomplete',
-                                                          ),
-                                                          description: Padding(
-                                                            padding:
-                                                                const EdgeInsets.only(
-                                                                  top: 8,
-                                                                ),
-                                                            child: Text(
-                                                              missingAssessmentSchedule(
-                                                                draft,
-                                                              )!,
-                                                            ),
-                                                          ),
-                                                          bottom: Padding(
-                                                            padding:
-                                                                const EdgeInsets.only(
-                                                                  top: 8,
-                                                                ),
-                                                            child: ShadButton.outline(
-                                                              height: 48,
-                                                              enabled: !_busy,
-                                                              onPressed: () {
-                                                                _switchStep(1);
-                                                                if (_pageScrolls[1]
-                                                                    .hasClients)
-                                                                  _pageScrolls[1]
-                                                                      .jumpTo(
-                                                                        0,
-                                                                      );
-                                                              },
-                                                              child: const Text(
-                                                                'Set dates',
-                                                              ),
-                                                            ),
-                                                          ),
-                                                        ),
-                                                      ),
-                                                    ),
-
                                                   if (page == 0) ...[
                                                     _section('Assessment details', FiloIcons.assessment, [
                                                       TextFormField(
@@ -1757,8 +1759,9 @@ class _AssessmentFormScreenState extends ConsumerState<AssessmentFormScreen> {
                                                                 ),
                                                             side: BorderSide(
                                                               color:
-                                                                  _scheduleWarning &&
-                                                                      draft.settings[field] ==
+                                                                  field ==
+                                                                          'closes_at' &&
+                                                                      _scheduleError !=
                                                                           null
                                                                   ? Theme.of(
                                                                           context,
@@ -1824,6 +1827,21 @@ class _AssessmentFormScreenState extends ConsumerState<AssessmentFormScreen> {
                                                             ],
                                                           ),
                                                         ),
+                                                        if (field ==
+                                                                'closes_at' &&
+                                                            _scheduleError !=
+                                                                null)
+                                                          Semantics(
+                                                            liveRegion: true,
+                                                            child: Text(
+                                                              _scheduleError!,
+                                                              style: TextStyle(
+                                                                color: Theme.of(
+                                                                  context,
+                                                                ).colorScheme.error,
+                                                              ),
+                                                            ),
+                                                          ),
                                                         if (draft.settings[field] !=
                                                                 null &&
                                                             (field ==
@@ -1835,10 +1853,9 @@ class _AssessmentFormScreenState extends ConsumerState<AssessmentFormScreen> {
                                                                 .centerRight,
                                                             child: TextButton(
                                                               onPressed: () =>
-                                                                  setState(
-                                                                    () =>
-                                                                        draft.settings[field] =
-                                                                            null,
+                                                                  _changeSchedule(
+                                                                    field,
+                                                                    null,
                                                                   ),
                                                               child: Text(
                                                                 field == 'opens_at'
@@ -2038,8 +2055,11 @@ class _AssessmentFormScreenState extends ConsumerState<AssessmentFormScreen> {
                                                         ),
                                                         if (draft.id == null)
                                                           const Text(
-                                                            'Your titled draft will be saved before generation.',
+                                                            'Assessment details are saved first. Unfinished questions stay on this screen.',
                                                           ),
+                                                        const Text(
+                                                          'AI questions are added at the end. Complete every question before publishing.',
+                                                        ),
                                                         if (_published)
                                                           const Text(
                                                             'AI questions must start in a draft assessment.',
@@ -2063,8 +2083,10 @@ class _AssessmentFormScreenState extends ConsumerState<AssessmentFormScreen> {
                                                                     FiloSpacing
                                                                         .s16,
                                                               ),
-                                                          child: Text(
-                                                            'No questions yet.',
+                                                          child: EmptyState(
+                                                            title: 'No questions yet',
+                                                            body: 'Use Add question or Generate with AI to build this assessment.',
+                                                            showMascot: false,
                                                           ),
                                                         ),
                                                     ]),
@@ -2275,13 +2297,6 @@ class _AssessmentFormScreenState extends ConsumerState<AssessmentFormScreen> {
                                 ),
                               ),
                             if (_step < 2) ...[
-                              if (_step > 0)
-                                TextButton(
-                                  onPressed: _busy
-                                      ? null
-                                      : () => _navigate(_step - 1),
-                                  child: const Text('Back'),
-                                ),
                               FiloButton(
                                 label: _step == 0
                                     ? 'Next: Settings'
@@ -2291,40 +2306,18 @@ class _AssessmentFormScreenState extends ConsumerState<AssessmentFormScreen> {
                                     : null,
                               ),
                             ] else ...[
-                              Row(
-                                children: [
-                                  Expanded(
-                                    child: TextButton(
-                                      style: TextButton.styleFrom(
-                                        minimumSize: const Size(
-                                          FiloControlSize.compact,
-                                          FiloControlSize.compact,
-                                        ),
-                                      ),
-                                      onPressed: _busy
-                                          ? null
-                                          : () => _navigate(_step - 1),
-                                      child: const Text('Back'),
-                                    ),
-                                  ),
-                                  if (!readOnly && !_published) ...[
-                                    const SizedBox(width: FiloSpacing.s12),
-                                    Expanded(
-                                      child: FiloButton(
-                                        label: 'Save draft',
-                                        secondary: true,
-                                        onPressed:
-                                            editing &&
-                                                online &&
-                                                !draft.reconciliationRequired &&
-                                                (_dirty || draft.id == null)
-                                            ? () => _save()
-                                            : null,
-                                      ),
-                                    ),
-                                  ],
-                                ],
-                              ),
+                              if (!readOnly && !_published)
+                                FiloButton(
+                                  label: 'Save draft',
+                                  secondary: true,
+                                  onPressed:
+                                      editing &&
+                                          online &&
+                                          !draft.reconciliationRequired &&
+                                          (_dirty || draft.id == null)
+                                      ? () => _save()
+                                      : null,
+                                ),
                               if (!readOnly)
                                 const SizedBox(height: FiloSpacing.s8),
                               if (!readOnly)
@@ -2354,4 +2347,93 @@ class _AssessmentFormScreenState extends ConsumerState<AssessmentFormScreen> {
       ),
     );
   }
+}
+
+class _AssessmentTimePicker extends StatefulWidget {
+  const _AssessmentTimePicker({required this.initial, required this.minimum});
+  final TimeOfDay initial;
+  final int minimum;
+  @override
+  State<_AssessmentTimePicker> createState() => _AssessmentTimePickerState();
+}
+
+class _AssessmentTimePickerState extends State<_AssessmentTimePicker> {
+  late int _hour, _minute;
+  @override
+  void initState() {
+    super.initState();
+    final initial = widget.initial.hour * 60 + widget.initial.minute;
+    final selected = initial < widget.minimum ? widget.minimum : initial;
+    _hour = selected ~/ 60;
+    _minute = selected % 60;
+  }
+
+  @override
+  Widget build(BuildContext context) => AlertDialog(
+    title: const Text('Select time'),
+    content: SingleChildScrollView(
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          const Text('Philippine time'),
+          const SizedBox(height: FiloSpacing.s16),
+          DropdownButtonFormField<int>(
+            key: const ValueKey('assessment-time-hour'),
+            initialValue: _hour,
+            isExpanded: true,
+            decoration: const InputDecoration(labelText: 'Hour (24-hour)'),
+            items: [
+              for (var hour = 0; hour < 24; hour++)
+                DropdownMenuItem(
+                  value: hour,
+                  enabled: hour * 60 + 59 >= widget.minimum,
+                  child: Text(hour.toString().padLeft(2, '0')),
+                ),
+            ],
+            onChanged: (hour) {
+              if (hour == null || hour * 60 + 59 < widget.minimum) return;
+              setState(() {
+                _hour = hour;
+                if (_hour * 60 + _minute < widget.minimum)
+                  _minute = widget.minimum % 60;
+              });
+            },
+          ),
+          const SizedBox(height: FiloSpacing.s16),
+          DropdownButtonFormField<int>(
+            key: ValueKey('assessment-time-minute-$_hour'),
+            initialValue: _minute,
+            isExpanded: true,
+            decoration: const InputDecoration(labelText: 'Minute'),
+            items: [
+              for (var minute = 0; minute < 60; minute++)
+                DropdownMenuItem(
+                  value: minute,
+                  enabled: _hour * 60 + minute >= widget.minimum,
+                  child: Text(minute.toString().padLeft(2, '0')),
+                ),
+            ],
+            onChanged: (minute) {
+              if (minute == null || _hour * 60 + minute < widget.minimum)
+                return;
+              setState(() => _minute = minute);
+            },
+          ),
+        ],
+      ),
+    ),
+    actions: [
+      FiloButton(
+        label: 'Cancel',
+        text: true,
+        onPressed: () => Navigator.pop(context),
+      ),
+      FiloButton(
+        label: 'Set time',
+        onPressed: () =>
+            Navigator.pop(context, TimeOfDay(hour: _hour, minute: _minute)),
+      ),
+    ],
+  );
 }

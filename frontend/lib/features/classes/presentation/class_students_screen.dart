@@ -214,7 +214,11 @@ class _ClassStudentsScreenState extends ConsumerState<ClassStudentsScreen> {
                     ),
                   if (rooms.asData != null && room == null)
                     const FiloPanel(
-                      child: Text('This class is no longer available.'),
+                      child: EmptyState(
+                        title: 'Class unavailable',
+                        body: 'Return to your classes and refresh to check your access.',
+                        pose: 'waiting',
+                      ),
                     ),
                   if (students.isLoading && !students.hasValue)
                     const Center(
@@ -276,7 +280,11 @@ class _ClassStudentsScreenState extends ConsumerState<ClassStudentsScreen> {
                       online &&
                       !sync.isLoading &&
                       !sync.hasError)
-                    const FiloPanel(child: Text('No pending requests.')),
+                    const EmptyState(
+                      title: 'No pending requests',
+                      body: 'New requests will appear here when students use your class code.',
+                      pose: 'waiting',
+                    ),
                   for (final student in pending)
                     Padding(
                       padding: const EdgeInsets.only(top: FiloSpacing.s16),
@@ -351,7 +359,11 @@ class _ClassStudentsScreenState extends ConsumerState<ClassStudentsScreen> {
                       online &&
                       !sync.isLoading &&
                       !sync.hasError)
-                    const FiloPanel(child: Text('No enrolled students yet.')),
+                    const EmptyState(
+                      title: 'No students yet',
+                      body: 'Students will appear here after you approve their requests.',
+                      pose: 'waiting',
+                    ),
                   for (final student in active)
                     Padding(
                       padding: const EdgeInsets.only(bottom: FiloSpacing.s12),

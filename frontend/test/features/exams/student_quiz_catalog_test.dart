@@ -17,6 +17,25 @@ import 'package:filo/features/exams/domain/exam.dart';
 import 'exam_test_support.dart';
 import 'student_quiz_status_test.dart' show quizFixture;
 
+class _ConcurrentRemote extends FakeExamRemote {
+  int active = 0, peak = 0, requested = 0;
+  void Function()? afterRequest;
+  @override
+  Future<ExamJson?> session(String quizId) async {
+    requested++;
+    active++;
+    if (active > peak) peak = active;
+    try {
+      await Future<void>.delayed(Duration.zero);
+      afterRequest?.call();
+      if (quizId == 'quiz1') throw const SocketException('offline');
+      return sessionPayload('submitted');
+    } finally {
+      active--;
+    }
+  }
+}
+
 Future<void> seedQuizClass(AppDatabase db) async {
   await db.customStatement(
     "INSERT INTO cache_profiles(id,role,display_name) VALUES ('teacher','instructor','Teacher')",
@@ -27,6 +46,50 @@ Future<void> seedQuizClass(AppDatabase db) async {
 }
 
 void main() {
+  for (final loseAccount in [false, true]) {
+    test(
+      'catalog uses at most three flights and retains fallback/account guard: $loseAccount',
+      () async {
+        final db = AppDatabase(NativeDatabase.memory());
+        await seedQuizClass(db);
+        final store = ExamStore(db);
+        final rows = [
+          for (var i = 0; i < 7; i++) {...quizFixture().json, 'id': 'quiz$i'},
+        ];
+        await store.saveCatalog([
+          for (final row in rows)
+            StudentQuiz(row, ExamSession(sessionPayload('submitted'))),
+        ]);
+        var current = true;
+        final remote = _ConcurrentRemote()..rows = rows;
+        if (loseAccount) remote.afterRequest = () => current = false;
+        final repo = StudentExamRepository(
+          store: store,
+          remote: remote,
+          isCurrent: () => current,
+          online: () => true,
+        );
+        addTearDown(() async {
+          repo.dispose();
+          await db.close();
+        });
+        if (loseAccount) {
+          await expectLater(repo.refreshCatalog(), throwsA(isA<Exception>()));
+          expect(remote.requested, 3);
+        } else {
+          final result = await repo.refreshCatalog();
+          expect(remote.peak, 3);
+          expect(remote.requested, 7);
+          expect(result.failed, isTrue);
+          expect(result.quizzes.map((q) => q.id), rows.map((r) => r['id']));
+          final fallback = result.quizzes.singleWhere((q) => q.id == 'quiz1');
+          expect(fallback.session!.submitted, isTrue);
+          expect(fallback.sessionKnown, isFalse);
+        }
+        expect(remote.active, 0);
+      },
+    );
+  }
   test('confirmed submission updates cached catalog and survives stale refresh offline', () async {
     final db = AppDatabase(NativeDatabase.memory());
     await seedQuizClass(db);

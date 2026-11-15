@@ -4,21 +4,37 @@ import 'package:filo/features/assessments/domain/quiz_publish.dart';
 
 void main() {
   final now = DateTime.utc(2026, 10, 22);
-  test('missing schedule warning identifies each missing date', () {
-    final draft = QuizDraft.create('class');
-    expect(
-      missingAssessmentSchedule(draft),
-      'Choose a start and end date and time.',
-    );
-    draft.settings['opens_at'] = now.toIso8601String();
-    expect(missingAssessmentSchedule(draft), 'Choose an end date and time.');
-    draft.settings['closes_at'] = now
-        .add(const Duration(hours: 1))
-        .toIso8601String();
-    expect(missingAssessmentSchedule(draft), isNull);
-    draft.settings['opens_at'] = null;
-    expect(missingAssessmentSchedule(draft), 'Choose a start date and time.');
-  });
+  test(
+    'schedule order validation clears immediately when corrected or incomplete',
+    () {
+      final start = now.toIso8601String();
+      expect(
+        assessmentScheduleOrderError(
+          start,
+          now.subtract(const Duration(days: 1)).toIso8601String(),
+        ),
+        'End date and time must be after the start.',
+      );
+      expect(assessmentScheduleOrderError(start, start), isNotNull);
+      expect(
+        assessmentScheduleOrderError(
+          start,
+          now.add(const Duration(minutes: 1)).toIso8601String(),
+        ),
+        isNull,
+      );
+      expect(assessmentScheduleOrderError(start, null), isNull);
+      expect(assessmentScheduleOrderError(null, start), isNull);
+      // A past but correctly ordered window is a publishing rule, not an order error.
+      expect(
+        assessmentScheduleOrderError(
+          now.subtract(const Duration(days: 2)).toIso8601String(),
+          now.subtract(const Duration(days: 1)).toIso8601String(),
+        ),
+        isNull,
+      );
+    },
+  );
   test('publish reports missing schedule and questions together', () {
     final draft = QuizDraft.create('class');
     expect(quizPublishProblems(draft, now).map((p) => p.page), [1, 2]);

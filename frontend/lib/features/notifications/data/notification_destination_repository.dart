@@ -60,7 +60,8 @@ NotificationDestination notificationDestination(
   switch (notice.targetType) {
     case 'post':
       screen = switch (item['kind']) {
-        'assignment' => NotificationScreen.assignment,
+        'assignment' =>
+          instructor ? NotificationScreen.post : NotificationScreen.assignment,
         'announcement' || 'material' => NotificationScreen.post,
         _ => throw const NotificationUnavailable(),
       };
@@ -141,10 +142,65 @@ class NotificationDestinationRepository {
     return row;
   }
 
-  Future<Map<String, dynamic>> _item(String table, String id) async {
+  // Compare exact target rows and full-precision sync payloads, not rounded SQL dates.
+  Future<String> _cacheSignature(String table, String id) async {
+    const names = {
+      'profiles': 'cache_profiles',
+      'classes': 'cache_classes',
+      'class_members': 'cache_class_members',
+      'posts': 'cache_posts',
+      'post_attachments': 'cache_post_attachments',
+      'quizzes': 'cache_quizzes',
+    };
+    final local = names[table]!;
+    final key = table == 'post_attachments'
+        ? 'post_id'
+        : table == 'class_members'
+        ? 'class_id'
+        : 'id';
+    final where =
+        '$key=?${table == 'class_members' ? ' AND student_id=?' : ''}';
+    final variables = [
+      Variable(id),
+      if (table == 'class_members') Variable(userId),
+    ];
+    final rows = await db
+        .customSelect(
+          'SELECT * FROM $local WHERE $where ORDER BY id',
+          variables: variables,
+        )
+        .get();
+    final payloads = await db
+        .customSelect(
+          'SELECT id,payload,updated_at FROM sync_payloads WHERE table_name=? AND id IN (SELECT id FROM $local WHERE $where) ORDER BY id',
+          variables: [Variable(table), ...variables],
+        )
+        .get();
+    return jsonEncode([
+      rows.map((r) => r.data).toList(),
+      payloads.map((r) => r.data).toList(),
+    ]);
+  }
+
+  Future<void> _rememberCache(
+    Map<(String, String), String> guard,
+    String table,
+    String id,
+  ) async {
+    final key = (table, id);
+    if (!guard.containsKey(key)) guard[key] = await _cacheSignature(table, id);
+    checkAccount();
+  }
+
+  Future<Map<String, dynamic>> _item(
+    String table,
+    String id,
+    Map<(String, String), String> guard,
+  ) async {
     checkAccount();
     Map<String, dynamic>? row;
     if (online()) {
+      await _rememberCache(guard, table, id);
       row = await client
           .from(table)
           .select()
@@ -180,6 +236,7 @@ class NotificationDestinationRepository {
     Map<String, dynamic> room, {
     Map<String, dynamic>? member,
     Map<String, dynamic>? post,
+    required Map<(String, String), String> guard,
   }) async {
     checkAccount();
     final profileIds = <String>{
@@ -190,7 +247,10 @@ class NotificationDestinationRepository {
     };
     final missing = <String>[];
     for (final id in profileIds) {
-      if (await db.readProfile(id) == null) missing.add(id);
+      if (await db.readProfile(id) == null) {
+        await _rememberCache(guard, 'profiles', id);
+        missing.add(id);
+      }
     }
     final profiles = missing.isEmpty
         ? <Map<String, dynamic>>[]
@@ -200,6 +260,8 @@ class NotificationDestinationRepository {
               .inFilter('id', missing)
               .timeout(const Duration(seconds: 20));
     checkAccount();
+    if (post != null)
+      await _rememberCache(guard, 'post_attachments', post['id'] as String);
     final attachments = post == null
         ? <Map<String, dynamic>>[]
         : await client
@@ -212,6 +274,11 @@ class NotificationDestinationRepository {
     checkAccount();
     await db.transaction(() async {
       checkAccount();
+      for (final entry in guard.entries) {
+        if (await _cacheSignature(entry.key.$1, entry.key.$2) != entry.value) {
+          throw StateError('Notification content changed. Refresh and retry.');
+        }
+      }
       for (final profile in profiles) {
         await db
             .into(db.cacheProfiles)
@@ -289,17 +356,18 @@ class NotificationDestinationRepository {
     }
     if (alarm.linkedClassId != null) {
       try {
-        final room = await _item('classes', alarm.linkedClassId!);
+        final guard = <(String, String), String>{};
+        final room = await _item('classes', alarm.linkedClassId!, guard);
         final List members;
         Map<String, dynamic>? membership;
         if (online()) {
+          await _rememberCache(guard, 'class_members', alarm.linkedClassId!);
           members = await client
               .from('class_members')
               .select()
               .eq('class_id', alarm.linkedClassId!)
               .eq('student_id', userId)
               .eq('status', 'active')
-              .isFilter('deleted_at', null)
               .limit(1)
               .timeout(const Duration(seconds: 20));
           if (members.isNotEmpty)
@@ -327,7 +395,7 @@ class NotificationDestinationRepository {
           room['id'] as String,
           room['id'] as String,
         );
-        if (online()) await _prepare(room, member: membership);
+        if (online()) await _prepare(room, member: membership, guard: guard);
         checkAccount();
         return destination;
       } on PostgrestException catch (e) {
@@ -355,7 +423,8 @@ class NotificationDestinationRepository {
               'class' || 'class_members' => 'classes',
               _ => throw const NotificationUnavailable(),
             };
-      final item = await _item(table, targetId!);
+      final guard = <(String, String), String>{};
+      final item = await _item(table, targetId!, guard);
       if (assignmentId != null &&
           (item['kind'] != 'assignment' ||
               !PushEvents.validId(item['class_id']) ||
@@ -372,20 +441,20 @@ class NotificationDestinationRepository {
           : notificationDestination(n!, item, instructor: instructor);
       final room = table == 'classes'
           ? item
-          : await _item('classes', destination.classId);
+          : await _item('classes', destination.classId, guard);
       final ownsClass = room['owner_id'] == userId;
       Map<String, dynamic>? membership;
       if (instructor && !ownsClass) throw const NotificationUnavailable();
       if (!ownsClass) {
         final List<dynamic> members;
         if (online()) {
+          await _rememberCache(guard, 'class_members', destination.classId);
           members = await client
               .from('class_members')
               .select()
               .eq('class_id', destination.classId)
               .eq('student_id', userId)
               .eq('status', 'active')
-              .isFilter('deleted_at', null)
               .limit(1)
               .timeout(const Duration(seconds: 20));
           if (members.isNotEmpty)
@@ -410,6 +479,7 @@ class NotificationDestinationRepository {
         await _prepare(
           room,
           member: membership,
+          guard: guard,
           post: table == 'posts' ? item : null,
         );
       checkAccount();

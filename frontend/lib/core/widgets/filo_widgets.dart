@@ -10,6 +10,7 @@ import 'package:flutter/material.dart';
 import '../theme/app_theme.dart';
 import 'filo_confirmation_dialog.dart';
 import 'filo_components.dart';
+import 'filo_button.dart';
 import 'mascot_idle.dart';
 export 'mascot_idle.dart';
 export 'filo_components.dart';
@@ -112,110 +113,61 @@ class FiloPanel extends StatelessWidget {
   );
 }
 
-/// Successful illustrated empty lists, separate from loading/error recovery.
-class FiloIllustratedEmptyState extends StatelessWidget {
-  const FiloIllustratedEmptyState({
-    super.key,
-    required this.asset,
-    required this.title,
-    this.message = '',
-  });
-  final String asset, title, message;
-  @override
-  Widget build(BuildContext context) => Padding(
-    padding: const EdgeInsets.symmetric(vertical: FiloSpacing.screen),
-    child: Column(
-      children: [
-        ExcludeSemantics(
-          child: ConstrainedBox(
-            constraints: const BoxConstraints(maxWidth: 360),
-            child: AspectRatio(
-              aspectRatio: 1.5,
-              child: ColorFiltered(
-                // Remove low-opacity haze from the existing generated illustrations.
-                colorFilter: const ColorFilter.matrix([
-                  1,
-                  0,
-                  0,
-                  0,
-                  0,
-                  0,
-                  1,
-                  0,
-                  0,
-                  0,
-                  0,
-                  0,
-                  1,
-                  0,
-                  0,
-                  0,
-                  0,
-                  0,
-                  12,
-                  -2700,
-                ]),
-                child: Image.asset(
-                  asset,
-                  fit: BoxFit.contain,
-                  cacheWidth: (360 * MediaQuery.devicePixelRatioOf(context))
-                      .ceil(),
-                  errorBuilder: (_, _, _) => const SizedBox.shrink(),
-                ),
-              ),
-            ),
-          ),
-        ),
-        const SizedBox(height: FiloSpacing.s16),
-        Semantics(
-          header: true,
-          child: Text(
-            title,
-            textAlign: TextAlign.center,
-            style: Theme.of(context).textTheme.titleLarge,
-          ),
-        ),
-        if (message.isNotEmpty) ...[
-          const SizedBox(height: FiloSpacing.s8),
-          Text(
-            message,
-            textAlign: TextAlign.center,
-            style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-              color: Theme.of(context).colorScheme.onSurfaceVariant,
-            ),
-          ),
-        ],
-      ],
-    ),
-  );
+enum EmptyStateVariant { fullScreen, inline }
+
+class EmptyStateAction {
+  const EmptyStateAction({required this.label, required this.onPressed});
+  final String label;
+  final VoidCallback? onPressed;
 }
 
+/// Shared empty and recovery panel; callers decide whether data is truly empty.
 class EmptyState extends StatelessWidget {
   const EmptyState({
     super.key,
     required this.title,
+    this.body,
     this.message = '',
+    this.illustration,
     this.pose = 'curious',
-    this.bob = true,
+    this.bob = false,
     this.showMascot = true,
+    this.primaryAction,
+    this.secondaryAction,
+    this.children = const [],
+    this.variant = EmptyStateVariant.inline,
     this.action,
   });
   final String title;
+  final String? body;
   final String message;
+  final Widget? illustration;
   final String pose;
   final bool bob;
   final bool showMascot;
+  final EmptyStateAction? primaryAction, secondaryAction;
+  final List<Widget> children;
+  final EmptyStateVariant variant;
+  // Existing specialized recovery controls retain their guarded callbacks.
   final Widget? action;
+
   @override
   Widget build(BuildContext context) => LayoutBuilder(
     builder: (context, constraints) {
+      final description = body ?? message;
       final panel = FiloPanel(
         color: FiloThemeTokens.of(context).mint,
         child: Column(
           mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            if (showMascot) ...[
-              Mascot(pose: pose, size: 120, bob: bob),
+            if (illustration != null || showMascot) ...[
+              ExcludeSemantics(
+                child: Center(
+                  child:
+                      illustration ?? Mascot(pose: pose, size: 120, bob: bob),
+                ),
+              ),
               const SizedBox(height: FiloSpacing.s20),
             ],
             Semantics(
@@ -226,26 +178,48 @@ class EmptyState extends StatelessWidget {
                 textAlign: TextAlign.center,
               ),
             ),
-            if (message.isNotEmpty) ...[
+            if (description.isNotEmpty) ...[
               const SizedBox(height: FiloSpacing.s8),
               Text(
-                message,
+                description,
                 textAlign: TextAlign.center,
-                style: TextStyle(
+                style: Theme.of(context).textTheme.bodyMedium?.copyWith(
                   color: Theme.of(context).colorScheme.onSurfaceVariant,
                 ),
               ),
+            ],
+            if (children.isNotEmpty) ...[
+              const SizedBox(height: FiloSpacing.s16),
+              ...children,
+            ],
+            if (primaryAction case final primary?) ...[
+              const SizedBox(height: FiloSpacing.s20),
+              FiloButton(label: primary.label, onPressed: primary.onPressed),
             ],
             if (action != null) ...[
               const SizedBox(height: FiloSpacing.s20),
               action!,
             ],
+            if (secondaryAction case final secondary?) ...[
+              const SizedBox(height: FiloSpacing.s8),
+              FiloButton(
+                text: true,
+                label: secondary.label,
+                onPressed: secondary.onPressed,
+              ),
+            ],
           ],
         ),
       );
-      return constraints.hasBoundedHeight
-          ? SingleChildScrollView(child: panel)
-          : panel;
+      if (!constraints.hasBoundedHeight) return panel;
+      return SingleChildScrollView(
+        child: variant == EmptyStateVariant.fullScreen
+            ? ConstrainedBox(
+                constraints: BoxConstraints(minHeight: constraints.maxHeight),
+                child: Center(child: panel),
+              )
+            : panel,
+      );
     },
   );
 }

@@ -20,8 +20,9 @@ class BankQuestion {
         ].contains(type) ||
         row['prompt'] is! String ||
         row['points'] is! int ||
-        (row['explanation'] != null && row['explanation'] is! String))
+        (row['explanation'] != null && row['explanation'] is! String)) {
       return null;
+    }
     final payload = <String, dynamic>{
       'type': type,
       'prompt': row['prompt'],
@@ -35,8 +36,9 @@ class BankQuestion {
             (o) =>
                 o is! Map || o['text'] is! String || o['is_correct'] is! bool,
           ) ||
-          options.where((o) => o['is_correct'] == true).length != 1)
+          options.where((o) => o['is_correct'] == true).length != 1) {
         return null;
+      }
       payload['options'] = options.map((o) => o['text'] as String).toList();
       payload['correct_option_index'] = options.indexWhere(
         (o) => o['is_correct'] == true,

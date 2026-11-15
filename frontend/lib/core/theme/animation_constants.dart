@@ -28,6 +28,7 @@ abstract final class FiloAnimation {
   static const textDuration = Duration(milliseconds: 420);
   static const buttonEntranceDelay = Duration(milliseconds: 200);
   static const labelRise = 2.0;
+  static const countdownTickDuration = Duration(milliseconds: 160);
   static const labelDuration = Duration(milliseconds: 400);
   // Old label leaves during the first half; new label enters in the second.
   static const labelInCurve = Interval(.5, 1, curve: Curves.easeOutCubic);

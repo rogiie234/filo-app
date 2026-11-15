@@ -42,6 +42,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
       confirmLabel: 'Sign out',
       cancelLabel: 'Cancel',
       cancelIsPrimary: true,
+      confirmDestructive: true,
       icon: FiloIcons.logout,
     );
     _confirmingSignOut = false;
@@ -372,77 +373,95 @@ class _ThemeSettingsScreenState extends ConsumerState<ThemeSettingsScreen> {
           }
         });
       }
-      return const Scaffold(
-        body: Center(child: FiloCircularProgressIndicator()),
+      return const EntryBackground(
+        verification: true,
+        breeze: true,
+        variation: 1,
+        child: Scaffold(
+          backgroundColor: Colors.transparent,
+          body: Center(child: FiloCircularProgressIndicator()),
+        ),
       );
     }
     final appearance = ref.watch(themeSettingsProvider);
     final selected = appearance.asData?.value;
-    return Scaffold(
-      appBar: AppBar(title: const Text('Theme')),
-      body: SafeArea(
-        child: ListView(
-          padding: const EdgeInsets.all(FiloSpacing.screen),
-          children: [
-            const Text(
-              'Choose how Filo looks on this device. System follows your phone’s appearance.',
-            ),
-            const SizedBox(height: FiloSpacing.screen),
-            if (appearance.isLoading)
-              const Center(child: FiloCircularProgressIndicator()),
-            if (appearance.hasError) ...[
-              const Text('Could not load your theme setting.'),
-              TextButton(
-                onPressed: () {
-                  ref.invalidate(themeSettingsRepositoryProvider);
-                  ref.invalidate(themeSettingsProvider);
-                },
-                child: const Text('Retry'),
-              ),
-            ],
-            FiloPanel(
-              padding: EdgeInsets.zero,
-              child: Column(
-                children: [
-                  for (final mode in ThemeMode.values)
-                    Semantics(
-                      selected: selected == mode,
-                      child: ListTile(
-                        minVerticalPadding: 16,
-                        title: Text(themeLabel(mode)),
-                        trailing: FiloIcon(
-                          selected == mode
-                              ? FiloIcons.checkCircle
-                              : FiloIcons.circle,
-                        ),
-                        enabled:
-                            !_saving &&
-                            !appearance.isLoading &&
-                            !appearance.hasError &&
-                            selected != null,
-                        onTap: () => _choose(mode),
-                      ),
-                    ),
-                ],
-              ),
-            ),
-            if (_saving)
-              const Padding(
-                padding: EdgeInsets.all(FiloSpacing.s16),
-                child: Text('Saving…', textAlign: TextAlign.center),
-              ),
-            if (_failed != null) ...[
-              const SizedBox(height: FiloSpacing.s20),
+    return EntryBackground(
+      verification: true,
+      breeze: true,
+      variation: 1,
+      child: Scaffold(
+        backgroundColor: Colors.transparent,
+        appBar: AppBar(
+          backgroundColor: Colors.transparent,
+          surfaceTintColor: Colors.transparent,
+          elevation: 0,
+          scrolledUnderElevation: 0,
+          title: const Text('Theme'),
+        ),
+        body: SafeArea(
+          child: ListView(
+            padding: const EdgeInsets.all(FiloSpacing.screen),
+            children: [
               const Text(
-                "Couldn't save your changes. Try again.",
-                semanticsLabel: "Couldn't save your changes. Try again.",
+                'Choose how Filo looks on this device. System follows your phone’s appearance.',
               ),
-              TextButton(
-                onPressed: () => _choose(_failed!),
-                child: const Text('Retry'),
+              const SizedBox(height: FiloSpacing.screen),
+              if (appearance.isLoading)
+                const Center(child: FiloCircularProgressIndicator()),
+              if (appearance.hasError) ...[
+                const Text('Could not load your theme setting.'),
+                TextButton(
+                  onPressed: () {
+                    ref.invalidate(themeSettingsRepositoryProvider);
+                    ref.invalidate(themeSettingsProvider);
+                  },
+                  child: const Text('Retry'),
+                ),
+              ],
+              FiloPanel(
+                padding: EdgeInsets.zero,
+                child: Column(
+                  children: [
+                    for (final mode in ThemeMode.values)
+                      Semantics(
+                        selected: selected == mode,
+                        child: ListTile(
+                          minVerticalPadding: 16,
+                          title: Text(themeLabel(mode)),
+                          trailing: FiloIcon(
+                            selected == mode
+                                ? FiloIcons.checkCircle
+                                : FiloIcons.circle,
+                          ),
+                          enabled:
+                              !_saving &&
+                              !appearance.isLoading &&
+                              !appearance.hasError &&
+                              selected != null,
+                          onTap: () => _choose(mode),
+                        ),
+                      ),
+                  ],
+                ),
               ),
+              if (_saving)
+                const Padding(
+                  padding: EdgeInsets.all(FiloSpacing.s16),
+                  child: Text('Saving…', textAlign: TextAlign.center),
+                ),
+              if (_failed != null) ...[
+                const SizedBox(height: FiloSpacing.s20),
+                const Text(
+                  "Couldn't save your changes. Try again.",
+                  semanticsLabel: "Couldn't save your changes. Try again.",
+                ),
+                TextButton(
+                  onPressed: () => _choose(_failed!),
+                  child: const Text('Retry'),
+                ),
+              ],
             ],
-          ],
+          ),
         ),
       ),
     );

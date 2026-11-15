@@ -22,6 +22,7 @@ class FiloButton extends StatefulWidget {
     this.leading,
     this.animateArrow = false,
     this.animateLabelSize = false,
+    this.nudgeLabelChanges = false,
     this.labelDuration = FiloAnimation.labelDuration,
     this.labelSizeCurve = Curves.easeInOutCubic,
     this.labelInCurve = FiloAnimation.labelInCurve,
@@ -42,6 +43,7 @@ class FiloButton extends StatefulWidget {
 
   /// Slide the trailing icon as a changing label grows or shrinks.
   final bool animateLabelSize;
+  final bool nudgeLabelChanges;
   final Duration labelDuration;
   final Curve labelSizeCurve;
   final Curve labelInCurve;
@@ -63,6 +65,7 @@ class FiloButton extends StatefulWidget {
 class _FiloButtonState extends State<FiloButton>
     with SingleTickerProviderStateMixin {
   final _states = WidgetStatesController();
+  bool _labelChanged = false;
   late final _pulse = AnimationController(
     vsync: this,
     duration: FiloAnimation.idlePulseDuration,
@@ -86,6 +89,7 @@ class _FiloButtonState extends State<FiloButton>
   @override
   void didUpdateWidget(covariant FiloButton oldWidget) {
     super.didUpdateWidget(oldWidget);
+    _labelChanged = oldWidget.label != widget.label;
     // Seed child-owned states before FilledButton can notify our outer builders.
     final unavailable = widget.busy || widget.onPressed == null;
     _states.update(WidgetState.disabled, unavailable);
@@ -155,59 +159,98 @@ class _FiloButtonState extends State<FiloButton>
         final pressed =
             states.contains(WidgetState.pressed) && !disabled && !widget.busy;
         // Bypass AnimatedSize when disabled: zero-duration resizing can mutate layout.
-        final labelContent = AnimatedSwitcher(
-          key: ValueKey(reduced),
-          switchInCurve: widget.labelInCurve,
-          switchOutCurve: FiloAnimation.labelOutCurve,
-          duration: reduced ? Duration.zero : widget.labelDuration,
-          layoutBuilder: (current, previous) => Stack(
-            alignment: Alignment.center,
-            children: [
-              for (final label in widget.labelVariants)
-                ExcludeSemantics(
-                  child: Opacity(
-                    opacity: 0,
-                    child: Text(
-                      label,
-                      textAlign: TextAlign.center,
-                      style: TextStyle(color: foreground),
+        final currentLabel = Text(
+          widget.label,
+          textAlign: TextAlign.center,
+          style: TextStyle(color: foreground),
+        );
+        final labelContent = widget.nudgeLabelChanges
+            ? Stack(
+                alignment: Alignment.center,
+                children: [
+                  for (final label in widget.labelVariants)
+                    ExcludeSemantics(
+                      child: Opacity(
+                        opacity: 0,
+                        child: Text(label, textAlign: TextAlign.center),
+                      ),
+                    ),
+                  TweenAnimationBuilder<double>(
+                    key: ValueKey((widget.label, reduced)),
+                    tween: Tween(
+                      begin: _labelChanged && !reduced
+                          ? FiloAnimation.labelRise
+                          : 0,
+                      end: 0,
+                    ),
+                    duration: reduced
+                        ? Duration.zero
+                        : FiloAnimation.countdownTickDuration,
+                    curve: Curves.easeOutCubic,
+                    child: currentLabel,
+                    builder: (_, offset, child) => Transform.translate(
+                      offset: Offset(0, offset),
+                      child: child,
                     ),
                   ),
+                ],
+              )
+            : AnimatedSwitcher(
+                key: ValueKey(reduced),
+                switchInCurve: widget.labelInCurve,
+                switchOutCurve: FiloAnimation.labelOutCurve,
+                duration: reduced ? Duration.zero : widget.labelDuration,
+                layoutBuilder: (current, previous) => Stack(
+                  alignment: Alignment.center,
+                  children: [
+                    for (final label in widget.labelVariants)
+                      ExcludeSemantics(
+                        child: Opacity(
+                          opacity: 0,
+                          child: Text(
+                            label,
+                            textAlign: TextAlign.center,
+                            style: TextStyle(color: foreground),
+                          ),
+                        ),
+                      ),
+                    for (final child in previous)
+                      if (widget.animateLabelSize)
+                        Positioned(
+                          top: 0,
+                          child: ExcludeSemantics(child: child),
+                        )
+                      else
+                        ExcludeSemantics(child: child),
+                    ?current,
+                  ],
                 ),
-              for (final child in previous)
-                if (widget.animateLabelSize)
-                  Positioned(top: 0, child: ExcludeSemantics(child: child))
-                else
-                  ExcludeSemantics(child: child),
-              ?current,
-            ],
-          ),
-          transitionBuilder: (child, animation) {
-            if (reduced) {
-              return child;
-            }
-            return FadeTransition(
-              opacity: animation,
-              child: AnimatedBuilder(
-                animation: animation,
-                child: child,
-                builder: (context, child) => Transform.translate(
-                  offset: Offset(
-                    0,
-                    FiloAnimation.labelRise * (1 - animation.value),
-                  ),
-                  child: child,
+                transitionBuilder: (child, animation) {
+                  if (reduced) {
+                    return child;
+                  }
+                  return FadeTransition(
+                    opacity: animation,
+                    child: AnimatedBuilder(
+                      animation: animation,
+                      child: child,
+                      builder: (context, child) => Transform.translate(
+                        offset: Offset(
+                          0,
+                          FiloAnimation.labelRise * (1 - animation.value),
+                        ),
+                        child: child,
+                      ),
+                    ),
+                  );
+                },
+                child: Text(
+                  widget.label,
+                  key: ValueKey(widget.label),
+                  textAlign: TextAlign.center,
+                  style: TextStyle(color: foreground),
                 ),
-              ),
-            );
-          },
-          child: Text(
-            widget.label,
-            key: ValueKey(widget.label),
-            textAlign: TextAlign.center,
-            style: TextStyle(color: foreground),
-          ),
-        );
+              );
         final button = DecoratedBox(
           decoration: BoxDecoration(
             color: disabled || flat

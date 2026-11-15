@@ -1,3 +1,5 @@
+import '../../../core/widgets/entry_background.dart';
+
 import 'package:flutter/material.dart';
 
 import '../../../core/privacy/privacy_notice.dart';
@@ -24,16 +26,28 @@ class PrivacyNoticeScreen extends StatelessWidget {
   );
 
   @override
-  Widget build(BuildContext context) => Scaffold(
-    appBar: AppBar(title: const Text('Privacy notice')),
-    body: SafeArea(
-      child: ListView(
-        padding: const EdgeInsets.all(FiloSpacing.screen),
-        children: [
-          _section(context, 'Summary', privacySummary),
-          for (final section in privacyNoticeSections)
-            _section(context, section.heading, section.body),
-        ],
+  Widget build(BuildContext context) => EntryBackground(
+    verification: true,
+    breeze: true,
+    variation: 2,
+    child: Scaffold(
+      backgroundColor: Colors.transparent,
+      appBar: AppBar(
+        backgroundColor: Colors.transparent,
+        surfaceTintColor: Colors.transparent,
+        elevation: 0,
+        scrolledUnderElevation: 0,
+        title: const Text('Privacy notice'),
+      ),
+      body: SafeArea(
+        child: ListView(
+          padding: const EdgeInsets.all(FiloSpacing.screen),
+          children: [
+            _section(context, 'Summary', privacySummary),
+            for (final section in privacyNoticeSections)
+              _section(context, section.heading, section.body),
+          ],
+        ),
       ),
     ),
   );

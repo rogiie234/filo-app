@@ -86,66 +86,63 @@ Future<T?> showFiloBottomSheet<T>({
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              if (title == null)
-                SizedBox(
-                  height: FiloControlSize.compact,
-                  child: Stack(
-                    alignment: Alignment.center,
-                    children: [
-                      if (showDragHandle) const _FiloSheetHandle(),
-                      Positioned(
-                        right: 12,
-                        child: IconButton(
+              Padding(
+                padding: const EdgeInsets.fromLTRB(
+                  FiloSpacing.screen,
+                  FiloSpacing.s12,
+                  FiloSpacing.screen,
+                  FiloSpacing.s12,
+                ),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    if (showDragHandle) ...[
+                      const _FiloSheetHandle(),
+                      const SizedBox(height: FiloSpacing.s12),
+                    ],
+                    Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Expanded(
+                          child: Padding(
+                            padding: const EdgeInsets.symmetric(
+                              vertical: FiloSpacing.s8,
+                            ),
+                            child: title == null
+                                ? const SizedBox.shrink()
+                                : Semantics(
+                                    namesRoute: true,
+                                    header: true,
+                                    child: Text(
+                                      title,
+                                      style: Theme.of(context)
+                                          .textTheme
+                                          .titleLarge
+                                          ?.copyWith(
+                                            color: Theme.of(context)
+                                                .colorScheme
+                                                .onSurface,
+                                          ),
+                                    ),
+                                  ),
+                          ),
+                        ),
+                        const SizedBox(width: FiloSpacing.s12),
+                        IconButton.filledTonal(
                           tooltip: 'Close',
+                          constraints: const BoxConstraints(
+                            minWidth: FiloControlSize.compact,
+                            minHeight: FiloControlSize.compact,
+                          ),
                           onPressed: () =>
                               Navigator.of(sheetContext).maybePop(),
                           icon: const FiloIcon(FiloIcons.close),
                         ),
-                      ),
-                    ],
-                  ),
-                )
-              else ...[
-                if (showDragHandle)
-                  const Padding(
-                    padding: EdgeInsets.symmetric(vertical: FiloSpacing.s12),
-                    child: _FiloSheetHandle(),
-                  ),
-                Padding(
-                  padding: const EdgeInsets.fromLTRB(
-                    FiloSpacing.screen,
-                    0,
-                    FiloSpacing.s12,
-                    FiloSpacing.s12,
-                  ),
-                  child: Row(
-                    children: [
-                      Expanded(
-                        child: Semantics(
-                          header: true,
-                          child: Text(
-                            title,
-                            maxLines: 2,
-                            overflow: TextOverflow.ellipsis,
-                            style: Theme.of(context).textTheme.titleLarge!
-                                .copyWith(
-                                  color: Theme.of(context)
-                                      .colorScheme
-                                      .onSurface,
-                                ),
-                          ),
-                        ),
-                      ),
-                      const SizedBox(width: FiloSpacing.s8),
-                      IconButton(
-                        tooltip: 'Close',
-                        onPressed: () => Navigator.of(sheetContext).maybePop(),
-                        icon: const FiloIcon(FiloIcons.close),
-                      ),
-                    ],
-                  ),
+                      ],
+                    ),
+                  ],
                 ),
-              ],
+              ),
               Flexible(
                 child: RepaintBoundary(
                   child: Padding(
@@ -199,69 +196,84 @@ class FiloSheetAction extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final ink = onTap == null
-        ? Theme.of(context).colorScheme.onSurfaceVariant
+        ? FiloThemeTokens.of(context).disabledInk
         : destructive
         ? Theme.of(context).colorScheme.error
         : Theme.of(context).colorScheme.primary;
-    return Semantics(
-      button: true,
-      enabled: onTap != null,
-      child: Material(
-        color: Theme.of(context).colorScheme.surface,
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(FiloRadii.medium),
-          side: BorderSide(color: Theme.of(context).colorScheme.outline),
-        ),
-        clipBehavior: Clip.antiAlias,
-        child: InkWell(
-          onTap: onTap,
-          child: Padding(
-            padding: const EdgeInsets.all(FiloSpacing.s16),
-            child: Row(
-              children: [
-                ExcludeSemantics(
-                  child: Container(
-                    width: 44,
-                    height: 44,
-                    decoration: BoxDecoration(
-                      color: Theme.of(context)
-                          .colorScheme
-                          .surfaceContainerHighest,
-                      borderRadius: BorderRadius.circular(FiloRadii.small),
-                    ),
-                    child: FiloIcon(icon, color: ink),
-                  ),
-                ),
-                const SizedBox(width: FiloSpacing.s16),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        label,
-                        style: Theme.of(context).textTheme.labelLarge!
-                            .copyWith(color: ink),
+    return Padding(
+      padding: const EdgeInsets.only(bottom: FiloSpacing.s8),
+      child: Semantics(
+        button: true,
+        enabled: onTap != null,
+        child: Material(
+          color: Theme.of(context).colorScheme.surfaceContainerLow,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(FiloRadii.medium),
+            side: BorderSide(
+              color: Theme.of(context).colorScheme.outlineVariant,
+            ),
+          ),
+          clipBehavior: Clip.antiAlias,
+          child: InkWell(
+            onTap: onTap,
+            child: Padding(
+              padding: const EdgeInsets.all(FiloSpacing.s16),
+              child: Row(
+                children: [
+                  ExcludeSemantics(
+                    child: Container(
+                      width: 44,
+                      height: 44,
+                      decoration: BoxDecoration(
+                        color: onTap == null
+                            ? FiloThemeTokens.of(context).disabledFill
+                            : destructive
+                            ? Theme.of(context).colorScheme.errorContainer
+                            : Theme.of(context).colorScheme.primaryContainer,
+                        borderRadius: BorderRadius.circular(FiloRadii.small),
                       ),
-                      if (description != null) ...[
-                        const SizedBox(height: FiloSpacing.s4),
+                      child: FiloIcon(icon, color: ink),
+                    ),
+                  ),
+                  const SizedBox(width: FiloSpacing.s16),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
                         Text(
-                          description!,
-                          style: Theme.of(context).textTheme.bodySmall!
+                          label,
+                          style: Theme.of(context).textTheme.labelLarge!
                               .copyWith(
-                                color: Theme.of(context)
-                                    .colorScheme
-                                    .onSurfaceVariant,
+                                color: destructive || onTap == null
+                                    ? ink
+                                    : Theme.of(context).colorScheme.onSurface,
                               ),
                         ),
+                        if (description != null) ...[
+                          const SizedBox(height: FiloSpacing.s4),
+                          Text(
+                            description!,
+                            style: Theme.of(context).textTheme.bodySmall!
+                                .copyWith(
+                                  color: Theme.of(context)
+                                      .colorScheme
+                                      .onSurfaceVariant,
+                                ),
+                          ),
+                        ],
                       ],
-                    ],
+                    ),
                   ),
-                ),
-                const SizedBox(width: FiloSpacing.s8),
-                ExcludeSemantics(
-                  child: FiloIcon(FiloIcons.chevronRight, size: 18, color: ink),
-                ),
-              ],
+                  const SizedBox(width: FiloSpacing.s8),
+                  ExcludeSemantics(
+                    child: FiloIcon(
+                      FiloIcons.chevronRight,
+                      size: 18,
+                      color: ink,
+                    ),
+                  ),
+                ],
+              ),
             ),
           ),
         ),

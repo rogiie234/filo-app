@@ -1,3 +1,5 @@
+import '../../../core/widgets/entry_background.dart';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
@@ -109,167 +111,177 @@ class _DeleteAccountScreenState extends ConsumerState<DeleteAccountScreen> {
     final colors = Theme.of(context).colorScheme;
     return PopScope(
       canPop: !busy && record == null,
-      child: Scaffold(
-        appBar: AppBar(
-          title: const Text('Delete your account?'),
-          automaticallyImplyLeading: !busy && record == null,
-        ),
-        body: SafeArea(
-          child: ListView(
-            padding: const EdgeInsets.all(FiloSpacing.screen),
-            children: [
-              if (!cleanup && (!checking || eligible))
-                FiloPanel(
-                  color: colors.errorContainer,
-                  child: Text(
-                    instructor
-                        ? instructorDeletionWarning
-                        : studentDeletionWarning,
-                    style: TextStyle(color: colors.onErrorContainer),
+      child: EntryBackground(
+        verification: true,
+        breeze: true,
+        variation: 1,
+        child: Scaffold(
+          backgroundColor: Colors.transparent,
+          appBar: AppBar(
+            backgroundColor: Colors.transparent,
+            surfaceTintColor: Colors.transparent,
+            elevation: 0,
+            scrolledUnderElevation: 0,
+            title: const Text('Delete your account?'),
+            automaticallyImplyLeading: !busy && record == null,
+          ),
+          body: SafeArea(
+            child: ListView(
+              padding: const EdgeInsets.all(FiloSpacing.screen),
+              children: [
+                if (!cleanup && (!checking || eligible))
+                  FiloPanel(
+                    color: colors.errorContainer,
+                    child: Text(
+                      instructor
+                          ? instructorDeletionWarning
+                          : studentDeletionWarning,
+                      style: TextStyle(color: colors.onErrorContainer),
+                    ),
                   ),
-                ),
-              if (checking) ...[
-                if (eligibility.isLoading && online)
+                if (checking) ...[
+                  if (eligibility.isLoading && online)
+                    const Padding(
+                      padding: EdgeInsets.all(FiloSpacing.s16),
+                      child: Center(child: FiloCircularProgressIndicator()),
+                    ),
+                  if (blocked) ...[
+                    Semantics(
+                      header: true,
+                      child: Text(
+                        'Delete your classes first',
+                        style: Theme.of(context).textTheme.titleLarge,
+                      ),
+                    ),
+                    Text(
+                      count == 1
+                          ? 'You must delete 1 class before you can delete your account. Archived classes must also be deleted.'
+                          : 'You must delete $count classes before you can delete your account. Archived classes must also be deleted.',
+                    ),
+                  ],
+                  if (eligibility.hasError && online && !blocked)
+                    const Text("Couldn't check your classes. Try again."),
+                  TextButton(
+                    onPressed: online && !busy ? _refreshEligibility : null,
+                    child: Text(eligibility.hasError ? 'Retry' : 'Refresh'),
+                  ),
+                  if (eligible &&
+                      eligibility.asData?.value.hasRecoveryClasses == true)
+                    const Text(recoveryClassesWarning),
+                ],
+                const SizedBox(height: FiloSpacing.s20),
+                if (busy)
                   const Padding(
                     padding: EdgeInsets.all(FiloSpacing.s16),
                     child: Center(child: FiloCircularProgressIndicator()),
                   ),
-                if (blocked) ...[
-                  Semantics(
-                    header: true,
-                    child: Text(
-                      'Delete your classes first',
-                      style: Theme.of(context).textTheme.titleLarge,
-                    ),
+                if (cleanup && !busy && message == null)
+                  const Text(
+                    "Your account was deleted, but Filo couldn't remove all local files from this device. Try removing them again.",
                   ),
-                  Text(
-                    count == 1
-                        ? 'You must delete 1 class before you can delete your account. Archived classes must also be deleted.'
-                        : 'You must delete $count classes before you can delete your account. Archived classes must also be deleted.',
+                if (pending)
+                  const Text(
+                    'Your account deletion is still processing. Resume deletion continues the accepted request; it does not undo it.',
+                  ),
+                if (record?.stage == DeletionStage.uncertain &&
+                    !busy &&
+                    message == null)
+                  const Text(
+                    "We couldn't confirm whether your account was deleted. Connect and check your account status before trying again.",
+                  ),
+                if (message != null)
+                  Padding(
+                    padding: const EdgeInsets.symmetric(
+                      vertical: FiloSpacing.s16,
+                    ),
+                    child: Semantics(liveRegion: true, child: Text(message)),
+                  ),
+                if (!cleanup && !pending) ...[
+                  const SizedBox(height: FiloSpacing.s20),
+                  TextField(
+                    controller: _confirmation,
+                    enabled: !busy && eligible && !blocked,
+                    autocorrect: false,
+                    enableSuggestions: false,
+                    textCapitalization: TextCapitalization.none,
+                    decoration: const InputDecoration(
+                      labelText: 'Type DELETE',
+                      helperText:
+                          'Enter DELETE exactly to enable account deletion.',
+                      helperMaxLines: 8,
+                    ),
+                    onChanged: (value) {
+                      ref
+                          .read(accountDeletionProvider.notifier)
+                          .remember(id, value);
+                      setState(() {});
+                    },
                   ),
                 ],
-                if (eligibility.hasError && online && !blocked)
-                  const Text("Couldn't check your classes. Try again."),
-                TextButton(
-                  onPressed: online && !busy ? _refreshEligibility : null,
-                  child: Text(eligibility.hasError ? 'Retry' : 'Refresh'),
-                ),
-                if (eligible &&
-                    eligibility.asData?.value.hasRecoveryClasses == true)
-                  const Text(recoveryClassesWarning),
-              ],
-              const SizedBox(height: FiloSpacing.s20),
-              if (busy)
-                const Padding(
-                  padding: EdgeInsets.all(FiloSpacing.s16),
-                  child: Center(child: FiloCircularProgressIndicator()),
-                ),
-              if (cleanup && !busy && message == null)
-                const Text(
-                  "Your account was deleted, but Filo couldn't remove all local files from this device. Try removing them again.",
-                ),
-              if (pending)
-                const Text(
-                  'Your account deletion is still processing. Resume deletion continues the accepted request; it does not undo it.',
-                ),
-              if (record?.stage == DeletionStage.uncertain &&
-                  !busy &&
-                  message == null)
-                const Text(
-                  "We couldn't confirm whether your account was deleted. Connect and check your account status before trying again.",
-                ),
-              if (message != null)
-                Padding(
-                  padding: const EdgeInsets.symmetric(
-                    vertical: FiloSpacing.s16,
-                  ),
-                  child: Semantics(liveRegion: true, child: Text(message)),
-                ),
-              if (!cleanup && !pending) ...[
                 const SizedBox(height: FiloSpacing.s20),
-                TextField(
-                  controller: _confirmation,
-                  enabled: !busy && eligible && !blocked,
-                  autocorrect: false,
-                  enableSuggestions: false,
-                  textCapitalization: TextCapitalization.none,
-                  decoration: const InputDecoration(
-                    labelText: 'Type DELETE',
-                    helperText:
-                        'Enter DELETE exactly to enable account deletion.',
-                    helperMaxLines: 8,
+                if (!online && !cleanup)
+                  const Padding(
+                    padding: EdgeInsets.only(bottom: FiloSpacing.s16),
+                    child: Text(
+                      'Connect to the internet to delete your account.',
+                    ),
                   ),
-                  onChanged: (value) {
-                    ref
+                if (!sameSession && !cleanup)
+                  const Text('Your session expired. Please sign in again.'),
+                FiloButton(
+                  label: busy
+                      ? cleanup
+                            ? 'Removing local files\u2026'
+                            : 'Deleting account\u2026'
+                      : cleanup
+                      ? 'Remove local files'
+                      : pending
+                      ? 'Resume deletion'
+                      : message != null
+                      ? 'Retry'
+                      : 'Delete my account',
+                  destructive: true,
+                  busy: busy,
+                  onPressed: busy
+                      ? null
+                      : cleanup
+                      ? () => ref
+                            .read(accountDeletionProvider.notifier)
+                            .removeLocal(id)
+                      : sameSession &&
+                            online &&
+                            eligible &&
+                            !blocked &&
+                            (pending || _confirmation.text == 'DELETE')
+                      ? () => ref
+                            .read(accountDeletionProvider.notifier)
+                            .request(
+                              id,
+                              _confirmation.text,
+                              instructor: instructor,
+                            )
+                      : null,
+                ),
+                const SizedBox(height: FiloSpacing.s16),
+                if (!busy && record == null)
+                  FiloButton(
+                    label: 'Cancel',
+                    secondary: true,
+                    onPressed: () {
+                      ref.read(accountDeletionProvider.notifier).dismiss(id);
+                      Navigator.of(context).maybePop();
+                    },
+                  ),
+                if (!busy && record != null && !cleanup)
+                  FiloButton(
+                    label: 'Sign out',
+                    secondary: true,
+                    onPressed: () => ref
                         .read(accountDeletionProvider.notifier)
-                        .remember(id, value);
-                    setState(() {});
-                  },
-                ),
-              ],
-              const SizedBox(height: FiloSpacing.s20),
-              if (!online && !cleanup)
-                const Padding(
-                  padding: EdgeInsets.only(bottom: FiloSpacing.s16),
-                  child: Text(
-                    'Connect to the internet to delete your account.',
+                        .leaveRecovery(id),
                   ),
-                ),
-              if (!sameSession && !cleanup)
-                const Text('Your session expired. Please sign in again.'),
-              FiloButton(
-                label: busy
-                    ? cleanup
-                          ? 'Removing local files\u2026'
-                          : 'Deleting account\u2026'
-                    : cleanup
-                    ? 'Remove local files'
-                    : pending
-                    ? 'Resume deletion'
-                    : message != null
-                    ? 'Retry'
-                    : 'Delete my account',
-                destructive: true,
-                busy: busy,
-                onPressed: busy
-                    ? null
-                    : cleanup
-                    ? () => ref
-                          .read(accountDeletionProvider.notifier)
-                          .removeLocal(id)
-                    : sameSession &&
-                          online &&
-                          eligible &&
-                          !blocked &&
-                          (pending || _confirmation.text == 'DELETE')
-                    ? () => ref
-                          .read(accountDeletionProvider.notifier)
-                          .request(
-                            id,
-                            _confirmation.text,
-                            instructor: instructor,
-                          )
-                    : null,
-              ),
-              const SizedBox(height: FiloSpacing.s16),
-              if (!busy && record == null)
-                FiloButton(
-                  label: 'Cancel',
-                  secondary: true,
-                  onPressed: () {
-                    ref.read(accountDeletionProvider.notifier).dismiss(id);
-                    Navigator.of(context).maybePop();
-                  },
-                ),
-              if (!busy && record != null && !cleanup)
-                FiloButton(
-                  label: 'Sign out',
-                  secondary: true,
-                  onPressed: () => ref
-                      .read(accountDeletionProvider.notifier)
-                      .leaveRecovery(id),
-                ),
-            ],
+              ],
+            ),
           ),
         ),
       ),

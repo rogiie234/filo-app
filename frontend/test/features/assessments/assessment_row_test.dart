@@ -48,9 +48,9 @@ void main() {
       expect(edits, 0);
       expect(find.byType(Image), findsOneWidget);
       final artwork = tester.widget<Image>(find.byType(Image));
-      expect((artwork.image as ResizeImage).image, isA<AssetImage>());
+      expect((artwork.image as ResizeImage).imageProvider, isA<AssetImage>());
       expect(
-        ((artwork.image as ResizeImage).image as AssetImage).assetName,
+        ((artwork.image as ResizeImage).imageProvider as AssetImage).assetName,
         'assets/illustrations/classwork-${state == 'closed' ? 'exam' : 'quiz'}.png',
       );
       final statusBounds = tester.getRect(find.byType(FiloStatusChip));

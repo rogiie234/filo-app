@@ -5,7 +5,7 @@ import 'package:drift/native.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:filo/core/widgets/filo_button.dart';
 import 'package:filo/core/widgets/filo_widgets.dart'
-    show FiloIllustratedEmptyState;
+    show EmptyState, FiloModalDialog;
 import 'package:filo/core/theme/app_theme.dart';
 import 'package:filo/data/local/app_database.dart';
 import 'package:filo/features/files/application/files_providers.dart';
@@ -73,6 +73,105 @@ class _ConfirmedImportRepository extends FilesRepository {
 }
 
 void main() {
+  for (final embedded in [false, true]) {
+    testWidgets(
+      'empty library and empty folders use one add action; embedded=$embedded',
+      (tester) async {
+        final db = AppDatabase(NativeDatabase.memory());
+        final repository = FilesRepository(
+          db,
+          FileStorage(Directory.systemTemp),
+        );
+        final files = StreamController<List<LocalFileRecord>>();
+        final folders = StreamController<List<LocalFolderRecord>>();
+        addTearDown(() async {
+          await tester.pumpWidget(const SizedBox());
+          await files.close();
+          await folders.close();
+          await db.close();
+        });
+        final visibility = <bool>[];
+        await tester.pumpWidget(
+          ProviderScope(
+            overrides: [
+              filesRepositoryProvider.overrideWith((ref) async => repository),
+              librarySnapshotProvider.overrideWith((ref) => LibrarySnapshot()),
+              localFilesProvider.overrideWith((ref) async* {
+                yield [];
+                yield* files.stream;
+              }),
+              localFoldersProvider.overrideWith((ref) async* {
+                yield [];
+                yield* folders.stream;
+              }),
+            ],
+            child: MaterialApp(
+              theme: AppTheme.light,
+              home: MyFilesScreen(
+                embedded: embedded,
+                onAddActionVisibilityChanged: visibility.add,
+              ),
+            ),
+          ),
+        );
+        await tester.pumpAndSettle();
+        Scaffold scaffold() =>
+            tester.widget<Scaffold>(find.byType(Scaffold).first);
+        expect(scaffold().floatingActionButton, isNull);
+        expect(visibility.last, isFalse);
+        expect(find.widgetWithText(FiloButton, 'Add files'), findsOneWidget);
+        final now = DateTime.utc(2026, 11, 13);
+        LocalFileRecord file(String? folder) => LocalFileRecord(
+          id: 'file',
+          name: 'Notes.pdf',
+          relativePath: 'notes.pdf',
+          size: 32,
+          source: 'import',
+          createdAt: now,
+          updatedAt: now,
+          folderId: folder,
+        );
+        files.add([file(null)]);
+        await tester.pumpAndSettle();
+        expect(visibility.last, isTrue);
+        expect(scaffold().floatingActionButton != null, !embedded);
+        await tester.enterText(
+          find.byType(TextField).first,
+          'no matching file',
+        );
+        await tester.pumpAndSettle();
+        expect(visibility.last, isTrue);
+        await tester.enterText(find.byType(TextField).first, '');
+        await tester.pumpAndSettle();
+        files.add([]);
+        await tester.pumpAndSettle();
+        expect(visibility.last, isFalse);
+        expect(scaffold().floatingActionButton, isNull);
+        folders.add([
+          LocalFolderRecord(
+            id: 'folder',
+            name: 'Empty folder',
+            createdAt: now,
+            updatedAt: now,
+          ),
+        ]);
+        await tester.pumpAndSettle();
+        expect(visibility.last, isTrue);
+        await tester.ensureVisible(find.text('Empty folder'));
+        await tester.tap(find.text('Empty folder'));
+        await tester.pumpAndSettle();
+        expect(visibility.last, isFalse);
+        expect(scaffold().floatingActionButton, isNull);
+        expect(find.text('This folder is empty'), findsOneWidget);
+        files.add([file('folder')]);
+        await tester.pumpAndSettle();
+        expect(visibility.last, isTrue);
+        expect(scaffold().floatingActionButton != null, !embedded);
+        expect(tester.takeException(), isNull);
+      },
+    );
+  }
+
   for (final scenario in [
     'cancel',
     'single',
@@ -151,14 +250,17 @@ void main() {
       );
       expect(find.text('Please wait?'), findsNothing);
       final button = tester.widget<FiloButton>(
-        find.ancestor(
-          of: find.byTooltip('Add files'),
-          matching: find.byType(FiloButton),
-        ),
+        find.widgetWithText(FiloButton, 'Add files'),
       );
       expect(button.onPressed, isNotNull);
-      expect(button.iconOnly, isTrue);
-      expect(button.minHeight, 72);
+      expect(button.iconOnly, isFalse);
+      expect(button.minHeight, greaterThanOrEqualTo(48));
+      expect(
+        tester
+            .widget<Scaffold>(find.byType(Scaffold).first)
+            .floatingActionButton,
+        isNull,
+      );
       if (scenario == 'failure') {
         expect(find.text('Notes.pdf: Import failed.'), findsOneWidget);
       }
@@ -273,6 +375,9 @@ void main() {
       for (var i = 0; i < 5; i++) {
         await tester.pump(const Duration(milliseconds: 100));
       }
+      final scaffold = tester.widget<Scaffold>(find.byType(Scaffold).first);
+      expect(scaffold.bottomNavigationBar, isNull);
+      expect(scaffold.floatingActionButton, isNotNull);
       expect(
         tester.getRect(find.byTooltip('Switch to grid view')).right,
         closeTo(876, .1),
@@ -342,17 +447,10 @@ void main() {
         find.widgetWithText(CheckedPopupMenuItem<String>, 'Spreadsheets'),
       );
       await tester.pumpAndSettle();
-      expect(find.text('No matching files.'), findsOneWidget);
-      expect(
-        tester
-            .widget<FiloIllustratedEmptyState>(
-              find.byType(FiloIllustratedEmptyState),
-            )
-            .asset,
-        'assets/illustrations/library-empty-folder.png',
-      );
+      expect(find.text('No matching files'), findsOneWidget);
+      expect(tester.widget<EmptyState>(find.byType(EmptyState)).pose, 'folder');
       expect(find.text('No files yet.'), findsNothing);
-      await tester.tap(find.text('Show all file types'));
+      await tester.tap(find.text('Clear search and filters'));
       await tester.pumpAndSettle();
       expect(names(), ['Zulu.docx', 'Beta.png', 'Alpha.pdf', 'Delta.pdf']);
       expect(find.byTooltip('Drive backup'), findsOneWidget);
@@ -472,7 +570,7 @@ void main() {
       expect(find.text('References'), findsOneWidget);
       await tester.tap(find.text('References'));
       await tester.pumpAndSettle();
-      expect(find.text('No matching files.'), findsOneWidget);
+      expect(find.text('No matching files'), findsOneWidget);
       expect(find.text('No files yet.'), findsNothing);
       expect(find.text('1 file'), findsOneWidget);
       await tester.tap(find.text('BSIT-3A'));
@@ -483,7 +581,7 @@ void main() {
       expect(find.text('Your library'), findsOneWidget);
       await tester.tap(find.text('New folder'));
       await tester.pumpAndSettle();
-      final dialog = find.byType(AlertDialog);
+      final dialog = find.byType(FiloModalDialog);
       final input = find.descendant(
         of: dialog,
         matching: find.byType(TextField),
@@ -612,7 +710,7 @@ void main() {
             await tester.pumpAndSettle();
             await tester.tap(find.text('New folder'));
             await tester.pump(const Duration(milliseconds: 300));
-            expect(find.byType(AlertDialog), findsOneWidget);
+            expect(find.byType(FiloModalDialog), findsOneWidget);
             expect(tester.takeException(), isNull);
             await tester.ensureVisible(find.text('Cancel'));
             await tester.tap(find.text('Cancel'));
@@ -641,6 +739,22 @@ void main() {
               tester.element(find.text(file!.name)),
               alignment: .5,
             );
+            await tester.pumpAndSettle();
+            await tester.ensureVisible(find.byTooltip('File actions'));
+            await tester.tap(find.byTooltip('File actions'));
+            await tester.pumpAndSettle();
+            await tester.tap(find.text('Rename'));
+            await tester.pumpAndSettle();
+            final renameInput = tester.widget<TextField>(
+              find.byType(TextField).last,
+            );
+            expect(
+              renameInput.controller!.text,
+              'Long descriptive class notes for the upcoming lesson',
+            );
+            expect(renameInput.decoration!.suffixText, '.txt');
+            await tester.ensureVisible(find.text('Cancel'));
+            await tester.tap(find.text('Cancel'));
             await tester.pumpAndSettle();
             await tester.tap(find.text(file.name));
             for (var i = 0; i < 10; i++) {

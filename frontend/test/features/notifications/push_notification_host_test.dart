@@ -24,6 +24,17 @@ import 'package:supabase_flutter/supabase_flutter.dart'
 
 import 'push_destinations_test.dart' as fixtures;
 
+class NotificationSyncFixture extends SyncCoordinator {
+  NotificationSyncFixture(AppDatabase db, SupabaseClient client)
+    : super(db, client, fixtures.userId, () => true);
+  int bulkReads = 0;
+  @override
+  Future<void> refreshNotifications() async {
+    bulkReads++;
+    throw StateError('Selected retry must not refresh the whole inbox');
+  }
+}
+
 class FakeDestinationRepository extends NotificationDestinationRepository {
   FakeDestinationRepository(
     AppDatabase db,
@@ -102,12 +113,14 @@ void main() {
       PushEvents events,
       FakeDestinationRepository repository,
       ExamNavigation exam,
+      NotificationSyncFixture sync,
     })
   >
   launch(
     WidgetTester tester, {
     bool accessible = false,
     bool student = false,
+    bool online = false,
   }) async {
     final db = AppDatabase(NativeDatabase.memory());
     await db.customSelect('SELECT 1').get();
@@ -118,7 +131,7 @@ void main() {
         authOptions: const AuthClientOptions(autoRefreshToken: false),
       ),
     ))!;
-    final sync = SyncCoordinator(db, client, fixtures.userId, () => true);
+    final sync = NotificationSyncFixture(db, client);
     final repository = FakeDestinationRepository(db, client, sync);
     final events = PushEvents();
     final exam = ExamNavigation();
@@ -148,7 +161,7 @@ void main() {
           pushEventsProvider.overrideWithValue(events),
           verifiedUserIdProvider.overrideWith((ref) async => fixtures.userId),
           accountDatabaseProvider.overrideWith((ref) async => db),
-          connectivityProvider.overrideWithValue(const AsyncData(false)),
+          connectivityProvider.overrideWithValue(AsyncData(online)),
           notificationDestinationRepositoryProvider.overrideWith(
             (ref) async => repository,
           ),
@@ -181,7 +194,7 @@ void main() {
         await tester.runAsync(() => client.dispose());
       })();
     });
-    return (events: events, repository: repository, exam: exam);
+    return (events: events, repository: repository, exam: exam, sync: sync);
   }
 
   testWidgets('system Back pops account pages and respects guarded routes', (
@@ -225,7 +238,7 @@ void main() {
   testWidgets('failed opening stays unread and Retry resolves again', (
     tester,
   ) async {
-    final h = await launch(tester);
+    final h = await launch(tester, online: true);
     h.repository.failOpen = true;
     h.events.receive(
       {'notification_id': fixtures.noticeId},
@@ -248,6 +261,7 @@ void main() {
     await tester.tap(find.text('Retry'));
     await tester.pumpAndSettle();
     expect(h.repository.opened, [fixtures.noticeId, fixtures.noticeId]);
+    expect(h.sync.bulkReads, 0);
     expect(find.text('This item is no longer available.'), findsOneWidget);
   });
 

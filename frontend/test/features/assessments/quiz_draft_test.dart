@@ -68,4 +68,54 @@ void main() {
     expect(draft.reconciliationRequired, true);
     expect(draft.isDirty, true);
   });
+  test('five confirmed AI questions append after unfinished manual question without losing it', () {
+    final draft = QuizDraft.create('class');
+    draft.settings['title'] = 'Lesson quiz';
+    final manual = QuizQuestion.newQuestion('multiple_choice');
+    draft.questions.add(manual);
+    final row = {...draft.settings, 'id': 'quiz', 'class_id': 'class'};
+    draft.mergeAiSaved(InstructorQuiz(row, []));
+    final generated = List.generate(
+      5,
+      (index) => QuizQuestion(
+        localId: 'ai-$index',
+        id: 'ai-$index',
+        aiGenerated: true,
+        payload: {'type': 'essay', 'prompt': 'Generated $index', 'points': 1},
+      ),
+    );
+    draft.mergeAiSaved(InstructorQuiz(row, generated));
+    expect(draft.questionCount, 6);
+    expect(identical(draft.questions.first, manual), isTrue);
+    expect(
+      draft.questions.skip(1).map((q) => q.id),
+      generated.map((q) => q.id),
+    );
+    expect(manual.validationErrors(), isNotEmpty);
+    expect(draft.isDirty, isTrue);
+    draft.mergeAiSaved(InstructorQuiz(row, generated));
+    expect(draft.questionCount, 6);
+  });
+  test(
+    'AI reconciliation retains local settings, edits, deletions and order',
+    () {
+      final source = saved();
+      final draft = QuizDraft(source);
+      draft.settings['title'] = 'Unsaved title';
+      draft.questions.removeAt(0);
+      draft.questions.first.payload['prompt'] = '';
+      final ai = QuizQuestion(
+        localId: 'ai',
+        id: 'ai',
+        aiGenerated: true,
+        payload: {'type': 'essay', 'prompt': 'AI draft', 'points': 1},
+      );
+      draft.mergeAiSaved(InstructorQuiz(source.row, [...source.questions, ai]));
+      expect(draft.settings['title'], 'Unsaved title');
+      expect(draft.questions.map((q) => q.id), ['b', 'ai']);
+      expect(draft.questions.first.prompt, isEmpty);
+      expect(draft.deletedQuestionIds, ['a']);
+      expect(draft.isDirty, isTrue);
+    },
+  );
 }

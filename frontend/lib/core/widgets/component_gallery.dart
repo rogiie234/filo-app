@@ -402,6 +402,38 @@ class _ComponentGalleryState extends State<ComponentGallery> {
                   showMascot: false,
                 ),
               ]),
+              _section('Empty-state variants', [
+                EmptyState(
+                  title: 'No files yet',
+                  body: 'Add files to keep your study materials together.',
+                  pose: 'folder',
+                  primaryAction: EmptyStateAction(
+                    label: 'Add files',
+                    onPressed: () =>
+                        showMessage(context, 'Gallery example only.'),
+                  ),
+                  secondaryAction: EmptyStateAction(
+                    label: 'Learn more',
+                    onPressed: () =>
+                        showMessage(context, 'Gallery example only.'),
+                  ),
+                  children: const [
+                    Text(
+                      'Optional supporting content',
+                      textAlign: TextAlign.center,
+                    ),
+                  ],
+                ),
+                const SizedBox(
+                  height: 420,
+                  child: EmptyState(
+                    variant: EmptyStateVariant.fullScreen,
+                    title: 'No notifications yet',
+                    body: 'Updates will appear here when they arrive.',
+                    pose: 'waiting',
+                  ),
+                ),
+              ]),
               _section('Mascot poses', [
                 Wrap(
                   spacing: 16,
@@ -420,12 +452,14 @@ class _ComponentGalleryState extends State<ComponentGallery> {
                   ],
                 ),
                 const EmptyState(
-                  title: 'No saved content on this device.',
+                  title: 'No saved content',
+                  body: 'Connect and refresh to load content on this device.',
                   pose: 'sleepy',
                   bob: false,
                 ),
                 EmptyState(
-                  title: 'Could not load this example. Try again.',
+                  title: 'Example unavailable',
+                  body: 'Retry to load this example.',
                   pose: 'confused',
                   bob: false,
                   action: FiloButton(
@@ -435,7 +469,7 @@ class _ComponentGalleryState extends State<ComponentGallery> {
                     ),
                   ),
                 ),
-                const EmptyState(title: 'No results yet.', showMascot: false),
+                const EmptyState(title: 'No results yet.', body: 'Results appear after work is submitted and released.', showMascot: false),
               ]),
               _section('Progress and loading', [
                 FiloProgressBar(

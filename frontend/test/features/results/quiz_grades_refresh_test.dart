@@ -39,11 +39,12 @@ class GradeRemote extends SupabaseResultsRemote {
     if (active > peak) peak = active;
     await Future<void>.delayed(const Duration(milliseconds: 1));
     active--;
-    if (fail && id == 'q1')
+    if (fail && id == 'q1') {
       throw const PostgrestException(
         message: 'Class access denied',
         code: '42501',
       );
+    }
     return {
       'session_id': 's$id',
       'status': 'submitted',

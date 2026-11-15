@@ -50,7 +50,8 @@ class _CreatePostScreenState extends ConsumerState<CreatePostScreen> {
           .eq('id', widget.postId!)
           .eq('class_id', widget.classId)
           .isFilter('deleted_at', null)
-          .single();
+          .single()
+          .timeout(const Duration(seconds: 20));
       final files = await _client
           .from('post_attachments')
           .select()
@@ -588,7 +589,8 @@ class _CreatePostScreenState extends ConsumerState<CreatePostScreen> {
           .from('classes')
           .select('owner_id,archived_at,deleted_at')
           .eq('id', widget.classId)
-          .single();
+          .single()
+          .timeout(const Duration(seconds: 20));
       if (room['owner_id'] != repository.userId ||
           room['archived_at'] != null ||
           room['deleted_at'] != null) {
@@ -611,7 +613,8 @@ class _CreatePostScreenState extends ConsumerState<CreatePostScreen> {
             .eq('class_id', widget.classId)
             .isFilter('deleted_at', null)
             .select('id')
-            .single();
+            .single()
+            .timeout(const Duration(seconds: 20));
         // Tombstone removals before additions so the shared ten-slot cap is respected.
         for (final a in _originalAttachments.where(
           (a) => !_attachments.contains(a),
@@ -621,7 +624,8 @@ class _CreatePostScreenState extends ConsumerState<CreatePostScreen> {
               .update({'deleted_at': DateTime.now().toUtc().toIso8601String()})
               .eq('id', a.id)
               .select('id')
-              .single();
+              .single()
+              .timeout(const Duration(seconds: 20));
         }
         _postId = widget.postId;
       } else {
@@ -687,7 +691,8 @@ class _CreatePostScreenState extends ConsumerState<CreatePostScreen> {
           .from('posts')
           .select('id')
           .eq('id', _publicationId)
-          .maybeSingle();
+          .maybeSingle()
+          .timeout(const Duration(seconds: 20));
       _uncertain = false;
       _error = null;
       if (row != null) {
@@ -738,19 +743,24 @@ class _CreatePostScreenState extends ConsumerState<CreatePostScreen> {
               path,
               bytes,
               fileOptions: const FileOptions(upsert: true),
-            );
+              retryAttempts: 0,
+            )
+            .timeout(const Duration(minutes: 2));
       }
       // Metadata is saved only after the object upload completes. Retry uses the same row ID.
-      await _client.from('post_attachments').upsert({
-        'id': a.id,
-        'post_id': _postId,
-        'kind': a.file == null ? 'link' : 'file',
-        'name': a.name,
-        'url': a.url,
-        'storage_path': path,
-        'size_bytes': a.size,
-        'sort_order': _attachments.indexOf(a),
-      }, ignoreDuplicates: true);
+      await _client
+          .from('post_attachments')
+          .upsert({
+            'id': a.id,
+            'post_id': _postId,
+            'kind': a.file == null ? 'link' : 'file',
+            'name': a.name,
+            'url': a.url,
+            'storage_path': path,
+            'size_bytes': a.size,
+            'sort_order': _attachments.indexOf(a),
+          }, ignoreDuplicates: true)
+          .timeout(const Duration(seconds: 20));
       a.ready = true;
     } catch (_) {
       a.failed = true;
@@ -799,19 +809,19 @@ class _LinkDialogState extends State<_LinkDialog> {
   }
 
   @override
-  Widget build(BuildContext context) => AlertDialog(
-    title: const Text('Add a link'),
+  Widget build(BuildContext context) => FiloModalDialog(
+    title: 'Add link',
+    icon: FiloIcons.link,
     content: TextField(
       controller: _controller,
       keyboardType: TextInputType.url,
+      autofocus: true,
+      autocorrect: false,
       decoration: InputDecoration(labelText: 'https://', errorText: _error),
     ),
     actions: [
-      TextButton(
-        onPressed: () => Navigator.pop(context),
-        child: const Text('Cancel'),
-      ),
-      FilledButton(
+      FiloButton(
+        label: 'Add link',
         onPressed: () {
           final value = _controller.text.trim();
           final uri = Uri.tryParse(value);
@@ -823,7 +833,11 @@ class _LinkDialogState extends State<_LinkDialog> {
           }
           Navigator.pop(context, value);
         },
-        child: const Text('Add link'),
+      ),
+      FiloButton(
+        label: 'Cancel',
+        secondary: true,
+        onPressed: () => Navigator.pop(context),
       ),
     ],
   );

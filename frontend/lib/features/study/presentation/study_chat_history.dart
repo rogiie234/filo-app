@@ -40,7 +40,8 @@ class _ChatHistory extends ConsumerWidget {
                   .toList();
               if (active.isEmpty) {
                 return const EmptyState(
-                  title: 'No chats yet.',
+                  title: 'No chats yet',
+                  body: 'Start a chat in this notebook to see your conversation here.',
                   pose: 'reading',
                   bob: false,
                 );

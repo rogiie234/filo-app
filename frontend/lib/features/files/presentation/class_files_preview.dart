@@ -8,9 +8,11 @@ class PreviewClassFiles extends StatefulWidget {
     super.key,
     required this.hasSamples,
     this.showHeading = true,
+    this.onAddFiles,
   });
   final bool hasSamples;
   final bool showHeading;
+  final VoidCallback? onAddFiles;
   @override
   State<PreviewClassFiles> createState() => _PreviewClassFilesState();
 }
@@ -18,6 +20,13 @@ class PreviewClassFiles extends StatefulWidget {
 class _PreviewClassFilesState extends State<PreviewClassFiles> {
   String _filter = 'All';
   String _query = '';
+  final _search = TextEditingController();
+  @override
+  void dispose() {
+    _search.dispose();
+    super.dispose();
+  }
+
   @override
   Widget build(BuildContext context) {
     final files = (widget.hasSamples ? sampleFiles : <PreviewFile>[]).where(
@@ -43,6 +52,8 @@ class _PreviewClassFilesState extends State<PreviewClassFiles> {
         ),
         const SizedBox(height: FiloSpacing.screen),
         TextField(
+          controller: _search,
+          enabled: widget.hasSamples || _query.isNotEmpty,
           decoration: const InputDecoration(
             hintText: 'Find a file',
             prefixIcon: FiloIcon(FiloIcons.search),
@@ -60,7 +71,9 @@ class _PreviewClassFilesState extends State<PreviewClassFiles> {
                   child: FiloAnimatedChip(
                     label: Text(filter),
                     selected: _filter == filter,
-                    onSelected: (_) => setState(() => _filter = filter),
+                    onSelected: widget.hasSamples
+                        ? (_) => setState(() => _filter = filter)
+                        : null,
                   ),
                 ),
             ],
@@ -68,10 +81,33 @@ class _PreviewClassFilesState extends State<PreviewClassFiles> {
         ),
         const SizedBox(height: FiloSpacing.screen),
         if (files.isEmpty)
-          FiloIllustratedEmptyState(
-            asset: 'assets/illustrations/library-empty-folder.png',
-            title: 'No files here yet.',
-            message: 'Class materials will have a home right here.',
+          EmptyState(
+            pose: 'folder',
+            title: widget.hasSamples
+                ? 'No matching files'
+                : 'No class files yet',
+            body: widget.hasSamples
+                ? _query.trim().isNotEmpty
+                      ? 'No matches for "${_search.text.trim()}"; check the spelling or clear your search.'
+                      : 'Choose another file type or show all files.'
+                : widget.onAddFiles != null
+                ? 'Create a post with attachments to share files with your class.'
+                : 'Files will appear here when your instructor shares materials.',
+            primaryAction: widget.hasSamples
+                ? EmptyStateAction(
+                    label: 'Clear search and filters',
+                    onPressed: () => setState(() {
+                      _query = '';
+                      _filter = 'All';
+                      _search.clear();
+                    }),
+                  )
+                : widget.onAddFiles == null
+                ? null
+                : EmptyStateAction(
+                    label: 'Create post',
+                    onPressed: widget.onAddFiles,
+                  ),
           ),
         for (final file in files)
           Padding(

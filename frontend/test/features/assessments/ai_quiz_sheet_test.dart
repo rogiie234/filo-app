@@ -4,6 +4,7 @@ import 'package:drift/native.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:filo/data/local/app_database.dart';
 import 'package:filo/core/connectivity/connectivity_provider.dart';
+import 'package:filo/core/widgets/filo_widgets.dart';
 import 'package:filo/features/assessments/application/ai_providers.dart';
 import 'package:filo/features/assessments/data/ai_quiz_client.dart';
 import 'package:filo/features/assessments/data/file_text_cache.dart';
@@ -117,6 +118,14 @@ void main() {
       );
       await tester.pumpWidget(screen(cache, client));
       await tester.pumpAndSettle();
+      expect(find.textContaining('Remember and understand:'), findsOneWidget);
+      await tester.ensureVisible(find.text('Medium'));
+      await tester.tap(find.text('Medium'));
+      await tester.pump();
+      expect(find.textContaining('Apply and analyze:'), findsOneWidget);
+      await tester.tap(find.text('Hard'));
+      await tester.pump();
+      expect(find.textContaining('Evaluate and create:'), findsOneWidget);
       await tester.tap(find.text('From phone'));
       await tester.pumpAndSettle();
       final pick = find.widgetWithText(OutlinedButton, 'Select from phone');
@@ -184,6 +193,21 @@ void main() {
       await tester.pumpWidget(screen(cache, client, online: false));
       await tester.pumpAndSettle();
       expect(find.text('Before using AI'), findsOneWidget);
+      expect(find.byType(FiloModalDialog), findsOneWidget);
+      expect(
+        tester
+            .widget<FiloConfirmationDialog>(find.byType(FiloConfirmationDialog))
+            .confirmDestructive,
+        isFalse,
+      );
+      await tester.tap(find.text('Cancel'));
+      await tester.pumpAndSettle();
+      expect(await cache.privacyAccepted(), isFalse);
+      await tester.ensureVisible(
+        find.text('Read and acknowledge privacy notice'),
+      );
+      await tester.tap(find.text('Read and acknowledge privacy notice'));
+      await tester.pumpAndSettle();
       await tester.tap(find.text('OK'));
       await tester.pumpAndSettle();
       expect(await cache.privacyAccepted(), true);

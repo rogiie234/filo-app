@@ -1,3 +1,5 @@
+import '../../../core/widgets/entry_background.dart';
+
 import 'dart:async';
 
 import 'package:flutter/material.dart';
@@ -105,13 +107,11 @@ class _NotificationSettingsScreenState
         ],
       );
     } else if (access.hasError) {
-      content = Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          const Text('Could not check notification access. Try again.'),
-          const SizedBox(height: FiloSpacing.s16),
-          FiloButton(label: 'Retry', onPressed: _refresh),
-        ],
+      content = EmptyState(
+        title: 'Notification access unavailable',
+        body: 'Retry to check notification access on this device.',
+        pose: 'confused',
+        primaryAction: EmptyStateAction(label: 'Retry', onPressed: _refresh),
       );
     } else {
       final enabled = access.requireValue;
@@ -164,9 +164,21 @@ class _NotificationSettingsScreenState
     );
     return widget.embedded
         ? body
-        : Scaffold(
-            appBar: AppBar(title: const Text('Notification settings')),
-            body: body,
+        : EntryBackground(
+            verification: true,
+            breeze: true,
+            variation: 0,
+            child: Scaffold(
+              backgroundColor: Colors.transparent,
+              appBar: AppBar(
+                backgroundColor: Colors.transparent,
+                surfaceTintColor: Colors.transparent,
+                elevation: 0,
+                scrolledUnderElevation: 0,
+                title: const Text('Notification settings'),
+              ),
+              body: body,
+            ),
           );
   }
 }
@@ -447,10 +459,16 @@ class _NotificationPreferenceControlsState
               ),
             )
           else
-            Text(
-              online
-                  ? 'Notification preferences are unavailable. Retry to load them.'
-                  : 'No saved notification preferences. Connect to load them.',
+            EmptyState(
+              title: 'Preferences unavailable',
+              body: online
+                  ? 'Retry to load your notification preferences.'
+                  : 'Connect to load preferences saved for this account.',
+              pose: online ? 'confused' : 'sleepy',
+              primaryAction: EmptyStateAction(
+                label: 'Retry',
+                onPressed: online ? _refresh : null,
+              ),
             ),
         ] else ...[
           const SizedBox(height: FiloSpacing.s16),
@@ -496,10 +514,20 @@ class _NotificationPreferenceControlsState
               ),
             )
           else ...[
-            if (rooms.isEmpty) const Text('No classes available.'),
+            if (rooms.isEmpty)
+              const EmptyState(
+                title: 'No classes available',
+                body: 'Your classes will appear here when they are available for notification settings.',
+                pose: 'waiting',
+              ),
             if (widget.initialClassId != null &&
                 !rooms.any((room) => room.id == widget.initialClassId))
-              const Text('This class is no longer available.'),
+              const EmptyState(
+                title: 'Class unavailable',
+                body:
+                    'Return to your classes and refresh to check your access.',
+                pose: 'waiting',
+              ),
             for (final room in rooms)
               Padding(
                 key: room.id == widget.initialClassId

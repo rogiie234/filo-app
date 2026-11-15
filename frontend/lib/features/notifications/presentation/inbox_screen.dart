@@ -147,7 +147,8 @@ class _InboxScreenState extends ConsumerState<InboxScreen> {
     Widget content;
     if (repository.hasError || (current && inbox.hasError)) {
       content = EmptyState(
-        title: 'Could not load saved notifications. Try again.',
+        title: 'Notifications unavailable',
+        body: 'Retry to read notifications saved on this device.',
         pose: 'confused',
         bob: false,
         action: TextButton(
@@ -162,7 +163,8 @@ class _InboxScreenState extends ConsumerState<InboxScreen> {
       content = const Padding(
         padding: EdgeInsets.all(FiloSpacing.screen),
         child: EmptyState(
-          title: 'Notifications are unavailable for this account.',
+          title: 'Notifications unavailable',
+          body: 'Return and sign in to the account that owns these notifications.',
           pose: 'confused',
           bob: false,
         ),
@@ -177,60 +179,15 @@ class _InboxScreenState extends ConsumerState<InboxScreen> {
         ),
       );
     } else if (rows.isEmpty) {
-      content = Padding(
-        padding: const EdgeInsets.symmetric(vertical: FiloSpacing.s32),
-        child: Column(
-          children: [
-            ExcludeSemantics(
-              child: ConstrainedBox(
-                constraints: const BoxConstraints(maxWidth: 360),
-                child: AspectRatio(
-                  aspectRatio: 1.5,
-                  child: ColorFiltered(
-                    // Remove the generated low-opacity halo; keep the solid illustration.
-                    colorFilter: const ColorFilter.matrix([
-                      1,
-                      0,
-                      0,
-                      0,
-                      0,
-                      0,
-                      1,
-                      0,
-                      0,
-                      0,
-                      0,
-                      0,
-                      1,
-                      0,
-                      0,
-                      0,
-                      0,
-                      0,
-                      12,
-                      -2700,
-                    ]),
-                    child: Image.asset(
-                      'assets/illustrations/notifications-empty.png',
-                      fit: BoxFit.contain,
-                      cacheWidth: (360 * MediaQuery.devicePixelRatioOf(context))
-                          .ceil(),
-                      errorBuilder: (_, _, _) => const Icon(
-                        Icons.notifications_none_rounded,
-                        size: 48,
-                      ),
-                    ),
-                  ),
-                ),
-              ),
-            ),
-            const SizedBox(height: FiloSpacing.s16),
-            Text(
-              "You're all caught up.",
-              textAlign: TextAlign.center,
-              style: theme.textTheme.titleLarge,
-            ),
-          ],
+      content = EmptyState(
+        title: offline ? 'No saved notifications' : 'No notifications yet',
+        body: offline
+            ? 'Connect and refresh to load your notifications.'
+            : 'Class updates and reminders will appear here when they arrive.',
+        pose: offline ? 'sleepy' : 'waiting',
+        primaryAction: EmptyStateAction(
+          label: 'Refresh',
+          onPressed: offline ? null : _refresh,
         ),
       );
     } else {

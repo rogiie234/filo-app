@@ -14,9 +14,11 @@ class ClassFiles extends ConsumerStatefulWidget {
     required this.hasSamples,
     this.classId,
     this.showHeading = true,
+    this.onAddFiles,
   });
   final bool hasSamples;
   final bool showHeading;
+  final VoidCallback? onAddFiles;
   final String? classId;
   @override
   ConsumerState<ClassFiles> createState() => _ClassFilesState();
@@ -31,6 +33,7 @@ class _ClassFilesState extends ConsumerState<ClassFiles> {
       return PreviewClassFiles(
         hasSamples: widget.hasSamples,
         showHeading: widget.showHeading,
+        onAddFiles: widget.onAddFiles,
       );
     }
     final data = ref.watch(classFilesProvider(id));
@@ -98,7 +101,9 @@ class _ClassFilesState extends ConsumerState<ClassFiles> {
                     child: FiloAnimatedChip(
                       label: Text(name),
                       selected: filter == name,
-                      onSelected: (_) => setState(() => filter = name),
+                      onSelected: allRows.isEmpty
+                          ? null
+                          : (_) => setState(() => filter = name),
                     ),
                   ),
               ],
@@ -127,31 +132,54 @@ class _ClassFilesState extends ConsumerState<ClassFiles> {
             child: const Text("Couldn't load files. Try again."),
           ),
         if (rows.isEmpty && !initialLoading)
-          if (!failed && (online || known))
-            FiloIllustratedEmptyState(
-              asset: 'assets/illustrations/library-empty-folder.png',
-              title: filter != 'All' ? 'No matching files.' : 'No files yet.',
+          if (!failed && known && (online || allRows.isNotEmpty))
+            EmptyState(
+              pose: 'folder',
+              title: filter != 'All'
+                  ? 'No matching files'
+                  : 'No class files yet',
+              body: filter != 'All'
+                  ? 'Show all files or choose another file type.'
+                  : widget.onAddFiles != null
+                  ? 'Create a post with attachments to share files with your class.'
+                  : 'Files will appear here when your instructor shares materials.',
+              primaryAction: filter == 'All'
+                  ? widget.onAddFiles == null
+                        ? null
+                        : EmptyStateAction(
+                            label: 'Create post',
+                            onPressed: online ? widget.onAddFiles : null,
+                          )
+                  : EmptyStateAction(
+                      label: 'Show all files',
+                      onPressed: () => setState(() => filter = 'All'),
+                    ),
             )
           else
             EmptyState(
               pose: failed ? 'confused' : 'sleepy',
               bob: false,
-              action: failed
-                  ? TextButton(
-                      onPressed: () {
+              primaryAction: EmptyStateAction(
+                label: failed ? 'Retry' : 'Refresh',
+                onPressed: !online
+                    ? null
+                    : () {
                         ref.invalidate(classFilesProvider(id));
                         ref.invalidate(postSyncProvider(id));
                         if (checkpoint?.hasError == true) {
                           ref.invalidate(streamLoadedProvider(id));
                         }
                       },
-                      child: const Text('Retry'),
-                    )
-                  : null,
-              title: data.hasError || checkpoint?.hasError == true
+              ),
+              title: !online && !failed
+                  ? 'No saved class files'
+                  : 'Class files unavailable',
+              body: data.hasError || checkpoint?.hasError == true
                   ? "Couldn't load files. Try again."
                   : sync.hasError
                   ? 'Could not refresh class files.'
+                  : online
+                  ? 'Refresh to load files for this class.'
                   : "You're offline. Connect to load class files.",
             ),
         for (final row in rows)

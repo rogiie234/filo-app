@@ -5,10 +5,13 @@ import 'package:filo/data/local/app_database.dart';
 import 'package:filo/features/assessments/application/ai_providers.dart';
 import 'package:filo/features/assessments/application/instructor_quiz_providers.dart';
 import 'package:filo/features/assessments/data/file_text_cache.dart';
+import 'package:filo/features/assessments/data/ai_quiz_client.dart';
+import 'package:filo/features/assessments/domain/ai_sources.dart';
 import 'package:filo/features/assessments/data/instructor_quiz_repository.dart';
 import 'package:filo/features/assessments/domain/quiz_draft.dart';
 import 'package:filo/features/assessments/presentation/assessment_form_screen.dart';
 import 'package:filo/features/assessments/presentation/ai_quiz_sheet.dart';
+import 'package:filo/features/assessments/presentation/question_card.dart';
 import 'package:filo/features/classes/application/class_providers.dart';
 import 'package:filo/features/files/application/files_providers.dart';
 import 'package:flutter/material.dart';
@@ -24,6 +27,8 @@ class DraftGateRepository extends InstructorQuizRepository {
   int saves = 0;
   bool reject = false;
   String? savedTitle;
+  int? savedQuestionCount;
+  InstructorQuiz? stored;
   @override
   Future<InstructorQuiz> save(
     QuizDraft draft, {
@@ -32,6 +37,7 @@ class DraftGateRepository extends InstructorQuizRepository {
     saves++;
     if (reject) throw StateError('Draft save was not confirmed.');
     savedTitle = draft.settings['title'] as String;
+    savedQuestionCount = draft.questions.length;
     final saved = InstructorQuiz({
       ...draft.settings,
       'id': 'quiz',
@@ -39,7 +45,29 @@ class DraftGateRepository extends InstructorQuizRepository {
       'status': 'draft',
     }, draft.questions);
     draft.acceptSaved(saved);
+    stored = saved;
     return saved;
+  }
+
+  @override
+  Future<AiDraftSaveReport> saveAiBatch(
+    String classId,
+    String quizId,
+    List<QuizQuestion> questions,
+    AiSourceContext? context,
+  ) async {
+    final saved = InstructorQuiz(stored!.row, [
+      ...stored!.questions,
+      for (var i = 0; i < questions.length; i++)
+        QuizQuestion(
+          localId: questions[i].localId,
+          id: 'ai-$i',
+          aiGenerated: true,
+          payload: questions[i].payload,
+        ),
+    ]);
+    stored = saved;
+    return AiDraftSaveReport(saved, questions.length, 0, 0);
   }
 }
 
@@ -89,12 +117,20 @@ void main() {
       await tester.pumpAndSettle();
       await tester.tap(find.text('Next: Questions'));
       await tester.pumpAndSettle();
+      expect(find.text('Back'), findsNothing);
+      await tester.ensureVisible(find.text('Add question'));
+      await tester.tap(find.text('Add question'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Multiple choice').last);
+      await tester.pumpAndSettle();
+      expect(find.text('1 question | 1 point'), findsOneWidget);
       await tester.pumpAndSettle();
       final generate = find.widgetWithText(FiloButton, 'Generate with AI');
       await tester.ensureVisible(generate);
       await tester.tap(generate);
       await tester.pumpAndSettle();
       expect(repository.saves, 1);
+      expect(repository.savedQuestionCount, reject ? isNull : 0);
       if (reject) {
         expect(find.byType(AiQuizSheet), findsNothing);
         expect(
@@ -107,6 +143,41 @@ void main() {
         expect(repository.savedTitle, 'Lesson quiz');
         expect(find.byType(AiQuizSheet), findsOneWidget);
         expect(find.text('Before using AI'), findsOneWidget);
+        await tester.tap(find.text('Cancel'));
+        await tester.pumpAndSettle();
+        final batch = AiGeneratedBatch(
+          List.generate(
+            5,
+            (i) =>
+                QuizQuestion.newQuestion('essay')
+                  ..payload['prompt'] = 'AI question $i',
+          ),
+          const AiSourceContext(sources: [], difficulty: 'easy'),
+          {},
+          {},
+        );
+        Navigator.of(tester.element(find.byType(AiQuizSheet))).pop(batch);
+        await tester.pumpAndSettle();
+        expect(find.text('6 questions | 6 points'), findsOneWidget);
+        final cards = tester
+            .widgetList<QuestionCard>(find.byType(QuestionCard))
+            .toList();
+        expect(cards.first.question.prompt, isEmpty);
+        expect(cards.first.question.type, 'multiple_choice');
+        expect(
+          cards.skip(1).every((card) => card.question.aiGenerated),
+          isTrue,
+        );
+        await tester.ensureVisible(find.text('Save draft'));
+        await tester.tap(find.text('Save draft'));
+        await tester.pumpAndSettle();
+        expect(repository.saves, 1);
+        expect(find.text('6 questions | 6 points'), findsOneWidget);
+        await tester.tap(find.text('Publish'));
+        await tester.pumpAndSettle();
+        expect(find.textContaining('Question 1:'), findsWidgets);
+        expect(find.text('Publish this assessment?'), findsNothing);
+        expect(repository.saves, 1);
       }
       expect(tester.takeException(), isNull);
     });

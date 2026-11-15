@@ -1,3 +1,4 @@
+import 'dart:convert';
 import 'dart:io';
 
 import 'package:drift/drift.dart';
@@ -21,6 +22,50 @@ class FilesRepository {
   }
 
   Future<void> recoverInterruptedDeletes() async {
+    await for (final entry in storage.root.list(
+      recursive: true,
+      followLinks: false,
+    )) {
+      if (entry is File &&
+          p.basename(entry.path).startsWith('.') &&
+          entry.path.endsWith('.importing.writing')) {
+        await entry.delete();
+        continue;
+      }
+      if (entry is File &&
+          p.basename(entry.path).startsWith('.') &&
+          entry.path.endsWith('.importing')) {
+        final row = LocalFileRecord.fromJson(
+          Map<String, dynamic>.from(
+            jsonDecode(await entry.readAsString()) as Map,
+          ),
+        );
+        final target = storage.file(row.relativePath);
+        if (entry.path != p.join(target.parent.path, '.${row.id}.importing')) {
+          throw const FileProblem('Invalid interrupted import.');
+        }
+        if (await target.exists() && await get(row.id) == null) {
+          final existing = row.sourceAttachmentId == null
+              ? null
+              : await source(row.sourceAttachmentId!);
+          if (existing == null) {
+            await db.into(db.localFiles).insert(row);
+          } else if (await storage.file(existing.relativePath).exists()) {
+            if (existing.relativePath != row.relativePath)
+              await target.delete();
+          } else {
+            await db.transaction(() async {
+              await (db.delete(
+                db.localFiles,
+              )..where((f) => f.id.equals(existing.id))).go();
+              await db.into(db.localFiles).insert(row);
+            });
+          }
+        }
+        await entry.delete();
+        continue;
+      }
+    }
     final indexed = {
       for (final row in await db.select(db.localFiles).get())
         storage.file(row.relativePath).path: row,
@@ -29,7 +74,10 @@ class FilesRepository {
       recursive: true,
       followLinks: false,
     )) {
-      if (entry is! File || !entry.path.endsWith('.deleting')) continue;
+      if (entry is! File ||
+          indexed.containsKey(entry.path) ||
+          !entry.path.endsWith('.deleting'))
+        continue;
       final original = entry.path.substring(
         0,
         entry.path.length - '.deleting'.length,
@@ -143,6 +191,7 @@ class FilesRepository {
   }) => serialize(() async {
     storage.ensureAvailable();
     if (attachmentId != null) {
+      await recoverInterruptedDeletes();
       final cached = await this.source(attachmentId);
       if (cached != null && await storage.file(cached.relativePath).exists()) {
         if (await temporary.exists()) {
@@ -178,13 +227,14 @@ class FilesRepository {
       createdAt: now,
       updatedAt: now,
     );
+    final journal = File(p.join(target.parent.path, '.$id.importing'));
+    final writing = File('${journal.path}.writing');
+    await writing.writeAsString(jsonEncode(row.toJson()), flush: true);
+    await writing.rename(journal.path);
     await temporary.rename(target.path);
-    try {
-      await db.into(db.localFiles).insert(row);
-    } catch (_) {
-      await target.delete();
-      rethrow;
-    }
+    // Keep the journal and bytes after an interrupted/failed index insert.
+    await db.into(db.localFiles).insert(row);
+    await journal.delete();
     return row;
   });
 
@@ -218,8 +268,9 @@ class FilesRepository {
 
   Future<void> renameFile(
     LocalFileRecord file,
-    String name,
+    String baseName,
   ) => serialize(() async {
+    final name = '${validName(baseName)}${p.extension(file.name)}';
     await (db.update(db.localFiles)..where((f) => f.id.equals(file.id))).write(
       LocalFilesCompanion(
         name: Value(await uniqueName(name, file.folderId, exclude: file.id)),
@@ -227,34 +278,19 @@ class FilesRepository {
       ),
     );
   });
-  Future<void> moveFile(LocalFileRecord file, String? folder) => serialize(
-    () async {
-      final destination = folder == null ? 'blobs' : 'folders/$folder';
-      await storage.createFolder(destination);
-      final relative = '$destination/${p.basename(file.relativePath)}';
-      final original = storage.file(file.relativePath);
-      if (relative != file.relativePath) {
-        await original.rename(storage.file(relative).path);
-      }
-      try {
-        await (db.update(
-          db.localFiles,
-        )..where((f) => f.id.equals(file.id))).write(
-          LocalFilesCompanion(
-            folderId: Value(folder),
-            relativePath: Value(relative),
-            name: Value(await uniqueName(file.name, folder, exclude: file.id)),
-            updatedAt: Value(DateTime.now().toUtc()),
-          ),
-        );
-      } catch (_) {
-        if (relative != file.relativePath) {
-          await storage.file(relative).rename(original.path);
-        }
-        rethrow;
-      }
-    },
-  );
+  Future<void> moveFile(
+    LocalFileRecord file,
+    String? folder,
+  ) => serialize(() async {
+    // Folder membership is metadata; stable disk paths survive process death.
+    await (db.update(db.localFiles)..where((f) => f.id.equals(file.id))).write(
+      LocalFilesCompanion(
+        folderId: Value(folder),
+        name: Value(await uniqueName(file.name, folder, exclude: file.id)),
+        updatedAt: Value(DateTime.now().toUtc()),
+      ),
+    );
+  });
   Future<void> changeFolder(
     LocalFolderRecord folder, {
     String? name,

@@ -596,7 +596,11 @@ class _HistoryAnswers extends ConsumerWidget {
         children: [
           if (state.isLoading) const ResultsSkeleton(),
           if (data?.error != null || state.hasError)
-            Text(data?.error ?? "Couldn't load results. Try again."),
+            EmptyState(
+              title: 'Results unavailable',
+              body: data?.error ?? "Couldn't load results. Try again.",
+              showMascot: false,
+            ),
           for (final entry in (data?.data?.questions ?? <ResultJson>[]).indexed)
             ResultQuestionCard(
               answerLabel: 'Student answer',

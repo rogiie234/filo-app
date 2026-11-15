@@ -363,4 +363,23 @@ class QuizDraft {
     _baseline = InstructorQuiz(saved.row, questions);
     reconciliationRequired = false;
   }
+
+  /// AI saves append confirmed questions without replacing local unfinished edits.
+  void mergeAiSaved(InstructorQuiz saved) {
+    final localQuestions = questions.toList();
+    final localSettings = copyQuizJson(settings);
+    final knownIds = {
+      for (final q in _baseline?.questions ?? <QuizQuestion>[]) q.id,
+      for (final q in localQuestions) q.id,
+    };
+    acceptSaved(saved);
+    final added = questions.where((q) => !knownIds.contains(q.id)).toList();
+    questions
+      ..clear()
+      ..addAll(localQuestions)
+      ..addAll(added);
+    settings
+      ..clear()
+      ..addAll(localSettings);
+  }
 }

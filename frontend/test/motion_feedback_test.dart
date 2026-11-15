@@ -2,7 +2,6 @@ import 'dart:async';
 
 import 'package:filo/core/theme/app_theme.dart';
 import 'package:filo/core/widgets/filo_widgets.dart';
-import 'package:filo/features/study/presentation/study_flashcard.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';

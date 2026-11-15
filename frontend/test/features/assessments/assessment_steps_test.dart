@@ -49,6 +49,116 @@ class StepRepository extends InstructorQuizRepository {
 }
 
 void main() {
+  testWidgets(
+    'invalid schedule stays inline without Retry and clearing it removes the error',
+    (tester) async {
+      final db = AppDatabase(NativeDatabase.memory());
+      addTearDown(() async {
+        await tester.pumpWidget(const SizedBox());
+        await tester.runAsync(db.close);
+      });
+      final room = await tester.runAsync(() async {
+        await db.customStatement(
+          "INSERT INTO cache_profiles(id,role,display_name) VALUES ('owner','instructor','Owner')",
+        );
+        await db.customStatement(
+          "INSERT INTO cache_classes(id,owner_id,course,section,school_year,join_code) VALUES ('class','owner','Course','A','2026','ABC123')",
+        );
+        return (await db.select(db.cacheClasses).get()).single;
+      });
+      final repo = StepRepository(db, UnusedAssessmentClient())
+        ..existing = InstructorQuiz({
+          ...QuizDraft.create('class').settings,
+          'id': 'quiz',
+          'class_id': 'class',
+          'title': 'Schedule regression',
+          'status': 'draft',
+          'opens_at': '2026-11-12T04:00:00Z',
+          'closes_at': '2026-11-11T04:00:00Z',
+        }, []);
+      await tester.pumpWidget(
+        ProviderScope(
+          overrides: [
+            instructorQuizRepositoryProvider.overrideWith((ref) async => repo),
+            classesProvider.overrideWith((ref) => Stream.value([room!])),
+            connectivityProvider.overrideWith((ref) => Stream.value(true)),
+          ],
+          child: MaterialApp(
+            theme: AppTheme.light,
+            home: const AssessmentFormScreen(classId: 'class', quizId: 'quiz'),
+          ),
+        ),
+      );
+      await tester.runAsync(
+        () => Future<void>.delayed(const Duration(milliseconds: 100)),
+      );
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Next: Settings'));
+      await tester.pumpAndSettle();
+      expect(
+        find.text('End date and time must be after the start.'),
+        findsOneWidget,
+      );
+      expect(find.text('Retry'), findsNothing);
+      expect(find.text('Schedule incomplete'), findsNothing);
+      await tester.tap(find.text('Next: Questions'));
+      await tester.pumpAndSettle();
+      expect(find.text('Step 2 of 3'), findsOneWidget);
+      final end = find.widgetWithText(OutlinedButton, 'End date & time');
+      await tester.ensureVisible(end);
+      await tester.tap(end);
+      await tester.pumpAndSettle();
+      final picker = tester.widget<CalendarDatePicker>(
+        find.byType(CalendarDatePicker),
+      );
+      expect(picker.firstDate, DateTime(2026, 11, 12));
+      expect(picker.initialDate, DateTime(2026, 11, 12));
+      await tester.tap(find.text('OK'));
+      await tester.pumpAndSettle();
+      final hour = tester.widget<DropdownButton<int>>(
+        find.descendant(
+          of: find.byKey(const ValueKey('assessment-time-hour')),
+          matching: find.byType(DropdownButton<int>),
+        ),
+      );
+      expect(
+        hour.items!.singleWhere((item) => item.value == 11).enabled,
+        isFalse,
+      );
+      expect(
+        hour.items!.singleWhere((item) => item.value == 12).enabled,
+        isTrue,
+      );
+      final minute = tester.widget<DropdownButton<int>>(
+        find.descendant(
+          of: find.byKey(const ValueKey('assessment-time-minute-12')),
+          matching: find.byType(DropdownButton<int>),
+        ),
+      );
+      expect(
+        minute.items!.singleWhere((item) => item.value == 0).enabled,
+        isFalse,
+      );
+      expect(
+        minute.items!.singleWhere((item) => item.value == 1).enabled,
+        isTrue,
+      );
+      await tester.tap(find.text('Cancel'));
+      await tester.pumpAndSettle();
+      final clear = find.text('Clear closing time');
+      await tester.ensureVisible(clear);
+      await tester.tap(clear);
+      await tester.pumpAndSettle();
+      expect(
+        find.text('End date and time must be after the start.'),
+        findsNothing,
+      );
+      expect(find.text('Retry'), findsNothing);
+      expect(repo.saves, 0);
+      expect(tester.takeException(), isNull);
+    },
+  );
+
   for (final palette in [AppTheme.light, AppTheme.dark]) {
     group('${palette.brightness.name} / 130%', () {
       setUp(
@@ -160,7 +270,7 @@ void main() {
                 .overlaps(tester.getRect(find.byType(Scaffold))),
             isTrue,
           );
-          await tester.tap(find.text('Back'));
+          await tester.tap(find.text('Details'));
           await tester.pumpAndSettle();
           expect(
             tester
@@ -179,14 +289,14 @@ void main() {
           expect(find.byType(Dialog), findsNothing);
           expect(
             find.text('Choose a start and end date and time.'),
-            findsOneWidget,
+            findsNothing,
           );
-          expect(find.text('Set dates'), findsOneWidget);
+          expect(find.text('Set dates'), findsNothing);
           await tester.pumpAndSettle();
           expect(find.text('Step 3 of 3'), findsOneWidget);
           expect(find.text('No questions yet.'), findsOneWidget);
           expect(find.text('0 questions | 0 points'), findsOneWidget);
-          expect(find.byType(ShadAlert), findsOneWidget);
+          expect(find.byType(ShadAlert), findsNothing);
           expect(
             find.widgetWithText(ShadButton, 'Add question'),
             findsOneWidget,
@@ -199,7 +309,7 @@ void main() {
             find.widgetWithText(FiloButton, 'Generate with AI'),
           );
           expect(generate.onPressed, isNotNull);
-          await tester.tap(find.text('Set dates'));
+          await tester.tap(find.text('Settings'));
           await tester.pumpAndSettle();
           expect(find.text('Step 2 of 3'), findsOneWidget);
           expect(find.byType(Dialog), findsNothing);
@@ -228,7 +338,7 @@ void main() {
           expect(repo.saves, 1);
           expect(repo.savedSettings!['shuffle_questions'], isFalse);
           expect(find.text('Step 3 of 3'), findsOneWidget);
-          await tester.tap(find.text('Back'));
+          await tester.tap(find.text('Settings'));
           await tester.pumpAndSettle();
           expect(find.text('Step 2 of 3'), findsOneWidget);
           expect(find.text('Save draft'), findsNothing);
@@ -335,9 +445,26 @@ void main() {
           ),
           isTrue,
         );
-        await tester.tap(find.text('Back'));
+        await tester.tap(find.text('Settings'));
         await tester.pumpAndSettle();
         await tester.tap(find.text('Next: Questions'));
+        await tester.pumpAndSettle();
+        expect(find.text('2 questions | 2 points'), findsOneWidget);
+        tester
+            .widget<QuestionCard>(find.byType(QuestionCard).first)
+            .onAction('delete');
+        await tester.pumpAndSettle();
+        expect(find.text('Delete this question?'), findsOneWidget);
+        expect(find.byType(FiloModalDialog), findsOneWidget);
+        expect(
+          tester
+              .widget<FiloConfirmationDialog>(
+                find.byType(FiloConfirmationDialog),
+              )
+              .confirmDestructive,
+          isTrue,
+        );
+        await tester.tap(find.text('Cancel'));
         await tester.pumpAndSettle();
         expect(find.text('2 questions | 2 points'), findsOneWidget);
         expect(tester.takeException(), isNull);

@@ -48,7 +48,7 @@ class _PushNotificationHostState extends ConsumerState<PushNotificationHost> {
   Timer? _timer;
   PushEvent? _timedEvent;
   PushEvent? _activeOpen;
-  bool _scheduled = false, _working = false, _needsRefresh = false;
+  bool _scheduled = false, _working = false;
   bool _foreground = true;
 
   @override
@@ -128,16 +128,6 @@ class _PushNotificationHostState extends ConsumerState<PushNotificationHost> {
         notificationDestinationRepositoryProvider.future,
       );
       if (!_ready || !_foreground || !repository.isCurrent()) return;
-      if (_needsRefresh &&
-          ref.read(connectivityProvider).asData?.value == true) {
-        try {
-          await repository.sync.refreshNotifications();
-          if (!repository.isCurrent()) return;
-          _needsRefresh = false;
-        } catch (_) {
-          /* Keep the durable server inbox for the next reconnect. */
-        }
-      }
       while (_ready && _foreground && repository.isCurrent()) {
         final event = _events.take(widget.userId, allowOpen: !_protected);
         if (event == null) break;
@@ -189,7 +179,6 @@ class _PushNotificationHostState extends ConsumerState<PushNotificationHost> {
               return;
             }
             if (_ready && repository.isCurrent()) {
-              _needsRefresh = true;
               _message(
                 error is NotificationNeedsConnection
                     ? 'Connect to the internet to open this notification.'
@@ -217,7 +206,6 @@ class _PushNotificationHostState extends ConsumerState<PushNotificationHost> {
               _retainForCurrentAccount(event);
               return;
             }
-            _needsRefresh = true;
             setState(
               () => _banners.add((
                 event: event,
@@ -230,7 +218,6 @@ class _PushNotificationHostState extends ConsumerState<PushNotificationHost> {
       }
     } catch (_) {
       // Readiness can change while the account database/provider is opening.
-      _needsRefresh = true;
       _events.failInboxOpen();
     } finally {
       _working = false;

@@ -1,5 +1,7 @@
 import 'dart:io';
 
+import 'package:path/path.dart' as p;
+
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -17,9 +19,15 @@ import 'download_file_card.dart';
 import 'file_viewer_screen.dart';
 
 class MyFilesScreen extends ConsumerStatefulWidget {
-  const MyFilesScreen({super.key, this.embedded = false, this.onBusyChanged});
+  const MyFilesScreen({
+    super.key,
+    this.embedded = false,
+    this.onBusyChanged,
+    this.onAddActionVisibilityChanged,
+  });
   final bool embedded;
   final ValueChanged<bool>? onBusyChanged;
+  final ValueChanged<bool>? onAddActionVisibilityChanged;
   @override
   ConsumerState<MyFilesScreen> createState() => MyFilesScreenState();
 }
@@ -31,6 +39,7 @@ class MyFilesScreenState extends ConsumerState<MyFilesScreen> {
   bool _grid = false;
   String _typeFilter = 'all';
   bool _busy = false;
+  bool? _reportedAddVisibility;
   final _search = TextEditingController();
   @override
   void dispose() {
@@ -61,6 +70,7 @@ class MyFilesScreenState extends ConsumerState<MyFilesScreen> {
             padding: const EdgeInsets.symmetric(horizontal: FiloSpacing.screen),
             child: Column(
               mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
                 const Text(
                   'Filo needs permission to create and manage its backup files in your Google Drive. This does not give Filo access to all your Drive files.',
@@ -80,11 +90,14 @@ class MyFilesScreenState extends ConsumerState<MyFilesScreen> {
                         },
                 ),
                 FiloSwitchListTile(
+                  contentPadding: EdgeInsets.zero,
                   title: const Text('Back up on Wi-Fi only'),
                   value: service.wifiOnly,
                   onChanged: service.busy ? null : service.setWifiOnly,
                 ),
-                FilledButton(
+                FiloButton(
+                  label: 'Back up now',
+                  busy: service.busy,
                   onPressed: !service.enabled || service.busy
                       ? null
                       : () async {
@@ -92,10 +105,10 @@ class MyFilesScreenState extends ConsumerState<MyFilesScreen> {
                           await (await ref.read(syncCoordinatorProvider.future))
                               ?.run(retryFailed: true);
                         },
-                  child: const Text('Back up now'),
                 ),
                 if (service.busy) const FiloLinearProgressIndicator(),
-                Text(service.message),
+                const SizedBox(height: FiloSpacing.s12),
+                Semantics(liveRegion: true, child: Text(service.message)),
                 Text(
                   service.lastSuccess == null
                       ? 'No backups yet.'
@@ -143,28 +156,25 @@ class MyFilesScreenState extends ConsumerState<MyFilesScreen> {
   Future<String?> _name(String title, [String value = '']) =>
       showFiloDialog<String>(
         context: context,
-        builder: (_) => _NameDialog(title: title, value: value),
+        builder: (_) => _NameDialog(
+          title: title,
+          value: title == 'Rename file'
+              ? p.basenameWithoutExtension(value)
+              : value,
+          extension: title == 'Rename file' ? p.extension(value) : '',
+        ),
       );
 
-  Future<bool> _confirm(String title, String text, String action) async =>
-      await showFiloDialog<bool>(
-        context: context,
-        builder: (context) => AlertDialog(
-          title: Text(title),
-          content: Text(text),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(context, false),
-              child: const Text('Cancel'),
-            ),
-            FilledButton(
-              onPressed: () => Navigator.pop(context, true),
-              child: Text(action),
-            ),
-          ],
-        ),
-      ) ==
-      true;
+  Future<bool> _confirm(String title, String text, String action) =>
+      showFiloConfirmation(
+        context,
+        title: title,
+        message: text,
+        confirmLabel: action,
+        cancelLabel: 'Cancel',
+        confirmDestructive: true,
+        icon: FiloIcons.delete,
+      );
 
   Future<String?> _pickFolder(
     List<LocalFolderRecord> folders, {
@@ -176,24 +186,24 @@ class MyFilesScreenState extends ConsumerState<MyFilesScreen> {
       context: context,
       scrollBody: false,
       builder: (context) => ListView.builder(
-        // Small pickers fit their content; larger collections remain virtualized.
+        padding: const EdgeInsets.symmetric(horizontal: FiloSpacing.screen),
         shrinkWrap: visible.length < 8,
         primary: false,
         itemCount: visible.length + 1,
         itemBuilder: (context, index) {
           if (index == 0) {
-            return ListTile(
-              title: const Text('My Files (root)'),
+            return FiloSheetAction(
+              label: 'My Files (root)',
+              icon: FiloIcons.folder,
+              description: 'Top level on this device',
               onTap: () => Navigator.pop(context, '__root__'),
             );
           }
           final folder = visible[index - 1];
-          return ListTile(
-            leading: const FiloIcon(FiloIcons.folder),
-            title: Text(folder.name),
-            subtitle: folder.classId == null
-                ? null
-                : const Text('Class folder'),
+          return FiloSheetAction(
+            icon: FiloIcons.folder,
+            label: folder.name,
+            description: folder.classId == null ? null : 'Class folder',
             onTap: () => Navigator.pop(context, folder.id),
           );
         },
@@ -251,11 +261,19 @@ class MyFilesScreenState extends ConsumerState<MyFilesScreen> {
       title: 'File actions',
       context: context,
       showDragHandle: true,
-      builder: (context) => SafeArea(
+      builder: (context) => Padding(
+        padding: const EdgeInsets.symmetric(horizontal: FiloSpacing.screen),
         child: Column(
           mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            ListTile(title: Text(file.name)),
+            FiloPanel(
+              child: Text(
+                file.name,
+                style: Theme.of(context).textTheme.titleMedium,
+              ),
+            ),
+            const SizedBox(height: FiloSpacing.s16),
             for (final label in [
               'Open',
               'Open in another app',
@@ -264,26 +282,17 @@ class MyFilesScreenState extends ConsumerState<MyFilesScreen> {
               'Delete',
               'Export a copy',
             ])
-              ListTile(
-                leading: Icon(
-                  switch (label) {
-                    'Open' => Icons.description_outlined,
-                    'Open in another app' => Icons.open_in_new_rounded,
-                    'Rename' => Icons.edit_outlined,
-                    'Move' => Icons.drive_file_move_outlined,
-                    'Delete' => Icons.delete_outline_rounded,
-                    _ => Icons.ios_share_rounded,
-                  },
-                  color: label == 'Delete'
-                      ? Theme.of(context).colorScheme.error
-                      : null,
-                ),
-                title: Text(
-                  label,
-                  style: label == 'Delete'
-                      ? TextStyle(color: Theme.of(context).colorScheme.error)
-                      : null,
-                ),
+              FiloSheetAction(
+                label: label,
+                icon: switch (label) {
+                  'Open' => Icons.description_outlined,
+                  'Open in another app' => Icons.open_in_new_rounded,
+                  'Rename' => Icons.edit_outlined,
+                  'Move' => Icons.drive_file_move_outlined,
+                  'Delete' => Icons.delete_outline_rounded,
+                  _ => Icons.ios_share_rounded,
+                },
+                destructive: label == 'Delete',
                 onTap: () => Navigator.pop(context, label),
               ),
           ],
@@ -357,29 +366,31 @@ class MyFilesScreenState extends ConsumerState<MyFilesScreen> {
       title: 'Folder actions',
       context: context,
       showDragHandle: true,
-      builder: (context) => SafeArea(
+      builder: (context) => Padding(
+        padding: const EdgeInsets.symmetric(horizontal: FiloSpacing.screen),
         child: Column(
           mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            ListTile(title: Text(folder.name)),
+            FiloPanel(
+              child: Text(
+                folder.name,
+                style: Theme.of(context).textTheme.titleMedium,
+              ),
+            ),
+            const SizedBox(height: FiloSpacing.s16),
             for (final label in ['Rename', 'Move', 'Delete'])
-              ListTile(
-                leading: Icon(
-                  switch (label) {
-                    'Rename' => Icons.edit_outlined,
-                    'Move' => Icons.drive_file_move_outlined,
-                    _ => Icons.delete_outline_rounded,
-                  },
-                  color: label == 'Delete'
-                      ? Theme.of(context).colorScheme.error
-                      : null,
-                ),
-                title: Text(
-                  label,
-                  style: label == 'Delete'
-                      ? TextStyle(color: Theme.of(context).colorScheme.error)
-                      : null,
-                ),
+              FiloSheetAction(
+                label: label,
+                icon: switch (label) {
+                  'Open' => Icons.description_outlined,
+                  'Open in another app' => Icons.open_in_new_rounded,
+                  'Rename' => Icons.edit_outlined,
+                  'Move' => Icons.drive_file_move_outlined,
+                  'Delete' => Icons.delete_outline_rounded,
+                  _ => Icons.ios_share_rounded,
+                },
+                destructive: label == 'Delete',
                 onTap: () => Navigator.pop(context, label),
               ),
           ],
@@ -479,6 +490,18 @@ class MyFilesScreenState extends ConsumerState<MyFilesScreen> {
       'text': 'Text files',
       'other': 'Other files',
     };
+    final showAddAction =
+        files.any((file) => file.folderId == _folder) ||
+        folders.any((folder) => folder.parentId == _folder) ||
+        (query.isNotEmpty && (files.isNotEmpty || folders.isNotEmpty));
+    if (_reportedAddVisibility != showAddAction) {
+      _reportedAddVisibility = showAddAction;
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted && _reportedAddVisibility == showAddAction) {
+          widget.onAddActionVisibilityChanged?.call(showAddAction);
+        }
+      });
+    }
     final noMatchingFiles =
         visibleFiles.isEmpty &&
         (query.isNotEmpty || _typeFilter != 'all') &&
@@ -588,29 +611,22 @@ class MyFilesScreenState extends ConsumerState<MyFilesScreen> {
           enabled: !widget.embedded,
           child: Scaffold(
             backgroundColor: Colors.transparent,
-            bottomNavigationBar: widget.embedded
+            floatingActionButtonLocation: FloatingActionButtonLocation.endFloat,
+            floatingActionButton: widget.embedded || !showAddAction
                 ? null
-                : SafeArea(
-                    top: false,
-                    child: Padding(
-                      padding: const EdgeInsets.fromLTRB(24, 8, 24, 12),
-                      child: Row(
-                        mainAxisAlignment: MainAxisAlignment.end,
-                        children: [
-                          SizedBox(
-                            width: 72,
-                            child: FiloButton(
-                              label: 'Add files',
-                              icon: FiloIcons.add,
-                              iconOnly: true,
-                              minHeight: 72,
-                              busy: _busy,
-                              onPressed: repo == null || _busy
-                                  ? null
-                                  : () => _add(repo),
-                            ),
-                          ),
-                        ],
+                : Padding(
+                    padding: const EdgeInsets.only(right: 8),
+                    child: SizedBox(
+                      width: 72,
+                      child: FiloButton(
+                        label: 'Add files',
+                        icon: FiloIcons.add,
+                        iconOnly: true,
+                        minHeight: 72,
+                        busy: _busy,
+                        onPressed: repo == null || _busy
+                            ? null
+                            : () => _add(repo),
                       ),
                     ),
                   ),
@@ -637,10 +653,11 @@ class MyFilesScreenState extends ConsumerState<MyFilesScreen> {
                           FiloSpacing.screen,
                           FiloSpacing.screen,
                           FiloSpacing.screen,
-                          24,
+                          112,
                         ),
                         child: EmptyState(
-                          title: "Couldn't load files. Try again.",
+                          title: 'Files unavailable',
+                          body: 'Retry to read your saved files.',
                           pose: 'confused',
                           bob: false,
                           action: TextButton(
@@ -660,7 +677,7 @@ class MyFilesScreenState extends ConsumerState<MyFilesScreen> {
                           FiloSpacing.screen,
                           FiloSpacing.s16,
                           FiloSpacing.screen,
-                          24,
+                          112,
                         ),
                         children: [
                           if (path.isNotEmpty) ...[
@@ -784,6 +801,10 @@ class MyFilesScreenState extends ConsumerState<MyFilesScreen> {
                           const SizedBox(height: FiloSpacing.s20),
                           TextField(
                             controller: _search,
+                            enabled:
+                                files.isNotEmpty ||
+                                folders.isNotEmpty ||
+                                _query.isNotEmpty,
                             decoration: InputDecoration(
                               filled: true,
                               fillColor: Theme.of(context).colorScheme.surface,
@@ -803,6 +824,10 @@ class MyFilesScreenState extends ConsumerState<MyFilesScreen> {
                                     ),
                                   PopupMenuButton<String>(
                                     tooltip: 'Filter files',
+                                    enabled:
+                                        files.isNotEmpty ||
+                                        folders.isNotEmpty ||
+                                        _typeFilter != 'all',
                                     initialValue: _typeFilter,
                                     icon: Badge(
                                       isLabelVisible: _typeFilter != 'all',
@@ -839,6 +864,9 @@ class MyFilesScreenState extends ConsumerState<MyFilesScreen> {
                                   children: [
                                     PopupMenuButton<String>(
                                       tooltip: 'Sort files',
+                                      enabled:
+                                          visibleFiles.isNotEmpty ||
+                                          visibleFolders.isNotEmpty,
                                       initialValue: _sort,
                                       onSelected: (value) => setState(() {
                                         _sort = value;
@@ -909,9 +937,13 @@ class MyFilesScreenState extends ConsumerState<MyFilesScreen> {
                                       tooltip: _ascending
                                           ? 'Sort descending'
                                           : 'Sort ascending',
-                                      onPressed: () => setState(
-                                        () => _ascending = !_ascending,
-                                      ),
+                                      onPressed:
+                                          visibleFiles.isEmpty &&
+                                              visibleFolders.isEmpty
+                                          ? null
+                                          : () => setState(() {
+                                              _ascending = !_ascending;
+                                            }),
                                       icon: Icon(
                                         _ascending
                                             ? Icons.arrow_upward_rounded
@@ -926,7 +958,11 @@ class MyFilesScreenState extends ConsumerState<MyFilesScreen> {
                                 tooltip: _grid
                                     ? 'Switch to list view'
                                     : 'Switch to grid view',
-                                onPressed: () => setState(() => _grid = !_grid),
+                                onPressed:
+                                    visibleFiles.isEmpty &&
+                                        visibleFolders.isEmpty
+                                    ? null
+                                    : () => setState(() => _grid = !_grid),
                                 icon: Icon(
                                   _grid
                                       ? Icons.view_list_outlined
@@ -977,78 +1013,16 @@ class MyFilesScreenState extends ConsumerState<MyFilesScreen> {
                               visibleFiles.isEmpty &&
                               query.isEmpty &&
                               _typeFilter == 'all')
-                            Padding(
-                              padding: const EdgeInsets.symmetric(
-                                vertical: FiloSpacing.screen,
-                              ),
-                              child: Column(
-                                children: [
-                                  ExcludeSemantics(
-                                    child: AspectRatio(
-                                      aspectRatio: 1.5,
-                                      child: ColorFiltered(
-                                        // Suppress the generated low-opacity halo around the illustration.
-                                        colorFilter: const ColorFilter.matrix([
-                                          1,
-                                          0,
-                                          0,
-                                          0,
-                                          0,
-                                          0,
-                                          1,
-                                          0,
-                                          0,
-                                          0,
-                                          0,
-                                          0,
-                                          1,
-                                          0,
-                                          0,
-                                          0,
-                                          0,
-                                          0,
-                                          12,
-                                          -2700,
-                                        ]),
-                                        child: Image.asset(
-                                          'assets/illustrations/library-empty-folder.png',
-                                          fit: BoxFit.contain,
-                                          cacheWidth:
-                                              (360 *
-                                                      MediaQuery.devicePixelRatioOf(
-                                                        context,
-                                                      ))
-                                                  .ceil(),
-                                          errorBuilder: (_, _, _) => const Icon(
-                                            Icons.folder_open_rounded,
-                                            size: 104,
-                                          ),
-                                        ),
-                                      ),
-                                    ),
-                                  ),
-                                  const SizedBox(height: FiloSpacing.s16),
-                                  Text(
-                                    'No files yet.',
-                                    textAlign: TextAlign.center,
-                                    style: Theme.of(context)
-                                        .textTheme
-                                        .titleLarge,
-                                  ),
-                                  const SizedBox(height: FiloSpacing.s8),
-                                  Text(
-                                    'Download class materials or add your own.',
-                                    textAlign: TextAlign.center,
-                                    style: Theme.of(context)
-                                        .textTheme
-                                        .bodyMedium
-                                        ?.copyWith(
-                                          color: Theme.of(context)
-                                              .colorScheme
-                                              .onSurfaceVariant,
-                                        ),
-                                  ),
-                                ],
+                            EmptyState(
+                              title: _folder == null
+                                  ? 'No files yet'
+                                  : 'This folder is empty',
+                              body: 'Add your files here to keep them available on this device.',
+                              pose: 'folder',
+                              action: FiloButton(
+                                label: 'Add files',
+                                busy: _busy,
+                                onPressed: _busy ? null : () => _add(repo),
                               ),
                             ),
                           ...layoutItems([
@@ -1141,22 +1115,22 @@ class MyFilesScreenState extends ConsumerState<MyFilesScreen> {
                               ),
                             ),
                           if (noMatchingFiles)
-                            Column(
-                              children: [
-                                FiloIllustratedEmptyState(
-                                  asset: 'assets/illustrations/library-empty-folder.png',
-                                  title: 'No matching files.',
-                                  message: _typeFilter == 'all'
-                                      ? 'Try another file or folder name.'
-                                      : 'Try another file type or clear the filter.',
-                                ),
-                                if (_typeFilter != 'all')
-                                  TextButton(
-                                    onPressed: () =>
-                                        setState(() => _typeFilter = 'all'),
-                                    child: const Text('Show all file types'),
-                                  ),
-                              ],
+                            EmptyState(
+                              title: query.isNotEmpty
+                                  ? 'No search results'
+                                  : 'No matching files',
+                              body: query.isNotEmpty
+                                  ? 'No matches for "${_search.text.trim()}"; check the spelling or clear your search.'
+                                  : 'Choose another file type or clear the filter.',
+                              pose: 'folder',
+                              primaryAction: EmptyStateAction(
+                                label: 'Clear search and filters',
+                                onPressed: () => setState(() {
+                                  _search.clear();
+                                  _query = '';
+                                  _typeFilter = 'all';
+                                }),
+                              ),
                             ),
                           ...layoutItems([
                             for (final file in visibleFiles)
@@ -1334,8 +1308,13 @@ class _LibraryTile extends StatelessWidget {
 }
 
 class _NameDialog extends StatefulWidget {
-  const _NameDialog({required this.title, required this.value});
+  const _NameDialog({
+    required this.title,
+    required this.value,
+    this.extension = '',
+  });
   final String title, value;
+  final String extension;
   @override
   State<_NameDialog> createState() => _NameDialogState();
 }
@@ -1355,6 +1334,8 @@ class _NameDialogState extends State<_NameDialog> {
     if (_submitted) return;
     try {
       final name = FilesRepository.validName(_controller.text);
+      if (widget.extension.isNotEmpty)
+        FilesRepository.validName('$name${widget.extension}');
       _submitted = true;
       Navigator.pop(context, name);
     } on FileProblem catch (error) {
@@ -1365,101 +1346,61 @@ class _NameDialogState extends State<_NameDialog> {
   @override
   Widget build(BuildContext context) {
     final creating = widget.title == 'New folder';
-    final theme = Theme.of(context);
     final cancel = FiloButton(
       label: 'Cancel',
-      outlined: true,
-      minHeight: 48,
+      secondary: true,
       onPressed: () => Navigator.pop(context),
     );
     final confirm = FiloButton(
       label: creating ? 'Create folder' : 'Save',
-      minHeight: 48,
       onPressed: _controller.text.trim().isEmpty ? null : _submit,
     );
-    final inlineActions =
-        MediaQuery.sizeOf(context).width -
-                MediaQuery.viewPaddingOf(context).horizontal >=
-            400 &&
-        MediaQuery.textScalerOf(context).scale(1) <= 1.1;
-
-    return AlertDialog(
-      scrollable: true,
-      insetPadding: const EdgeInsets.symmetric(
-        horizontal: FiloSpacing.screen,
-        vertical: FiloSpacing.screen,
-      ),
-      icon: ExcludeSemantics(
-        child: Container(
-          padding: const EdgeInsets.all(FiloSpacing.s16),
-          decoration: BoxDecoration(
-            color: theme.colorScheme.primaryContainer.withValues(alpha: .5),
-            borderRadius: BorderRadius.circular(FiloRadii.medium),
-          ),
-          child: FiloIcon(
-            creating ? FiloIcons.newFolder : FiloIcons.edit,
-            color: theme.colorScheme.onPrimaryContainer,
-            size: creating ? 48 : 28,
-          ),
-        ),
-      ),
-      title: Text(widget.title, textAlign: TextAlign.center),
-      content: SizedBox(
-        width: 360,
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            if (creating) ...[
-              Text(
-                'Choose a name for your folder.',
-                textAlign: TextAlign.center,
-                style: theme.textTheme.bodyMedium!.copyWith(
-                  color: theme.colorScheme.onSurfaceVariant,
-                ),
-              ),
-              const SizedBox(height: FiloSpacing.s20),
-            ],
-            TextField(
-              controller: _controller,
-              autofocus: true,
-              maxLength: 255,
-              textInputAction: TextInputAction.done,
-              decoration: InputDecoration(
-                labelText: creating ? 'Folder name' : 'Name',
-                errorText: _error,
-                prefixIcon: creating ? const FiloIcon(FiloIcons.folder) : null,
-                suffixIcon: _controller.text.isEmpty
-                    ? null
-                    : IconButton(
-                        tooltip: 'Clear name',
-                        icon: const Icon(Icons.close_rounded),
-                        onPressed: () => setState(() {
-                          _controller.clear();
-                          _error = null;
-                        }),
-                      ),
-              ),
-              onChanged: (_) => setState(() => _error = null),
-              onSubmitted: (_) => _submit(),
-            ),
-            const SizedBox(height: FiloSpacing.s20),
-            if (inlineActions)
-              Row(
-                children: [
-                  Expanded(flex: 2, child: cancel),
-                  const SizedBox(width: FiloSpacing.s12),
-                  Expanded(flex: 3, child: confirm),
-                ],
-              )
-            else ...[
-              confirm,
-              const SizedBox(height: FiloSpacing.s8),
-              cancel,
-            ],
+    return FiloModalDialog(
+      title: widget.title,
+      icon: creating ? FiloIcons.newFolder : FiloIcons.edit,
+      content: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          if (creating) ...[
+            const Text('Choose a name for your folder.'),
+            const SizedBox(height: FiloSpacing.s16),
           ],
-        ),
+          TextField(
+            controller: _controller,
+            autofocus: true,
+            maxLength: 255 - widget.extension.length,
+            textInputAction: TextInputAction.done,
+            decoration: InputDecoration(
+              labelText: creating
+                  ? 'Folder name'
+                  : widget.title == 'Rename file'
+                  ? 'File name'
+                  : 'Name',
+              suffixText: widget.extension.isEmpty ? null : widget.extension,
+              helperText: widget.extension.isEmpty
+                  ? null
+                  : 'The file extension stays unchanged.',
+              helperMaxLines: 2,
+              errorText: _error,
+              prefixIcon: creating ? const FiloIcon(FiloIcons.folder) : null,
+              suffixIcon: _controller.text.isEmpty
+                  ? null
+                  : IconButton(
+                      tooltip: 'Clear name',
+                      icon: const Icon(Icons.close_rounded),
+                      onPressed: () => setState(() {
+                        _controller.clear();
+                        _error = null;
+                      }),
+                    ),
+            ),
+            onChanged: (_) => setState(() => _error = null),
+            onSubmitted: (_) => _submit(),
+          ),
+        ],
       ),
+      actions: [confirm, cancel],
     );
   }
 }

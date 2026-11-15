@@ -74,7 +74,7 @@ class _ExamDevScreenState extends ConsumerState<ExamDevScreen> {
     if (!examDevEnabled) {
       return const FiloMotionScope(
         enabled: false,
-        child: Scaffold(body: Center(child: Text('Page unavailable'))),
+        child: Scaffold(body: Center(child: EmptyState(title: 'Page unavailable', body: 'Return to your classes to continue.', showMascot: false))),
       );
     }
     ref.watch(examLifecycleProvider);
@@ -114,9 +114,7 @@ class _ExamDevScreenState extends ConsumerState<ExamDevScreen> {
               if (repositoryState.isLoading)
                 const FiloLinearProgressIndicator(),
               if (repositoryState.hasError)
-                const Text(
-                  'Could not open exam storage. Reopen this screen to retry.',
-                ),
+                const EmptyState(title: 'Exam storage unavailable', body: 'Reopen this screen to retry loading exam storage.', showMascot: false),
               if (repositoryState.asData != null && repository == null)
                 const Text('A verified student account is required.'),
               if (_message != null) Text(_message!, semanticsLabel: _message),
@@ -153,8 +151,10 @@ class _ExamDevScreenState extends ConsumerState<ExamDevScreen> {
                       data: (quizzes) => Column(
                         children: [
                           if (quizzes.isEmpty)
-                            const Text(
-                              'No published quizzes in active classes.',
+                            const EmptyState(
+                              title: 'No published quizzes',
+                              body: 'Quizzes will appear here when an instructor publishes them in an active class.',
+                              showMascot: false,
                             ),
                           for (final quiz in quizzes)
                             ListTile(

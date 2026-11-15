@@ -1,3 +1,5 @@
+import '../widgets/filo_widgets.dart';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
@@ -42,18 +44,17 @@ class SessionNavigationGate extends ConsumerWidget {
         if (!signedOut && database.hasError) {
           return Scaffold(
             body: Center(
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  const Text('Could not open your saved data.'),
-                  TextButton(
-                    onPressed: () {
-                      ref.invalidate(verifiedUserIdProvider);
-                      ref.invalidate(accountDatabaseProvider);
-                    },
-                    child: const Text('Try again'),
-                  ),
-                ],
+              child: EmptyState(
+                title: 'Saved data unavailable',
+                body: 'Retry to open your account data on this device.',
+                pose: 'confused',
+                primaryAction: EmptyStateAction(
+                  label: 'Try again',
+                  onPressed: () {
+                    ref.invalidate(verifiedUserIdProvider);
+                    ref.invalidate(accountDatabaseProvider);
+                  },
+                ),
               ),
             ),
           );

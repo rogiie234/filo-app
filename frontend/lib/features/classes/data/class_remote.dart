@@ -46,9 +46,13 @@ class SupabaseClassRemote implements ClassRemote {
 
   @override
   Future<dynamic> call(String name, ClassRow parameters) =>
-      client.rpc(name, params: parameters);
+      client.rpc(name, params: parameters).timeout(const Duration(seconds: 20));
 
   @override
-  Future<ClassRow> createClass(ClassRow values) =>
-      client.from('classes').insert(values).select().single();
+  Future<ClassRow> createClass(ClassRow values) => client
+      .from('classes')
+      .insert(values)
+      .select()
+      .single()
+      .timeout(const Duration(seconds: 20));
 }

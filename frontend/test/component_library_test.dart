@@ -288,8 +288,8 @@ void main() {
         ]) {
           expect(find.text(label), findsOneWidget);
         }
-        expect(find.byType(EmptyState), findsNWidgets(5));
-        expect(find.byType(MascotIdle), findsOneWidget);
+        expect(find.byType(EmptyState), findsNWidgets(7));
+        expect(find.byType(MascotIdle), findsNothing);
         for (final pose in Mascot.poses) {
           expect(find.text(pose), findsOneWidget);
         }

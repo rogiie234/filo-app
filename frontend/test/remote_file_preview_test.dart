@@ -21,10 +21,7 @@ void main() {
       ),
     );
     await tester.pump();
-    expect(
-      find.text('Could not preview this file. Try again.'),
-      findsOneWidget,
-    );
+    expect(find.text('Preview unavailable'), findsOneWidget);
     await tester.tap(find.text('Retry'));
     await tester.pump();
     await tester.pump();

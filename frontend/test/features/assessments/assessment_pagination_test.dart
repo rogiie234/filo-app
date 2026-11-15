@@ -91,8 +91,9 @@ void main() {
       },
     );
     final client = await signedClient((request) async {
-      if (request.url.pathSegments.last == 'profiles')
+      if (request.url.pathSegments.last == 'profiles') {
         return reply({'role': 'instructor', 'deleted_at': null});
+      }
       expect(request.url.pathSegments.last, 'bank_questions');
       final params = request.url.queryParameters;
       expect(params['offset'], isNull);
@@ -141,21 +142,23 @@ void main() {
         final rows = List.generate(205, (i) => quizRow(rowId(i)));
         var pages = 0;
         final client = await signedClient((request) async {
-          if (request.url.pathSegments.last == 'classes')
+          if (request.url.pathSegments.last == 'classes') {
             return reply({
               'owner_id': 'owner',
               'archived_at': null,
               'deleted_at': null,
             });
+          }
           final params = request.url.queryParameters;
           expect(params['order'], 'id.asc.nullslast');
           expect(params['offset'], isNull);
           if (++pages == 2) {
-            if (fail)
+            if (fail) {
               return reply({
                 'code': 'XX000',
                 'message': 'fixture failure',
               }, 500);
+            }
             rows.removeAt(0);
           }
           final after = params['id']?.substring(3);
@@ -212,15 +215,17 @@ void main() {
       final client = await signedClient((request) async {
         final params = request.url.queryParameters;
         final table = request.url.pathSegments.last;
-        if (table == 'classes')
+        if (table == 'classes') {
           return reply({
             'owner_id': 'owner',
             'archived_at': null,
             'deleted_at': null,
           });
+        }
         if (table == 'questions') return reply([]);
-        if (params['id']?.startsWith('eq.') == true)
+        if (params['id']?.startsWith('eq.') == true) {
           return reply(quizRow(rowId(204)));
+        }
         final after = params['id']?.substring(3);
         if (after == null) runs++;
         if (after != null && !superseded) {

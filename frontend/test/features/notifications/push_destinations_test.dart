@@ -193,6 +193,12 @@ void main() {
       expect(events.take(userId, allowOpen: true)?.id, noticeId);
       expect(events.take(userId, allowOpen: true), isNull);
       events.receive(
+        {'notification_id': noticeId},
+        open: true,
+        accountId: userId,
+      );
+      expect(events.take(userId, allowOpen: true), isNull);
+      events.receive(
         {'notification_id': targetId},
         open: true,
         accountId: userId,
@@ -239,16 +245,94 @@ void main() {
     'late account',
     'late preparation',
     'attachment failure',
+    'instructor report',
+    'instructor request',
+    'instructor foreign',
+    'study class',
+    'race class',
+    'race member',
+    'race post',
+    'race attachment',
+    'race payload',
   ]) {
     test('authorized canonical row/cache and read semantics: $mode', () async {
+      final instructor = mode.startsWith('instructor');
+      final joinRequest = mode == 'instructor request';
+      final studyClass = mode == 'study class';
       final db = AppDatabase(NativeDatabase.memory());
       await db.saveProfile(
         CacheProfilesCompanion.insert(
           id: userId,
-          role: 'student',
+          role: instructor ? 'instructor' : 'student',
           displayName: 'Fixture',
         ),
       );
+      if (studyClass) {
+        await db
+            .into(db.studyAlarms)
+            .insert(
+              StudyAlarmsCompanion.insert(
+                id: noticeId,
+                subject: 'Study fixture',
+                minuteOfDay: 600,
+                repeatDays: 0,
+                linkedClassId: const Value(classId),
+              ),
+            );
+      }
+      if (mode.startsWith('race ')) {
+        await db.saveProfile(
+          CacheProfilesCompanion.insert(
+            id: classId,
+            role: 'instructor',
+            displayName: 'Owner',
+          ),
+        );
+        await db
+            .into(db.cacheClasses)
+            .insert(
+              CacheClassesCompanion.insert(
+                id: classId,
+                ownerId: classId,
+                course: 'Original',
+                section: 'A',
+                schoolYear: '2026',
+                joinCode: 'CODE01',
+              ),
+            );
+        await db
+            .into(db.cacheClassMembers)
+            .insert(
+              CacheClassMembersCompanion.insert(
+                id: targetId,
+                classId: classId,
+                studentId: userId,
+                status: const Value('active'),
+              ),
+            );
+        await db
+            .into(db.cachePosts)
+            .insert(
+              CachePostsCompanion.insert(
+                id: targetId,
+                classId: classId,
+                authorId: classId,
+                kind: 'material',
+                title: 'Original',
+              ),
+            );
+        await db
+            .into(db.cachePostAttachments)
+            .insert(
+              CachePostAttachmentsCompanion.insert(
+                id: noticeId,
+                postId: targetId,
+                kind: 'link',
+                name: 'Original',
+                url: const Value('https://example.com'),
+              ),
+            );
+      }
       var current = true;
       final requests = <String>[];
       final gate = Completer<void>();
@@ -275,10 +359,14 @@ void main() {
             data = {
               'id': noticeId,
               'recipient_id': userId,
-              'type': 'assignment',
+              'type': joinRequest
+                  ? 'join_request'
+                  : instructor
+                  ? 'link_report'
+                  : 'assignment',
               'title': 'Stored title',
-              'target_type': 'post',
-              'target_id': targetId,
+              'target_type': joinRequest ? 'class_members' : 'post',
+              'target_id': joinRequest ? classId : targetId,
               'class_id': mode == 'cross class' ? userId : classId,
               'created_at': stamp,
               'updated_at': stamp,
@@ -290,7 +378,9 @@ void main() {
                     'id': targetId,
                     'class_id': classId,
                     'kind': 'assignment',
-                    'author_id': classId,
+                    'points': 10,
+                    'due_at': stamp,
+                    'author_id': instructor ? userId : classId,
                     'title': 'Target only',
                     'accept_late': true,
                     'allow_files': true,
@@ -302,7 +392,9 @@ void main() {
           } else if (table == 'classes') {
             data = {
               'id': classId,
-              'owner_id': classId,
+              'owner_id': instructor && mode != 'instructor foreign'
+                  ? userId
+                  : classId,
               'course': 'Course',
               'section': 'A',
               'school_year': '2026',
@@ -312,7 +404,14 @@ void main() {
             };
             expect(request.url.queryParameters['id'], 'eq.$classId');
           } else if (table == 'class_members') {
-            expect(request.url.queryParameters['deleted_at'], 'is.null');
+            expect(
+              request.url.queryParameters.containsKey('deleted_at'),
+              isFalse,
+              reason: 'class_members uses status, not soft deletion',
+            );
+            expect(request.url.queryParameters['status'], 'eq.active');
+            expect(request.url.queryParameters['student_id'], 'eq.$userId');
+            expect(request.url.queryParameters['class_id'], 'eq.$classId');
             data = mode == 'denied'
                 ? []
                 : [
@@ -327,7 +426,7 @@ void main() {
                     },
                   ];
           } else if (table == 'profiles') {
-            expect(request.url.queryParameters['id'], 'in.($classId)');
+            expect(request.url.queryParameters['id'], 'in.("$classId")');
             data = [
               {
                 'id': classId,
@@ -339,6 +438,39 @@ void main() {
             ];
           } else if (table == 'post_attachments') {
             expect(request.url.queryParameters['post_id'], 'eq.$targetId');
+            if (mode == 'race payload') {
+              await db.customStatement(
+                "INSERT INTO sync_payloads(table_name,id,payload,updated_at) VALUES ('posts',?,?,?)",
+                [
+                  targetId,
+                  jsonEncode({
+                    'id': targetId,
+                    'updated_at': '2026-11-01T12:00:00.123457Z',
+                  }),
+                  '2026-11-01T12:00:00.123457Z',
+                ],
+              );
+            } else if (mode == 'race class') {
+              await db.customStatement(
+                "UPDATE cache_classes SET course='Concurrent' WHERE id=?",
+                [classId],
+              );
+            } else if (mode == 'race member') {
+              await db.customStatement(
+                "UPDATE cache_class_members SET status='removed' WHERE id=?",
+                [targetId],
+              );
+            } else if (mode == 'race post') {
+              await db.customStatement(
+                "UPDATE cache_posts SET title='Concurrent' WHERE id=?",
+                [targetId],
+              );
+            } else if (mode == 'race attachment') {
+              await db.customStatement(
+                "UPDATE cache_post_attachments SET name='Concurrent' WHERE id=?",
+                [noticeId],
+              );
+            }
             data = [
               {
                 'id': noticeId,
@@ -370,54 +502,105 @@ void main() {
         isCurrent: () => current,
       );
       try {
-        final resolution = repository.resolve(noticeId, instructor: false);
+        final resolution = studyClass
+            ? repository.resolveStudyAlarm(noticeId)
+            : repository.resolve(noticeId, instructor: instructor);
         if (mode == 'late account' || mode == 'late preparation') {
           await started.future;
           current = false;
           gate.complete();
         }
-        if (mode == 'online') {
-          expect((await resolution).screen, NotificationScreen.assignment);
-          expect(requests, [
-            'notifications',
-            'posts',
-            'classes',
-            'class_members',
-            'profiles',
-            'post_attachments',
-          ]);
+        if (mode == 'online' ||
+            mode == 'instructor report' ||
+            joinRequest ||
+            studyClass) {
           expect(
-            (await db.select(db.cachePostAttachments).get()).single.postId,
-            targetId,
+            (await resolution).screen,
+            studyClass
+                ? NotificationScreen.classroom
+                : joinRequest
+                ? NotificationScreen.requests
+                : instructor
+                ? NotificationScreen.post
+                : NotificationScreen.assignment,
           );
+          expect(requests, [
+            if (!studyClass) 'notifications',
+            if (!joinRequest && !studyClass) 'posts',
+            'classes',
+            if (!instructor) 'class_members',
+            if (!instructor) 'profiles',
+            if (!joinRequest && !studyClass) 'post_attachments',
+          ]);
+          if (!joinRequest && !studyClass)
+            expect(
+              (await db.select(db.cachePostAttachments).get()).single.postId,
+              targetId,
+            );
           expect(await db.select(db.syncState).get(), isEmpty);
-          expect((await db.select(db.cachePosts).get()).single.id, targetId);
+          if (!joinRequest && !studyClass)
+            expect((await db.select(db.cachePosts).get()).single.id, targetId);
           expect((await db.select(db.cacheClasses).get()).single.id, classId);
-          expect(
-            (await db.select(db.cacheClassMembers).get()).single.status,
-            'active',
+          if (!instructor)
+            expect(
+              (await db.select(db.cacheClassMembers).get()).single.status,
+              'active',
+            );
+          if (!studyClass) {
+            expect(
+              (await db.select(db.cacheNotifications).get()).single.readAt,
+              isNull,
+            );
+            await InboxRepository(db, userId, () => current).markRead(noticeId);
+            await repository.notice(noticeId);
+            expect(
+              (await db.select(db.cacheNotifications).get()).single.readAt,
+              isNotNull,
+            );
+            expect(
+              (await db.select(db.outbox).get()).single.id,
+              'read:$noticeId',
+            );
+          } else {
+            expect(await db.select(db.cacheNotifications).get(), isEmpty);
+          }
+        } else if (mode == 'missing' ||
+            mode == 'denied' ||
+            mode == 'cross class' ||
+            mode == 'instructor foreign') {
+          await expectLater(
+            resolution,
+            throwsA(isA<NotificationUnavailable>()),
           );
           expect(
             (await db.select(db.cacheNotifications).get()).single.readAt,
             isNull,
           );
-          await InboxRepository(db, userId, () => current).markRead(noticeId);
-          await repository.notice(noticeId);
+        } else if (mode.startsWith('race ')) {
+          await expectLater(resolution, throwsStateError);
           expect(
-            (await db.select(db.cacheNotifications).get()).single.readAt,
-            isNotNull,
+            (await db.select(db.cacheClasses).get()).single.course,
+            mode == 'race class' ? 'Concurrent' : 'Original',
           );
-          expect(
-            (await db.select(db.outbox).get()).single.id,
-            'read:$noticeId',
-          );
-        } else if (mode == 'missing' ||
-            mode == 'denied' ||
-            mode == 'cross class') {
-          await expectLater(
-            resolution,
-            throwsA(isA<NotificationUnavailable>()),
-          );
+          if (mode == 'race member') {
+            expect(
+              (await db.select(db.cacheClassMembers).get()).single.status,
+              'removed',
+            );
+          }
+          if (mode == 'race post') {
+            expect(
+              (await db.select(db.cachePosts).get()).single.title,
+              'Concurrent',
+            );
+          }
+          if (mode == 'race attachment') {
+            expect(
+              (await db.select(db.cachePostAttachments).get()).single.name,
+              'Concurrent',
+            );
+          }
+          expect(await db.select(db.outbox).get(), isEmpty);
           expect(
             (await db.select(db.cacheNotifications).get()).single.readAt,
             isNull,

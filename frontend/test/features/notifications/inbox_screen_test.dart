@@ -272,7 +272,7 @@ void main() {
         find.text("You're offline. Showing saved content."),
         findsOneWidget,
       );
-      expect(find.text("You're all caught up."), findsNothing);
+      expect(find.text('No notifications yet'), findsNothing);
       expect(
         tester
             .widget<FiloButton>(
@@ -291,25 +291,15 @@ void main() {
   testWidgets(
     'successful empty is separate from loading, error and account mismatch',
     (tester) async {
-      await launch(tester, initial: []);
-      expect(find.text("You're all caught up."), findsOneWidget);
-      expect(
-        find.byWidgetPredicate(
-          (widget) =>
-              widget is Image &&
-              widget.image is ResizeImage &&
-              ((widget.image as ResizeImage).imageProvider as AssetImage)
-                      .assetName ==
-                  'assets/illustrations/notifications-empty.png',
-        ),
-        findsOneWidget,
-      );
+      await launch(tester, initial: [], offline: false);
+      expect(find.text('No notifications yet'), findsOneWidget);
+      expect(find.text('Class updates and reminders will appear here when they arrive.'), findsOneWidget);
     },
   );
   testWidgets('loading never shows caught up', (tester) async {
     await launch(tester, loading: true);
     expect(find.byType(CircularProgressIndicator), findsOneWidget);
-    expect(find.text("You're all caught up."), findsNothing);
+    expect(find.text('No notifications yet'), findsNothing);
   });
   testWidgets('same-day rows share a heading and retain repository order', (
     tester,
@@ -330,17 +320,17 @@ void main() {
   testWidgets('storage error offers Retry without empty state', (tester) async {
     await launch(tester, error: true);
     expect(
-      find.text('Could not load saved notifications. Try again.'),
+      find.text('Notifications unavailable'),
       findsOneWidget,
     );
     expect(find.text('Retry'), findsOneWidget);
-    expect(find.text("You're all caught up."), findsNothing);
+    expect(find.text('No notifications yet'), findsNothing);
   });
   testWidgets('another account cannot display old rows', (tester) async {
     await launch(tester, initial: [row()], userId: 'different account');
     expect(find.text('Saved announcement'), findsNothing);
     expect(
-      find.text('Notifications are unavailable for this account.'),
+      find.text('Notifications unavailable'),
       findsOneWidget,
     );
   });

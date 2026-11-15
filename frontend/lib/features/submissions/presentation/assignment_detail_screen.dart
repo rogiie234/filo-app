@@ -259,31 +259,36 @@ class _AssignmentDetailScreenState
     final controller = TextEditingController(text: initial);
     final result = await showFiloDialog<String>(
       context: context,
-      builder: (dialog) => AlertDialog(
-        title: Text(title),
-        content: SingleChildScrollView(
-          child: TextField(
-            controller: controller,
-            autofocus: true,
-            maxLength: limit,
-            minLines: multiline ? 4 : 1,
-            maxLines: multiline ? 10 : 1,
-            decoration: InputDecoration(labelText: label),
-          ),
+      builder: (dialog) => FiloModalDialog(
+        title: title,
+        icon: multiline ? FiloIcons.edit : FiloIcons.link,
+        content: TextField(
+          controller: controller,
+          autofocus: true,
+          keyboardType: multiline ? TextInputType.multiline : TextInputType.url,
+          textCapitalization: multiline
+              ? TextCapitalization.sentences
+              : TextCapitalization.none,
+          autocorrect: multiline,
+          maxLength: limit,
+          minLines: multiline ? 4 : 1,
+          maxLines: multiline ? 10 : 1,
+          decoration: InputDecoration(labelText: label),
         ),
         actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(dialog),
-            child: const Text('Cancel'),
-          ),
-          TextButton(
+          FiloButton(
+            label: 'Save',
             onPressed: () {
               final value = controller.text.trim();
               if (value.isNotEmpty) {
                 Navigator.pop(dialog, value);
               }
             },
-            child: const Text('Save'),
+          ),
+          FiloButton(
+            label: 'Cancel',
+            secondary: true,
+            onPressed: () => Navigator.pop(dialog),
           ),
         ],
       ),
@@ -883,7 +888,13 @@ class _AssignmentDetailScreenState
                       posts.hasValue &&
                       !posts.isLoading &&
                       !posts.hasError))
-              ? const Center(child: Text('This item is no longer available.'))
+              ? const Center(
+                  child: EmptyState(
+                    title: 'Item unavailable',
+                    body: 'Return to the previous screen and refresh to check for updates.',
+                    pose: 'waiting',
+                  ),
+                )
               : RefreshIndicator(
                   onRefresh: () async {
                     await _refresh();
@@ -910,8 +921,10 @@ class _AssignmentDetailScreenState
                         if (loading || sync.isLoading)
                           const Center(child: FiloCircularProgressIndicator())
                         else
-                          const Text(
-                            'No saved assignment on this device. Connect and refresh to load it.',
+                          const EmptyState(
+                            title: 'Assignment not saved',
+                            body: 'Connect and refresh to load this assignment on your device.',
+                            pose: 'waiting',
                           )
                       else ...[
                         FiloPanel(
@@ -950,12 +963,15 @@ class _AssignmentDetailScreenState
                             ),
                           ),
                         if (attachments.hasError)
-                          TextButton(
-                            onPressed: () => ref.invalidate(
-                              postAttachmentsProvider(widget.postId),
-                            ),
-                            child: const Text(
-                              'Could not load attachments. Retry',
+                          EmptyState(
+                            title: 'Attachments unavailable',
+                            body: 'Retry to load the files and links attached to this item.',
+                            showMascot: false,
+                            primaryAction: EmptyStateAction(
+                              label: 'Retry',
+                              onPressed: () => ref.invalidate(
+                                postAttachmentsProvider(widget.postId),
+                              ),
                             ),
                           ),
                         for (final a
@@ -1360,6 +1376,8 @@ class _AssignmentDetailScreenState
                                   child: FiloButton(
                                     label:
                                         'Unsubmit (${seconds ~/ 60}:${(seconds % 60).toString().padLeft(2, '0')})',
+                                    nudgeLabelChanges: true,
+                                    labelVariants: const ['Unsubmit (10:00)'],
                                     secondary: true,
                                     onPressed:
                                         online &&

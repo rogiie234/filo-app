@@ -3,6 +3,8 @@ package com.filo.filo
 import io.flutter.embedding.android.FlutterActivity
 import io.flutter.embedding.engine.FlutterEngine
 import io.flutter.plugin.common.MethodChannel
+import io.flutter.plugin.common.EventChannel
+import android.content.res.Configuration
 import android.Manifest
 import android.content.pm.PackageManager
 import android.content.pm.ActivityInfo
@@ -12,12 +14,39 @@ import android.provider.Settings
 import android.view.WindowManager
 
 class MainActivity : FlutterActivity() {
+    private var examProtected = false
+    private var examWindowEvents: EventChannel.EventSink? = null
+    private fun publishExamWindow() {
+        examWindowEvents?.success(mapOf(
+            "multi_window" to isInMultiWindowMode,
+            "overlay_supported" to (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S)
+        ))
+    }
+
+    override fun onMultiWindowModeChanged(isInMultiWindowMode: Boolean, newConfig: Configuration) {
+        super.onMultiWindowModeChanged(isInMultiWindowMode, newConfig)
+        publishExamWindow()
+    }
+
+    override fun onResume() {
+        super.onResume()
+        publishExamWindow()
+    }
+
     private var lessonImages: LessonImageReader? = null
     private var examOrientation: Int? = null
     private var pendingPermission: MethodChannel.Result? = null
 
     override fun configureFlutterEngine(flutterEngine: FlutterEngine) {
         super.configureFlutterEngine(flutterEngine)
+        EventChannel(flutterEngine.dartExecutor.binaryMessenger, "com.filo.filo/exam_window")
+            .setStreamHandler(object : EventChannel.StreamHandler {
+                override fun onListen(arguments: Any?, events: EventChannel.EventSink) {
+                    examWindowEvents = events
+                    publishExamWindow()
+                }
+                override fun onCancel(arguments: Any?) { examWindowEvents = null }
+            })
         val reader = LessonImageReader(applicationContext)
         lessonImages = reader
         MethodChannel(flutterEngine.dartExecutor.binaryMessenger, "com.filo.filo/lesson_image")
@@ -32,7 +61,10 @@ class MainActivity : FlutterActivity() {
                     result.notImplemented()
                 } else {
                     try {
-                        if (call.arguments == true) {
+                        val enabled = call.arguments == true
+                        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) window.setHideOverlayWindows(enabled)
+                        examProtected = enabled
+                        if (enabled) {
                             if (examOrientation == null) examOrientation = requestedOrientation
                             window.addFlags(WindowManager.LayoutParams.FLAG_SECURE or WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
                             requestedOrientation = ActivityInfo.SCREEN_ORIENTATION_PORTRAIT
@@ -41,6 +73,7 @@ class MainActivity : FlutterActivity() {
                             examOrientation?.let { requestedOrientation = it }
                             examOrientation = null
                         }
+                        publishExamWindow()
                         result.success(null)
                     } catch (error: Exception) {
                         result.error("EXAM_PROTECTION_FAILED", "Could not protect exam screen", null)
@@ -124,6 +157,8 @@ class MainActivity : FlutterActivity() {
     }
 
     override fun onDestroy() {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S && examProtected) runCatching { window.setHideOverlayWindows(false) }
+        examWindowEvents = null
         lessonImages?.close()
         pendingPermission?.success(false)
         pendingPermission = null

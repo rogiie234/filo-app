@@ -1,3 +1,5 @@
+import '../../../core/widgets/entry_background.dart';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
@@ -36,49 +38,64 @@ class ClassClassmatesScreen extends ConsumerWidget {
       }
     }
 
-    return Scaffold(
-      appBar: AppBar(title: const Text('Classmates')),
-      body: RefreshIndicator(
-        onRefresh: refresh,
-        child: ListView(
-          physics: const AlwaysScrollableScrollPhysics(),
-          padding: const EdgeInsets.all(FiloSpacing.screen),
-          children: classmates.when(
-            loading: () => [
-              const Center(child: FiloCircularProgressIndicator()),
-            ],
-            error: (_, _) => [
-              EmptyState(
-                title: online
-                    ? 'Could not load classmates. The class may no longer be available.'
-                    : 'Connect to the internet to view classmates.',
-                pose: online ? 'confused' : 'sleepy',
-                bob: false,
-                action: TextButton(
-                  onPressed: online ? refresh : null,
-                  child: const Text('Retry'),
+    return EntryBackground(
+      verification: true,
+      breeze: true,
+      variation: 2,
+      child: Scaffold(
+        backgroundColor: Colors.transparent,
+        appBar: AppBar(
+          backgroundColor: Colors.transparent,
+          surfaceTintColor: Colors.transparent,
+          elevation: 0,
+          scrolledUnderElevation: 0,
+          title: const Text('Classmates'),
+        ),
+        body: RefreshIndicator(
+          onRefresh: refresh,
+          child: ListView(
+            physics: const AlwaysScrollableScrollPhysics(),
+            padding: const EdgeInsets.all(FiloSpacing.screen),
+            children: classmates.when(
+              loading: () => [
+                const Center(child: FiloCircularProgressIndicator()),
+              ],
+              error: (_, _) => [
+                EmptyState(
+                  title: online
+                      ? 'Classmates unavailable'
+                      : 'Classmates not saved',
+                  body: online
+                      ? 'Could not load classmates. The class may no longer be available.'
+                      : 'Connect to the internet to view classmates.',
+                  pose: online ? 'confused' : 'sleepy',
+                  bob: false,
+                  action: TextButton(
+                    onPressed: online ? refresh : null,
+                    child: const Text('Retry'),
+                  ),
                 ),
-              ),
-            ],
-            data: (rows) => rows.isEmpty
-                ? [
-                    const EmptyState(
-                      title: 'No classmates yet',
-                      pose: 'waving',
-                      message: "Other students will appear here once they're approved to join.",
-                    ),
-                  ]
-                : [
-                    for (final row in rows)
-                      ListTile(
-                        leading: const CircleAvatar(
-                          child: FiloIcon(FiloIcons.person),
-                        ),
-                        title: Text(
-                          row['display_name'] as String? ?? 'Student',
-                        ),
+              ],
+              data: (rows) => rows.isEmpty
+                  ? [
+                      const EmptyState(
+                        title: 'No classmates yet',
+                        body: "Other students will appear here once they're approved to join.",
+                        pose: 'waving',
                       ),
-                  ],
+                    ]
+                  : [
+                      for (final row in rows)
+                        ListTile(
+                          leading: const CircleAvatar(
+                            child: FiloIcon(FiloIcons.person),
+                          ),
+                          title: Text(
+                            row['display_name'] as String? ?? 'Student',
+                          ),
+                        ),
+                    ],
+            ),
           ),
         ),
       ),

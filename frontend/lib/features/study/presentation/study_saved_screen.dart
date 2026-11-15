@@ -68,8 +68,15 @@ class StudySavedScreen extends ConsumerWidget {
               return Padding(
                 padding: const EdgeInsets.all(FiloSpacing.screen),
                 child: EmptyState(
+                  secondaryAction: Navigator.canPop(context)
+                      ? EmptyStateAction(
+                          label: 'Back to notebook',
+                          onPressed: () => Navigator.maybePop(context),
+                        )
+                      : null,
                   showMascot: _showMascot,
-                  title: 'This notebook is no longer available.',
+                  title: 'Notebook unavailable',
+                  body: 'Return to your notebooks to choose another one.',
                   pose: 'confused',
                   bob: false,
                 ),
@@ -102,7 +109,17 @@ class StudySavedScreen extends ConsumerWidget {
       return studyAsync(
         ref.watch(studySummaryProvider(notebookId)),
         (summary) => summary == null
-            ? const EmptyState(title: 'No summary saved yet.', pose: 'reading')
+            ? EmptyState(
+                secondaryAction: Navigator.canPop(context)
+                    ? EmptyStateAction(
+                        label: 'Back to notebook',
+                        onPressed: () => Navigator.maybePop(context),
+                      )
+                    : null,
+                title: 'No saved summary',
+                body: 'Generate a summary from this notebook sources.',
+                pose: 'reading',
+              )
             : SelectableText(summary.content),
         showMascot: _showMascot,
         retry: () => ref.invalidate(studySummaryProvider(notebookId)),
@@ -116,8 +133,15 @@ class StudySavedScreen extends ConsumerWidget {
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
               if (messages.isEmpty)
-                const EmptyState(
-                  title: 'No messages saved yet.',
+                EmptyState(
+                  secondaryAction: Navigator.canPop(context)
+                      ? EmptyStateAction(
+                          label: 'Back to notebook',
+                          onPressed: () => Navigator.maybePop(context),
+                        )
+                      : null,
+                  title: 'No saved messages',
+                  body: 'Send a message in this notebook to start a saved conversation.',
                   pose: 'reading',
                 ),
               for (final message in messages)
@@ -147,7 +171,17 @@ class StudySavedScreen extends ConsumerWidget {
           (cards) => Column(
             children: [
               if (cards.isEmpty)
-                const EmptyState(title: 'No cards saved yet.', pose: 'reading'),
+                EmptyState(
+                  secondaryAction: Navigator.canPop(context)
+                      ? EmptyStateAction(
+                          label: 'Back to notebook',
+                          onPressed: () => Navigator.maybePop(context),
+                        )
+                      : null,
+                  title: 'No saved cards',
+                  body: 'Generate flashcards in this notebook to save a deck.',
+                  pose: 'reading',
+                ),
               for (final card in cards)
                 Padding(
                   padding: const EdgeInsets.only(bottom: FiloSpacing.s12),
@@ -178,8 +212,15 @@ class StudySavedScreen extends ConsumerWidget {
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
               if (questions.isEmpty)
-                const EmptyState(
-                  title: 'No questions saved yet.',
+                EmptyState(
+                  secondaryAction: Navigator.canPop(context)
+                      ? EmptyStateAction(
+                          label: 'Back to notebook',
+                          onPressed: () => Navigator.maybePop(context),
+                        )
+                      : null,
+                  title: 'No saved questions',
+                  body: 'Generate a practice quiz in this notebook to save questions.',
                   showMascot: false,
                 ),
               for (final question in questions)
@@ -215,7 +256,18 @@ class StudySavedScreen extends ConsumerWidget {
                 (attempts) => Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    if (attempts.isEmpty) const Text('No attempts saved yet.'),
+                    if (attempts.isEmpty)
+                      EmptyState(
+                        secondaryAction: Navigator.canPop(context)
+                            ? EmptyStateAction(
+                                label: 'Back to notebook',
+                                onPressed: () => Navigator.maybePop(context),
+                              )
+                            : null,
+                        title: 'No saved attempts',
+                        body: 'Complete a practice quiz to save your attempt here.',
+                        pose: 'waiting',
+                      ),
                     for (final attempt in attempts)
                       ListTile(
                         title: Text('${attempt.score} / ${attempt.total}'),
@@ -252,7 +304,17 @@ class StudySavedScreen extends ConsumerWidget {
         (items) => Column(
           children: [
             if (items.isEmpty)
-              const EmptyState(title: 'No chats yet.', pose: 'reading'),
+              EmptyState(
+                secondaryAction: Navigator.canPop(context)
+                    ? EmptyStateAction(
+                        label: 'Back to notebook',
+                        onPressed: () => Navigator.maybePop(context),
+                      )
+                    : null,
+                title: 'No chats yet',
+                body: 'Start a chat in this notebook to see your conversation here.',
+                pose: 'reading',
+              ),
             for (final item in items)
               ListTile(
                 title: Text(item.title),
@@ -269,7 +331,17 @@ class StudySavedScreen extends ConsumerWidget {
         (items) => Column(
           children: [
             if (items.isEmpty)
-              const EmptyState(title: 'No decks saved yet.', pose: 'reading'),
+              EmptyState(
+                secondaryAction: Navigator.canPop(context)
+                    ? EmptyStateAction(
+                        label: 'Back to notebook',
+                        onPressed: () => Navigator.maybePop(context),
+                      )
+                    : null,
+                title: 'No saved decks',
+                body: 'Generate flashcards in this notebook to save a deck.',
+                pose: 'reading',
+              ),
             for (final item in items)
               ListTile(
                 title: Text(item.title),
@@ -286,8 +358,15 @@ class StudySavedScreen extends ConsumerWidget {
         (items) => Column(
           children: [
             if (items.isEmpty)
-              const EmptyState(
-                title: 'No practice quizzes saved yet.',
+              EmptyState(
+                secondaryAction: Navigator.canPop(context)
+                    ? EmptyStateAction(
+                        label: 'Back to notebook',
+                        onPressed: () => Navigator.maybePop(context),
+                      )
+                    : null,
+                title: 'No practice quizzes yet',
+                body: 'Generate a quiz from your sources or a topic to start practicing.',
                 pose: 'reading',
               ),
             for (final item in items)

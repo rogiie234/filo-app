@@ -5,6 +5,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../core/ai/ai_request_providers.dart';
 import '../../../core/connectivity/connectivity_provider.dart';
 import '../../../core/widgets/filo_widgets.dart';
+import '../../../core/widgets/entry_background.dart';
 import '../../../data/local/database_providers.dart';
 import '../application/student_ai_providers.dart';
 import '../application/study_flashcard_sessions.dart';
@@ -20,148 +21,194 @@ import 'study_widgets.dart';
 class StudyDecksScreen extends StatelessWidget {
   const StudyDecksScreen({super.key, required this.notebookId});
   final String notebookId;
+  void _generate(BuildContext context) => Navigator.push(
+    context,
+    MaterialPageRoute<void>(
+      builder: (_) => StudyDeckGenerateScreen(notebookId: notebookId),
+    ),
+  );
   @override
   Widget build(BuildContext context) => StudyDeckScope(
     notebookId: notebookId,
     builder: (repo) => Consumer(
-      builder: (context, ref, _) => Scaffold(
-        appBar: AppBar(title: const Text('Flashcards')),
-        body: SafeArea(
-          child: ListView(
-            padding: const EdgeInsets.all(FiloSpacing.screen),
-            children: [
-              const StudyOfflineBanner(),
-              studyAsync(
-                ref.watch(studyDecksProvider(notebookId)),
-                (decks) => Column(
-                  crossAxisAlignment: CrossAxisAlignment.stretch,
-                  children: [
-                    FiloButton(
-                      label: 'Generate flashcards',
-                      icon: FiloIcons.sparkle,
-                      onPressed: decks.length >= 10
-                          ? null
-                          : () => Navigator.push(
-                              context,
-                              MaterialPageRoute<void>(
-                                builder: (_) => StudyDeckGenerateScreen(
-                                  notebookId: notebookId,
-                                ),
-                              ),
-                            ),
-                    ),
-                    if (decks.length >= 10)
-                      const Padding(
-                        padding: EdgeInsets.only(top: FiloSpacing.s12),
-                        child: Text(studyDeckLimitMessage),
+      builder: (context, ref, _) => EntryBackground(
+        variation: 4,
+        child: Scaffold(
+          backgroundColor: Colors.transparent,
+          appBar: AppBar(
+            backgroundColor: Colors.transparent,
+            surfaceTintColor: Colors.transparent,
+            elevation: 0,
+            scrolledUnderElevation: 0,
+            title: const Text('Flashcards'),
+          ),
+          body: SafeArea(
+            child: ListView(
+              padding: const EdgeInsets.all(FiloSpacing.screen),
+              children: [
+                const StudyOfflineBanner(),
+                studyAsync(
+                  ref.watch(studyDecksProvider(notebookId)),
+                  (decks) => Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      if (decks.isNotEmpty)
+                        FiloButton(
+                          label: 'Generate flashcards',
+                          icon: FiloIcons.sparkle,
+                          onPressed: decks.length >= 10
+                              ? null
+                              : () => _generate(context),
+                        ),
+                      if (decks.length >= 10)
+                        const Padding(
+                          padding: EdgeInsets.only(top: FiloSpacing.s12),
+                          child: Text(studyDeckLimitMessage),
+                        ),
+                      const SizedBox(height: FiloSpacing.screen),
+                      Semantics(
+                        header: true,
+                        child: Text(
+                          'Saved decks',
+                          style: Theme.of(context).textTheme.titleLarge,
+                        ),
                       ),
-                    const SizedBox(height: FiloSpacing.screen),
-                    if (decks.isEmpty)
-                      const EmptyState(
-                        title: 'Generate flashcards to review the main ideas.',
-                        pose: 'reading',
-                      ),
-                    for (final deck in decks)
-                      Padding(
-                        padding: const EdgeInsets.only(bottom: FiloSpacing.s12),
-                        child: FiloPanel(
-                          padding: EdgeInsets.zero,
-                          child: ListTile(
-                            contentPadding: const EdgeInsets.symmetric(
-                              horizontal: FiloSpacing.s16,
-                              vertical: FiloSpacing.s8,
-                            ),
-                            title: Text(deck.title),
-                            subtitle: studyAsync(
-                              ref.watch(studyCardsProvider(deck.id)),
-                              (cards) => Text(
-                                '${studyCount(cards.length, 'card')} · ${cards.where((c) => c.status == 'known').length} known',
+                      const SizedBox(height: FiloSpacing.s12),
+                      if (decks.isEmpty)
+                        EmptyState(
+                          primaryAction: EmptyStateAction(
+                            label: 'Generate flashcards',
+                            onPressed: () => _generate(context),
+                          ),
+                          title: 'No flashcards yet',
+                          body: 'Generate a deck from your sources or a topic to review the main ideas.',
+                          pose: 'reading',
+                        ),
+                      for (final deck in decks)
+                        Padding(
+                          padding: const EdgeInsets.only(
+                            bottom: FiloSpacing.s12,
+                          ),
+                          child: FiloPanel(
+                            padding: EdgeInsets.zero,
+                            child: ListTile(
+                              contentPadding: const EdgeInsets.symmetric(
+                                horizontal: FiloSpacing.s16,
+                                vertical: FiloSpacing.s8,
                               ),
-                              retry: () =>
-                                  ref.invalidate(studyCardsProvider(deck.id)),
-                            ),
-                            onTap: () => Navigator.push(
-                              context,
-                              MaterialPageRoute<void>(
-                                builder: (_) => StudyFlashcardStudyScreen(
-                                  notebookId: notebookId,
-                                  deckId: deck.id,
+                              leading: Container(
+                                padding: const EdgeInsets.all(FiloSpacing.s12),
+                                decoration: BoxDecoration(
+                                  color: Theme.of(context)
+                                      .colorScheme
+                                      .primaryContainer,
+                                  borderRadius: BorderRadius.circular(
+                                    FiloRadii.medium,
+                                  ),
+                                ),
+                                child: Icon(
+                                  Icons.style_outlined,
+                                  color: Theme.of(context)
+                                      .colorScheme
+                                      .onPrimaryContainer,
                                 ),
                               ),
-                            ),
-                            trailing: PopupMenuButton<String>(
-                              tooltip: 'Deck options for ${deck.title}',
-                              itemBuilder: (_) => const [
-                                PopupMenuItem(
-                                  value: 'rename',
-                                  child: Text('Rename deck'),
+                              title: Text(
+                                deck.title,
+                                style: Theme.of(context).textTheme.titleMedium,
+                              ),
+                              subtitle: studyAsync(
+                                ref.watch(studyCardsProvider(deck.id)),
+                                (cards) => Text(
+                                  '${studyCount(cards.length, 'card')} · ${cards.where((c) => c.status == 'known').length} known',
                                 ),
-                                PopupMenuItem(
-                                  value: 'delete',
-                                  child: Text('Delete deck'),
+                                retry: () =>
+                                    ref.invalidate(studyCardsProvider(deck.id)),
+                              ),
+                              onTap: () => Navigator.push(
+                                context,
+                                MaterialPageRoute<void>(
+                                  builder: (_) => StudyFlashcardStudyScreen(
+                                    notebookId: notebookId,
+                                    deckId: deck.id,
+                                  ),
                                 ),
-                              ],
-                              onSelected: (action) async {
-                                try {
-                                  if (action == 'rename') {
-                                    final title = await showStudyDeckName(
-                                      context,
-                                      deck.title,
-                                    );
-                                    if (title == null ||
-                                        !context.mounted ||
-                                        ref
-                                                .read(accountDatabaseProvider)
-                                                .asData
-                                                ?.value !=
-                                            repo.db) {
-                                      return;
+                              ),
+                              trailing: PopupMenuButton<String>(
+                                tooltip: 'Deck options for ${deck.title}',
+                                itemBuilder: (_) => const [
+                                  PopupMenuItem(
+                                    value: 'rename',
+                                    child: Text('Rename deck'),
+                                  ),
+                                  PopupMenuItem(
+                                    value: 'delete',
+                                    child: Text('Delete deck'),
+                                  ),
+                                ],
+                                onSelected: (action) async {
+                                  try {
+                                    if (action == 'rename') {
+                                      final title = await showStudyDeckName(
+                                        context,
+                                        deck.title,
+                                      );
+                                      if (title == null ||
+                                          !context.mounted ||
+                                          ref
+                                                  .read(accountDatabaseProvider)
+                                                  .asData
+                                                  ?.value !=
+                                              repo.db) {
+                                        return;
+                                      }
+                                      if (await repo.rename(deck.id, title) !=
+                                          1) {
+                                        throw StateError('Deck unavailable');
+                                      }
+                                    } else {
+                                      final confirmed =
+                                          await showFiloConfirmation(
+                                            context,
+                                            title: 'Delete this deck?',
+                                            message: 'This deck and its cards will be deleted from this device.',
+                                            confirmLabel: 'Delete deck',
+                                            cancelLabel: 'Cancel',
+                                            confirmDestructive: true,
+                                            icon: FiloIcons.delete,
+                                          );
+                                      if (confirmed &&
+                                          context.mounted &&
+                                          ref
+                                                  .read(accountDatabaseProvider)
+                                                  .asData
+                                                  ?.value ==
+                                              repo.db) {
+                                        await repo.delete(deck.id);
+                                      }
                                     }
-                                    if (await repo.rename(deck.id, title) !=
-                                        1) {
-                                      throw StateError('Deck unavailable');
-                                    }
-                                  } else {
-                                    final confirmed =
-                                        await showFiloConfirmation(
-                                          context,
-                                          title: 'Delete this deck?',
-                                          message: 'This deck and its cards will be deleted from this device.',
-                                          confirmLabel: 'Delete deck',
-                                          cancelLabel: 'Cancel',
-                                          icon: FiloIcons.delete,
-                                        );
-                                    if (confirmed &&
-                                        context.mounted &&
-                                        ref
-                                                .read(accountDatabaseProvider)
-                                                .asData
-                                                ?.value ==
-                                            repo.db) {
-                                      await repo.delete(deck.id);
+                                  } catch (_) {
+                                    if (context.mounted) {
+                                      showMessage(
+                                        context,
+                                        action == 'rename'
+                                            ? 'Could not rename this deck. Try again.'
+                                            : 'Could not delete this deck. Try again.',
+                                      );
                                     }
                                   }
-                                } catch (_) {
-                                  if (context.mounted) {
-                                    showMessage(
-                                      context,
-                                      action == 'rename'
-                                          ? 'Could not rename this deck. Try again.'
-                                          : 'Could not delete this deck. Try again.',
-                                    );
-                                  }
-                                }
-                              },
+                                },
+                              ),
                             ),
                           ),
                         ),
-                      ),
-                  ],
+                    ],
+                  ),
+                  retry: () => ref.invalidate(studyDecksProvider(notebookId)),
+                  showMascot: true,
                 ),
-                retry: () => ref.invalidate(studyDecksProvider(notebookId)),
-                showMascot: true,
-              ),
-            ],
+              ],
+            ),
           ),
         ),
       ),
@@ -335,143 +382,167 @@ class _DeckGenerateBodyState extends ConsumerState<_DeckGenerateBody> {
           });
         }
       },
-      child: Scaffold(
-        appBar: AppBar(title: const Text('Generate flashcards')),
-        body: SafeArea(
-          child: ListView(
-            padding: const EdgeInsets.all(FiloSpacing.screen),
-            children: [
-              const StudyOfflineBanner(),
-              if (result == null) ...[
-                const Text('How many cards?'),
-                const SizedBox(height: FiloSpacing.s8),
-                DropdownButtonFormField<int>(
-                  initialValue: _count,
-                  decoration: const InputDecoration(
-                    labelText: 'Number of cards',
-                  ),
-                  items: [
-                    for (var i = 5; i <= 30; i++)
-                      DropdownMenuItem(value: i, child: Text('$i')),
-                  ],
-                  onChanged: _session.working || _authorizing
-                      ? null
-                      : (value) => setState(() => _count = value!),
-                ),
-                const SizedBox(height: FiloSpacing.s16),
-                TextField(
-                  controller: _topic,
-                  enabled: !_session.working && !_authorizing,
-                  decoration: const InputDecoration(
-                    labelText: 'Topic (optional with sources)',
-                  ),
-                  inputFormatters: [
-                    TextInputFormatter.withFunction(
-                      (old, next) => next.text.runes.length <= 200 ? next : old,
+      child: EntryBackground(
+        variation: 4,
+        child: Scaffold(
+          backgroundColor: Colors.transparent,
+          appBar: AppBar(
+            backgroundColor: Colors.transparent,
+            surfaceTintColor: Colors.transparent,
+            elevation: 0,
+            scrolledUnderElevation: 0,
+            title: const Text('Generate flashcards'),
+          ),
+          body: SafeArea(
+            child: ListView(
+              padding: const EdgeInsets.all(FiloSpacing.screen),
+              children: [
+                const StudyOfflineBanner(),
+                if (result == null)
+                  FiloPanel(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: [
+                        Text(
+                          'How many cards?',
+                          style: Theme.of(context).textTheme.titleMedium,
+                        ),
+                        const SizedBox(height: FiloSpacing.s8),
+                        DropdownButtonFormField<int>(
+                          initialValue: _count,
+                          decoration: const InputDecoration(
+                            labelText: 'Number of cards',
+                          ),
+                          items: [
+                            for (var i = 5; i <= 30; i++)
+                              DropdownMenuItem(value: i, child: Text('$i')),
+                          ],
+                          onChanged: _session.working || _authorizing
+                              ? null
+                              : (value) => setState(() => _count = value!),
+                        ),
+                        const SizedBox(height: FiloSpacing.s16),
+                        TextField(
+                          controller: _topic,
+                          enabled: !_session.working && !_authorizing,
+                          decoration: const InputDecoration(
+                            labelText: 'Topic (optional with sources)',
+                          ),
+                          inputFormatters: [
+                            TextInputFormatter.withFunction(
+                              (old, next) =>
+                                  next.text.runes.length <= 200 ? next : old,
+                            ),
+                          ],
+                          onChanged: (_) => setState(() {}),
+                        ),
+                        Text('${_topic.text.runes.length}/200 characters'),
+                        const SizedBox(height: FiloSpacing.screen),
+                      ],
                     ),
-                  ],
-                  onChanged: (_) => setState(() {}),
-                ),
-                Text('${_topic.text.runes.length}/200 characters'),
-                const SizedBox(height: FiloSpacing.screen),
-              ],
-              if (_session.working) ...[
-                if (!_session.saving) const Mascot(pose: 'thinking', size: 120),
-                Semantics(
-                  liveRegion: true,
-                  child: Text(
-                    _session.saving
-                        ? 'Saving deck...'
-                        : 'Preparing your flashcards...',
                   ),
-                ),
-                if (!MediaQuery.disableAnimationsOf(context))
-                  const Padding(
-                    padding: EdgeInsets.all(FiloSpacing.s16),
-                    child: Center(
-                      child: FiloCircularProgressIndicator(
-                        semanticsLabel: 'Preparing flashcards',
-                      ),
+                const SizedBox(height: FiloSpacing.s16),
+                if (_session.working) ...[
+                  if (!_session.saving)
+                    const Mascot(pose: 'thinking', size: 120),
+                  Semantics(
+                    liveRegion: true,
+                    child: Text(
+                      _session.saving
+                          ? 'Saving deck...'
+                          : 'Preparing your flashcards...',
                     ),
                   ),
-                if (!_session.saving)
-                  FiloButton(label: 'Cancel', onPressed: _session.cancel),
-                const Text(
-                  'Cancel stops waiting on this phone. The server may still finish.',
-                ),
-              ] else if (result == null)
-                FiloButton(
-                  label: 'Generate',
-                  icon: FiloIcons.sparkle,
-                  onPressed: reason == null && !_authorizing ? _generate : null,
-                ),
-              if (reason != null && result == null)
-                Padding(
-                  padding: const EdgeInsets.only(top: FiloSpacing.s12),
-                  child: Text(reason),
-                ),
-              if (sources.hasError || decks.hasError)
-                TextButton(
-                  onPressed: () {
-                    ref.invalidate(studySourcesProvider(widget.notebookId));
-                    ref.invalidate(studyDecksProvider(widget.notebookId));
-                  },
-                  child: const Text('Retry loading notebook'),
-                ),
-              if (result != null) ...[
-                const SizedBox(height: FiloSpacing.s16),
-                Text(
-                  _session.savedId == null
-                      ? 'Deck not confirmed saved'
-                      : 'Deck saved.',
-                ),
-                Text(
-                  '${studyCount(result.value.items.length, 'card')} prepared.',
-                ),
-                if (result.value.dropped > 0)
-                  Text(
-                    '${result.value.dropped} invalid ${result.value.dropped == 1 ? 'card was' : 'cards were'} dropped.',
-                  ),
-                if (result.value.missing > 0)
-                  Text(
-                    '${result.value.missing} requested ${result.value.missing == 1 ? 'card was' : 'cards were'} not returned.',
-                  ),
-                for (final usage in result.sources.usage)
-                  if (usage.truncated)
-                    Text(
-                      'Only the first ${usage.retainedCharacters} characters of ${usage.name} were used.',
-                    ),
-                const SizedBox(height: FiloSpacing.s16),
-                if (_session.hasUnsaved && !_session.working)
-                  FiloButton(
-                    label: 'Try saving again',
-                    onPressed: _session.retrySave,
-                  ),
-                if (_session.savedId != null)
-                  FiloButton(
-                    label: 'Study deck',
-                    onPressed: () => Navigator.pushReplacement(
-                      context,
-                      MaterialPageRoute<void>(
-                        builder: (_) => StudyFlashcardStudyScreen(
-                          notebookId: widget.notebookId,
-                          deckId: _session.savedId!,
+                  if (!MediaQuery.disableAnimationsOf(context))
+                    const Padding(
+                      padding: EdgeInsets.all(FiloSpacing.s16),
+                      child: Center(
+                        child: FiloCircularProgressIndicator(
+                          semanticsLabel: 'Preparing flashcards',
                         ),
                       ),
                     ),
+                  if (!_session.saving)
+                    FiloButton(label: 'Cancel', onPressed: _session.cancel),
+                  const Text(
+                    'Cancel stops waiting on this phone. The server may still finish.',
                   ),
+                ] else if (result == null)
+                  FiloButton(
+                    label: 'Generate',
+                    icon: FiloIcons.sparkle,
+                    onPressed: reason == null && !_authorizing
+                        ? _generate
+                        : null,
+                  ),
+                if (reason != null && result == null)
+                  Padding(
+                    padding: const EdgeInsets.only(top: FiloSpacing.s12),
+                    child: Text(reason),
+                  ),
+                if (sources.hasError || decks.hasError)
+                  TextButton(
+                    onPressed: () {
+                      ref.invalidate(studySourcesProvider(widget.notebookId));
+                      ref.invalidate(studyDecksProvider(widget.notebookId));
+                    },
+                    child: const Text('Retry loading notebook'),
+                  ),
+                if (result != null) ...[
+                  const SizedBox(height: FiloSpacing.s16),
+                  Text(
+                    _session.savedId == null
+                        ? 'Deck not confirmed saved'
+                        : 'Deck saved.',
+                  ),
+                  Text(
+                    '${studyCount(result.value.items.length, 'card')} prepared.',
+                  ),
+                  if (result.value.dropped > 0)
+                    Text(
+                      '${result.value.dropped} invalid ${result.value.dropped == 1 ? 'card was' : 'cards were'} dropped.',
+                    ),
+                  if (result.value.missing > 0)
+                    Text(
+                      '${result.value.missing} requested ${result.value.missing == 1 ? 'card was' : 'cards were'} not returned.',
+                    ),
+                  for (final usage in result.sources.usage)
+                    if (usage.truncated)
+                      Text(
+                        'Only the first ${usage.retainedCharacters} characters of ${usage.name} were used.',
+                      ),
+                  const SizedBox(height: FiloSpacing.s16),
+                  if (_session.hasUnsaved && !_session.working)
+                    FiloButton(
+                      label: 'Try saving again',
+                      onPressed: _session.retrySave,
+                    ),
+                  if (_session.savedId != null)
+                    FiloButton(
+                      label: 'Study deck',
+                      onPressed: () => Navigator.pushReplacement(
+                        context,
+                        MaterialPageRoute<void>(
+                          builder: (_) => StudyFlashcardStudyScreen(
+                            notebookId: widget.notebookId,
+                            deckId: _session.savedId!,
+                          ),
+                        ),
+                      ),
+                    ),
+                ],
+                if (_session.error != null)
+                  Padding(
+                    padding: const EdgeInsets.only(top: FiloSpacing.s16),
+                    child: Semantics(
+                      liveRegion: true,
+                      child: Text(_session.error!),
+                    ),
+                  ),
+                const SizedBox(height: FiloSpacing.s16),
+                const Text('AI can make mistakes. Check important answers.'),
               ],
-              if (_session.error != null)
-                Padding(
-                  padding: const EdgeInsets.only(top: FiloSpacing.s16),
-                  child: Semantics(
-                    liveRegion: true,
-                    child: Text(_session.error!),
-                  ),
-                ),
-              const SizedBox(height: FiloSpacing.s16),
-              const Text('AI can make mistakes. Check important answers.'),
-            ],
+            ),
           ),
         ),
       ),

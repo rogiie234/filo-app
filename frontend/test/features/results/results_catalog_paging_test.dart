@@ -37,11 +37,12 @@ void main() {
         'key',
         httpClient: MockClient((request) async {
           final table = request.url.pathSegments.last;
-          if (table == 'classes')
+          if (table == 'classes') {
             return response(request, {
               'owner_id': 'teacher',
               'deleted_at': null,
             });
+          }
           final params = request.url.queryParameters;
           expect(params['order'], 'id.asc.nullslast');
           expect(params['offset'], isNull);
@@ -116,11 +117,12 @@ void main() {
                   .toList(),
             );
           }
-          if (fail && after != null)
+          if (fail && after != null) {
             return response(request, {
               'code': '503',
               'message': 'fixture unavailable',
             }, 503);
+          }
           final ids = params['class_id']!;
           return response(
             request,

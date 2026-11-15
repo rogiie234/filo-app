@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 
 import 'package:drift/native.dart';
@@ -24,9 +25,10 @@ class SaveRepository extends InstructorQuizRepository {
 void main() {
   for (final generated in [false, true]) {
     for (final editing in [false, true]) {
-      for (final failing in [false, true]) {
+      for (final failure in ['none', 'refused', 'timeout']) {
+        final failing = failure != 'none';
         test(
-          'save AI=$generated; editing=$editing; failure=$failing',
+          'save AI=$generated; editing=$editing; failure=$failure',
           () async {
             final db = AppDatabase(NativeDatabase.memory());
             addTearDown(db.close);
@@ -63,6 +65,8 @@ void main() {
                     'deleted_at': null,
                   };
                 } else if (name == 'save_question') {
+                  if (failure == 'timeout')
+                    throw TimeoutException('Lost save receipt');
                   if (failing) {
                     return http.Response(
                       jsonEncode({'code': '22023', 'message': 'Save rejected'}),

@@ -169,6 +169,11 @@ void main() {
         persisted.content,
       );
       expect(find.text('17 source characters used.'), findsOneWidget);
+      await tester.scrollUntilVisible(
+        find.text(studyAiMessages['OFFLINE']!),
+        160,
+        scrollable: find.byType(Scrollable).first,
+      );
       expect(find.text(studyAiMessages['OFFLINE']!), findsOneWidget);
       expect(
         tester.widget<FiloButton>(button('Summarize again')).onPressed,

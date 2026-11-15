@@ -28,16 +28,19 @@ class DownloadState {
 }
 
 class DownloadManager extends ChangeNotifier {
-  DownloadManager(this.files, this.client, this.isCurrent);
+  DownloadManager(this.files, this.client, this.isCurrent, {Dio? dio})
+    : _dio =
+          dio ??
+          Dio(
+            BaseOptions(
+              connectTimeout: const Duration(seconds: 20),
+              receiveTimeout: const Duration(seconds: 40),
+            ),
+          );
   final FilesRepository files;
   final SupabaseClient client;
   final bool Function() isCurrent;
-  final Dio _dio = Dio(
-    BaseOptions(
-      connectTimeout: const Duration(seconds: 20),
-      receiveTimeout: const Duration(seconds: 40),
-    ),
-  );
+  final Dio _dio;
   final states = <String, DownloadState>{};
   final _tokens = <String, CancelToken>{};
   final _pending = <String, Future<LocalFileRecord?>>{};
@@ -83,11 +86,9 @@ class DownloadManager extends ChangeNotifier {
   ) {
     return _pending.putIfAbsent(
       attachment.id,
-      () => _download(
-        attachment,
-        classId,
-        postId,
-      ).whenComplete(() => _pending.remove(attachment.id)),
+      () => _download(attachment, classId, postId).whenComplete(() {
+        _pending.remove(attachment.id);
+      }),
     );
   }
 

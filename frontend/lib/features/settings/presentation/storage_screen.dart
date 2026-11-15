@@ -139,7 +139,8 @@ class _StorageScreenState extends ConsumerState<StorageScreen> {
               error: (error, _) => Semantics(
                 liveRegion: true,
                 child: EmptyState(
-                  title: error is FileProblem && error.kind == 'cache-clear'
+                  title: 'Storage unavailable',
+                  body: error is FileProblem && error.kind == 'cache-clear'
                       ? error.message
                       : "Couldn't read storage usage. Try again.",
                   pose: 'confused',

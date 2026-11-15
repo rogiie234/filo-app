@@ -188,21 +188,6 @@ class TodoTaskCard extends StatelessWidget {
   }
 }
 
-class TodoEmptyState extends StatelessWidget {
-  const TodoEmptyState({
-    super.key,
-    required this.title,
-    required this.message,
-    this.mascotPose = 'clock',
-    this.bob = true,
-  });
-  final String title, message, mascotPose;
-  final bool bob;
-  @override
-  Widget build(BuildContext context) =>
-      EmptyState(title: title, message: message, pose: mascotPose, bob: bob);
-}
-
 /// Static placeholders avoid suggesting progress or animating a long list.
 class TodoTaskSkeleton extends StatelessWidget {
   const TodoTaskSkeleton({super.key});

@@ -75,16 +75,14 @@ class ResultsListBody extends StatelessWidget {
         if (error != null)
           Padding(
             padding: const EdgeInsets.only(bottom: FiloSpacing.s16),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Semantics(liveRegion: true, child: Text(error!)),
-                TextButton.icon(
-                  onPressed: onRefresh,
-                  icon: const Icon(Icons.refresh),
-                  label: const Text('Retry'),
-                ),
-              ],
+            child: EmptyState(
+              title: 'Results unavailable',
+              body: error!,
+              showMascot: false,
+              primaryAction: EmptyStateAction(
+                label: 'Retry',
+                onPressed: offline ? null : onRefresh,
+              ),
             ),
           ),
         ...children,

@@ -19,6 +19,7 @@ import '../../features/results/data/results_failure.dart';
 import '../../features/results/data/student_results_repository.dart';
 import 'outbox_processor.dart';
 import 'sqlite_outbox.dart';
+import '../../features/exams/data/exam_store.dart';
 import '../notifications/deadline_reminders.dart';
 import '../../features/notifications/data/notification_settings_repository.dart';
 
@@ -154,18 +155,24 @@ class SyncCoordinator extends ChangeNotifier {
             .from('notifications')
             .update({'read_at': action.payload['read_at']})
             .eq('id', action.payload['notification_id'] as String)
-            .eq('recipient_id', userId);
+            .eq('recipient_id', userId)
+            .timeout(const Duration(seconds: 20));
       case 'leave_event':
         if (canSendLeaveEvents?.call() == false) throw const DeferredAction();
+        final integrity = await ExamStore(db)
+            .integrity(action.payload['session_id'] as String);
+        if (integrity.atLimit && !integrity.ready) throw const DeferredAction();
         try {
-          await client.rpc(
-            'log_leave',
-            params: {
-              'p_event': action.id,
-              'p_session': action.payload['session_id'],
-              'p_left_at': action.payload['left_at'],
-            },
-          );
+          await client
+              .rpc(
+                'log_leave',
+                params: {
+                  'p_event': action.id,
+                  'p_session': action.payload['session_id'],
+                  'p_left_at': action.payload['left_at'],
+                },
+              )
+              .timeout(const Duration(seconds: 20));
         } catch (error) {
           throw OutboxActionFailure(examFailure(error).message);
         }
@@ -228,7 +235,9 @@ class SyncCoordinator extends ChangeNotifier {
         return;
       }
       try {
-        await client.rpc('finalize_accessible_exams');
+        await client
+            .rpc('finalize_accessible_exams')
+            .timeout(const Duration(seconds: 20));
         errors.remove('exam_expiry');
       } catch (_) {
         errors['exam_expiry'] =

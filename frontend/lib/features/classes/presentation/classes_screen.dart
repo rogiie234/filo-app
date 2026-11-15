@@ -21,7 +21,6 @@ import '../../files/application/files_providers.dart';
 import '../../study/presentation/study_home_screen.dart';
 import '../../../core/sync/sync_providers.dart';
 import 'classes_widgets.dart';
-import 'classes_empty_state.dart';
 import '../../../core/widgets/entry_background.dart';
 import 'create_class_screen.dart';
 import 'recently_deleted_screen.dart';
@@ -40,10 +39,17 @@ class _ClassesScreenState extends ConsumerState<ClassesScreen> {
   int _destination = 0;
   bool _hasShownClasses = false;
   bool _libraryBusy = false;
+  bool _libraryHasContent = false;
   final _libraryKey = GlobalKey<MyFilesScreenState>();
 
   void _onLibraryBusyChanged(bool busy) {
     if (mounted && _destination == 2) setState(() => _libraryBusy = busy);
+  }
+
+  void _onLibraryAddVisibilityChanged(bool visible) {
+    if (mounted && _destination == 2 && _libraryHasContent != visible) {
+      setState(() => _libraryHasContent = visible);
+    }
   }
 
   @override
@@ -52,6 +58,7 @@ class _ClassesScreenState extends ConsumerState<ClassesScreen> {
     if (oldWidget.profile?.id != widget.profile?.id) {
       _hasShownClasses = false;
       _libraryBusy = false;
+      _libraryHasContent = false;
       _destination = 0;
     }
   }
@@ -121,11 +128,8 @@ class _ClassesScreenState extends ConsumerState<ClassesScreen> {
         verification: true,
         breeze: true,
         variation: 0,
-        enabled: !student || _destination != 3,
         child: Scaffold(
-          backgroundColor: student && _destination == 3
-              ? Theme.of(context).scaffoldBackgroundColor
-              : Colors.transparent,
+          backgroundColor: Colors.transparent,
           appBar: AppBar(
             backgroundColor: Colors.transparent,
             surfaceTintColor: Colors.transparent,
@@ -181,12 +185,13 @@ class _ClassesScreenState extends ConsumerState<ClassesScreen> {
             ],
           ),
           body: live && student && _destination == 3
-              ? const StudyHomeScreen()
+              ? const StudyHomeScreen(embedded: true)
               : live && _destination == 2
               ? MyFilesScreen(
                   key: _libraryKey,
                   embedded: true,
                   onBusyChanged: _onLibraryBusyChanged,
+                  onAddActionVisibilityChanged: _onLibraryAddVisibilityChanged,
                 )
               : live && _destination == 1
               ? WorkQueueScreen(student: student, embedded: true)
@@ -199,7 +204,7 @@ class _ClassesScreenState extends ConsumerState<ClassesScreen> {
                       FiloSpacing.screen,
                       FiloSpacing.s16,
                       FiloSpacing.screen,
-                      24,
+                      112,
                     ),
                     children: [
                       if (live && !online) ...const [
@@ -208,7 +213,8 @@ class _ClassesScreenState extends ConsumerState<ClassesScreen> {
                       ],
                       if (live && sync.hasError)
                         EmptyState(
-                          title: 'Could not refresh your classes. Showing saved content.',
+                          title: 'Classes could not refresh',
+                          body: 'Showing saved classes when available; reconnect and retry.',
                           pose: 'confused',
                           showMascot: (cards.asData?.value.isEmpty ?? true),
                           bob: false,
@@ -224,7 +230,8 @@ class _ClassesScreenState extends ConsumerState<ClassesScreen> {
 
                       if (cards.hasError)
                         const EmptyState(
-                          title: 'Could not read saved classes. Try reopening the app.',
+                          title: 'Saved classes unavailable',
+                          body: 'Reopen the app to retry reading your saved classes.',
                           pose: 'confused',
                           bob: false,
                         ),
@@ -269,6 +276,9 @@ class _ClassesScreenState extends ConsumerState<ClassesScreen> {
                       const SizedBox(height: FiloSpacing.screen),
                       TextField(
                         controller: _search,
+                        enabled:
+                            (savedRooms?.isNotEmpty ?? false) ||
+                            _query.isNotEmpty,
                         textInputAction: TextInputAction.search,
                         onSubmitted: (_) => FocusScope.of(context).unfocus(),
                         decoration: InputDecoration(
@@ -311,9 +321,7 @@ class _ClassesScreenState extends ConsumerState<ClassesScreen> {
                           !loading &&
                           !cards.hasError &&
                           !sync.hasError)
-                        ClassesEmptyState(
-                          illustrated:
-                              !student && online && _query.trim().isEmpty,
+                        EmptyState(
                           pose: _query.trim().isNotEmpty
                               ? 'curious'
                               : !online
@@ -325,8 +333,29 @@ class _ClassesScreenState extends ConsumerState<ClassesScreen> {
                               : !online
                               ? 'No saved classes found.'
                               : 'No classes yet.',
+                          primaryAction: EmptyStateAction(
+                            label: _query.trim().isNotEmpty
+                                ? 'Clear search'
+                                : !online
+                                ? 'Refresh'
+                                : student
+                                ? 'Join class'
+                                : 'Create class',
+                            onPressed: _query.trim().isNotEmpty
+                                ? () => setState(() {
+                                    _search.clear();
+                                    _query = '';
+                                  })
+                                : !online
+                                ? null
+                                : student
+                                ? _join
+                                : live
+                                ? _create
+                                : () => context.push('/classes/it119'),
+                          ),
                           message: _query.trim().isNotEmpty
-                              ? 'Try another course, section, or instructor.'
+                              ? 'No matches for "${_search.text.trim()}"; check the spelling or clear your search.'
                               : !online
                               ? 'Connect to the internet to refresh your classes.'
                               : student
@@ -379,86 +408,79 @@ class _ClassesScreenState extends ConsumerState<ClassesScreen> {
                     ],
                   ),
                 ),
-          bottomNavigationBar: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              if (_destination == 0 || library)
-                SafeArea(
-                  top: false,
-                  bottom: false,
-                  child: Padding(
-                    padding: const EdgeInsets.fromLTRB(24, 8, 24, 12),
-                    child: Align(
-                      alignment: Alignment.centerRight,
-                      child: SizedBox(
-                        width: 72,
-                        child: FiloButton(
-                          label: library
-                              ? 'Add files'
-                              : student
-                              ? 'Join class'
-                              : 'Create class',
-                          icon: FiloIcons.add,
-                          iconOnly: true,
-                          minHeight: 72,
-                          busy: library && _libraryBusy,
-                          onPressed: library
-                              ? fileRepository?.asData?.value == null ||
-                                        _libraryBusy
-                                    ? null
-                                    : () => _libraryKey.currentState?.addFiles()
-                              : !online
-                              ? null
-                              : student
-                              ? _join
-                              : live
-                              ? _create
-                              : () => context.push('/classes/it119'),
-                        ),
-                      ),
+          floatingActionButtonLocation: FloatingActionButtonLocation.endFloat,
+          floatingActionButton:
+              (_destination == 0 && (savedRooms?.isNotEmpty ?? false)) ||
+                  (library && _libraryHasContent)
+              ? Padding(
+                  padding: const EdgeInsets.only(right: 8),
+                  child: SizedBox(
+                    width: 72,
+                    child: FiloButton(
+                      label: library
+                          ? 'Add files'
+                          : student
+                          ? 'Join class'
+                          : 'Create class',
+                      icon: FiloIcons.add,
+                      iconOnly: true,
+                      minHeight: 72,
+                      busy: library && _libraryBusy,
+                      onPressed: library
+                          ? fileRepository?.asData?.value == null ||
+                                    _libraryBusy
+                                ? null
+                                : () => _libraryKey.currentState?.addFiles()
+                          : !online
+                          ? null
+                          : student
+                          ? _join
+                          : live
+                          ? _create
+                          : () => context.push('/classes/it119'),
                     ),
                   ),
-                ),
-              FiloNavigationBar(
-                selectedIndex: !student && _destination == 3 ? 0 : _destination,
-                onDestinationSelected: (index) {
-                  if (live && (index <= 2 || (student && index == 3))) {
-                    if (index == _destination) return;
-                    setState(() {
-                      _destination = index;
-                      _libraryBusy = false;
-                    });
-                  } else if (index != 0) {
-                    showMessage(context, 'This area will be available soon.');
-                  }
-                },
-                destinations: [
-                  const NavigationDestination(
-                    icon: FiloIcon(FiloIcons.student),
-                    selectedIcon: FiloIcon(FiloIcons.studentSelected),
-                    label: 'Classes',
-                  ),
-                  NavigationDestination(
-                    icon: _ReviewBadge(live: live && !student, selected: false),
-                    selectedIcon: _ReviewBadge(
-                      live: live && !student,
-                      selected: true,
-                    ),
-                    label: student ? 'To-do' : 'To review',
-                  ),
-                  const NavigationDestination(
-                    icon: FiloIcon(FiloIcons.folder),
-                    selectedIcon: FiloIcon(FiloIcons.folderSelected),
-                    label: 'Files',
-                  ),
-                  if (student)
-                    const NavigationDestination(
-                      icon: FiloIcon(FiloIcons.sparkle),
-                      selectedIcon: FiloIcon(FiloIcons.sparkleSelected),
-                      label: 'AI Study',
-                    ),
-                ],
+                )
+              : null,
+          bottomNavigationBar: FiloNavigationBar(
+            selectedIndex: !student && _destination == 3 ? 0 : _destination,
+            onDestinationSelected: (index) {
+              if (live && (index <= 2 || (student && index == 3))) {
+                if (index == _destination) return;
+                setState(() {
+                  _destination = index;
+                  _libraryBusy = false;
+                  _libraryHasContent = false;
+                });
+              } else if (index != 0) {
+                showMessage(context, 'This area will be available soon.');
+              }
+            },
+            destinations: [
+              const NavigationDestination(
+                icon: FiloIcon(FiloIcons.student),
+                selectedIcon: FiloIcon(FiloIcons.studentSelected),
+                label: 'Classes',
               ),
+              NavigationDestination(
+                icon: _ReviewBadge(live: live && !student, selected: false),
+                selectedIcon: _ReviewBadge(
+                  live: live && !student,
+                  selected: true,
+                ),
+                label: student ? 'To-do' : 'To review',
+              ),
+              const NavigationDestination(
+                icon: FiloIcon(FiloIcons.folder),
+                selectedIcon: FiloIcon(FiloIcons.folderSelected),
+                label: 'Files',
+              ),
+              if (student)
+                const NavigationDestination(
+                  icon: FiloIcon(FiloIcons.sparkle),
+                  selectedIcon: FiloIcon(FiloIcons.sparkleSelected),
+                  label: 'AI Study',
+                ),
             ],
           ),
         ),
@@ -564,7 +586,7 @@ class _ClassesScreenState extends ConsumerState<ClassesScreen> {
 
   Future<void> _join() async {
     await showFiloBottomSheet<void>(
-      title: null,
+      title: 'Find your classroom.',
       context: context,
       isScrollControlled: true,
       showDragHandle: true,
@@ -618,14 +640,6 @@ class _JoinSheetState extends ConsumerState<_JoinSheet> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Semantics(
-            header: true,
-            child: Text(
-              'Find your classroom.',
-              style: Theme.of(context).textTheme.titleLarge,
-            ),
-          ),
-          const SizedBox(height: FiloSpacing.s8),
           Text(
             widget.preview
                 ? 'Enter the code from your instructor.\nPreview code: FILO26'

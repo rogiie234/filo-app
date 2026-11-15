@@ -1,3 +1,5 @@
+import 'package:filo/core/widgets/filo_widgets.dart';
+
 import 'dart:async';
 
 import 'package:drift/native.dart';
@@ -40,6 +42,108 @@ ClassFileEntry _entry() => ClassFileEntry(
 );
 
 void main() {
+  for (final canCreate in [true, false]) {
+    testWidgets('confirmed empty class files authoring=$canCreate', (
+      tester,
+    ) async {
+      var taps = 0;
+      await tester.pumpWidget(
+        ProviderScope(
+          overrides: [
+            classFileSnapshotsProvider.overrideWith((ref) => {}),
+            classFilesProvider('class').overrideWith((ref) => Stream.value([])),
+            postSyncProvider('class').overrideWith((ref) async {}),
+            streamLoadedProvider('class')
+                .overrideWith((ref) => Stream.value(true)),
+            connectivityProvider.overrideWith((ref) => Stream.value(true)),
+          ],
+          child: MaterialApp(
+            theme: AppTheme.light,
+            home: Scaffold(
+              body: ClassFiles(
+                classId: 'class',
+                hasSamples: false,
+                onAddFiles: canCreate ? () => taps++ : null,
+              ),
+            ),
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+      final state = tester.widget<EmptyState>(find.byType(EmptyState));
+      expect(state.title, 'No class files yet');
+      expect(state.primaryAction, canCreate ? isNotNull : isNull);
+      if (canCreate) {
+        await tester.ensureVisible(find.text('Create post'));
+        await tester.pumpAndSettle();
+        await tester.tap(find.text('Create post'));
+        expect(taps, 1);
+      }
+    });
+  }
+  testWidgets('preview search miss echoes query and clears search and type', (
+    tester,
+  ) async {
+    await tester.pumpWidget(
+      MaterialApp(
+        theme: AppTheme.light,
+        home: const Scaffold(body: ClassFiles(hasSamples: true)),
+      ),
+    );
+    await tester.enterText(find.byType(TextField), 'zz-no-match');
+    await tester.pumpAndSettle();
+    expect(find.text('No matching files'), findsOneWidget);
+    expect(find.textContaining('zz-no-match'), findsWidgets);
+    await tester.scrollUntilVisible(
+      find.text('Clear search and filters'),
+      100,
+      scrollable: find.byType(Scrollable).first,
+    );
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Clear search and filters'));
+    await tester.pumpAndSettle();
+    expect(
+      tester.widget<TextField>(find.byType(TextField)).controller!.text,
+      isEmpty,
+    );
+    expect(find.text('No matching files'), findsNothing);
+  });
+
+  for (final online in [true, false]) {
+    testWidgets(
+      'unconfirmed empty class files online=$online stays recoverable',
+      (tester) async {
+        await tester.pumpWidget(
+          ProviderScope(
+            overrides: [
+              classFileSnapshotsProvider.overrideWith((ref) => {}),
+              classFilesProvider('class')
+                  .overrideWith((ref) => Stream.value([])),
+              postSyncProvider('class').overrideWith((ref) async {}),
+              streamLoadedProvider('class')
+                  .overrideWith((ref) => Stream.value(false)),
+              connectivityProvider.overrideWith((ref) => Stream.value(online)),
+            ],
+            child: MaterialApp(
+              theme: AppTheme.light,
+              home: const Scaffold(
+                body: ClassFiles(classId: 'class', hasSamples: false),
+              ),
+            ),
+          ),
+        );
+        await tester.pumpAndSettle();
+        expect(find.text('No class files yet'), findsNothing);
+        final state = tester.widget<EmptyState>(find.byType(EmptyState));
+        expect(
+          state.title,
+          online ? 'Class files unavailable' : 'No saved class files',
+        );
+        expect(state.primaryAction?.onPressed, online ? isNotNull : isNull);
+      },
+    );
+  }
+
   test('display snapshots survive query disposal and clear on account verification change', () async {
     final db = AppDatabase(NativeDatabase.memory());
     // Isolated query fixture does not exercise parent-record constraints.
@@ -130,7 +234,7 @@ void main() {
       expect(find.text('Notes.pdf'), findsOneWidget);
       await tester.tap(find.text('Images'));
       await tester.pump();
-      expect(find.text('No matching files.'), findsOneWidget);
+      expect(find.text('No matching files'), findsOneWidget);
       expect(find.bySemanticsLabel('Loading class files'), findsNothing);
       await show(false);
       container.read(classFileSnapshotsProvider).clear();

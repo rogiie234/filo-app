@@ -222,7 +222,14 @@ class _FileViewerScreenState extends ConsumerState<FileViewerScreen> {
               return SingleChildScrollView(
                 padding: const EdgeInsets.all(FiloSpacing.screen),
                 child: EmptyState(
-                  title: 'This file is no longer on your device.',
+                  title: 'File check failed',
+                  body: 'Retry checking this file on your device before downloading it again.',
+                  primaryAction: EmptyStateAction(
+                    label: 'Retry',
+                    onPressed: () => setState(() {
+                      _exists = _local.exists();
+                    }),
+                  ),
                   pose: 'confused',
                   bob: false,
                   showMascot: widget.showMascot,
@@ -239,7 +246,8 @@ class _FileViewerScreenState extends ConsumerState<FileViewerScreen> {
                   mainAxisSize: MainAxisSize.min,
                   children: [
                     EmptyState(
-                      title: 'This file is no longer on your device.',
+                      title: 'File missing on device',
+                      body: 'Download the file again if its class source is still available.',
                       pose: 'confused',
                       bob: false,
                       showMascot: widget.showMascot,
@@ -304,7 +312,8 @@ class _FileViewerScreenState extends ConsumerState<FileViewerScreen> {
                       child: Image.file(
                         _local,
                         errorBuilder: (_, _, _) => EmptyState(
-                          title: 'Could not open this image.',
+                          title: 'Image preview unavailable',
+                          body: 'Try opening this image in another app from the file menu.',
                           pose: 'confused',
                           bob: false,
                           showMascot: widget.showMascot,
@@ -344,7 +353,12 @@ class _FileViewerScreenState extends ConsumerState<FileViewerScreen> {
                       builder: (context, data) => data.hasError
                           ? Center(
                               child: EmptyState(
-                                title: 'Could not read this file.',
+                                title: 'File preview unavailable',
+                                body: 'Retry reading this file or open it in another app.',
+                                primaryAction: EmptyStateAction(
+                                  label: 'Retry',
+                                  onPressed: () => setState(() {}),
+                                ),
                                 pose: 'confused',
                                 bob: false,
                                 showMascot: widget.showMascot,

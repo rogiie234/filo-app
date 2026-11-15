@@ -1,3 +1,5 @@
+import '../../../core/widgets/entry_background.dart';
+import '../../../core/widgets/filo_widgets.dart';
 import '../../../core/theme/filo_design_tokens.dart';
 import '../../../core/theme/filo_motion.dart';
 
@@ -47,232 +49,265 @@ class _MyGradesScreenState extends ConsumerState<MyGradesScreen> {
     final sync = ref.watch(gradingSyncProvider(widget.classId));
     return FiloMotionScope(
       enabled: false,
-      child: Scaffold(
-        appBar: AppBar(title: const Text('My grades')),
-        body: Column(
-          children: [
-            if (offline) const GradebookOfflineBanner(),
-            if (sync.hasError) GradebookRetry(onRetry: _refresh),
-            Expanded(
-              child: ref
-                  .watch(gradingDataProvider(widget.classId))
-                  .when(
-                    loading: () => const GradebookSkeleton(),
-                    error: (_, _) => Center(
-                      child: TextButton(
-                        onPressed: _refresh,
-                        child: const Text("Couldn't load grades. Try again."),
+      child: EntryBackground(
+        verification: true,
+        breeze: true,
+        variation: 1,
+        child: Scaffold(
+          backgroundColor: Colors.transparent,
+          appBar: AppBar(
+            backgroundColor: Colors.transparent,
+            surfaceTintColor: Colors.transparent,
+            elevation: 0,
+            scrolledUnderElevation: 0,
+            title: const Text('My grades'),
+          ),
+          body: Column(
+            children: [
+              if (offline) const GradebookOfflineBanner(),
+              if (sync.hasError) GradebookRetry(onRetry: _refresh),
+              Expanded(
+                child: ref
+                    .watch(gradingDataProvider(widget.classId))
+                    .when(
+                      loading: () => const GradebookSkeleton(),
+                      error: (_, _) => Center(
+                        child: EmptyState(
+                          title: 'Grades unavailable',
+                          body: "Couldn't load grades. Try again.",
+                          showMascot: false,
+                          primaryAction: EmptyStateAction(
+                            label: 'Retry',
+                            onPressed: offline ? null : _refresh,
+                          ),
+                        ),
                       ),
-                    ),
-                    data: (data) {
-                      if (!data.loaded && !offline && sync.isLoading) {
-                        return const GradebookSkeleton();
-                      }
-                      if (!data.loaded) {
-                        return Center(
-                          child: TextButton(
-                            onPressed: _refresh,
-                            child: Text(
-                              offline
+                      data: (data) {
+                        if (!data.loaded && !offline && sync.isLoading) {
+                          return const GradebookSkeleton();
+                        }
+                        if (!data.loaded) {
+                          return Center(
+                            child: EmptyState(
+                              title: 'Grades unavailable',
+                              body: offline
                                   ? 'Connect to the internet to load grades'
                                   : "Couldn't load grades. Try again.",
+                              showMascot: false,
+                              primaryAction: EmptyStateAction(
+                                label: 'Retry',
+                                onPressed: offline ? null : _refresh,
+                              ),
                             ),
-                          ),
-                        );
-                      }
-                      if (userId == null) {
-                        return const Center(
-                          child: Text('Sign in to view your grades.'),
-                        );
-                      }
-                      final total = data.total(userId, returnedOnly: true);
-                      final hasReturned = data.assignments.any((assignment) {
-                        final submission = data.submission(
-                          assignment['id'].toString(),
-                          userId,
-                        );
-                        final grade = submission == null
-                            ? null
-                            : data.grade(submission['id'].toString());
-                        return grade?['returned_at'] != null;
-                      });
-                      return RefreshIndicator(
-                        onRefresh: _refresh,
-                        child: ListView(
-                          physics: const AlwaysScrollableScrollPhysics(),
-                          padding: const EdgeInsets.all(FiloSpacing.screen),
-                          children: [
-                            Card(
-                              child: Padding(
-                                padding: const EdgeInsets.all(FiloSpacing.s20),
-                                child: Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    const Text('Overall result'),
-                                    Text(
-                                      gradebookTotal(total),
-                                      style: Theme.of(context)
-                                          .textTheme
-                                          .headlineMedium,
-                                    ),
-                                    const Text(
-                                      'Returned assignments and released quizzes only',
-                                    ),
-                                  ],
+                          );
+                        }
+                        if (userId == null) {
+                          return const Center(
+                            child: Text('Sign in to view your grades.'),
+                          );
+                        }
+                        final total = data.total(userId, returnedOnly: true);
+                        final hasReturned = data.assignments.any((assignment) {
+                          final submission = data.submission(
+                            assignment['id'].toString(),
+                            userId,
+                          );
+                          final grade = submission == null
+                              ? null
+                              : data.grade(submission['id'].toString());
+                          return grade?['returned_at'] != null;
+                        });
+                        return RefreshIndicator(
+                          onRefresh: _refresh,
+                          child: ListView(
+                            physics: const AlwaysScrollableScrollPhysics(),
+                            padding: const EdgeInsets.all(FiloSpacing.screen),
+                            children: [
+                              Card(
+                                child: Padding(
+                                  padding: const EdgeInsets.all(
+                                    FiloSpacing.s20,
+                                  ),
+                                  child: Column(
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.start,
+                                    children: [
+                                      const Text('Overall result'),
+                                      Text(
+                                        gradebookTotal(total),
+                                        style: Theme.of(context)
+                                            .textTheme
+                                            .headlineMedium,
+                                      ),
+                                      const Text(
+                                        'Returned assignments and released quizzes only',
+                                      ),
+                                    ],
+                                  ),
                                 ),
                               ),
-                            ),
-                            if (!data.quizzesLoaded)
-                              const Text(
-                                'Quiz scores have not finished syncing. Refresh when connected.',
-                              ),
-                            if (!hasReturned &&
-                                !data.quizzes.any(
-                                  (q) =>
-                                      q['results_released_at'] != null &&
-                                      data.quizAttempt(
-                                            q['id'] as String,
-                                            userId,
-                                          )?['total_score'] !=
-                                          null,
-                                ))
-                              const Padding(
-                                padding: EdgeInsets.all(FiloSpacing.s20),
-                                child: Text('No grades yet.'),
-                              ),
-                            for (final quiz in data.quizzes)
-                              Builder(
-                                builder: (_) {
-                                  final attempt = data.quizAttempt(
-                                    quiz['id'] as String,
-                                    userId,
-                                  );
-                                  final released =
-                                      quiz['results_released_at'] != null;
-                                  final passed =
-                                      released &&
-                                          quiz['passing_percent'] != null
-                                      ? (attempt?['passed'] as bool?)
-                                      : null;
-                                  return Card(
-                                    child: Padding(
-                                      padding: const EdgeInsets.all(
-                                        FiloSpacing.s16,
-                                      ),
-                                      child: Column(
-                                        crossAxisAlignment:
-                                            CrossAxisAlignment.start,
-                                        children: [
-                                          Text(
-                                            quiz['title'] as String,
-                                            style: Theme.of(context)
-                                                .textTheme
-                                                .titleMedium,
-                                          ),
-                                          Text(
-                                            data.quizStatus(
-                                              quiz,
+                              if (!data.quizzesLoaded)
+                                const Text(
+                                  'Quiz scores have not finished syncing. Refresh when connected.',
+                                ),
+                              if (!hasReturned &&
+                                  !data.quizzes.any(
+                                    (q) =>
+                                        q['results_released_at'] != null &&
+                                        data.quizAttempt(
+                                              q['id'] as String,
                                               userId,
-                                              student: true,
+                                            )?['total_score'] !=
+                                            null,
+                                  ))
+                                const Padding(
+                                  padding: EdgeInsets.all(FiloSpacing.s20),
+                                  child: EmptyState(
+                                    title: 'No grades yet',
+                                    body: 'Grades will appear here when your instructor returns them.',
+                                    showMascot: false,
+                                  ),
+                                ),
+                              for (final quiz in data.quizzes)
+                                Builder(
+                                  builder: (_) {
+                                    final attempt = data.quizAttempt(
+                                      quiz['id'] as String,
+                                      userId,
+                                    );
+                                    final released =
+                                        quiz['results_released_at'] != null;
+                                    final passed =
+                                        released &&
+                                            quiz['passing_percent'] != null
+                                        ? (attempt?['passed'] as bool?)
+                                        : null;
+                                    return Card(
+                                      child: Padding(
+                                        padding: const EdgeInsets.all(
+                                          FiloSpacing.s16,
+                                        ),
+                                        child: Column(
+                                          crossAxisAlignment:
+                                              CrossAxisAlignment.start,
+                                          children: [
+                                            Text(
+                                              quiz['title'] as String,
+                                              style: Theme.of(context)
+                                                  .textTheme
+                                                  .titleMedium,
                                             ),
-                                          ),
-                                          Text(
-                                            data.quizCell(
-                                              quiz,
-                                              userId,
-                                              student: true,
-                                            ),
-                                          ),
-                                          if (passed != null)
-                                            ResultStatusChip(
-                                              passed ? 'Passed' : 'Not passed',
-                                            ),
-                                          if (released &&
-                                              attempt?['total_score'] != null)
-                                            TextButton(
-                                              onPressed: () =>
-                                                  Navigator.of(context).push(
-                                                    FiloInstantRoute<void>(
-                                                      builder: (_) =>
-                                                          StudentResultsScreen(
-                                                            quizId:
-                                                                quiz['id']
-                                                                    as String,
-                                                          ),
-                                                    ),
-                                                  ),
-                                              child: const Text('View results'),
-                                            ),
-                                        ],
-                                      ),
-                                    ),
-                                  );
-                                },
-                              ),
-                            for (final assignment in data.assignments)
-                              Builder(
-                                builder: (context) {
-                                  final post = assignment['id'].toString();
-                                  final submission = data.submission(
-                                    post,
-                                    userId,
-                                  );
-                                  final saved = submission == null
-                                      ? null
-                                      : data.grade(submission['id'].toString());
-                                  // Keep the presentation boundary defensive even if a stale cache contains an unreturned row.
-                                  final grade = saved?['returned_at'] == null
-                                      ? null
-                                      : saved;
-                                  final feedback =
-                                      grade?['feedback']?.toString() ?? '';
-                                  return Card(
-                                    child: Padding(
-                                      padding: const EdgeInsets.all(
-                                        FiloSpacing.s16,
-                                      ),
-                                      child: Column(
-                                        crossAxisAlignment:
-                                            CrossAxisAlignment.start,
-                                        children: [
-                                          Text(
-                                            assignment['title'].toString(),
-                                            style: Theme.of(context)
-                                                .textTheme
-                                                .titleMedium,
-                                          ),
-                                          Text(
-                                            data.status(
-                                              post,
-                                              userId,
-                                              student: true,
-                                            ),
-                                          ),
-                                          Text(
-                                            grade == null
-                                                ? 'Not graded yet'
-                                                : '${grade['score']}/${assignment['points']}',
-                                          ),
-                                          if (feedback.isNotEmpty)
-                                            Padding(
-                                              padding: const EdgeInsets.only(
-                                                top: FiloSpacing.s8,
+                                            Text(
+                                              data.quizStatus(
+                                                quiz,
+                                                userId,
+                                                student: true,
                                               ),
-                                              child: Text(feedback),
                                             ),
-                                        ],
+                                            Text(
+                                              data.quizCell(
+                                                quiz,
+                                                userId,
+                                                student: true,
+                                              ),
+                                            ),
+                                            if (passed != null)
+                                              ResultStatusChip(
+                                                passed
+                                                    ? 'Passed'
+                                                    : 'Not passed',
+                                              ),
+                                            if (released &&
+                                                attempt?['total_score'] != null)
+                                              TextButton(
+                                                onPressed: () =>
+                                                    Navigator.of(context).push(
+                                                      FiloInstantRoute<void>(
+                                                        builder: (_) =>
+                                                            StudentResultsScreen(
+                                                              quizId:
+                                                                  quiz['id']
+                                                                      as String,
+                                                            ),
+                                                      ),
+                                                    ),
+                                                child: const Text(
+                                                  'View results',
+                                                ),
+                                              ),
+                                          ],
+                                        ),
                                       ),
-                                    ),
-                                  );
-                                },
-                              ),
-                          ],
-                        ),
-                      );
-                    },
-                  ),
-            ),
-          ],
+                                    );
+                                  },
+                                ),
+                              for (final assignment in data.assignments)
+                                Builder(
+                                  builder: (context) {
+                                    final post = assignment['id'].toString();
+                                    final submission = data.submission(
+                                      post,
+                                      userId,
+                                    );
+                                    final saved = submission == null
+                                        ? null
+                                        : data.grade(
+                                            submission['id'].toString(),
+                                          );
+                                    // Keep the presentation boundary defensive even if a stale cache contains an unreturned row.
+                                    final grade = saved?['returned_at'] == null
+                                        ? null
+                                        : saved;
+                                    final feedback =
+                                        grade?['feedback']?.toString() ?? '';
+                                    return Card(
+                                      child: Padding(
+                                        padding: const EdgeInsets.all(
+                                          FiloSpacing.s16,
+                                        ),
+                                        child: Column(
+                                          crossAxisAlignment:
+                                              CrossAxisAlignment.start,
+                                          children: [
+                                            Text(
+                                              assignment['title'].toString(),
+                                              style: Theme.of(context)
+                                                  .textTheme
+                                                  .titleMedium,
+                                            ),
+                                            Text(
+                                              data.status(
+                                                post,
+                                                userId,
+                                                student: true,
+                                              ),
+                                            ),
+                                            Text(
+                                              grade == null
+                                                  ? 'Not graded yet'
+                                                  : '${grade['score']}/${assignment['points']}',
+                                            ),
+                                            if (feedback.isNotEmpty)
+                                              Padding(
+                                                padding: const EdgeInsets.only(
+                                                  top: FiloSpacing.s8,
+                                                ),
+                                                child: Text(feedback),
+                                              ),
+                                          ],
+                                        ),
+                                      ),
+                                    );
+                                  },
+                                ),
+                            ],
+                          ),
+                        );
+                      },
+                    ),
+              ),
+            ],
+          ),
         ),
       ),
     );

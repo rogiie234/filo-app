@@ -203,7 +203,7 @@ void main() {
     await tester.pumpAndSettle();
     expect(
       find.text(
-        "You're offline. Connect, then refresh to use the question bank.",
+        "Question bank is offline",
       ),
       findsOneWidget,
     );
@@ -360,7 +360,7 @@ void main() {
       );
       await tester.pumpAndSettle();
       expect(
-        find.text('No saved questions for this course yet.'),
+        find.text('No saved course questions'),
         findsOneWidget,
       );
       expect(find.text('Other course'), findsNothing);

@@ -2,10 +2,10 @@ import 'dart:async';
 
 import 'package:uuid/uuid.dart';
 
-import '../../../core/sync/sqlite_outbox.dart';
 import '../data/exam_remote.dart';
 import '../data/exam_store.dart';
 import '../domain/exam.dart';
+import '../domain/exam_integrity.dart';
 import '../domain/exam_clock.dart';
 import 'exam_answer_saver.dart';
 
@@ -16,6 +16,8 @@ class StudentExamRepository {
     required this.isCurrent,
     required this.online,
     this.protectScreen,
+    this.flushLeaveEvents,
+    this.isWindowBlocked,
     ExamClock? clock,
   }) : clock = clock ?? ExamClock();
   final ExamStore store;
@@ -23,6 +25,21 @@ class StudentExamRepository {
   final bool Function() isCurrent, online;
   final Future<void> Function(bool)? protectScreen;
   final ExamClock clock;
+  final Future<void> Function()? flushLeaveEvents;
+  final bool Function()? isWindowBlocked;
+  ExamIntegrity _integrity = const ExamIntegrity();
+  String? _integritySessionId;
+  Future<void> _restoreIntegrity(String sessionId) async {
+    final saved = await store.integrity(sessionId);
+    _integrity = _integritySessionId == sessionId
+        ? _integrity.merge(saved.toJson())
+        : saved;
+    _integritySessionId = sessionId;
+  }
+
+  ExamIntegrity get integrity => _integrity;
+  bool get forcedSubmission => _integrity.atLimit;
+  bool completionExitLimit = false;
   final _changes = StreamController<int>.broadcast();
   int _revision = 0;
   int _attemptEpoch = 0;
@@ -75,6 +92,11 @@ class StudentExamRepository {
     final session = json == null ? null : ExamSession(json);
     if (session != null && epoch == _attemptEpoch) {
       await store.confirmSession(quizId, session);
+      if (active?.sessionId == session.id || pendingSessionId == session.id) {
+        await _restoreIntegrity(session.id);
+        if (_integrity.atLimit) submissionRequested = true;
+        notify();
+      }
     }
     return session;
   }
@@ -109,16 +131,24 @@ class StudentExamRepository {
       _check();
       var failed = false;
       final quizzes = <StudentQuiz>[];
-      for (final row in rows) {
-        final id = row['id'] as String;
-        try {
-          quizzes.add(StudentQuiz(row, await status(id)));
-        } catch (_) {
-          _check();
-          failed = true;
-          final previous = cached.quizzes.where((q) => q.id == id).firstOrNull;
-          quizzes.add(StudentQuiz(row, previous?.session, sessionKnown: false));
-        }
+      for (var start = 0; start < rows.length; start += 3) {
+        final batch = await Future.wait(
+          rows.skip(start).take(3).map((row) async {
+            final id = row['id'] as String;
+            try {
+              return StudentQuiz(row, await status(id));
+            } catch (_) {
+              _check();
+              failed = true;
+              final previous = cached.quizzes
+                  .where((q) => q.id == id)
+                  .firstOrNull;
+              return StudentQuiz(row, previous?.session, sessionKnown: false);
+            }
+          }),
+        );
+        _check();
+        quizzes.addAll(batch);
       }
       _check();
       if (epoch != _attemptEpoch) return cachedCatalog();
@@ -141,6 +171,7 @@ class StudentExamRepository {
     active = attempt;
     completion = null;
     completionTimedOut = false;
+    completionExitLimit = false;
     saver = ExamAnswerSaver(
       store: store,
       remote: remote,
@@ -188,6 +219,8 @@ class StudentExamRepository {
       pendingSessionId = null;
       pendingQuizId = null;
       startUncertain = false;
+      await _restoreIntegrity(attempt.sessionId);
+      if (_integrity.atLimit) submissionRequested = true;
       _activate(attempt);
       saver!.reconnect();
     } catch (_) {
@@ -259,6 +292,7 @@ class StudentExamRepository {
             'session_id': pendingSessionId,
             'quiz_id': quizId,
             'started_at': row['started_at'],
+            'leave_limit': row['leave_limit'],
             'deadline_at': row['deadline_at'],
             'server_now': now.toIso8601String(),
             'questions': <ExamJson>[],
@@ -291,7 +325,7 @@ class StudentExamRepository {
             return await load(found.id);
           }
           if (found?.submitted == true) {
-            completionTimedOut = found!.status == 'auto_submitted';
+            _recordCompletion(found!.json);
             await _finish(found.id, 'Your answers were submitted.');
             return;
           }
@@ -335,6 +369,8 @@ class StudentExamRepository {
           deviceAtReceipt: saved.deviceAtReceipt,
           deadline: saved.attempt.deadline,
         );
+        await _restoreIntegrity(saved.attempt.sessionId);
+        if (_integrity.atLimit) submissionRequested = true;
         _activate(saved.attempt);
         pendingQuizId = null;
         pendingSessionId = null;
@@ -346,7 +382,7 @@ class StudentExamRepository {
           startUncertain = false;
           await load(session.id);
         } else if (session?.submitted == true) {
-          completionTimedOut = session!.status == 'auto_submitted';
+          _recordCompletion(session!.json);
           await _finish(session.id, 'Your answers were submitted.');
         } else if (pendingSessionId != null) {
           await _finish(pendingSessionId!, 'This attempt has ended.');
@@ -420,7 +456,7 @@ class StudentExamRepository {
     if (session == null ||
         session.id != attempt.sessionId ||
         !session.inProgress) {
-      completionTimedOut = session?.status == 'auto_submitted';
+      _recordCompletion(session?.json ?? {});
       await _finish(
         attempt.sessionId,
         session?.submitted == true
@@ -447,7 +483,11 @@ class StudentExamRepository {
   Future<void> _answer(ExamAnswer answer) async {
     _check();
     final attempt = active;
-    if (attempt == null || _submitting || submissionRequested) {
+    if (attempt == null ||
+        _submitting ||
+        submissionRequested ||
+        forcedSubmission ||
+        isWindowBlocked?.call() == true) {
       throw const ExamFailure('This attempt is no longer accepting answers.');
     }
     final questions = attempt.questions.where((q) => q.id == answer.questionId);
@@ -565,6 +605,20 @@ class StudentExamRepository {
             );
       }
       if (!clock.canSend) worker.dispose();
+      if (forcedSubmission) {
+        await store.mergeIntegrity(attempt.sessionId, {'ready': true});
+        await flushLeaveEvents?.call();
+        final finished = await status(attempt.quizId);
+        if (finished?.id == attempt.sessionId && finished?.submitted == true) {
+          _recordCompletion(finished!.json);
+          await _finish(attempt.sessionId, 'Your answers were submitted.');
+          return;
+        }
+        throw const ExamFailure(
+          'Exit limit reached. Reconnect to finish submitting.',
+          retryable: true,
+        );
+      }
       final result = await remote.submit(attempt.sessionId);
       _check();
       if (active?.sessionId != attempt.sessionId) return;
@@ -577,10 +631,11 @@ class StudentExamRepository {
             'deadline_at': attempt.deadline.toIso8601String(),
             'server_now': clock.serverNow.toIso8601String(),
             'status': result['status'],
+            'auto_submit_reason': result['auto_submit_reason'],
             'submitted_at': result['submitted_at'],
           }),
         );
-        completionTimedOut = result['status'] == 'auto_submitted';
+        _recordCompletion(result);
         await _finish(attempt.sessionId, 'Your answers were submitted.');
       } else {
         await reconcile();
@@ -597,7 +652,7 @@ class StudentExamRepository {
         try {
           final session = await status(attempt.quizId);
           if (session?.id == attempt.sessionId && session?.submitted == true) {
-            completionTimedOut = session!.status == 'auto_submitted';
+            _recordCompletion(session!.json);
             await _finish(attempt.sessionId, 'Your answers were submitted.');
           }
         } catch (_) {
@@ -618,7 +673,10 @@ class StudentExamRepository {
               )
             : failure;
         // Validation errors must remain editable; transport failures keep intent.
-        if (!error!.retryable && !error!.reconcile && clock.canEdit) {
+        if (!forcedSubmission &&
+            !error!.retryable &&
+            !error!.reconcile &&
+            clock.canEdit) {
           submissionRequested = false;
           await store.cancelSubmission(attempt.sessionId);
         }
@@ -653,10 +711,24 @@ class StudentExamRepository {
     pendingSessionId = null;
     startUncertain = false;
     submissionRequested = false;
-    completion = message;
+    completion = completionExitLimit ? 'Submitted after 5 exits.' : message;
     error = null;
     clock.invalidate();
     await protectScreen?.call(false);
+    notify();
+  }
+
+  void _recordCompletion(Map<String, dynamic> json) {
+    completionExitLimit = json['auto_submit_reason'] == 'leave_limit';
+    completionTimedOut =
+        json['status'] == 'auto_submitted' && !completionExitLimit;
+  }
+
+  Future<void> acknowledgeExitWarning() async {
+    final id = active?.sessionId;
+    if (id == null) return;
+    final saved = await store.mergeIntegrity(id, {'warning_shown': true});
+    if (active?.sessionId == id) _integrity = _integrity.merge(saved.toJson());
     notify();
   }
 
@@ -665,17 +737,26 @@ class StudentExamRepository {
     if (!current ||
         sessionId == null ||
         clock.deadline == null ||
-        !clock.canEdit) {
+        !clock.canEdit ||
+        forcedSubmission ||
+        submissionRequested) {
       return null;
     }
     final id = const Uuid().v4();
     final leftAt = clock.serverNow.toUtc().toIso8601String();
     return () async {
-      if (!current) return;
-      await SqliteOutbox(store.db).enqueue(id, 'leave_event', {
-        'session_id': sessionId,
-        'left_at': leftAt,
+      if (!current || (active?.sessionId ?? pendingSessionId) != sessionId)
+        return;
+      _integrity = _integrity.merge({
+        'leave_event_ids': [id],
       });
+      if (_integrity.atLimit) submissionRequested = true;
+      notify();
+      final saved = await store.queueLeave(id, sessionId, leftAt);
+      if (current && (active?.sessionId ?? pendingSessionId) == sessionId) {
+        _integrity = _integrity.merge(saved.toJson());
+        notify();
+      }
     };
   }
 

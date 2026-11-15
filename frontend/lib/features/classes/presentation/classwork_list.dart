@@ -326,7 +326,9 @@ class _ClassworkListState extends ConsumerState<ClassworkList> {
                       child: ClassworkFilterChip(
                         label: filter,
                         selected: _filter == filter,
-                        onSelected: () => setState(() => _filter = filter),
+                        onSelected: empty && _filter == 'All'
+                            ? null
+                            : () => setState(() => _filter = filter),
                       ),
                     ),
                 ],
@@ -337,7 +339,8 @@ class _ClassworkListState extends ConsumerState<ClassworkList> {
         ],
         if (failed) ...[
           EmptyState(
-            title: 'Could not refresh classwork. Saved work is shown when available.',
+            title: 'Classwork could not refresh',
+            body: 'Saved work is shown when available; reconnect and retry.',
             pose: 'confused',
             bob: false,
             showMascot: empty,
@@ -373,14 +376,19 @@ class _ClassworkListState extends ConsumerState<ClassworkList> {
             )
         else if (empty && !failed)
           if (confirmedLoad && (!needQuizzes || catalog?.value?.loaded == true))
-            const FiloIllustratedEmptyState(
-              asset: 'assets/illustrations/review-empty.png',
-              title: 'No classwork yet.',
-              message: 'Your next learning adventure will appear here.',
+            EmptyState(
+              pose: online ? 'waiting' : 'sleepy',
+              title: online ? 'No classwork yet' : 'No saved classwork',
+              body: !online
+                  ? 'Connect and refresh to load classwork on this device.'
+                  : student
+                  ? 'Assignments and quizzes will appear here when your instructor posts them.'
+                  : 'Create a class post or assessment to share work with your students.',
             )
           else if (!online)
             const EmptyState(
-              title: 'No saved classwork on this device. Connect to the internet and refresh.',
+              title: 'No saved classwork',
+              body: 'Connect and refresh to load classwork on this device.',
               pose: 'sleepy',
               bob: false,
             )
@@ -394,8 +402,19 @@ class _ClassworkListState extends ConsumerState<ClassworkList> {
             pose: statusKnown ? 'curious' : 'thinking',
             bob: statusKnown,
             title: statusKnown
-                ? 'No classwork matches this filter.'
+                ? 'No matching classwork'
+                : 'Statuses not loaded',
+            body: statusKnown
+                ? 'Show all classwork or choose another filter.'
                 : 'Refresh to load your submission statuses.',
+            primaryAction: EmptyStateAction(
+              label: statusKnown ? 'Show all classwork' : 'Refresh',
+              onPressed: statusKnown
+                  ? () => setState(() => _filter = 'All')
+                  : online
+                  ? _refresh
+                  : null,
+            ),
           )
         else
           for (final entry in work)
@@ -458,14 +477,14 @@ class ClassworkFilterChip extends StatelessWidget {
   });
   final String label;
   final bool selected;
-  final VoidCallback onSelected;
+  final VoidCallback? onSelected;
   @override
   Widget build(BuildContext context) => FiloAnimatedChip(
     label: Text(label),
     selected: selected,
     showCheckmark: true,
     materialTapTargetSize: MaterialTapTargetSize.padded,
-    onSelected: (_) => onSelected(),
+    onSelected: onSelected == null ? null : (_) => onSelected!(),
   );
 }
 

@@ -193,7 +193,7 @@ void main() {
       );
       await tester.tap(find.widgetWithText(FiloButton, 'Delete chat'));
       await pumpChat(tester);
-      expect(find.text('Ask a question to start a chat.'), findsOneWidget);
+      expect(find.text('Start a conversation'), findsOneWidget);
       expect(await db.select(db.chatMessages).get(), isEmpty);
       expect(tester.takeException(), isNull);
       await disposeApp(tester);

@@ -100,7 +100,8 @@ class InstructorQuizRepository {
               .from('questions')
               .select('id')
               .eq('quiz_id', quizId)
-              .eq('position', position);
+              .eq('position', position)
+              .timeout(const Duration(seconds: 20));
           final ids = atPosition.map((q) => q['id']).toSet();
           final matches = fresh.questions
               .where(
@@ -125,7 +126,8 @@ class InstructorQuizRepository {
             .select('position')
             .eq('quiz_id', quizId)
             .order('position', ascending: false)
-            .limit(1);
+            .limit(1)
+            .timeout(const Duration(seconds: 20));
         position = lastPosition.isEmpty
             ? 0
             : (lastPosition.first['position'] as int) + 1;
@@ -225,7 +227,8 @@ class InstructorQuizRepository {
           .select('position')
           .eq('id', questionId)
           .eq('quiz_id', quizId)
-          .single();
+          .single()
+          .timeout(const Duration(seconds: 20));
       await client
           .rpc(
             'save_question',
@@ -409,7 +412,8 @@ class InstructorQuizRepository {
           .eq('class_id', classId)
           .eq('author_id', userId)
           .isFilter('deleted_at', null)
-          .maybeSingle();
+          .maybeSingle()
+          .timeout(const Duration(seconds: 20));
       if (row == null) {
         await database.customStatement(
           'DELETE FROM instructor_quiz_details WHERE id=?',
@@ -491,7 +495,8 @@ class InstructorQuizRepository {
           .from('quizzes')
           .select('updated_at,locked_at,deleted_at')
           .eq('id', quizId)
-          .single();
+          .single()
+          .timeout(const Duration(seconds: 20));
       if (end['updated_at'] != row['updated_at'] ||
           end['locked_at'] != row['locked_at'] ||
           end['deleted_at'] != null) {
@@ -616,7 +621,8 @@ class InstructorQuizRepository {
               'author_id': userId,
             })
             .select('id')
-            .single();
+            .single()
+            .timeout(const Duration(seconds: 20));
         draft.id = row['id'] as String;
       } else if (changes.settings.isNotEmpty) {
         wrote = true;
@@ -626,7 +632,8 @@ class InstructorQuizRepository {
             .eq('id', draft.id!)
             .eq('author_id', userId)
             .select('id')
-            .single();
+            .single()
+            .timeout(const Duration(seconds: 20));
       }
       if (!draft.locked) {
         for (final id in removed) {
@@ -635,7 +642,8 @@ class InstructorQuizRepository {
               .from('questions')
               .delete()
               .eq('id', id)
-              .eq('quiz_id', draft.id!);
+              .eq('quiz_id', draft.id!)
+              .timeout(const Duration(seconds: 20));
         }
         for (var i = 0; i < requestQuestions.length; i++) {
           final q = requestQuestions[i];
@@ -643,18 +651,20 @@ class InstructorQuizRepository {
             activeQuestion = q.localId;
             onQuestionProgress?.call(q.localId, 'Saving...');
             wrote = true;
-            final result = await client.rpc(
-              'save_question',
-              params: {
-                'p_quiz': draft.id,
-                'p_question': {
-                  ...q.payload,
-                  'id': q.id,
-                  'position': i,
-                  'ai_generated': q.aiGenerated,
-                },
-              },
-            );
+            final result = await client
+                .rpc(
+                  'save_question',
+                  params: {
+                    'p_quiz': draft.id,
+                    'p_question': {
+                      ...q.payload,
+                      'id': q.id,
+                      'position': i,
+                      'ai_generated': q.aiGenerated,
+                    },
+                  },
+                )
+                .timeout(const Duration(seconds: 30));
             q.id = (result as Map)['question_id'] as String;
             await FileTextCache(database).bind(q.localId, q.id!);
             for (final current in draft.questions) {
@@ -666,13 +676,15 @@ class InstructorQuizRepository {
             changes.added.isNotEmpty ||
             changes.deleted.isNotEmpty) {
           wrote = true;
-          await client.rpc(
-            'reorder_questions',
-            params: {
-              'p_quiz': draft.id,
-              'p_ordered_ids': requestQuestions.map((q) => q.id!).toList(),
-            },
-          );
+          await client
+              .rpc(
+                'reorder_questions',
+                params: {
+                  'p_quiz': draft.id,
+                  'p_ordered_ids': requestQuestions.map((q) => q.id!).toList(),
+                },
+              )
+              .timeout(const Duration(seconds: 30));
         }
       }
       final saved = await refreshQuiz(draft.classId, draft.id!);
@@ -718,7 +730,8 @@ class InstructorQuizRepository {
         .eq('class_id', classId)
         .eq('author_id', userId)
         .isFilter('deleted_at', null)
-        .single();
+        .single()
+        .timeout(const Duration(seconds: 20));
     if (current['locked_at'] != null) {
       try {
         await refreshList(classId);
@@ -738,7 +751,8 @@ class InstructorQuizRepository {
           .eq('author_id', userId)
           .isFilter('locked_at', null)
           .select('id')
-          .single();
+          .single()
+          .timeout(const Duration(seconds: 20));
     } catch (error) {
       InstructorQuiz? latest;
       try {
@@ -783,7 +797,9 @@ class InstructorQuizRepository {
   Future<InstructorQuiz> publish(String classId, String quizId) async {
     await _remoteAccess(classId, writing: true);
     try {
-      await client.rpc('publish_quiz', params: {'p_quiz': quizId});
+      await client
+          .rpc('publish_quiz', params: {'p_quiz': quizId})
+          .timeout(const Duration(seconds: 30));
       await FileTextCache(database).deleteForDraft(quizId);
     } on PostgrestException {
       // An explicit RPC rejection has a known outcome; retain its validation message.
