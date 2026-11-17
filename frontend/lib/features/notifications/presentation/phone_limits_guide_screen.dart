@@ -87,11 +87,12 @@ class _PhoneLimitsGuideState extends ConsumerState<PhoneLimitsGuideScreen> {
         _retrySection = result == 'failed' ? section : null;
       });
     } catch (_) {
-      if (mounted)
+      if (mounted) {
         setState(() {
           _manual = true;
           _retrySection = section;
         });
+      }
     } finally {
       if (mounted) setState(() => _opening = false);
     }

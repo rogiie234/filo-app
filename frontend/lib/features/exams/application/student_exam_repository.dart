@@ -745,8 +745,9 @@ class StudentExamRepository {
     final id = const Uuid().v4();
     final leftAt = clock.serverNow.toUtc().toIso8601String();
     return () async {
-      if (!current || (active?.sessionId ?? pendingSessionId) != sessionId)
+      if (!current || (active?.sessionId ?? pendingSessionId) != sessionId) {
         return;
+      }
       _integrity = _integrity.merge({
         'leave_event_ids': [id],
       });

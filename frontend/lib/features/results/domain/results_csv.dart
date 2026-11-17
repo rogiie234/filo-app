@@ -15,6 +15,10 @@ String resultsCsv(QuizMonitoring data, List<ResultJson> students) {
       if (threshold != null) 'Passed',
       'Essays graded',
       'Leave count',
+      'Student ID',
+      'Attempt',
+      'Score state',
+      'Results released',
     ],
     for (final student in students)
       (() {
@@ -34,7 +38,15 @@ String resultsCsv(QuizMonitoring data, List<ResultJson> students) {
                 ? (resultPassed(percent, threshold)! ? 'Yes' : 'No')
                 : null,
           graded ? 'Yes' : 'No',
-          attempt?.leaves ?? 0,
+          attempt?.leaves,
+          id,
+          attempt?.attempt,
+          score == null
+              ? 'Unavailable'
+              : graded
+              ? 'Final'
+              : 'Provisional',
+          quiz['results_released_at'] == null ? 'No' : 'Yes',
         ];
       })(),
   ];

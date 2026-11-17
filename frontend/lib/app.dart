@@ -1,5 +1,3 @@
-import 'core/widgets/filo_launch_entrance.dart';
-
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
@@ -29,9 +27,7 @@ class App extends ConsumerWidget {
       routerConfig: ref.watch(appRouterProvider),
       builder: (context, child) => FiloTextScale(
         child: FiloMotionScope(
-          child: _ForegroundTickers(
-            child: FiloLaunchEntrance(child: child ?? const SizedBox.shrink()),
-          ),
+          child: _ForegroundTickers(child: child ?? const SizedBox.shrink()),
         ),
       ),
     );

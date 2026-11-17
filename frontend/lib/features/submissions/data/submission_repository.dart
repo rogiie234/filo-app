@@ -88,8 +88,9 @@ class SubmissionRepository {
     beginCacheWrite();
     try {
       for (final record in rows) {
-        if (client.auth.currentUser?.id != userId)
+        if (client.auth.currentUser?.id != userId) {
           throw StateError('Account changed');
+        }
         final pending = jsonDecode(record.read<String>('value')) as Map;
         final id = pending['item_id'] as String?;
         if (id != null) {
@@ -451,16 +452,14 @@ class SubmissionRepository {
     var dispatched = false;
     try {
       String? submissionId = params['p_submission'] as String?;
-      if (submissionId == null) {
-        submissionId =
-            (await (database.select(database.cacheSubmissions)..where(
-                      (s) =>
-                          s.postId.equals(params['p_post'] as String) &
-                          s.studentId.equals(userId),
-                    ))
-                    .getSingleOrNull())
-                ?.id;
-      }
+      submissionId ??=
+          (await (database.select(database.cacheSubmissions)..where(
+                    (s) =>
+                        s.postId.equals(params['p_post'] as String) &
+                        s.studentId.equals(userId),
+                  ))
+                  .getSingleOrNull())
+              ?.id;
       if (submissionId != null) await reconcileRemovals(submissionId);
       await reconcileBeforeWorkWrite();
       dispatched = true;

@@ -206,6 +206,7 @@ class StudyChatSession extends ChangeNotifier {
           chatId = savedIds.$1;
           _questionId = savedIds.$2;
           saved = true;
+          draft = '';
           requestMode = prepared.sources.isEmpty ? 'general' : 'files';
           notices.addAll([
             for (final usage in prepared.usage)
@@ -239,6 +240,7 @@ class StudyChatSession extends ChangeNotifier {
     } finally {
       token.cancel();
       if (_current && epoch == _epoch) {
+        if (error != null) draft = question;
         working = false;
         _changed();
       }

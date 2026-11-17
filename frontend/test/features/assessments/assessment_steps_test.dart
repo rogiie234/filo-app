@@ -115,34 +115,25 @@ void main() {
       expect(picker.initialDate, DateTime(2026, 11, 12));
       await tester.tap(find.text('OK'));
       await tester.pumpAndSettle();
-      final hour = tester.widget<DropdownButton<int>>(
-        find.descendant(
-          of: find.byKey(const ValueKey('assessment-time-hour')),
-          matching: find.byType(DropdownButton<int>),
-        ),
-      );
+      expect(find.byType(TimePickerDialog), findsOneWidget);
       expect(
-        hour.items!.singleWhere((item) => item.value == 11).enabled,
-        isFalse,
+        tester
+            .widget<TimePickerDialog>(find.byType(TimePickerDialog))
+            .initialTime,
+        const TimeOfDay(hour: 12, minute: 1),
       );
+      // Simulate confirmation of an earlier dial selection; it must reopen without changing the draft.
+      Navigator.of(tester.element(find.byType(TimePickerDialog)))
+          .pop(const TimeOfDay(hour: 11, minute: 0));
+      await tester.pumpAndSettle();
+      expect(find.byType(TimePickerDialog), findsOneWidget);
       expect(
-        hour.items!.singleWhere((item) => item.value == 12).enabled,
-        isTrue,
+        tester
+            .widget<TimePickerDialog>(find.byType(TimePickerDialog))
+            .initialTime,
+        const TimeOfDay(hour: 12, minute: 1),
       );
-      final minute = tester.widget<DropdownButton<int>>(
-        find.descendant(
-          of: find.byKey(const ValueKey('assessment-time-minute-12')),
-          matching: find.byType(DropdownButton<int>),
-        ),
-      );
-      expect(
-        minute.items!.singleWhere((item) => item.value == 0).enabled,
-        isFalse,
-      );
-      expect(
-        minute.items!.singleWhere((item) => item.value == 1).enabled,
-        isTrue,
-      );
+      expect(repo.saves, 0);
       await tester.tap(find.text('Cancel'));
       await tester.pumpAndSettle();
       final clear = find.text('Clear closing time');

@@ -1,3 +1,5 @@
+import '../../../core/widgets/filo_icon.dart';
+
 import 'package:flutter/material.dart';
 
 import '../../../core/theme/app_theme.dart';
@@ -96,9 +98,18 @@ class _StudyFlashcardState extends State<StudyFlashcard> {
                       ? Theme.of(context).colorScheme.primaryContainer
                       : FiloThemeTokens.of(context).warningTint,
                   border: Border.all(
-                    color: Theme.of(context).colorScheme.outline,
+                    color: Theme.of(context).colorScheme.primary
+                        .withValues(alpha: .35),
                     width: 1.5,
                   ),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Theme.of(context).colorScheme.primary
+                          .withValues(alpha: .10),
+                      offset: const Offset(0, 6),
+                      blurRadius: 0,
+                    ),
+                  ],
                 ),
                 padding: const EdgeInsets.all(FiloSpacing.screen),
                 child: AnimatedSwitcher(
@@ -117,16 +128,38 @@ class _StudyFlashcardState extends State<StudyFlashcard> {
                   child: Column(
                     key: ValueKey(_back),
                     children: [
-                      Text(
-                        _back ? 'Answer' : 'Question',
-                        style: Theme.of(context).textTheme.labelLarge,
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 16,
+                          vertical: 8,
+                        ),
+                        decoration: BoxDecoration(
+                          color: Theme.of(context).colorScheme.primaryContainer,
+                          borderRadius: BorderRadius.circular(FiloRadii.large),
+                        ),
+                        child: Wrap(
+                          alignment: WrapAlignment.center,
+                          crossAxisAlignment: WrapCrossAlignment.center,
+                          spacing: 8,
+                          runSpacing: 8,
+                          children: [
+                            FiloIcon(
+                              _back ? FiloIcons.lightbulb : FiloIcons.slides,
+                              size: 20,
+                            ),
+                            Text(
+                              _back ? 'Answer' : 'Question',
+                              style: Theme.of(context).textTheme.labelLarge,
+                            ),
+                          ],
+                        ),
                       ),
                       if (_drag != 0)
                         Row(
                           mainAxisAlignment: MainAxisAlignment.center,
                           children: [
-                            Icon(
-                              _drag > 0 ? Icons.check : Icons.school_outlined,
+                            FiloIcon(
+                              _drag > 0 ? FiloIcons.check : FiloIcons.student,
                             ),
                             const SizedBox(width: FiloSpacing.s8),
                             Text(_drag > 0 ? 'Got it' : 'Still learning'),

@@ -206,8 +206,9 @@ void main() {
         final journal = File('${root.path}/blobs/.old.importing');
         await journal.writeAsString(jsonEncode(old.toJson()));
         await db.into(db.localFiles).insert(completed);
-        if (completedBytes)
+        if (completedBytes) {
           await storage.file(completed.relativePath).writeAsString('keep');
+        }
         final repo = FilesRepository(db, storage);
         await repo.recoverInterruptedDeletes();
         await repo.recoverInterruptedDeletes();

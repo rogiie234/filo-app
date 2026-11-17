@@ -52,52 +52,109 @@ class StudyChatBubble extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final ai = role == 'assistant';
-    return Align(
-      alignment: ai ? Alignment.centerLeft : Alignment.centerRight,
-      child: Padding(
-        padding: const EdgeInsets.symmetric(vertical: FiloSpacing.s8),
-        child: ConstrainedBox(
-          constraints: BoxConstraints(
-            maxWidth: (MediaQuery.sizeOf(context).width - 72)
-                .clamp(120, 640)
-                .toDouble(),
-          ),
-          child: ClipRRect(
-            borderRadius: BorderRadius.circular(FiloRadii.large),
-            child: Container(
-              decoration: BoxDecoration(
-                color: ai
-                    ? Theme.of(context).colorScheme.surface
-                    : Theme.of(context).colorScheme.primaryContainer,
-                border: ai
-                    ? Border(
-                        left: BorderSide(
-                          color: FiloThemeTokens.of(context).limeDeep,
-                          width: 4,
-                        ),
-                      )
-                    : null,
-              ),
-              padding: const EdgeInsets.all(FiloSpacing.s16),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Row(
+    final colors = Theme.of(context).colorScheme;
+    return LayoutBuilder(
+      builder: (context, constraints) => Align(
+        alignment: ai ? Alignment.centerLeft : Alignment.centerRight,
+        child: Padding(
+          padding: const EdgeInsets.only(bottom: FiloSpacing.screen),
+          child: ConstrainedBox(
+            constraints: BoxConstraints(
+              maxWidth: (constraints.maxWidth * (ai ? .96 : .88))
+                  .clamp(0, 640)
+                  .toDouble(),
+            ),
+            child: Column(
+              crossAxisAlignment: ai
+                  ? CrossAxisAlignment.start
+                  : CrossAxisAlignment.end,
+              children: [
+                Padding(
+                  padding: const EdgeInsets.only(bottom: FiloSpacing.s8),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
                     children: [
-                      Expanded(
-                        child: Align(
-                          alignment: Alignment.centerLeft,
-                          child: ai
-                              ? const FiloAiBadge()
-                              : Text(
-                                  'You',
-                                  style: Theme.of(context).textTheme.labelLarge,
-                                ),
+                      if (ai) ...[
+                        const ExcludeSemantics(
+                          child: Mascot(pose: 'reading', size: 28),
+                        ),
+                        const SizedBox(width: FiloSpacing.s8),
+                      ],
+                      Semantics(
+                        label: ai ? 'Filo, AI study assistant' : 'You',
+                        excludeSemantics: true,
+                        child: Text(
+                          ai ? 'Filo' : 'You',
+                          style: Theme.of(context).textTheme.labelLarge
+                              ?.copyWith(color: colors.onSurfaceVariant),
                         ),
                       ),
+                    ],
+                  ),
+                ),
+                Container(
+                  decoration: BoxDecoration(
+                    color: ai ? colors.surface : colors.primary,
+                    borderRadius: BorderRadius.only(
+                      topLeft: Radius.circular(
+                        ai ? FiloRadii.small : FiloRadii.large,
+                      ),
+                      topRight: Radius.circular(
+                        ai ? FiloRadii.large : FiloRadii.small,
+                      ),
+                      bottomLeft: const Radius.circular(FiloRadii.large),
+                      bottomRight: const Radius.circular(FiloRadii.large),
+                    ),
+                    border: ai
+                        ? Border.all(color: colors.outlineVariant)
+                        : null,
+                  ),
+                  padding: const EdgeInsets.all(FiloSpacing.s16),
+                  child: ai
+                      ? StudyAnswerText(content)
+                      : SelectableText(
+                          content,
+                          style: Theme.of(context).textTheme.bodyLarge
+                              ?.copyWith(color: colors.onPrimary, height: 1.5),
+                        ),
+                ),
+                Padding(
+                  padding: const EdgeInsets.only(top: FiloSpacing.s4),
+                  child: Wrap(
+                    spacing: FiloSpacing.s12,
+                    crossAxisAlignment: WrapCrossAlignment.center,
+                    alignment: ai ? WrapAlignment.start : WrapAlignment.end,
+                    children: [
+                      if (ai)
+                        Text(
+                          mode == 'files'
+                              ? 'Answers use your files'
+                              : 'General knowledge',
+                          style: Theme.of(context).textTheme.labelSmall
+                              ?.copyWith(color: colors.onSurfaceVariant),
+                        ),
+                      if (unsaved)
+                        Text(
+                          'Not confirmed saved',
+                          style: Theme.of(context).textTheme.labelSmall
+                              ?.copyWith(color: colors.error),
+                        ),
+                      if (time != null)
+                        Text(
+                          MaterialLocalizations.of(context).formatTimeOfDay(
+                            TimeOfDay.fromDateTime(time!.toLocal()),
+                          ),
+                          style: Theme.of(context).textTheme.labelSmall
+                              ?.copyWith(color: colors.onSurfaceVariant),
+                        ),
                       if (ai)
                         IconButton(
                           tooltip: 'Copy answer',
+                          constraints: const BoxConstraints(
+                            minWidth: 48,
+                            minHeight: 48,
+                          ),
+                          iconSize: 18,
                           onPressed: () async {
                             try {
                               await Clipboard.setData(
@@ -115,32 +172,113 @@ class StudyChatBubble extends StatelessWidget {
                               }
                             }
                           },
-                          icon: const Icon(Icons.copy_outlined),
+                          icon: const FiloIcon(FiloIcons.copy),
                         ),
                     ],
                   ),
-                  if (ai) StudyAnswerText(content) else SelectableText(content),
-                  const SizedBox(height: FiloSpacing.s8),
-                  Text(
-                    mode == 'files'
-                        ? 'Answers use your files'
-                        : 'General knowledge',
-                    style: Theme.of(context).textTheme.labelMedium,
-                  ),
-                  if (unsaved) const Text('Not confirmed saved'),
-                  if (time != null)
-                    Text(
-                      MaterialLocalizations.of(context).formatTimeOfDay(
-                        TimeOfDay.fromDateTime(time!.toLocal()),
-                      ),
-                      style: Theme.of(context).textTheme.labelSmall,
-                    ),
-                ],
-              ),
+                ),
+              ],
             ),
           ),
         ),
       ),
     );
   }
+}
+
+class StudyChatMarker extends StatelessWidget {
+  const StudyChatMarker({
+    super.key,
+    required this.label,
+    this.leading,
+    this.action,
+    this.thinking = false,
+  });
+  final String label;
+  final bool thinking;
+  final Widget? leading, action;
+  @override
+  Widget build(BuildContext context) => Padding(
+    padding: const EdgeInsets.symmetric(vertical: FiloSpacing.s12),
+    child: Row(
+      children: [
+        if (leading != null) ...[
+          leading!,
+          const SizedBox(width: FiloSpacing.s8),
+        ],
+        Expanded(
+          child: thinking
+              ? const StudyThinkingLabel()
+              : Text(
+                  label,
+                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                    color: Theme.of(context).colorScheme.onSurfaceVariant,
+                  ),
+                ),
+        ),
+        ?action,
+      ],
+    ),
+  );
+}
+
+class StudyThinkingLabel extends StatefulWidget {
+  const StudyThinkingLabel({super.key});
+
+  @override
+  State<StudyThinkingLabel> createState() => _StudyThinkingLabelState();
+}
+
+class _StudyThinkingLabelState extends State<StudyThinkingLabel>
+    with SingleTickerProviderStateMixin {
+  late final _animation = AnimationController(
+    vsync: this,
+    duration: const Duration(milliseconds: 1200),
+  );
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    if (MediaQuery.disableAnimationsOf(context)) {
+      _animation.stop();
+    } else {
+      _animation.repeat();
+    }
+  }
+
+  @override
+  void dispose() {
+    _animation.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) => Semantics(
+    label: 'Thinking',
+    child: ExcludeSemantics(
+      child: AnimatedBuilder(
+        animation: _animation,
+        builder: (context, child) {
+          final dots = MediaQuery.disableAnimationsOf(context)
+              ? 3
+              : 1 + (_animation.value * 3).floor();
+          return Text.rich(
+            TextSpan(
+              children: [
+                const TextSpan(text: 'Thinking '),
+                TextSpan(text: '.' * dots),
+                TextSpan(
+                  text: '.' * (3 - dots),
+                  style: const TextStyle(color: Colors.transparent),
+                ),
+              ],
+            ),
+            style: Theme.of(context).textTheme.bodySmall?.copyWith(
+              color: Theme.of(context).colorScheme.onSurfaceVariant,
+            ),
+          );
+        },
+      ),
+    ),
+  );
 }

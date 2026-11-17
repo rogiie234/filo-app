@@ -46,6 +46,38 @@ void main() {
   );
 
   testWidgets(
+    'platform Reduce Motion updates a mounted scope without disabling actions',
+    (tester) async {
+      var taps = 0;
+      await tester.pumpWidget(
+        app(
+          Builder(
+            builder: (context) => TextButton(
+              onPressed: () => taps++,
+              child: Text(
+                FiloMotion.enabled(context) ? 'Motion on' : 'Motion off',
+              ),
+            ),
+          ),
+        ),
+      );
+      expect(find.text('Motion on'), findsOneWidget);
+      binding.platformDispatcher.accessibilityFeaturesTestValue =
+          const FakeAccessibilityFeatures(reduceMotion: true);
+      await tester.pump();
+      expect(find.text('Motion off'), findsOneWidget);
+      await tester.tap(find.text('Motion off'));
+      expect(taps, 1);
+      binding.platformDispatcher.accessibilityFeaturesTestValue =
+          const FakeAccessibilityFeatures(accessibleNavigation: true);
+      await tester.pump();
+      expect(find.text('Motion on'), findsOneWidget);
+      await tester.pumpWidget(const SizedBox());
+      expect(tester.takeException(), isNull);
+    },
+  );
+
+  testWidgets(
     'card presses stay unscaled with reduced motion or hidden tickers',
     (tester) async {
       var taps = 0;
@@ -412,10 +444,11 @@ void main() {
   );
 
   testWidgets(
-    'success sparkles finish once, reduced motion and lifecycle skip them',
+    'confirmed success artwork stays static across lifecycle and reduced motion',
     (tester) async {
       await tester.pumpWidget(app(const FiloSuccessMoment()));
-      expect(find.byIcon(FiloIcons.sparkle), findsNWidgets(3));
+      expect(find.byIcon(FiloIcons.sparkle), findsNothing);
+      expect(tester.widget<Mascot>(find.byType(Mascot)).pose, 'cheerful_note');
       await tester.pump(const Duration(milliseconds: 600));
       expect(find.byIcon(FiloIcons.sparkle), findsNothing);
       binding.handleAppLifecycleStateChanged(AppLifecycleState.inactive);

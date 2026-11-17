@@ -68,8 +68,8 @@ class _CreateClassScreenState extends ConsumerState<CreateClassScreen> {
               }),
             ),
           );
-          return AlertDialog(
-            title: const Text('School year'),
+          return FiloModalDialog(
+            title: 'School year',
             content: SizedBox(
               width: 360,
               child: Column(
@@ -119,13 +119,14 @@ class _CreateClassScreenState extends ConsumerState<CreateClassScreen> {
               ),
             ),
             actions: [
-              TextButton(
-                onPressed: () => Navigator.pop(dialogContext),
-                child: const Text('Cancel'),
-              ),
-              FilledButton(
+              FiloButton(
                 onPressed: () => Navigator.pop(dialogContext, '$start-$end'),
-                child: const Text('Use school year'),
+                label: 'Use school year',
+              ),
+              FiloButton(
+                secondary: true,
+                onPressed: () => Navigator.pop(dialogContext),
+                label: 'Cancel',
               ),
             ],
           );

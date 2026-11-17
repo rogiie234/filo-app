@@ -176,3 +176,11 @@ passed23tests/0failures,exit0 (reporter00:04), using SQLite fixtures and mocked 
 Initial test import collision and UTC/local readback assertion were corrected;
 production behavior unchanged. Supersedes NOT RUN for this selected suite only.
 Real phone/offline/reconnect acceptance remains pending in canonical M12 QA.
+
+## Offline recovery corrections - 17 November 2026
+
+Implemented shared pull dependency failures as retryable table failures: a missing required cached parent now throws before its page payload/cursor can commit. Instructor-only foreign submission rows and revoked/deleted class membership records remain deliberately excluded, and notifications still allow a missing class association. No schema reset is required. A new coordinator starts with a full snapshot, repairing older skipped payloads after normal app restart.
+
+Forced exam completion now flushes the current session's leave-event outbox without waiting for broad class/Drive/result refresh. Deferred eligibility delays can be released for that session; active leases and actual network backoff remain intact. The existing answer-first integrity readiness gate and foreground/account guards remain authoritative.
+
+The verified-session provider observes connectivity error state and falls back only through its existing session/device-bound secure marker. Explicit server refusal still deletes that marker; account deletion and stale-session checks remain in place. Monitor availability does not authorize backend writes.

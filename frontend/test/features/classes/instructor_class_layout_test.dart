@@ -15,7 +15,6 @@ void main() {
             child: EmptyState(
               title: 'No classes yet.',
               message: 'Create your first class to get started.',
-              bob: false,
             ),
           ),
         ),
@@ -63,7 +62,6 @@ void main() {
             child: EmptyState(
               title: 'No classes yet.',
               message: 'Create your first class to get started.',
-              bob: false,
               action: FiloButton(
                 label: 'Create class',
                 minHeight: 64,

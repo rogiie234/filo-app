@@ -153,17 +153,39 @@ class _InstructorResultsScreenState
           actions: [
             PopupMenuButton<String>(
               tooltip: 'Results options',
-              onSelected: (_) {
-                if (data != null) unawaited(_export(data, rows));
+              onSelected: (scope) {
+                if (data != null) {
+                  unawaited(
+                    _export(
+                      data,
+                      scope == 'csv'
+                          ? monitoringStudents(data, sort: _sort)
+                          : rows,
+                    ),
+                  );
+                }
               },
               itemBuilder: (_) => [
                 PopupMenuItem(
                   value: 'csv',
                   height: 48,
+                  enabled:
+                      data != null && data.members.isNotEmpty && !_exporting,
+                  child: Text(
+                    _exporting ? 'Exporting...' : 'Export CSV - All students',
+                  ),
+                ),
+                PopupMenuItem(
+                  value: 'visible',
+                  height: 48,
                   enabled: data != null && rows.isNotEmpty && !_exporting,
-                  child: Text(_exporting ? 'Exporting...' : 'Export CSV'),
+                  child: Text('Export CSV - Current view (${rows.length})'),
                 ),
               ],
+              child: const Padding(
+                padding: EdgeInsets.symmetric(horizontal: 16),
+                child: Icon(Icons.file_download_outlined),
+              ),
             ),
           ],
         ),
@@ -178,30 +200,124 @@ class _InstructorResultsScreenState
                 (async.hasError ? "Couldn't load results. Try again." : null),
             children: [
               if (data != null) ...[
-                Text(releasedLine(data.quiz)),
-                const SizedBox(height: FiloSpacing.s20),
-                Wrap(
-                  spacing: 12,
-                  runSpacing: 12,
-                  children: [
-                    ResultSummaryTile(
-                      'Submitted',
-                      '${data.submittedCount} of ${data.members.length}',
-                    ),
-                    ResultSummaryTile('In progress', '${data.inProgressCount}'),
-                    ResultSummaryTile(
-                      'Not started',
-                      '${data.notStarted.length}',
-                    ),
-                    ResultSummaryTile(
-                      'Average score',
-                      data.average.points == null
-                          ? '—'
-                          : '${data.average.points!.toStringAsFixed(1).replaceFirst(RegExp(r'\.0$'), '')} points',
-                    ),
-                  ],
+                Text(
+                  'Results overview',
+                  style: Theme.of(context).textTheme.headlineSmall,
                 ),
-                const SizedBox(height: FiloSpacing.s12),
+                const SizedBox(height: FiloSpacing.s16),
+                FiloPanel(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      Row(
+                        children: [
+                          Icon(
+                            data.quiz['results_released_at'] == null
+                                ? Icons.lock_outline
+                                : Icons.check_circle_outline,
+                            color: Theme.of(context).colorScheme.primary,
+                          ),
+                          const SizedBox(width: 12),
+                          Expanded(
+                            child: Text(
+                              data.quiz['results_released_at'] != null
+                                  ? 'Results released'
+                                  : blocked == null
+                                  ? 'Ready to release'
+                                  : 'Before you release',
+                              style: Theme.of(context).textTheme.titleLarge,
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: FiloSpacing.s12),
+                      Text(releasedLine(data.quiz)),
+                      if (state?.cached == true) ...[
+                        const SizedBox(height: 8),
+                        const Text(
+                          'Saved results snapshot. Refresh online for the latest changes.',
+                        ),
+                      ],
+                      if ((data.quiz['class'] as Map?)?['archived_at'] != null)
+                        const Text('This class is archived.'),
+                      if (data.quiz['results_released_at'] == null) ...[
+                        const SizedBox(height: FiloSpacing.s12),
+                        Text(
+                          data.pendingEssays == null
+                              ? 'Refresh to load the essay count.'
+                              : '${data.pendingEssays} ${data.pendingEssays == 1 ? 'essay' : 'essays'} to grade',
+                        ),
+                        if (!online)
+                          const Text(
+                            'Connect to the internet to release results.',
+                          )
+                        else if (blocked != null)
+                          Text(blocked),
+                        const SizedBox(height: FiloSpacing.s12),
+                        const Text(
+                          'Releasing results closes this quiz for anyone who has not started.',
+                        ),
+                        const SizedBox(height: FiloSpacing.s16),
+                        FiloButton(
+                          label: _busy ? 'Please wait...' : 'Release results',
+                          onPressed:
+                              !online ||
+                                  readOnly ||
+                                  blocked != null ||
+                                  state?.refreshing == true
+                              ? null
+                              : _release,
+                        ),
+                      ],
+                    ],
+                  ),
+                ),
+                const SizedBox(height: FiloSpacing.s16),
+                LayoutBuilder(
+                  builder: (context, constraints) {
+                    final width = constraints.maxWidth < 360
+                        ? constraints.maxWidth
+                        : (constraints.maxWidth - 12) / 2;
+                    return Wrap(
+                      spacing: 12,
+                      runSpacing: 12,
+                      children: [
+                        for (final metric in [
+                          (
+                            'Submitted',
+                            '${data.submittedCount} of ${data.members.length}',
+                          ),
+                          ('In progress', '${data.inProgressCount}'),
+                          ('Not started', '${data.notStarted.length}'),
+                          (
+                            'Average score',
+                            data.average.points == null
+                                ? '\u2014'
+                                : '${data.average.points!.toStringAsFixed(1).replaceFirst(RegExp(r'\.0$'), '')} points',
+                          ),
+                        ])
+                          SizedBox(
+                            width: width,
+                            child: FiloPanel(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    metric.$2,
+                                    style: Theme.of(context)
+                                        .textTheme
+                                        .titleLarge,
+                                  ),
+                                  const SizedBox(height: 4),
+                                  Text(metric.$1),
+                                ],
+                              ),
+                            ),
+                          ),
+                      ],
+                    );
+                  },
+                ),
                 if (data.average.points == null)
                   Text(
                     data.submittedCount == 0
@@ -212,28 +328,9 @@ class _InstructorResultsScreenState
                   const Text(
                     'Average includes scores with essay answers not graded yet.',
                   ),
-                Text(
-                  data.pendingEssays == null
-                      ? 'Refresh to load the essay count.'
-                      : '${data.pendingEssays} ${data.pendingEssays == 1 ? 'essay' : 'essays'} to grade',
-                ),
-                if ((data.quiz['class'] as Map?)?['archived_at'] != null)
-                  const Text('This class is archived.'),
-                if (data.quiz['results_released_at'] == null) ...[
-                  const SizedBox(height: FiloSpacing.s16),
-                  FiloButton(
-                    label: _busy ? 'Please wait...' : 'Release results',
-                    onPressed:
-                        readOnly || blocked != null || state?.refreshing == true
-                        ? null
-                        : _release,
-                  ),
-                  if (!online)
-                    const Text('Connect to the internet to release results.')
-                  else if (blocked != null)
-                    Text(blocked),
-                ],
                 const SizedBox(height: FiloSpacing.screen),
+                Text('Students', style: Theme.of(context).textTheme.titleLarge),
+                const SizedBox(height: FiloSpacing.s12),
                 TextField(
                   controller: _searchController,
                   enabled: data.members.isNotEmpty || _search.isNotEmpty,
@@ -278,6 +375,20 @@ class _InstructorResultsScreenState
                       : (value) => setState(() => _sort = value ?? 'Name'),
                 ),
                 const SizedBox(height: FiloSpacing.s16),
+                Wrap(
+                  alignment: WrapAlignment.spaceBetween,
+                  spacing: 12,
+                  runSpacing: 8,
+                  crossAxisAlignment: WrapCrossAlignment.center,
+                  children: [
+                    Text(
+                      '${rows.length} of ${data.members.length} students shown',
+                      style: Theme.of(context).textTheme.titleSmall,
+                    ),
+                    const Text('Open an attempt to review answers and grades.'),
+                  ],
+                ),
+                const SizedBox(height: FiloSpacing.s12),
                 if (rows.isEmpty)
                   EmptyState(
                     showMascot: false,
@@ -373,58 +484,102 @@ class ResultStudentRow extends StatelessWidget {
   Widget build(BuildContext context) => Padding(
     padding: const EdgeInsets.only(bottom: FiloSpacing.s12),
     child: FiloPanel(
-      padding: EdgeInsets.zero,
       child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          InkWell(
-            onTap: onTap,
-            borderRadius: BorderRadius.circular(FiloRadii.large),
-            child: Padding(
-              padding: const EdgeInsets.all(FiloSpacing.s16),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  Text(name, style: Theme.of(context).textTheme.titleMedium),
-                  Wrap(
-                    spacing: 8,
-                    runSpacing: 8,
-                    crossAxisAlignment: WrapCrossAlignment.center,
-                    children: [
-                      ResultStatusChip(status),
-                      Text(score),
-                      Semantics(
-                        label: 'Leave-app count ${leaves ?? 'not available'}',
-                        child: ExcludeSemantics(
-                          child: Row(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              const Icon(Icons.exit_to_app, size: 20),
-                              Text(' ${leaves ?? '—'}'),
-                            ],
-                          ),
-                        ),
-                      ),
-                      if (history)
-                        const Chip(
-                          avatar: Icon(Icons.history, size: 18),
-                          label: Text('Attempts'),
-                        ),
-                    ],
-                  ),
-                  if (unreleased) const Text('Not released'),
-                  if (provisional) const Text('Provisional score'),
-                ],
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(name, style: Theme.of(context).textTheme.titleLarge),
+                    const SizedBox(height: 4),
+                    Text(status, style: Theme.of(context).textTheme.bodyMedium),
+                  ],
+                ),
               ),
+              if (onSecondChance != null)
+                PopupMenuButton<String>(
+                  tooltip: 'Options for $name',
+                  onSelected: (_) => onSecondChance?.call(),
+                  itemBuilder: (_) => [
+                    PopupMenuItem(
+                      value: 'second-chance',
+                      height: 48,
+                      enabled: actionsEnabled,
+                      child: const Text('Grant second chance'),
+                    ),
+                  ],
+                ),
+            ],
+          ),
+          const SizedBox(height: 16),
+          Container(
+            padding: const EdgeInsets.all(12),
+            decoration: BoxDecoration(
+              color: Theme.of(context).colorScheme.surfaceContainer,
+              borderRadius: BorderRadius.circular(FiloRadii.medium),
+            ),
+            child: Wrap(
+              spacing: 32,
+              runSpacing: 12,
+              children: [
+                Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Score',
+                      style: Theme.of(context).textTheme.labelMedium,
+                    ),
+                    const SizedBox(height: 4),
+                    Text(score, style: Theme.of(context).textTheme.titleLarge),
+                    if (provisional) const Text('Provisional score'),
+                  ],
+                ),
+                Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Leave-app count',
+                      style: Theme.of(context).textTheme.labelMedium,
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      '${leaves ?? 'Not available'}',
+                      style: Theme.of(context).textTheme.titleLarge,
+                    ),
+                  ],
+                ),
+              ],
             ),
           ),
-          if (onSecondChance != null)
-            Align(
-              alignment: Alignment.centerRight,
-              child: TextButton(
-                onPressed: actionsEnabled ? onSecondChance : null,
-                child: const Text('Grant second chance'),
+          if (unreleased || history) ...[
+            const SizedBox(height: 12),
+            Wrap(
+              spacing: 16,
+              runSpacing: 8,
+              children: [
+                if (unreleased) const Text('Not released'),
+                if (history) const Text('Previous attempt or second chance'),
+              ],
+            ),
+          ],
+          if (onTap != null) ...[
+            const SizedBox(height: 12),
+            Semantics(
+              label: 'Review attempt for $name',
+              child: OutlinedButton.icon(
+                onPressed: onTap,
+                icon: const Icon(Icons.arrow_forward, size: 20),
+                label: const Text('Review attempt'),
+                style: OutlinedButton.styleFrom(
+                  minimumSize: const Size(48, 48),
+                ),
               ),
             ),
+          ],
         ],
       ),
     ),

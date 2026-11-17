@@ -11,14 +11,49 @@ import android.content.pm.ActivityInfo
 import android.os.Build
 import android.content.Intent
 import android.provider.Settings
+import android.view.MotionEvent
 import android.view.WindowManager
 
 class MainActivity : FlutterActivity() {
     private var examProtected = false
+    private var examObscured = false
+    private var discardExamGesture = false
+
+    override fun onWindowFocusChanged(hasFocus: Boolean) {
+        super.onWindowFocusChanged(hasFocus)
+        publishExamWindow()
+    }
+
+    override fun dispatchTouchEvent(event: MotionEvent): Boolean {
+        if (examProtected) {
+            val obscured = (event.flags and MotionEvent.FLAG_WINDOW_IS_OBSCURED) != 0 ||
+                (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q &&
+                    (event.flags and MotionEvent.FLAG_WINDOW_IS_PARTIALLY_OBSCURED) != 0)
+            // shortcut: passive overlays may emit no event; Android 12+ also hides non-system overlays.
+            if (event.actionMasked == MotionEvent.ACTION_DOWN) {
+                discardExamGesture = obscured || examObscured || !hasWindowFocus() || isInMultiWindowMode
+            }
+            if (obscured != examObscured) {
+                examObscured = obscured
+                publishExamWindow()
+            }
+            if (obscured) discardExamGesture = true
+            if (obscured || discardExamGesture) {
+                val cancel = MotionEvent.obtain(event)
+                cancel.action = MotionEvent.ACTION_CANCEL
+                super.dispatchTouchEvent(cancel)
+                cancel.recycle()
+                return true
+            }
+        }
+        return super.dispatchTouchEvent(event)
+    }
+
     private var examWindowEvents: EventChannel.EventSink? = null
     private fun publishExamWindow() {
         examWindowEvents?.success(mapOf(
             "multi_window" to isInMultiWindowMode,
+            "obscured" to (examProtected && (examObscured || !hasWindowFocus())),
             "overlay_supported" to (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S)
         ))
     }
@@ -64,6 +99,10 @@ class MainActivity : FlutterActivity() {
                         val enabled = call.arguments == true
                         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) window.setHideOverlayWindows(enabled)
                         examProtected = enabled
+                        if (!enabled) {
+                            examObscured = false
+                            discardExamGesture = false
+                        }
                         if (enabled) {
                             if (examOrientation == null) examOrientation = requestedOrientation
                             window.addFlags(WindowManager.LayoutParams.FLAG_SECURE or WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)

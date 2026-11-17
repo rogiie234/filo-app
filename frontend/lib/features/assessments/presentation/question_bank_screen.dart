@@ -64,8 +64,9 @@ class _QuestionBankScreenState extends ConsumerState<QuestionBankScreen> {
             : rows;
         _selected.removeWhere((id) => !_rows!.any((r) => r.id == id));
         if (_courseFilter != null &&
-            !_rows!.any((row) => (row.courseKey ?? '') == _courseFilter))
+            !_rows!.any((row) => (row.courseKey ?? '') == _courseFilter)) {
           _courseFilter = null;
+        }
       });
     } catch (_) {
       if (mounted) {
@@ -278,7 +279,6 @@ class _QuestionBankScreenState extends ConsumerState<QuestionBankScreen> {
                           title: 'Question bank is offline',
                           body: 'Connect and refresh to load your saved questions.',
                           pose: 'sleepy',
-                          bob: false,
                         ),
                       ),
                     if (_error != null)
@@ -288,7 +288,6 @@ class _QuestionBankScreenState extends ConsumerState<QuestionBankScreen> {
                           title: 'Question bank unavailable',
                           body: _error!,
                           pose: 'confused',
-                          bob: false,
                           action: TextButton(
                             onPressed: online && !_busy && !_loading
                                 ? _load
@@ -314,7 +313,6 @@ class _QuestionBankScreenState extends ConsumerState<QuestionBankScreen> {
                   padding: const EdgeInsets.all(FiloSpacing.screen),
                   child: EmptyState(
                     pose: _rows!.isEmpty ? 'thinking' : 'curious',
-                    bob: !widget.picking,
                     title: _rows!.isEmpty
                         ? widget.picking
                               ? 'No saved course questions'

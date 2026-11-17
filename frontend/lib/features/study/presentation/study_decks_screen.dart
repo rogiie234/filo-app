@@ -31,187 +31,250 @@ class StudyDecksScreen extends StatelessWidget {
   Widget build(BuildContext context) => StudyDeckScope(
     notebookId: notebookId,
     builder: (repo) => Consumer(
-      builder: (context, ref, _) => EntryBackground(
-        variation: 4,
-        child: Scaffold(
-          backgroundColor: Colors.transparent,
-          appBar: AppBar(
+      builder: (context, ref, _) {
+        final decks = ref.watch(studyDecksProvider(notebookId));
+        final showAdd =
+            decks.hasValue &&
+            !decks.isLoading &&
+            !decks.hasError &&
+            decks.requireValue.isNotEmpty;
+        return EntryBackground(
+          variation: 4,
+          child: Scaffold(
             backgroundColor: Colors.transparent,
-            surfaceTintColor: Colors.transparent,
-            elevation: 0,
-            scrolledUnderElevation: 0,
-            title: const Text('Flashcards'),
-          ),
-          body: SafeArea(
-            child: ListView(
-              padding: const EdgeInsets.all(FiloSpacing.screen),
-              children: [
-                const StudyOfflineBanner(),
-                studyAsync(
-                  ref.watch(studyDecksProvider(notebookId)),
-                  (decks) => Column(
-                    crossAxisAlignment: CrossAxisAlignment.stretch,
-                    children: [
-                      if (decks.isNotEmpty)
-                        FiloButton(
-                          label: 'Generate flashcards',
-                          icon: FiloIcons.sparkle,
-                          onPressed: decks.length >= 10
-                              ? null
-                              : () => _generate(context),
-                        ),
-                      if (decks.length >= 10)
-                        const Padding(
-                          padding: EdgeInsets.only(top: FiloSpacing.s12),
-                          child: Text(studyDeckLimitMessage),
-                        ),
-                      const SizedBox(height: FiloSpacing.screen),
-                      Semantics(
-                        header: true,
-                        child: Text(
-                          'Saved decks',
-                          style: Theme.of(context).textTheme.titleLarge,
-                        ),
+            floatingActionButtonLocation: FloatingActionButtonLocation.endFloat,
+            floatingActionButton: showAdd
+                ? Padding(
+                    padding: const EdgeInsets.only(right: 8),
+                    child: SizedBox(
+                      width: 72,
+                      child: FiloButton(
+                        label: 'Generate flashcards',
+                        icon: FiloIcons.add,
+                        iconOnly: true,
+                        minHeight: 72,
+                        onPressed: decks.requireValue.length >= 10
+                            ? null
+                            : () => _generate(context),
                       ),
-                      const SizedBox(height: FiloSpacing.s12),
-                      if (decks.isEmpty)
-                        EmptyState(
-                          primaryAction: EmptyStateAction(
-                            label: 'Generate flashcards',
-                            onPressed: () => _generate(context),
-                          ),
-                          title: 'No flashcards yet',
-                          body: 'Generate a deck from your sources or a topic to review the main ideas.',
-                          pose: 'reading',
+                    ),
+                  )
+                : null,
+            appBar: AppBar(
+              backgroundColor: Colors.transparent,
+              surfaceTintColor: Colors.transparent,
+              elevation: 0,
+              scrolledUnderElevation: 0,
+              title: const Text('Flashcards'),
+            ),
+            body: SafeArea(
+              child: ListView(
+                padding: EdgeInsets.fromLTRB(
+                  FiloSpacing.screen,
+                  FiloSpacing.screen,
+                  FiloSpacing.screen,
+                  showAdd ? 120 : FiloSpacing.screen,
+                ),
+                children: [
+                  const StudyOfflineBanner(),
+                  studyAsync(
+                    decks,
+                    (decks) => Column(
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: [
+                        StudyCollectionHeader(
+                          title: 'One idea at a time.',
+                          body: 'Flip a card, recall the answer, then choose what needs another look.',
+                          icon: FiloIcons.slides,
+                          summary:
+                              '${studyCount(decks.length, 'deck')} saved on this device',
                         ),
-                      for (final deck in decks)
-                        Padding(
-                          padding: const EdgeInsets.only(
-                            bottom: FiloSpacing.s12,
+                        if (decks.length >= 10)
+                          const Padding(
+                            padding: EdgeInsets.only(top: FiloSpacing.s12),
+                            child: Text(studyDeckLimitMessage),
                           ),
-                          child: FiloPanel(
-                            padding: EdgeInsets.zero,
-                            child: ListTile(
-                              contentPadding: const EdgeInsets.symmetric(
-                                horizontal: FiloSpacing.s16,
-                                vertical: FiloSpacing.s8,
-                              ),
-                              leading: Container(
-                                padding: const EdgeInsets.all(FiloSpacing.s12),
-                                decoration: BoxDecoration(
-                                  color: Theme.of(context)
-                                      .colorScheme
-                                      .primaryContainer,
-                                  borderRadius: BorderRadius.circular(
-                                    FiloRadii.medium,
+                        if (decks.length >= 10)
+                          const SizedBox(height: FiloSpacing.screen),
+                        if (decks.isEmpty)
+                          EmptyState(
+                            primaryAction: EmptyStateAction(
+                              label: 'Generate flashcards',
+                              onPressed: () => _generate(context),
+                            ),
+                            title: 'No flashcards yet',
+                            body: 'Generate a deck from your sources or a topic to review the main ideas.',
+                            pose: 'reading',
+                          ),
+                        for (final deck in decks)
+                          Padding(
+                            padding: const EdgeInsets.only(
+                              bottom: FiloSpacing.s12,
+                            ),
+                            child: FiloPanel(
+                              padding: EdgeInsets.zero,
+                              child: ListTile(
+                                contentPadding: const EdgeInsets.symmetric(
+                                  horizontal: FiloSpacing.s16,
+                                  vertical: FiloSpacing.s8,
+                                ),
+                                leading: Container(
+                                  padding: const EdgeInsets.all(
+                                    FiloSpacing.s12,
+                                  ),
+                                  decoration: BoxDecoration(
+                                    color: Theme.of(context)
+                                        .colorScheme
+                                        .primaryContainer,
+                                    borderRadius: BorderRadius.circular(
+                                      FiloRadii.medium,
+                                    ),
+                                  ),
+                                  child: FiloIcon(
+                                    FiloIcons.slides,
+                                    color: Theme.of(context)
+                                        .colorScheme
+                                        .onPrimaryContainer,
                                   ),
                                 ),
-                                child: Icon(
-                                  Icons.style_outlined,
-                                  color: Theme.of(context)
-                                      .colorScheme
-                                      .onPrimaryContainer,
+                                title: Text(
+                                  deck.title,
+                                  style: Theme.of(context)
+                                      .textTheme
+                                      .titleMedium,
                                 ),
-                              ),
-                              title: Text(
-                                deck.title,
-                                style: Theme.of(context).textTheme.titleMedium,
-                              ),
-                              subtitle: studyAsync(
-                                ref.watch(studyCardsProvider(deck.id)),
-                                (cards) => Text(
-                                  '${studyCount(cards.length, 'card')} · ${cards.where((c) => c.status == 'known').length} known',
-                                ),
-                                retry: () =>
-                                    ref.invalidate(studyCardsProvider(deck.id)),
-                              ),
-                              onTap: () => Navigator.push(
-                                context,
-                                MaterialPageRoute<void>(
-                                  builder: (_) => StudyFlashcardStudyScreen(
-                                    notebookId: notebookId,
-                                    deckId: deck.id,
+                                subtitle: studyAsync(
+                                  ref.watch(studyCardsProvider(deck.id)),
+                                  (cards) => Column(
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.start,
+                                    children: [
+                                      Text(
+                                        '${studyCount(cards.length, 'card')} · ${cards.where((c) => c.status == 'known').length} known',
+                                      ),
+                                      if (cards.isNotEmpty) ...[
+                                        const SizedBox(height: FiloSpacing.s12),
+                                        FiloLinearProgressIndicator(
+                                          value:
+                                              cards
+                                                  .where(
+                                                    (c) => c.status == 'known',
+                                                  )
+                                                  .length /
+                                              cards.length,
+                                          semanticsLabel: 'Cards marked known',
+                                        ),
+                                      ],
+                                      const SizedBox(height: FiloSpacing.s12),
+                                      Text(
+                                        'Review deck',
+                                        style: Theme.of(context)
+                                            .textTheme
+                                            .labelLarge
+                                            ?.copyWith(
+                                              color: Theme.of(context)
+                                                  .colorScheme
+                                                  .primary,
+                                            ),
+                                      ),
+                                    ],
+                                  ),
+                                  retry: () => ref.invalidate(
+                                    studyCardsProvider(deck.id),
                                   ),
                                 ),
-                              ),
-                              trailing: PopupMenuButton<String>(
-                                tooltip: 'Deck options for ${deck.title}',
-                                itemBuilder: (_) => const [
-                                  PopupMenuItem(
-                                    value: 'rename',
-                                    child: Text('Rename deck'),
+                                onTap: () => Navigator.push(
+                                  context,
+                                  MaterialPageRoute<void>(
+                                    builder: (_) => StudyFlashcardStudyScreen(
+                                      notebookId: notebookId,
+                                      deckId: deck.id,
+                                    ),
                                   ),
-                                  PopupMenuItem(
-                                    value: 'delete',
-                                    child: Text('Delete deck'),
-                                  ),
-                                ],
-                                onSelected: (action) async {
-                                  try {
-                                    if (action == 'rename') {
-                                      final title = await showStudyDeckName(
-                                        context,
-                                        deck.title,
-                                      );
-                                      if (title == null ||
-                                          !context.mounted ||
-                                          ref
-                                                  .read(accountDatabaseProvider)
-                                                  .asData
-                                                  ?.value !=
-                                              repo.db) {
-                                        return;
+                                ),
+                                trailing: PopupMenuButton<String>(
+                                  tooltip: 'Deck options for ${deck.title}',
+                                  itemBuilder: (_) => const [
+                                    PopupMenuItem(
+                                      value: 'rename',
+                                      child: Text('Rename deck'),
+                                    ),
+                                    PopupMenuItem(
+                                      value: 'delete',
+                                      child: Text('Delete deck'),
+                                    ),
+                                  ],
+                                  onSelected: (action) async {
+                                    try {
+                                      if (action == 'rename') {
+                                        final title = await showStudyDeckName(
+                                          context,
+                                          deck.title,
+                                        );
+                                        if (title == null ||
+                                            !context.mounted ||
+                                            ref
+                                                    .read(
+                                                      accountDatabaseProvider,
+                                                    )
+                                                    .asData
+                                                    ?.value !=
+                                                repo.db) {
+                                          return;
+                                        }
+                                        if (await repo.rename(deck.id, title) !=
+                                            1) {
+                                          throw StateError('Deck unavailable');
+                                        }
+                                      } else {
+                                        final confirmed =
+                                            await showFiloConfirmation(
+                                              context,
+                                              title: 'Delete this deck?',
+                                              message: 'This deck and its cards will be deleted from this device.',
+                                              confirmLabel: 'Delete deck',
+                                              cancelLabel: 'Cancel',
+                                              confirmDestructive: true,
+                                              icon: FiloIcons.delete,
+                                            );
+                                        if (confirmed &&
+                                            context.mounted &&
+                                            ref
+                                                    .read(
+                                                      accountDatabaseProvider,
+                                                    )
+                                                    .asData
+                                                    ?.value ==
+                                                repo.db) {
+                                          await repo.delete(deck.id);
+                                        }
                                       }
-                                      if (await repo.rename(deck.id, title) !=
-                                          1) {
-                                        throw StateError('Deck unavailable');
-                                      }
-                                    } else {
-                                      final confirmed =
-                                          await showFiloConfirmation(
-                                            context,
-                                            title: 'Delete this deck?',
-                                            message: 'This deck and its cards will be deleted from this device.',
-                                            confirmLabel: 'Delete deck',
-                                            cancelLabel: 'Cancel',
-                                            confirmDestructive: true,
-                                            icon: FiloIcons.delete,
-                                          );
-                                      if (confirmed &&
-                                          context.mounted &&
-                                          ref
-                                                  .read(accountDatabaseProvider)
-                                                  .asData
-                                                  ?.value ==
-                                              repo.db) {
-                                        await repo.delete(deck.id);
+                                    } catch (_) {
+                                      if (context.mounted) {
+                                        showMessage(
+                                          context,
+                                          action == 'rename'
+                                              ? 'Could not rename this deck. Try again.'
+                                              : 'Could not delete this deck. Try again.',
+                                        );
                                       }
                                     }
-                                  } catch (_) {
-                                    if (context.mounted) {
-                                      showMessage(
-                                        context,
-                                        action == 'rename'
-                                            ? 'Could not rename this deck. Try again.'
-                                            : 'Could not delete this deck. Try again.',
-                                      );
-                                    }
-                                  }
-                                },
+                                  },
+                                ),
                               ),
                             ),
                           ),
-                        ),
-                    ],
+                      ],
+                    ),
+                    retry: () => ref.invalidate(studyDecksProvider(notebookId)),
+                    showMascot: true,
                   ),
-                  retry: () => ref.invalidate(studyDecksProvider(notebookId)),
-                  showMascot: true,
-                ),
-              ],
+                ],
+              ),
             ),
           ),
-        ),
-      ),
+        );
+      },
     ),
   );
 }
@@ -238,9 +301,8 @@ class _DeckNameState extends State<_DeckName> {
   }
 
   @override
-  Widget build(BuildContext context) => AlertDialog(
-    title: const Text('Rename deck'),
-    scrollable: true,
+  Widget build(BuildContext context) => FiloModalDialog(
+    title: 'Rename deck',
     content: TextField(
       controller: _name,
       autofocus: true,
@@ -252,18 +314,19 @@ class _DeckNameState extends State<_DeckName> {
       ],
     ),
     actions: [
-      TextButton(
-        onPressed: () => Navigator.pop(context),
-        child: const Text('Cancel'),
-      ),
       ValueListenableBuilder(
         valueListenable: _name,
-        builder: (_, value, _) => TextButton(
+        builder: (_, value, _) => FiloButton(
           onPressed: value.text.trim().isEmpty
               ? null
               : () => Navigator.pop(context, value.text.trim()),
-          child: const Text('Save'),
+          label: 'Save',
         ),
+      ),
+      FiloButton(
+        secondary: true,
+        onPressed: () => Navigator.pop(context),
+        label: 'Cancel',
       ),
     ],
   );
@@ -296,6 +359,7 @@ class _DeckGenerateBody extends ConsumerStatefulWidget {
 }
 
 class _DeckGenerateBodyState extends ConsumerState<_DeckGenerateBody> {
+  final _errorToast = StudyErrorToast();
   late final StudyDeckGeneration _session;
   final _topic = TextEditingController();
   int _count = 10;
@@ -316,7 +380,44 @@ class _DeckGenerateBodyState extends ConsumerState<_DeckGenerateBody> {
   }
 
   void _changed() {
-    if (mounted) setState(() {});
+    if (!mounted) return;
+    _errorToast.update(
+      context,
+      _session.error,
+      isCurrent: () =>
+          ref.read(accountDatabaseProvider).asData?.value ==
+          widget.repository.db,
+    );
+    setState(() {});
+    if (_session.savedId == null || _allowPop) return;
+    setState(() => _allowPop = true);
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted ||
+          ref.read(accountDatabaseProvider).asData?.value !=
+              widget.repository.db) {
+        return;
+      }
+      final result = _session.result!;
+      final message = [
+        'Flashcards created.',
+        if (result.value.dropped > 0)
+          '${result.value.dropped} invalid ${result.value.dropped == 1 ? 'card was' : 'cards were'} dropped.',
+        if (result.value.missing > 0)
+          '${result.value.missing} requested ${result.value.missing == 1 ? 'card was' : 'cards were'} not returned.',
+        if (result.truncated) 'Some source text was shortened.',
+      ].join('\n');
+      showFiloToast(context, message, kind: FiloToastKind.success);
+      final navigator = Navigator.of(context);
+      if (navigator.canPop()) {
+        navigator.pop();
+      } else {
+        navigator.pushReplacement(
+          MaterialPageRoute<void>(
+            builder: (_) => StudyDecksScreen(notebookId: widget.notebookId),
+          ),
+        );
+      }
+    });
   }
 
   @override
@@ -328,6 +429,14 @@ class _DeckGenerateBodyState extends ConsumerState<_DeckGenerateBody> {
   }
 
   Future<void> _generate() async {
+    if (!_session.working && ref.read(aiRequestGuardProvider).isBusy) {
+      showFiloToast(
+        context,
+        studyAiMessages['AI_IN_PROGRESS']!,
+        kind: FiloToastKind.error,
+      );
+      return;
+    }
     if (_session.working || _authorizing) return;
     setState(() => _authorizing = true);
     try {
@@ -398,84 +507,87 @@ class _DeckGenerateBodyState extends ConsumerState<_DeckGenerateBody> {
               padding: const EdgeInsets.all(FiloSpacing.screen),
               children: [
                 const StudyOfflineBanner(),
-                if (result == null)
+                if (result == null) ...[
                   FiloPanel(
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.stretch,
                       children: [
-                        Text(
-                          'How many cards?',
-                          style: Theme.of(context).textTheme.titleMedium,
+                        Semantics(
+                          header: true,
+                          child: Text(
+                            'How many cards?',
+                            style: Theme.of(context).textTheme.titleLarge,
+                          ),
                         ),
-                        const SizedBox(height: FiloSpacing.s8),
+                        const SizedBox(height: FiloSpacing.s16),
                         DropdownButtonFormField<int>(
                           initialValue: _count,
+                          isExpanded: true,
                           decoration: const InputDecoration(
                             labelText: 'Number of cards',
+                            prefixIcon: FiloIcon(FiloIcons.slides),
                           ),
                           items: [
                             for (var i = 5; i <= 30; i++)
-                              DropdownMenuItem(value: i, child: Text('$i')),
+                              DropdownMenuItem(
+                                value: i,
+                                child: Text('$i cards'),
+                              ),
                           ],
                           onChanged: _session.working || _authorizing
                               ? null
                               : (value) => setState(() => _count = value!),
                         ),
-                        const SizedBox(height: FiloSpacing.s16),
-                        TextField(
-                          controller: _topic,
-                          enabled: !_session.working && !_authorizing,
-                          decoration: const InputDecoration(
-                            labelText: 'Topic (optional with sources)',
-                          ),
-                          inputFormatters: [
-                            TextInputFormatter.withFunction(
-                              (old, next) =>
-                                  next.text.runes.length <= 200 ? next : old,
-                            ),
-                          ],
-                          onChanged: (_) => setState(() {}),
-                        ),
-                        Text('${_topic.text.runes.length}/200 characters'),
-                        const SizedBox(height: FiloSpacing.screen),
                       ],
                     ),
                   ),
-                const SizedBox(height: FiloSpacing.s16),
-                if (_session.working) ...[
-                  if (!_session.saving)
-                    const Mascot(pose: 'thinking', size: 120),
-                  Semantics(
-                    liveRegion: true,
-                    child: Text(
-                      _session.saving
-                          ? 'Saving deck...'
-                          : 'Preparing your flashcards...',
+                  const SizedBox(height: FiloSpacing.s16),
+                  FiloPanel(
+                    child: TextField(
+                      controller: _topic,
+                      enabled: !_session.working && !_authorizing,
+                      minLines: 1,
+                      maxLines: 3,
+                      decoration: InputDecoration(
+                        labelText: 'Topic (optional with sources)',
+                        alignLabelWithHint: true,
+                        counterText:
+                            '${_topic.text.runes.length}/200 characters',
+                      ),
+                      inputFormatters: [
+                        TextInputFormatter.withFunction(
+                          (old, next) =>
+                              next.text.runes.length <= 200 ? next : old,
+                        ),
+                      ],
+                      onChanged: (_) => setState(() {}),
                     ),
                   ),
-                  if (!MediaQuery.disableAnimationsOf(context))
-                    const Padding(
-                      padding: EdgeInsets.all(FiloSpacing.s16),
-                      child: Center(
-                        child: FiloCircularProgressIndicator(
-                          semanticsLabel: 'Preparing flashcards',
-                        ),
-                      ),
-                    ),
-                  if (!_session.saving)
-                    FiloButton(label: 'Cancel', onPressed: _session.cancel),
-                  const Text(
-                    'Cancel stops waiting on this phone. The server may still finish.',
+                ],
+                const SizedBox(height: FiloSpacing.s16),
+                if (_session.working) ...[
+                  StudyGenerationStatus(
+                    label: _session.saving
+                        ? 'Saving deck...'
+                        : 'Preparing your flashcards...',
+                    saving: _session.saving,
+                    onCancel: _session.cancel,
                   ),
                 ] else if (result == null)
                   FiloButton(
                     label: 'Generate',
                     icon: FiloIcons.sparkle,
-                    onPressed: reason == null && !_authorizing
+                    onPressed:
+                        !_authorizing &&
+                            (reason == null ||
+                                reason == studyAiMessages['AI_IN_PROGRESS'])
                         ? _generate
                         : null,
                   ),
-                if (reason != null && result == null)
+                if (reason != null &&
+                    reason != studyAiMessages['AI_IN_PROGRESS'] &&
+                    reason != studyAiMessages['OFFLINE'] &&
+                    result == null)
                   Padding(
                     padding: const EdgeInsets.only(top: FiloSpacing.s12),
                     child: Text(reason),
@@ -517,30 +629,7 @@ class _DeckGenerateBodyState extends ConsumerState<_DeckGenerateBody> {
                       label: 'Try saving again',
                       onPressed: _session.retrySave,
                     ),
-                  if (_session.savedId != null)
-                    FiloButton(
-                      label: 'Study deck',
-                      onPressed: () => Navigator.pushReplacement(
-                        context,
-                        MaterialPageRoute<void>(
-                          builder: (_) => StudyFlashcardStudyScreen(
-                            notebookId: widget.notebookId,
-                            deckId: _session.savedId!,
-                          ),
-                        ),
-                      ),
-                    ),
                 ],
-                if (_session.error != null)
-                  Padding(
-                    padding: const EdgeInsets.only(top: FiloSpacing.s16),
-                    child: Semantics(
-                      liveRegion: true,
-                      child: Text(_session.error!),
-                    ),
-                  ),
-                const SizedBox(height: FiloSpacing.s16),
-                const Text('AI can make mistakes. Check important answers.'),
               ],
             ),
           ),

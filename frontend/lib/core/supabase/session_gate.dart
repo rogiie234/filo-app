@@ -66,7 +66,6 @@ final verifiedUserIdProvider = FutureProvider<String?>((ref) async {
   if (!ref.mounted || deletions.containsKey(session.user.id)) return null;
   final sessionId = sessionIdFromToken(session.accessToken);
   final hash = await ref.watch(deviceHashProvider.future);
-  final online = await ref.watch(connectivityProvider.future);
   final client = ref.watch(supabaseClientProvider);
   const storage = FlutterSecureStorage();
   final key = 'filo.offline_verified.${session.user.id}';
@@ -82,6 +81,16 @@ final verifiedUserIdProvider = FutureProvider<String?>((ref) async {
         : null;
   }
 
+  bool online;
+  final connectivity = ref.watch(connectivityProvider);
+  if (connectivity.hasError) return await offline();
+  try {
+    online =
+        connectivity.asData?.value ??
+        await ref.watch(connectivityProvider.future);
+  } catch (_) {
+    return await offline();
+  }
   if (!online) return await offline();
   try {
     final device = await client

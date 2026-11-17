@@ -27,7 +27,8 @@ final studentExamRepositoryProvider = FutureProvider<StudentExamRepository?>((
   final userId = await ref.watch(verifiedUserIdProvider.future);
   final client = ref.watch(supabaseClientProvider);
   if (db == null || userId == null || !ref.mounted) return null;
-  final repository = StudentExamRepository(
+  late final StudentExamRepository repository;
+  repository = StudentExamRepository(
     store: ExamStore(db),
     remote: SupabaseExamRemote(client, userId),
     isCurrent: () =>
@@ -39,8 +40,8 @@ final studentExamRepositoryProvider = FutureProvider<StudentExamRepository?>((
     isWindowBlocked: () => ExamScreenSecurity.multiWindow,
     flushLeaveEvents: () async {
       final sync = await ref.read(syncCoordinatorProvider.future);
-      await sync?.run();
-      await sync?.run();
+      final sessionId = repository.active?.sessionId;
+      if (sessionId != null) await sync?.flushLeaveEvents(sessionId);
     },
   );
   ref.onDispose(repository.dispose);
@@ -211,8 +212,9 @@ final examLifecycleProvider = Provider.autoDispose<void>((ref) {
     }
     try {
       final repository = await future;
-      if (!disposed && repository?.forcedSubmission == true)
+      if (!disposed && repository?.forcedSubmission == true) {
         await repository!.recover();
+      }
       final sync = await ref.read(syncCoordinatorProvider.future);
       if (!disposed) {
         await sync?.run();

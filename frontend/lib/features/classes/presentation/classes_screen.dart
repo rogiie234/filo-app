@@ -14,6 +14,7 @@ import 'class_screen.dart';
 import '../../settings/presentation/settings_screen.dart';
 import '../../grading/presentation/work_queue_screen.dart';
 import '../../drive_backup/data/drive_backup_service.dart';
+import '../../drive_backup/presentation/drive_backup_screen.dart';
 import '../../notifications/presentation/inbox_screen.dart';
 import '../../notifications/application/notification_providers.dart';
 import '../../files/presentation/my_files_screen.dart';
@@ -37,7 +38,6 @@ class _ClassesScreenState extends ConsumerState<ClassesScreen> {
   final _search = TextEditingController();
   String _query = '';
   int _destination = 0;
-  bool _hasShownClasses = false;
   bool _libraryBusy = false;
   bool _libraryHasContent = false;
   final _libraryKey = GlobalKey<MyFilesScreenState>();
@@ -56,7 +56,6 @@ class _ClassesScreenState extends ConsumerState<ClassesScreen> {
   void didUpdateWidget(covariant ClassesScreen oldWidget) {
     super.didUpdateWidget(oldWidget);
     if (oldWidget.profile?.id != widget.profile?.id) {
-      _hasShownClasses = false;
       _libraryBusy = false;
       _libraryHasContent = false;
       _destination = 0;
@@ -87,6 +86,10 @@ class _ClassesScreenState extends ConsumerState<ClassesScreen> {
     final sync = live
         ? ref.watch(classSyncProvider)
         : const AsyncData<void>(null);
+    final refreshStatus = live ? ref.watch(classRefreshStatusProvider) : null;
+    final classRefreshFailed =
+        refreshStatus?.hasError == true ||
+        refreshStatus?.asData?.value == ClassRefreshStatus.failed;
     final student = live
         ? widget.profile!.role == AccountRole.student
         : state.role == PreviewRole.student;
@@ -112,12 +115,13 @@ class _ClassesScreenState extends ConsumerState<ClassesScreen> {
     ];
     final loading =
         (cards.isLoading && !cards.hasValue) ||
-        (!_hasShownClasses &&
-            live &&
+        (live &&
             online &&
-            sync.isLoading &&
+            !classRefreshFailed &&
+            (sync.isLoading ||
+                refreshStatus?.isLoading == true ||
+                refreshStatus?.asData?.value == ClassRefreshStatus.loading) &&
             (cards.asData?.value.isEmpty ?? true));
-    if (!loading && !cards.hasError && !sync.hasError) _hasShownClasses = true;
     final library = live && _destination == 2;
     final fileRepository = library ? ref.watch(filesRepositoryProvider) : null;
     return FiloFirstListLoad(
@@ -211,32 +215,6 @@ class _ClassesScreenState extends ConsumerState<ClassesScreen> {
                         OfflineBanner(),
                         SizedBox(height: FiloSpacing.s16),
                       ],
-                      if (live && sync.hasError)
-                        EmptyState(
-                          title: 'Classes could not refresh',
-                          body: 'Showing saved classes when available; reconnect and retry.',
-                          pose: 'confused',
-                          showMascot: (cards.asData?.value.isEmpty ?? true),
-                          bob: false,
-                          action: TextButton(
-                            onPressed: online
-                                ? () => ref
-                                      .read(classSyncProvider.notifier)
-                                      .refresh()
-                                : null,
-                            child: const Text('Retry'),
-                          ),
-                        ),
-
-                      if (cards.hasError)
-                        const EmptyState(
-                          title: 'Saved classes unavailable',
-                          body: 'Reopen the app to retry reading your saved classes.',
-                          pose: 'confused',
-                          bob: false,
-                        ),
-                      if ((live && sync.hasError) || cards.hasError)
-                        const SizedBox(height: FiloSpacing.s16),
                       Row(
                         children: [
                           Expanded(
@@ -316,18 +294,43 @@ class _ClassesScreenState extends ConsumerState<ClassesScreen> {
                         onChanged: (value) => setState(() => _query = value),
                       ),
                       const SizedBox(height: FiloSpacing.screen),
-                      if (live) _SyncErrorStatus(),
+                      if (live && classRefreshFailed)
+                        EmptyState(
+                          title: 'Classes could not refresh',
+                          body: 'Could not load the latest classes. Please try again.',
+                          pose: 'confused',
+                          showMascot: (cards.asData?.value.isEmpty ?? true),
+                          action: TextButton(
+                            onPressed: online && !sync.isLoading
+                                ? () => ref
+                                      .read(classSyncProvider.notifier)
+                                      .refresh()
+                                : null,
+                            child: Text(
+                              sync.isLoading ? 'Refreshing?' : 'Retry',
+                            ),
+                          ),
+                        ),
+
+                      if (cards.hasError)
+                        const EmptyState(
+                          title: 'Saved classes unavailable',
+                          body: 'Reopen the app to retry reading your saved classes.',
+                          pose: 'confused',
+                        ),
+                      if ((live && classRefreshFailed) || cards.hasError)
+                        const SizedBox(height: FiloSpacing.s16),
+                      if (live && !classRefreshFailed) _SyncErrorStatus(),
                       if (rooms.isEmpty &&
                           !loading &&
                           !cards.hasError &&
-                          !sync.hasError)
+                          !classRefreshFailed)
                         EmptyState(
                           pose: _query.trim().isNotEmpty
                               ? 'curious'
                               : !online
                               ? 'sleepy'
                               : 'waving',
-                          bob: online,
                           title: _query.trim().isNotEmpty
                               ? 'No classes found.'
                               : !online
@@ -752,16 +755,32 @@ class _SyncErrorStatus extends ConsumerWidget {
                   Expanded(
                     child: Text(
                       !online
-                          ? "You're offline. Some changes haven't synced."
-                          : 'Some changes could not sync.',
+                          ? "You're offline. Connect to retry sending changes or refreshing information."
+                          : sync.failureSummary,
                       style: Theme.of(context).textTheme.bodySmall,
                     ),
                   ),
-                  TextButton(
-                    onPressed: sync.syncing || !online
-                        ? null
-                        : () => sync.run(retryFailed: true),
-                    child: const Text('Retry sync'),
+                  Flexible(
+                    child: Wrap(
+                      alignment: WrapAlignment.end,
+                      children: [
+                        if (sync.errors.containsKey('drive_backup'))
+                          TextButton(
+                            onPressed: () => Navigator.of(context).push(
+                              MaterialPageRoute<void>(
+                                builder: (_) => const DriveBackupScreen(),
+                              ),
+                            ),
+                            child: const Text('Backup details'),
+                          ),
+                        TextButton(
+                          onPressed: sync.syncing || !online
+                              ? null
+                              : () => sync.run(retryFailed: true),
+                          child: const Text('Retry sync'),
+                        ),
+                      ],
+                    ),
                   ),
                 ],
               ),

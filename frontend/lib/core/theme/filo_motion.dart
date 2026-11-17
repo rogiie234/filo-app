@@ -4,7 +4,13 @@ import 'animation_constants.dart';
 
 abstract final class FiloMotion {
   static bool enabled(BuildContext context) =>
-      !MediaQuery.disableAnimationsOf(context) && TickerMode.of(context);
+      !MediaQuery.disableAnimationsOf(context) &&
+      !WidgetsBinding
+          .instance
+          .platformDispatcher
+          .accessibilityFeatures
+          .reduceMotion &&
+      TickerMode.of(context);
 }
 
 Future<T?> showFiloDialog<T>({
@@ -52,11 +58,18 @@ class _FiloMotionScopeState extends State<FiloMotionScope>
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) => setState(() {});
   @override
+  void didChangeAccessibilityFeatures() => setState(() {});
+  @override
   Widget build(BuildContext context) {
     final lifecycle = WidgetsBinding.instance.lifecycleState;
     final reduced =
         !widget.enabled ||
         MediaQuery.disableAnimationsOf(context) ||
+        WidgetsBinding
+            .instance
+            .platformDispatcher
+            .accessibilityFeatures
+            .reduceMotion ||
         !TickerMode.of(context) ||
         (lifecycle != null && lifecycle != AppLifecycleState.resumed);
     final theme = Theme.of(context);

@@ -152,8 +152,9 @@ class _AssessmentFormScreenState extends ConsumerState<AssessmentFormScreen> {
     try {
       final bank = await ref.read(questionBankRepositoryProvider.future);
       final course = _bankCourse;
-      if (course == null || course.trim().isEmpty)
+      if (course == null || course.trim().isEmpty) {
         throw StateError('Course unavailable');
+      }
       await bank.save(id, snapshot, creating: true, course: course);
       _bankIds.remove(q.localId);
       _bankSnapshots.remove(q.localId);
@@ -195,25 +196,26 @@ class _AssessmentFormScreenState extends ConsumerState<AssessmentFormScreen> {
       final controller = TextEditingController();
       final title = await showFiloDialog<String>(
         context: context,
-        builder: (c) => AlertDialog(
-          title: const Text('Name your assessment'),
+        builder: (c) => FiloModalDialog(
+          title: 'Name your assessment',
           content: TextField(
             controller: controller,
             maxLength: 120,
             decoration: const InputDecoration(labelText: 'Title'),
           ),
           actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(c),
-              child: const Text('Cancel'),
-            ),
-            FilledButton(
+            FiloButton(
               onPressed: () {
                 if (controller.text.trim().isNotEmpty) {
                   Navigator.pop(c, controller.text.trim());
                 }
               },
-              child: const Text('Save draft'),
+              label: 'Save draft',
+            ),
+            FiloButton(
+              secondary: true,
+              onPressed: () => Navigator.pop(c),
+              label: 'Cancel',
             ),
           ],
         ),
@@ -256,7 +258,7 @@ class _AssessmentFormScreenState extends ConsumerState<AssessmentFormScreen> {
       });
       return _canWrite && !_draft!.locked;
     } catch (error) {
-      if (mounted)
+      if (mounted) {
         setState(() {
           if (error is QuizReconciliationRequired ||
               shell.reconciliationRequired) {
@@ -265,6 +267,7 @@ class _AssessmentFormScreenState extends ConsumerState<AssessmentFormScreen> {
           }
           _error = quizFriendlyError(error);
         });
+      }
       return false;
     } finally {
       if (mounted) setState(() => _busy = false);
@@ -865,14 +868,26 @@ class _AssessmentFormScreenState extends ConsumerState<AssessmentFormScreen> {
             DateUtils.isSameDay(date, openingCivil)
         ? openingCivil.hour * 60 + openingCivil.minute + 1
         : 0;
-    final time = await showDialog<TimeOfDay>(
-      context: context,
-      builder: (_) => _AssessmentTimePicker(
-        initial: TimeOfDay(hour: civil.hour, minute: civil.minute),
-        minimum: minimum,
-      ),
-    );
-    if (time == null || !mounted) return;
+    final initialMinutes = civil.hour * 60 + civil.minute;
+    final suggested = initialMinutes < minimum ? minimum : initialMinutes;
+    TimeOfDay? time;
+    while (mounted) {
+      time = await showTimePicker(
+        context: context,
+        initialTime: TimeOfDay(hour: suggested ~/ 60, minute: suggested % 60),
+        helpText: minimum > 0
+            ? 'End time after ${TimeOfDay.fromDateTime(openingCivil!).format(context)} (Philippine time)'
+            : 'Select time (Philippine time)',
+      );
+      if (time == null || !mounted) return;
+      if (time.hour * 60 + time.minute >= minimum) break;
+      showFiloToast(
+        context,
+        'End date and time must be after the start.',
+        kind: FiloToastKind.error,
+      );
+    }
+    if (!mounted || time == null) return;
     _changeSchedule(
       field,
       manilaToUtc(
@@ -2347,93 +2362,4 @@ class _AssessmentFormScreenState extends ConsumerState<AssessmentFormScreen> {
       ),
     );
   }
-}
-
-class _AssessmentTimePicker extends StatefulWidget {
-  const _AssessmentTimePicker({required this.initial, required this.minimum});
-  final TimeOfDay initial;
-  final int minimum;
-  @override
-  State<_AssessmentTimePicker> createState() => _AssessmentTimePickerState();
-}
-
-class _AssessmentTimePickerState extends State<_AssessmentTimePicker> {
-  late int _hour, _minute;
-  @override
-  void initState() {
-    super.initState();
-    final initial = widget.initial.hour * 60 + widget.initial.minute;
-    final selected = initial < widget.minimum ? widget.minimum : initial;
-    _hour = selected ~/ 60;
-    _minute = selected % 60;
-  }
-
-  @override
-  Widget build(BuildContext context) => AlertDialog(
-    title: const Text('Select time'),
-    content: SingleChildScrollView(
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          const Text('Philippine time'),
-          const SizedBox(height: FiloSpacing.s16),
-          DropdownButtonFormField<int>(
-            key: const ValueKey('assessment-time-hour'),
-            initialValue: _hour,
-            isExpanded: true,
-            decoration: const InputDecoration(labelText: 'Hour (24-hour)'),
-            items: [
-              for (var hour = 0; hour < 24; hour++)
-                DropdownMenuItem(
-                  value: hour,
-                  enabled: hour * 60 + 59 >= widget.minimum,
-                  child: Text(hour.toString().padLeft(2, '0')),
-                ),
-            ],
-            onChanged: (hour) {
-              if (hour == null || hour * 60 + 59 < widget.minimum) return;
-              setState(() {
-                _hour = hour;
-                if (_hour * 60 + _minute < widget.minimum)
-                  _minute = widget.minimum % 60;
-              });
-            },
-          ),
-          const SizedBox(height: FiloSpacing.s16),
-          DropdownButtonFormField<int>(
-            key: ValueKey('assessment-time-minute-$_hour'),
-            initialValue: _minute,
-            isExpanded: true,
-            decoration: const InputDecoration(labelText: 'Minute'),
-            items: [
-              for (var minute = 0; minute < 60; minute++)
-                DropdownMenuItem(
-                  value: minute,
-                  enabled: _hour * 60 + minute >= widget.minimum,
-                  child: Text(minute.toString().padLeft(2, '0')),
-                ),
-            ],
-            onChanged: (minute) {
-              if (minute == null || _hour * 60 + minute < widget.minimum)
-                return;
-              setState(() => _minute = minute);
-            },
-          ),
-        ],
-      ),
-    ),
-    actions: [
-      FiloButton(
-        label: 'Cancel',
-        text: true,
-        onPressed: () => Navigator.pop(context),
-      ),
-      FiloButton(
-        label: 'Set time',
-        onPressed: () =>
-            Navigator.pop(context, TimeOfDay(hour: _hour, minute: _minute)),
-      ),
-    ],
-  );
 }

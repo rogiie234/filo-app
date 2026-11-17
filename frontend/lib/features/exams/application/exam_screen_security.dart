@@ -9,8 +9,10 @@ class ExamWindowState {
   const ExamWindowState({
     this.multiWindow = false,
     this.overlaySupported = false,
+    this.obscured = false,
   });
-  final bool multiWindow, overlaySupported;
+  final bool multiWindow, overlaySupported, obscured;
+  bool get blocked => multiWindow || obscured;
 }
 
 class ExamScreenSecurity {
@@ -29,6 +31,7 @@ class ExamScreenSecurity {
         multiWindow = state['multi_window'] == true;
         yield ExamWindowState(
           multiWindow: multiWindow,
+          obscured: state['obscured'] == true,
           overlaySupported: state['overlay_supported'] == true,
         );
       }

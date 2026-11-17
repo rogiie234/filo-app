@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:drift/native.dart';
 import 'package:flutter/material.dart';
+import 'package:filo/core/widgets/filo_widgets.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:filo/core/notifications/deadline_providers.dart';
@@ -27,6 +28,15 @@ class ScreenStudyBridge extends StudyBridgeFixture {
     'studyError': false,
   };
 }
+
+Finder alarmFormScroll() => find.byType(BottomSheet).evaluate().isNotEmpty
+    ? find
+          .descendant(
+            of: find.byType(BottomSheet),
+            matching: find.byType(Scrollable),
+          )
+          .first
+    : find.byType(Scrollable).first;
 
 void main() {
   final binding = TestWidgetsFlutterBinding.ensureInitialized();
@@ -82,7 +92,7 @@ void main() {
         await tester.scrollUntilVisible(
           find.text('Save'),
           200,
-          scrollable: find.byType(Scrollable).first,
+          scrollable: alarmFormScroll(),
         );
         await tester.tap(find.text('Save'));
         await tester.pumpAndSettle();
@@ -98,7 +108,7 @@ void main() {
         await tester.scrollUntilVisible(
           find.text('Save'),
           200,
-          scrollable: find.byType(Scrollable).first,
+          scrollable: alarmFormScroll(),
         );
         await tester.tap(find.text('Save'));
         await tester.pumpAndSettle();
@@ -151,16 +161,48 @@ void main() {
       await tester.pumpAndSettle();
       expect(find.text('No study alarms yet'), findsOneWidget);
       expect(
+        find.byWidgetPredicate(
+          (w) => w is FiloButton && w.label == 'New alarm' && w.iconOnly,
+        ),
+        findsNothing,
+      );
+      expect(
         find.text('Approximate alarms. Delivery may be delayed.'),
         findsOneWidget,
       );
       await tester.tap(find.text('New alarm'));
       await tester.pumpAndSettle();
       expect(find.text('New study alarm'), findsOneWidget);
+      expect(find.byType(BottomSheet), findsOneWidget);
+      expect(find.byType(FiloAnimatedChip), findsNWidgets(7));
+      expect(find.text('Mon'), findsOneWidget);
+      expect(find.text('Thu'), findsOneWidget);
+      await tester.ensureVisible(find.byTooltip('Monday'));
+      await tester.tap(find.byTooltip('Monday'));
+      await tester.pumpAndSettle();
+      expect(
+        tester
+            .widget<FiloAnimatedChip>(
+              find.widgetWithText(FiloAnimatedChip, 'Mon'),
+            )
+            .selected,
+        isTrue,
+      );
+      await tester.tap(find.byTooltip('Monday'));
+      await tester.pumpAndSettle();
+      expect(
+        tester.widget<StudyAlarmEditor>(find.byType(StudyAlarmEditor)).asDrawer,
+        isTrue,
+      );
+      await tester.tap(find.byTooltip('Close'));
+      await tester.pumpAndSettle();
+      expect((await tester.runAsync(repo.readAlarms))!, isEmpty);
+      await tester.tap(find.text('New alarm'));
+      await tester.pumpAndSettle();
       await tester.scrollUntilVisible(
         find.text('Save'),
         200,
-        scrollable: find.byType(Scrollable).first,
+        scrollable: alarmFormScroll(),
       );
       await tester.pumpAndSettle();
       await tester.tap(find.text('Save'));
@@ -168,7 +210,7 @@ void main() {
       await tester.scrollUntilVisible(
         find.byType(TextFormField),
         -200,
-        scrollable: find.byType(Scrollable).first,
+        scrollable: alarmFormScroll(),
       );
       await tester.pumpAndSettle();
       expect(find.text('Enter a subject.'), findsOneWidget);
@@ -179,7 +221,7 @@ void main() {
       await tester.scrollUntilVisible(
         find.text('Save'),
         200,
-        scrollable: find.byType(Scrollable).first,
+        scrollable: alarmFormScroll(),
       );
       await tester.pumpAndSettle();
       await tester.tap(find.text('Save'));
@@ -192,12 +234,23 @@ void main() {
       await tester.pumpAndSettle();
       await tester.pump(const Duration(milliseconds: 100));
       expect((await tester.runAsync(repo.readAlarms))!.single.enabled, isFalse);
-      await tester.tap(find.text('Purposive Communication study time'));
+      expect(
+        find.byWidgetPredicate(
+          (w) => w is FiloButton && w.label == 'New alarm' && w.iconOnly,
+        ),
+        findsOneWidget,
+      );
+      await tester.tap(
+        find.byTooltip('Options for Purposive Communication study time'),
+      );
       await tester.pumpAndSettle();
-      await tester.scrollUntilVisible(
-        find.text('Delete alarm'),
-        200,
-        scrollable: find.byType(Scrollable).first,
+      await tester.tap(find.text('Delete alarm'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Cancel'));
+      await tester.pumpAndSettle();
+      expect((await tester.runAsync(repo.readAlarms))!, hasLength(1));
+      await tester.tap(
+        find.byTooltip('Options for Purposive Communication study time'),
       );
       await tester.pumpAndSettle();
       await tester.tap(find.text('Delete alarm'));
@@ -242,10 +295,7 @@ void main() {
       pending.completeError(StateError('Fixture storage unavailable'));
       await tester.pumpAndSettle();
       expect(find.text('No study alarms yet'), findsNothing);
-      expect(
-        find.text('Study alarms unavailable'),
-        findsOneWidget,
-      );
+      expect(find.text('Study alarms unavailable'), findsOneWidget);
       await tester.pumpWidget(const SizedBox());
     },
   );

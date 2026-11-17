@@ -116,15 +116,62 @@ void main() {
     ],
   );
 
+  testWidgets('AI busy uses a transient toast and retries without inline error', (
+    tester,
+  ) async {
+    invoke = (_, _, _) async => throw const StudyAiFailure('AI_BUSY');
+    await tester.pumpWidget(app(StudyDeckGenerateScreen(notebookId: notebook)));
+    await pumpDeck(tester);
+    await tester.enterText(find.byType(TextField), 'Cells');
+    await tester.pump();
+    await tap(tester, button('Generate'));
+    const message =
+        'The AI assistant is busy right now. Please try again in a few minutes.';
+    expect(find.text(message), findsOneWidget);
+    expect(
+      find.descendant(of: find.byType(SnackBar), matching: find.text(message)),
+      findsOneWidget,
+    );
+    expect(calls, 1);
+    await tester.pump(const Duration(seconds: 5));
+    await pumpDeck(tester);
+    expect(find.text(message), findsNothing);
+    await tester.enterText(find.byType(TextField), 'Cells again');
+    await tester.pump();
+    expect(find.byType(SnackBar), findsNothing);
+    await tap(tester, button('Generate'));
+    expect(find.text(message), findsOneWidget);
+    expect(calls, 2);
+    await close(tester);
+  });
+
+  testWidgets('library uses empty CTA then circular add for saved items', (
+    tester,
+  ) async {
+    Finder circle() => find.byWidgetPredicate(
+      (widget) =>
+          widget is FiloButton &&
+          widget.label == 'Generate flashcards' &&
+          widget.iconOnly,
+    );
+    await tester.pumpWidget(app(StudyDecksScreen(notebookId: notebook)));
+    await pumpDeck(tester);
+    expect(circle(), findsNothing);
+    expect(button('Generate flashcards'), findsOneWidget);
+    await tester.runAsync(() => deck(count: 1));
+    await pumpDeck(tester);
+    expect(circle(), findsOneWidget);
+    await tap(tester, circle());
+    expect(find.text('How many cards?'), findsOneWidget);
+    await close(tester);
+  });
+
   testWidgets(
     'generation defaults, required topic, partial counts and saved list',
     (tester) async {
       await tester.pumpWidget(app(StudyDecksScreen(notebookId: notebook)));
       await pumpDeck(tester);
-      expect(
-        find.text('No flashcards yet'),
-        findsOneWidget,
-      );
+      expect(find.text('No flashcards yet'), findsOneWidget);
       await tap(tester, button('Generate flashcards'));
       expect(
         tester
@@ -139,9 +186,17 @@ void main() {
       await tester.pump();
       await tap(tester, button('Generate'));
       expect(calls, 1);
-      expect(find.text('Deck saved.'), findsOneWidget);
-      expect(find.text('1 invalid card was dropped.'), findsOneWidget);
-      expect(find.text('7 requested cards were not returned.'), findsOneWidget);
+      expect(find.textContaining('Flashcards created.'), findsOneWidget);
+      expect(find.text('Generate flashcards'), findsNothing);
+      expect(button('Study deck'), findsNothing);
+      expect(
+        find.textContaining('1 invalid card was dropped.'),
+        findsOneWidget,
+      );
+      expect(
+        find.textContaining('7 requested cards were not returned.'),
+        findsOneWidget,
+      );
       expect((await db.select(db.flashcardDecks).get()).single.title, 'Cells');
       await close(tester);
       await tester.pumpWidget(app(StudyDecksScreen(notebookId: notebook)));
@@ -174,6 +229,13 @@ void main() {
       await tap(tester, button('Generate'));
       await tap(tester, button('OK'));
       expect(find.text('Preparing your flashcards...'), findsOneWidget);
+      expect(find.byType(FiloLinearProgressIndicator), findsOneWidget);
+      expect(
+        find.text(
+          'Cancel stops waiting on this phone. The server may still finish.',
+        ),
+        findsOneWidget,
+      );
       await tap(tester, button('Cancel'));
       expect(guard.isBusy, isFalse);
       expect(find.text(studyAiMessages['CANCELLED']!), findsOneWidget);
@@ -251,6 +313,10 @@ void main() {
       await pumpDeck(tester);
       await tap(tester, find.byTooltip('Deck options for Saved deck'));
       await tap(tester, find.text('Rename deck'));
+      expect(find.byType(FiloModalDialog), findsOneWidget);
+      await tester.enterText(find.byType(TextField), '   ');
+      await tester.pump();
+      expect(tester.widget<FiloButton>(button('Save')).onPressed, isNull);
       await tester.enterText(find.byType(TextField), 'Renamed');
       await tester.pump();
       await tap(tester, find.text('Save'));
@@ -323,7 +389,16 @@ void main() {
       await tester.pumpWidget(app(StudyDecksScreen(notebookId: notebook)));
       await pumpDeck(tester);
       expect(
-        tester.widget<FiloButton>(button('Generate flashcards')).onPressed,
+        tester
+            .widget<FiloButton>(
+              find.byWidgetPredicate(
+                (widget) =>
+                    widget is FiloButton &&
+                    widget.label == 'Generate flashcards' &&
+                    widget.iconOnly,
+              ),
+            )
+            .onPressed,
         isNull,
       );
       expect(

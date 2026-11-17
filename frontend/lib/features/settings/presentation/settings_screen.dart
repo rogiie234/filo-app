@@ -29,6 +29,63 @@ class SettingsScreen extends ConsumerStatefulWidget {
 class _SettingsScreenState extends ConsumerState<SettingsScreen> {
   bool _signingOut = false, _confirmingSignOut = false;
   String? _signOutError;
+  final _settingsScroll = ScrollController();
+  static const _accountOptionsPullDistance = 240.0;
+  bool _showAccountDeletion = false, _accountOptionsPullEligible = false;
+  double _accountOptionsPull = 0;
+
+  @override
+  void dispose() {
+    _settingsScroll.dispose();
+    super.dispose();
+  }
+
+  void _revealAccountDeletion() {
+    if (_showAccountDeletion || _signingOut) return;
+    setState(() => _showAccountDeletion = true);
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted && _settingsScroll.hasClients) {
+        _settingsScroll.jumpTo(_settingsScroll.position.maxScrollExtent);
+      }
+    });
+  }
+
+  bool _onSettingsScroll(ScrollNotification notification) {
+    if (notification.depth != 0 || _showAccountDeletion || _signingOut) {
+      return false;
+    }
+    final previousPull = _accountOptionsPull;
+    if (notification is ScrollStartNotification) {
+      // Require a fresh drag at the bottom, never the swipe that reached it.
+      _accountOptionsPullEligible =
+          notification.dragDetails != null &&
+          notification.metrics.extentAfter <= 1;
+      _accountOptionsPull = 0;
+    } else if (notification is ScrollEndNotification) {
+      _accountOptionsPullEligible = false;
+      _accountOptionsPull = 0;
+    } else if (notification is OverscrollNotification &&
+        notification.dragDetails != null &&
+        _accountOptionsPullEligible) {
+      if (notification.overscroll > 0 &&
+          notification.metrics.extentAfter <= 1) {
+        _accountOptionsPull += notification.overscroll;
+        if (_accountOptionsPull >= _accountOptionsPullDistance) {
+          _revealAccountDeletion();
+          return false;
+        }
+      } else {
+        _accountOptionsPull = 0;
+        _accountOptionsPullEligible = false;
+      }
+    } else if (notification is ScrollUpdateNotification &&
+        (notification.scrollDelta ?? 0) < 0) {
+      _accountOptionsPull = 0;
+      _accountOptionsPullEligible = false;
+    }
+    if (_accountOptionsPull != previousPull) setState(() {});
+    return false;
+  }
 
   Future<void> _signOut() async {
     if (_signingOut || _confirmingSignOut) return;
@@ -177,156 +234,208 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
             title: const Text('Profile and settings'),
           ),
           body: SafeArea(
-            child: ListView(
-              padding: const EdgeInsets.all(FiloSpacing.screen),
-              children: [
-                FiloPanel(
-                  color: Theme.of(context).colorScheme.primaryContainer
-                      .withValues(alpha: .35),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.stretch,
-                    children: [
-                      Row(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          FiloAvatar(
-                            userId: profile.id,
-                            name: profile.name,
-                            url: profile.photoUrl,
-                            path: profile.avatarPath,
-                            size: 72,
+            child: NotificationListener<ScrollNotification>(
+              onNotification: _onSettingsScroll,
+              child: ListView(
+                controller: _settingsScroll,
+                physics: const AlwaysScrollableScrollPhysics(
+                  parent: ClampingScrollPhysics(),
+                ),
+                padding: const EdgeInsets.all(FiloSpacing.screen),
+                children: [
+                  FiloPanel(
+                    color: Theme.of(context).colorScheme.primaryContainer
+                        .withValues(alpha: .35),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: [
+                        Row(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            FiloAvatar(
+                              userId: profile.id,
+                              name: profile.name,
+                              url: profile.photoUrl,
+                              path: profile.avatarPath,
+                              size: 72,
+                            ),
+                            const SizedBox(width: FiloSpacing.s16),
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    profile.name,
+                                    style: Theme.of(context)
+                                        .textTheme
+                                        .headlineSmall,
+                                  ),
+                                  const SizedBox(height: FiloSpacing.s8),
+                                  Text(
+                                    profile.role.label,
+                                    style: Theme.of(context)
+                                        .textTheme
+                                        .labelLarge
+                                        ?.copyWith(
+                                          color: Theme.of(context)
+                                              .colorScheme
+                                              .onSurfaceVariant,
+                                        ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ],
+                        ),
+                        if (profile.school?.isNotEmpty == true) ...[
+                          const SizedBox(height: FiloSpacing.s16),
+                          Text(
+                            profile.school!,
+                            style: Theme.of(context).textTheme.bodyLarge,
                           ),
-                          const SizedBox(width: FiloSpacing.s16),
-                          Expanded(
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Text(
-                                  profile.name,
-                                  style: Theme.of(context)
-                                      .textTheme
-                                      .headlineSmall,
-                                ),
-                                const SizedBox(height: FiloSpacing.s8),
-                                Text(
-                                  profile.role.label,
-                                  style: Theme.of(context).textTheme.labelLarge
-                                      ?.copyWith(
-                                        color: Theme.of(context)
-                                            .colorScheme
-                                            .onSurfaceVariant,
-                                      ),
-                                ),
-                              ],
+                        ],
+                        if (profile.email != null) ...[
+                          const SizedBox(height: FiloSpacing.s8),
+                          Text(
+                            profile.email!,
+                            style: TextStyle(
+                              color: Theme.of(context)
+                                  .colorScheme
+                                  .onSurfaceVariant,
                             ),
                           ),
                         ],
-                      ),
-                      if (profile.school?.isNotEmpty == true) ...[
-                        const SizedBox(height: FiloSpacing.s16),
-                        Text(
-                          profile.school!,
-                          style: Theme.of(context).textTheme.bodyLarge,
+                        const SizedBox(height: FiloSpacing.s20),
+                        FiloButton(
+                          label: 'Edit profile',
+                          icon: FiloIcons.edit,
+                          outlined: true,
+                          onPressed: _signingOut
+                              ? null
+                              : () =>
+                                    _open(EditProfileScreen(profile: profile)),
                         ),
                       ],
-                      if (profile.email != null) ...[
-                        const SizedBox(height: FiloSpacing.s8),
-                        Text(
-                          profile.email!,
-                          style: TextStyle(
-                            color: Theme.of(context)
-                                .colorScheme
-                                .onSurfaceVariant,
+                    ),
+                  ),
+                  const SizedBox(height: FiloSpacing.screen),
+                  _heading('Preferences'),
+                  _group([
+                    _entry(
+                      'Theme',
+                      FiloIcons.settings,
+                      subtitle: appearance.isLoading
+                          ? 'Loading…'
+                          : mode == null
+                          ? 'Could not load your theme setting.'
+                          : themeLabel(mode),
+                      onTap: () =>
+                          _open(ThemeSettingsScreen(userId: profile.id)),
+                    ),
+                    _entry(
+                      'Notification settings',
+                      FiloIcons.notifications,
+                      onTap: () => _open(const NotificationSettingsScreen()),
+                    ),
+                  ]),
+                  _heading('Files and privacy'),
+                  _group([
+                    _entry(
+                      'Drive backup',
+                      FiloIcons.cloudUpload,
+                      onTap: () => _open(const DriveBackupScreen()),
+                    ),
+                    _entry(
+                      'Storage',
+                      FiloIcons.folder,
+                      onTap: () => _open(StorageScreen(userId: profile.id)),
+                    ),
+                    _entry(
+                      'Privacy notice',
+                      FiloIcons.shield,
+                      onTap: () => _open(const PrivacyNoticeScreen()),
+                    ),
+                  ]),
+                  _heading('This session'),
+                  _group([
+                    _entry(
+                      _signingOut ? 'Signing out…' : 'Sign out',
+                      FiloIcons.logout,
+                      onTap: _signingOut ? null : _signOut,
+                    ),
+                    if (_signOutError != null)
+                      Padding(
+                        padding: const EdgeInsets.all(FiloSpacing.s16),
+                        child: Column(
+                          children: [
+                            Text(_signOutError!, semanticsLabel: _signOutError),
+                            TextButton(
+                              onPressed: _signingOut ? null : _signOut,
+                              child: const Text('Retry'),
+                            ),
+                          ],
+                        ),
+                      ),
+                  ]),
+                  const SizedBox(height: FiloSpacing.s16),
+                  if (!_showAccountDeletion)
+                    Semantics(
+                      button: true,
+                      label: 'Show account deletion options',
+                      enabled: !_signingOut,
+                      onTap: _signingOut ? null : _revealAccountDeletion,
+                      child: ExcludeSemantics(
+                        child: MediaQuery.accessibleNavigationOf(context)
+                            ? TextButton(
+                                onPressed: _signingOut
+                                    ? null
+                                    : _revealAccountDeletion,
+                                child: const Text('Show account options'),
+                              )
+                            : Padding(
+                                padding: const EdgeInsets.symmetric(
+                                  vertical: FiloSpacing.screen,
+                                ),
+                                child: Column(
+                                  children: [
+                                    const Text(
+                                      'Pull up firmly for account options.',
+                                      textAlign: TextAlign.center,
+                                    ),
+                                    const SizedBox(height: FiloSpacing.s12),
+                                    FiloLinearProgressIndicator(
+                                      value:
+                                          (_accountOptionsPull /
+                                                  _accountOptionsPullDistance)
+                                              .clamp(0.0, 1.0),
+                                      semanticsLabel:
+                                          'Pull to show account options',
+                                      minHeight: 4,
+                                    ),
+                                  ],
+                                ),
+                              ),
+                      ),
+                    ),
+                  if (_showAccountDeletion) ...[
+                    _heading('Account deletion'),
+                    _group([
+                      _entry(
+                        'Delete account',
+                        FiloIcons.delete,
+                        subtitle: 'Permanently remove your Filo account.',
+                        destructive: true,
+                        onTap: () => _open(
+                          DeleteAccountScreen(
+                            userId: profile.id,
+                            instructor: profile.role == AccountRole.instructor,
                           ),
                         ),
-                      ],
-                      const SizedBox(height: FiloSpacing.s20),
-                      FiloButton(
-                        label: 'Edit profile',
-                        icon: FiloIcons.edit,
-                        outlined: true,
-                        onPressed: _signingOut
-                            ? null
-                            : () => _open(EditProfileScreen(profile: profile)),
                       ),
-                    ],
-                  ),
-                ),
-                const SizedBox(height: FiloSpacing.screen),
-                _heading('Preferences'),
-                _group([
-                  _entry(
-                    'Theme',
-                    FiloIcons.settings,
-                    subtitle: appearance.isLoading
-                        ? 'Loading…'
-                        : mode == null
-                        ? 'Could not load your theme setting.'
-                        : themeLabel(mode),
-                    onTap: () => _open(ThemeSettingsScreen(userId: profile.id)),
-                  ),
-                  _entry(
-                    'Notification settings',
-                    FiloIcons.notifications,
-                    onTap: () => _open(const NotificationSettingsScreen()),
-                  ),
-                ]),
-                _heading('Files and privacy'),
-                _group([
-                  _entry(
-                    'Drive backup',
-                    FiloIcons.cloudUpload,
-                    onTap: () => _open(const DriveBackupScreen()),
-                  ),
-                  _entry(
-                    'Storage',
-                    FiloIcons.folder,
-                    onTap: () => _open(StorageScreen(userId: profile.id)),
-                  ),
-                  _entry(
-                    'Privacy notice',
-                    FiloIcons.shield,
-                    onTap: () => _open(const PrivacyNoticeScreen()),
-                  ),
-                ]),
-                _heading('This session'),
-                _group([
-                  _entry(
-                    _signingOut ? 'Signing out…' : 'Sign out',
-                    FiloIcons.logout,
-                    onTap: _signingOut ? null : _signOut,
-                  ),
-                  if (_signOutError != null)
-                    Padding(
-                      padding: const EdgeInsets.all(FiloSpacing.s16),
-                      child: Column(
-                        children: [
-                          Text(_signOutError!, semanticsLabel: _signOutError),
-                          TextButton(
-                            onPressed: _signingOut ? null : _signOut,
-                            child: const Text('Retry'),
-                          ),
-                        ],
-                      ),
-                    ),
-                ]),
-                const SizedBox(height: FiloSpacing.s16),
-                _heading('Account deletion'),
-                _group([
-                  _entry(
-                    'Delete account',
-                    FiloIcons.delete,
-                    subtitle: 'Permanently remove your Filo account.',
-                    destructive: true,
-                    onTap: () => _open(
-                      DeleteAccountScreen(
-                        userId: profile.id,
-                        instructor: profile.role == AccountRole.instructor,
-                      ),
-                    ),
-                  ),
-                ]),
-              ],
+                    ]),
+                  ],
+                ],
+              ),
             ),
           ),
         ),

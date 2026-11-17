@@ -68,8 +68,8 @@ class DriveBackupService extends ChangeNotifier {
     this.accountIsCurrent, {
     this.managedByOutbox = false,
     this.backgroundAccountCheck,
-    DriveApi? api,
-  }) : _api = api;
+    this._api,
+  });
   final AppDatabase db;
   final String userId;
   final GoogleSignIn google;
@@ -85,6 +85,16 @@ class DriveBackupService extends ChangeNotifier {
   Timer? _retry;
   bool _disposed = false, _foreground = true;
   bool enabled = false, wifiOnly = true, busy = false;
+  bool permissionRequired = false;
+  Future<void> _savePermissionRequired(bool value) async {
+    if (!active) return;
+    await db.customStatement(
+      "INSERT OR REPLACE INTO file_settings(key,value) VALUES('drive_permission_required',?)",
+      [value ? '1' : '0'],
+    );
+    permissionRequired = value;
+  }
+
   String? googleId, folderId, lastSuccess;
   String message = 'Drive backup is off. Your files stay on this phone.';
   List<Map<String, dynamic>> jobs = [];
@@ -220,6 +230,12 @@ class DriveBackupService extends ChangeNotifier {
       return;
     }
     enabled = settings['enabled'] == 1;
+    final permission = await db
+        .customSelect(
+          "SELECT value FROM file_settings WHERE key='drive_permission_required'",
+        )
+        .getSingleOrNull();
+    permissionRequired = permission?.read<String>('value') == '1';
     wifiOnly = settings['wifi_only'] == 1;
     googleId = settings['google_id'] as String?;
     folderId = settings['folder_id'] as String?;
@@ -294,6 +310,7 @@ class DriveBackupService extends ChangeNotifier {
       _api?.close();
       _api = api;
       await api.authorize(interactive: true);
+      await _savePermissionRequired(false);
       if (!active) {
         throw const BackupPaused();
       }
@@ -306,8 +323,12 @@ class DriveBackupService extends ChangeNotifier {
       await queueLibrary();
       await _folder(api);
     } on GoogleSignInException {
+      await _savePermissionRequired(true);
       message = 'Drive backup is off. Allow Google Drive access to turn it on.';
     } on DriveFailure catch (error) {
+      if (error is DrivePermissionRequired) {
+        await _savePermissionRequired(true);
+      }
       message = error.message;
     } on BackupPaused {
       // Account switched or the screen/session was disposed.
@@ -326,6 +347,7 @@ class DriveBackupService extends ChangeNotifier {
       return;
     }
     enabled = false;
+    await _savePermissionRequired(false);
     _api?.close();
     _api = null;
     await db.customStatement(
@@ -491,6 +513,7 @@ class DriveBackupService extends ChangeNotifier {
     } on BackupPaused {
       // Durable jobs and secure upload sessions remain ready to resume.
     } on DrivePermissionRequired catch (error) {
+      await _savePermissionRequired(true);
       message = error.message;
       if (active) {
         await db.customStatement(
@@ -502,6 +525,7 @@ class DriveBackupService extends ChangeNotifier {
     } on DriveFailure catch (error) {
       message = error.message;
     } on GoogleSignInException {
+      await _savePermissionRequired(true);
       message = 'Allow Google Drive access again to resume backup.';
     } catch (_) {
       message = enabled

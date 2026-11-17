@@ -56,9 +56,9 @@ class _GradeScreenState extends ConsumerState<GradeScreen> {
     super.dispose();
   }
 
-  void _message(String text) {
+  void _message(String text, {FiloToastKind kind = FiloToastKind.info}) {
     if (mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(text)));
+      showFiloToast(context, text, kind: kind);
     }
   }
 
@@ -157,6 +157,7 @@ class _GradeScreenState extends ConsumerState<GradeScreen> {
         wasReturned
             ? 'Grade updated. The student can see your changes.'
             : 'Grade saved.',
+        kind: FiloToastKind.success,
       );
       return true;
     } on PostgrestException {
@@ -189,36 +190,27 @@ class _GradeScreenState extends ConsumerState<GradeScreen> {
     final choice = await showFiloDialog<String>(
       context: context,
       animate: false,
-      builder: (context) => AlertDialog(
-        scrollable: true,
-        title: const Text('Save changes before leaving?'),
+      builder: (context) => FiloModalDialog(
+        title: 'Save changes before leaving?',
         content: const Text(
           'Save your changes or discard them before opening another student.',
         ),
         actions: [
-          Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              FiloButton(
-                label: 'Cancel',
-                onPressed: () => Navigator.pop(context, 'cancel'),
-              ),
-              const SizedBox(height: FiloSpacing.s8),
-              FiloButton(
-                label: 'Discard changes',
-                text: true,
-                onPressed: () => Navigator.pop(context, 'discard'),
-              ),
-              const SizedBox(height: FiloSpacing.s8),
-              FiloButton(
-                label: 'Save',
-                secondary: true,
-                onPressed: _online && !_archived && !_reconcile
-                    ? () => Navigator.pop(context, 'save')
-                    : null,
-              ),
-            ],
+          FiloButton(
+            label: 'Cancel',
+            onPressed: () => Navigator.pop(context, 'cancel'),
+          ),
+          FiloButton(
+            label: 'Discard changes',
+            text: true,
+            onPressed: () => Navigator.pop(context, 'discard'),
+          ),
+          FiloButton(
+            label: 'Save',
+            secondary: true,
+            onPressed: _online && !_archived && !_reconcile
+                ? () => Navigator.pop(context, 'save')
+                : null,
           ),
         ],
       ),
@@ -267,7 +259,10 @@ class _GradeScreenState extends ConsumerState<GradeScreen> {
       );
       if (mounted && count > 0) FiloHaptics.confirmed(context);
       await _refresh();
-      _message(count == 0 ? 'No grades to return.' : 'Grade returned.');
+      _message(
+        count == 0 ? 'No grades to return.' : 'Grade returned.',
+        kind: count == 0 ? FiloToastKind.info : FiloToastKind.success,
+      );
     } on PostgrestException {
       if (mounted) {
         setState(() => _error = "Couldn't return the grades. Try again.");
@@ -310,7 +305,10 @@ class _GradeScreenState extends ConsumerState<GradeScreen> {
         throw StateError('Unavailable');
       }
     } catch (_) {
-      _message("Couldn't open this item. Try again.");
+      _message(
+        "Couldn't open this item. Try again.",
+        kind: FiloToastKind.error,
+      );
     }
   }
 

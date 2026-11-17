@@ -1,6 +1,8 @@
 import 'dart:convert';
 
 import 'package:drift/drift.dart';
+import 'package:drift/isolate.dart' show DriftRemoteException;
+import 'package:drift/native.dart' show SqliteException;
 import 'package:flutter/foundation.dart';
 import 'package:supabase_flutter/supabase_flutter.dart' show SupabaseClient;
 
@@ -23,6 +25,27 @@ import '../../features/exams/data/exam_store.dart';
 import '../notifications/deadline_reminders.dart';
 import '../../features/notifications/data/notification_settings_repository.dart';
 
+String classRefreshDiagnostic(Object error) {
+  final cause = error is DriftRemoteException ? error.remoteCause : error;
+  // Native Drift workers serialize exceptions to strings across isolates.
+  final text = cause.toString();
+  final code = cause is SqliteException
+      ? '${cause.extendedResultCode}'
+      : RegExp(r'^SqliteException\((\d+)\)').firstMatch(text)?.group(1);
+  if (code == null) {
+    return cause is String
+        ? 'Database worker error'
+        : cause.runtimeType.toString();
+  }
+  final table = [
+    'cache_profiles',
+    'cache_classes',
+    'cache_class_members',
+    'sync_state',
+  ].where(text.contains).firstOrNull;
+  return 'SQLite $code${table == null ? '' : ', $table'}';
+}
+
 class SyncCoordinator extends ChangeNotifier {
   SyncCoordinator(
     this.db,
@@ -44,8 +67,27 @@ class SyncCoordinator extends ChangeNotifier {
   final bool Function()? canSendLeaveEvents;
   bool _accessChanged = false;
   bool syncing = false, _disposed = false;
+  bool classesLoaded = false, attemptedSync = false;
+  bool get classesFailed =>
+      errors.containsKey('class_access') ||
+      errors.containsKey('classes') ||
+      errors.containsKey('class_members') ||
+      (attemptedSync && !classesLoaded && !syncing);
   DateTime? lastSynced;
   final errors = <String, String>{};
+  String get failureSummary {
+    final pending = errors.containsKey('outbox') || errors.containsKey('queue');
+    final refresh = errors.keys.any(
+      (key) => !{'outbox', 'queue', 'drive_backup'}.contains(key),
+    );
+    if (pending && refresh) {
+      return 'Some changes could not send, and some information could not refresh.';
+    }
+    if (pending) return 'Some pending changes could not send.';
+    if (refresh) return 'Some information could not refresh. Please try again.';
+    return 'Drive backup needs attention. Open Backup details to check permission or retry.';
+  }
+
   DateTime? _lastSnapshot;
   Future<void>? _pending;
   void _notify() {
@@ -196,6 +238,59 @@ class SyncCoordinator extends ChangeNotifier {
     }
   }
 
+  Future<void>? _classRefresh;
+  Future<void> flushLeaveEvents(String sessionId) async {
+    if (_disposed || !isCurrent() || canSendLeaveEvents?.call() != true) return;
+    final integrity = await ExamStore(db).integrity(sessionId);
+    if (integrity.atLimit && !integrity.ready) return;
+    // Release deferral delays, never a worker's active lease or network backoff.
+    await db.customStatement(
+      '''
+      UPDATE outbox_schedule SET next_at=NULL
+      WHERE id IN (SELECT id FROM outbox WHERE action_type='leave_event'
+        AND json_extract(payload,'\$.session_id')=? AND status='pending'
+        AND last_error='Waiting for connectivity or authorization.')
+    ''',
+      [sessionId],
+    );
+    await OutboxProcessor(
+      SqliteOutbox(db, leaveSessionId: sessionId),
+      dispatch,
+    ).flush();
+  }
+
+  Future<void> refreshClasses() => _classRefresh ??= _refreshClasses()
+      .whenComplete(() => _classRefresh = null);
+
+  Future<void> _refreshClasses() async {
+    if (!isCurrent() || _disposed) return;
+    try {
+      if (currentAccountCheck != null && !await currentAccountCheck!()) return;
+      if (!isCurrent() || _disposed) return;
+      await ClassRepository(db, SupabaseClassRemote(client), userId).sync();
+      if (!isCurrent() || _disposed) return;
+      classesLoaded = true;
+      for (final key in ['class_access', 'classes', 'class_members']) {
+        errors.remove(key);
+      }
+    } catch (error, stack) {
+      if (!isCurrent() || _disposed) return;
+      // Never log SQL, bound values, raw responses or account contents.
+      errors['class_access'] =
+          'Class refresh failed (${classRefreshDiagnostic(error)}).';
+      if (kDebugMode) {
+        debugPrint(errors['class_access']);
+        debugPrintStack(
+          stackTrace: error is DriftRemoteException
+              ? error.remoteStackTrace ?? stack
+              : stack,
+        );
+      }
+    } finally {
+      _notify();
+    }
+  }
+
   Future<void> run({bool retryFailed = false}) =>
       _pending ??= _run(retryFailed: retryFailed)
           .whenComplete(() => _pending = null);
@@ -211,25 +306,30 @@ class SyncCoordinator extends ChangeNotifier {
         _lastSnapshot == null ||
         DateTime.now().difference(_lastSnapshot!) > const Duration(minutes: 15);
     try {
+      await refreshClasses();
       if (const DeadlineBridge().supported) {
         await db.customStatement(
           "INSERT OR REPLACE INTO file_settings(key,value) VALUES('deadline_trusted','0')",
         );
       }
-      final store = SqliteOutbox(
-        db,
-        includeLeaveEvents: canSendLeaveEvents?.call() ?? true,
-      );
-      if (retryFailed) {
-        await store.retryFailed();
+      try {
+        final store = SqliteOutbox(
+          db,
+          includeLeaveEvents: canSendLeaveEvents?.call() ?? true,
+        );
+        if (retryFailed) {
+          await store.retryFailed();
+        }
+        await backup?.reload();
+        if (backup?.enabled == true) {
+          await backup!.queueLibrary();
+        }
+        await OutboxProcessor(store, dispatch).flush();
+        await backup?.markLibrarySuccess();
+        errors.remove('queue');
+      } catch (_) {
+        errors['queue'] = 'Could not send pending changes. Try again.';
       }
-      await backup?.reload();
-      if (backup?.enabled == true) {
-        await backup!.queueLibrary();
-      }
-      await OutboxProcessor(store, dispatch).flush();
-      await backup?.markLibrarySuccess();
-      errors.remove('queue');
       if (!isCurrent() ||
           currentAccountCheck != null && !await currentAccountCheck!()) {
         return;
@@ -242,14 +342,6 @@ class SyncCoordinator extends ChangeNotifier {
       } catch (_) {
         errors['exam_expiry'] =
             'Could not refresh exam status. Retry when connected.';
-      }
-      // Reconcile newly visible old rows, hard deletes and access revocations.
-      // Failures do not prevent other tables from pulling.
-      try {
-        await ClassRepository(db, SupabaseClassRemote(client), userId).sync();
-        errors.remove('class_access');
-      } catch (_) {
-        errors['class_access'] = 'Could not reconcile class access.';
       }
       final profile = await db.readProfile(userId);
       final tables = [
@@ -301,6 +393,7 @@ class SyncCoordinator extends ChangeNotifier {
         ResultsCache(db, userId, isCurrent),
         SupabaseResultsRemote(client, userId),
       );
+      final gradeClassIds = <String>{};
       for (final room in await db.select(db.cacheClasses).get()) {
         if (!isCurrent()) return;
         if (room.deletedAt != null) continue;
@@ -315,12 +408,20 @@ class SyncCoordinator extends ChangeNotifier {
                   .getSingleOrNull();
           if (member == null) continue;
         }
+        gradeClassIds.add(room.id);
         try {
           await quizGrades.refresh(room.id);
           errors.remove('quiz_grades:${room.id}');
         } catch (_) {
           errors['quiz_grades:${room.id}'] = 'Could not refresh quiz grades.';
         }
+      }
+      if (!classesFailed) {
+        errors.removeWhere(
+          (key, _) =>
+              key.startsWith('quiz_grades:') &&
+              !gradeClassIds.contains(key.substring('quiz_grades:'.length)),
+        );
       }
       if (snapshot || _accessChanged) {
         _lastSnapshot = errors.isEmpty ? DateTime.now() : null;
@@ -356,6 +457,17 @@ class SyncCoordinator extends ChangeNotifier {
         } else {
           errors.remove('outbox');
         }
+        final driveFailures = await db
+            .customSelect(
+              "SELECT count(*) AS n FROM outbox WHERE action_type='drive_backup' AND status='failed'",
+            )
+            .getSingle();
+        if (driveFailures.read<int>('n') > 0 ||
+            backup?.permissionRequired == true) {
+          errors['drive_backup'] = 'Drive backup needs attention.';
+        } else {
+          errors.remove('drive_backup');
+        }
         if (errors.isEmpty) {
           lastSynced = DateTime.now();
           await db.customStatement(
@@ -367,6 +479,7 @@ class SyncCoordinator extends ChangeNotifier {
     } catch (_) {
       errors['queue'] = 'Could not send pending changes. Try again.';
     } finally {
+      attemptedSync = true;
       syncing = false;
       _notify();
     }
@@ -588,7 +701,38 @@ class SyncCoordinator extends ChangeNotifier {
     return cached.isAfter(DateTime.parse(remoteStamp));
   }
 
+  Future<bool> _requireCached(String table, String key, dynamic id) async {
+    if (!await _exists(table, key, id)) {
+      throw StateError('Cache dependency unavailable: $table');
+    }
+    return true;
+  }
+
   Future<void> _apply(String table, Map<String, dynamic> row) async {
+    if (const {
+          'submissions',
+          'submission_items',
+          'submission_grades',
+        }.contains(table) &&
+        (await db.readProfile(userId))?.role == 'instructor') {
+      return;
+    }
+    if (table == 'class_members' &&
+        !await _exists('cache_classes', 'id', row['class_id'])) {
+      final parent = await db
+          .customSelect(
+            "SELECT payload FROM sync_payloads WHERE table_name='classes' AND id=?",
+            variables: [Variable(row['class_id'] as String)],
+          )
+          .getSingleOrNull();
+      if (!['active', 'pending'].contains(row['status']) ||
+          parent != null &&
+              (jsonDecode(parent.read<String>('payload'))
+                      as Map)['deleted_at'] !=
+                  null) {
+        return;
+      }
+    }
     final data = cacheRowJson(row, extraDateFields: const {'unsubmit_until'});
     switch (table) {
       case 'profiles':
@@ -598,7 +742,13 @@ class SyncCoordinator extends ChangeNotifier {
               CacheProfile.fromJson(data).toCompanion(false),
             );
       case 'classes':
-        if (await _exists('cache_profiles', 'id', row['owner_id'])) {
+        if (row['deleted_at'] != null && row['owner_id'] != userId) {
+          await _remove('classes', row['id'] as String);
+        } else if (await _requireCached(
+          'cache_profiles',
+          'id',
+          row['owner_id'],
+        )) {
           await db
               .into(db.cacheClasses)
               .insertOnConflictUpdate(
@@ -606,9 +756,9 @@ class SyncCoordinator extends ChangeNotifier {
               );
         }
       case 'class_members':
-        if (await _exists('cache_classes', 'id', row['class_id']) &&
-            await _exists('cache_profiles', 'id', row['student_id']) &&
-            await _exists('cache_profiles', 'id', row['decided_by'])) {
+        if (await _requireCached('cache_classes', 'id', row['class_id']) &&
+            await _requireCached('cache_profiles', 'id', row['student_id']) &&
+            await _requireCached('cache_profiles', 'id', row['decided_by'])) {
           await db
               .into(db.cacheClassMembers)
               .insertOnConflictUpdate(
@@ -616,8 +766,8 @@ class SyncCoordinator extends ChangeNotifier {
               );
         }
       case 'posts':
-        if (await _exists('cache_classes', 'id', row['class_id']) &&
-            await _exists('cache_profiles', 'id', row['author_id'])) {
+        if (await _requireCached('cache_classes', 'id', row['class_id']) &&
+            await _requireCached('cache_profiles', 'id', row['author_id'])) {
           await db
               .into(db.cachePosts)
               .insertOnConflictUpdate(
@@ -625,7 +775,7 @@ class SyncCoordinator extends ChangeNotifier {
               );
         }
       case 'post_attachments':
-        if (await _exists('cache_posts', 'id', row['post_id'])) {
+        if (await _requireCached('cache_posts', 'id', row['post_id'])) {
           await db
               .into(db.cachePostAttachments)
               .insertOnConflictUpdate(
@@ -634,7 +784,7 @@ class SyncCoordinator extends ChangeNotifier {
         }
       case 'submissions':
         if (row['student_id'] == userId &&
-            await _exists('cache_posts', 'id', row['post_id'])) {
+            await _requireCached('cache_posts', 'id', row['post_id'])) {
           await db
               .into(db.cacheSubmissions)
               .insertOnConflictUpdate(
@@ -642,7 +792,11 @@ class SyncCoordinator extends ChangeNotifier {
               );
         }
       case 'submission_items':
-        if (await _exists('cache_submissions', 'id', row['submission_id'])) {
+        if (await _requireCached(
+          'cache_submissions',
+          'id',
+          row['submission_id'],
+        )) {
           await db
               .into(db.cacheSubmissionItems)
               .insertOnConflictUpdate(
@@ -651,8 +805,12 @@ class SyncCoordinator extends ChangeNotifier {
         }
       case 'submission_grades':
         if (row['returned_at'] != null &&
-            await _exists('cache_submissions', 'id', row['submission_id']) &&
-            await _exists('cache_profiles', 'id', row['graded_by'])) {
+            await _requireCached(
+              'cache_submissions',
+              'id',
+              row['submission_id'],
+            ) &&
+            await _requireCached('cache_profiles', 'id', row['graded_by'])) {
           await db
               .into(db.cacheGrades)
               .insertOnConflictUpdate(
@@ -660,8 +818,8 @@ class SyncCoordinator extends ChangeNotifier {
               );
         }
       case 'quizzes':
-        if (await _exists('cache_classes', 'id', row['class_id']) &&
-            await _exists('cache_profiles', 'id', row['author_id'])) {
+        if (await _requireCached('cache_classes', 'id', row['class_id']) &&
+            await _requireCached('cache_profiles', 'id', row['author_id'])) {
           await db
               .into(db.cacheQuizzes)
               .insertOnConflictUpdate(
@@ -683,7 +841,7 @@ class SyncCoordinator extends ChangeNotifier {
           data['readAt'] = DateTime.parse(payload['read_at'] as String)
               .millisecondsSinceEpoch;
         }
-        if (await _exists('cache_profiles', 'id', row['recipient_id'])) {
+        if (await _requireCached('cache_profiles', 'id', row['recipient_id'])) {
           if (!await _exists('cache_classes', 'id', row['class_id'])) {
             data['classId'] = null;
           }
@@ -747,6 +905,13 @@ class SyncCoordinator extends ChangeNotifier {
       if (cachedIds.contains((payload['session'] as Map?)?['session_id'])) {
         quizIds.add(row.read<String>('id'));
       }
+    }
+    if (!classesFailed && !errors.containsKey('quizzes')) {
+      errors.removeWhere(
+        (key, _) =>
+            key.startsWith('result:') &&
+            !quizIds.contains(key.substring('result:'.length)),
+      );
     }
     for (final quizId in quizIds) {
       if (!isCurrent()) return;

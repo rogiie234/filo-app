@@ -46,7 +46,6 @@ void main() {
             ),
             findsWidgets,
           );
-          expect(find.byType(MascotIdle), findsNothing);
         }
       }
     },
@@ -82,52 +81,35 @@ void main() {
         app(const EmptyState(title: 'No grades yet', showMascot: false)),
       );
       expect(find.byType(Mascot), findsNothing);
-      expect(find.byType(MascotIdle), findsNothing);
     },
   );
 
-  testWidgets(
-    'bob stays within four dp, completes three seconds and resets when hidden',
-    (tester) async {
-      double y() => tester
-          .widget<Transform>(
-            find
-                .descendant(
-                  of: find.byType(MascotIdle),
-                  matching: find.byType(Transform),
-                )
-                .first,
-          )
-          .transform
-          .storage[13];
-      const child = MascotIdle(child: SizedBox(width: 120, height: 120));
-      await tester.pumpWidget(app(child, reduced: false));
-      await tester.pump();
-      expect(y(), 0);
-      await tester.pump(const Duration(milliseconds: 750));
-      expect(y(), closeTo(-2, .01));
-      await tester.pump(const Duration(milliseconds: 750));
-      expect(y(), closeTo(-4, .01));
+  testWidgets('mascot stays static across time, visibility and lifecycle', (
+    tester,
+  ) async {
+    const child = Mascot(pose: 'curious', size: 120);
+    for (final reduced in [false, true]) {
+      await tester.pumpWidget(app(child, reduced: reduced));
+      final position = tester.getTopLeft(find.byType(Image));
       await tester.pump(const Duration(milliseconds: 1500));
-      expect(y(), closeTo(0, .01));
-      await tester.pumpWidget(app(child, reduced: false, visible: false));
-      await tester.pump(const Duration(seconds: 4));
-      expect(y(), 0);
-      await tester.pumpWidget(app(child, reduced: true));
-      await tester.pump(const Duration(seconds: 4));
-      expect(y(), 0);
-      await tester.pumpWidget(app(child, reduced: false));
-      await tester.pump(const Duration(milliseconds: 750));
+      expect(tester.getTopLeft(find.byType(Image)), position);
+      expect(
+        find.descendant(
+          of: find.byType(Mascot),
+          matching: find.byType(Transform),
+        ),
+        findsNothing,
+      );
+      await tester.pumpWidget(app(child, reduced: reduced, visible: false));
+      await tester.pump(const Duration(seconds: 3));
+      await tester.pumpWidget(app(child, reduced: reduced));
       tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.paused);
       await tester.pump();
-      expect(y(), 0);
       tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.resumed);
-      await tester.pump();
-      await tester.pump(const Duration(milliseconds: 750));
-      expect(y(), lessThan(0));
-      await tester.pumpWidget(const SizedBox());
-      await tester.pump(const Duration(seconds: 4));
-      expect(tester.takeException(), isNull);
-    },
-  );
+      await tester.pump(const Duration(milliseconds: 1500));
+      expect(tester.getTopLeft(find.byType(Image)), position);
+    }
+    await tester.pumpWidget(const SizedBox());
+    expect(tester.takeException(), isNull);
+  });
 }

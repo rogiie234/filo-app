@@ -1,6 +1,5 @@
 import '../../../core/widgets/filo_widgets.dart';
 import '../../../core/theme/filo_design_tokens.dart';
-import '../../../core/theme/filo_motion.dart';
 import '../../../core/widgets/filo_motion_widgets.dart';
 
 import 'package:file_picker/file_picker.dart';
@@ -291,11 +290,20 @@ class _AiQuizSheetState extends ConsumerState<AiQuizSheet> {
     if (_busy) return;
     final allocation = allocateAiSources(_sources);
     if (allocation.texts.isEmpty) return;
+    FocusScope.of(context).unfocus();
     final token = AiCancelToken();
     _generation = token;
     setState(() {
       _busy = true;
       _error = null;
+    });
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted && _busy) {
+        final scroll = Scrollable.maybeOf(context)?.position;
+        if (scroll != null && scroll.hasPixels) {
+          scroll.jumpTo(scroll.minScrollExtent);
+        }
+      }
     });
     try {
       final client = ref.read(aiQuizClientProvider);
@@ -338,8 +346,8 @@ class _AiQuizSheetState extends ConsumerState<AiQuizSheet> {
       if (!mounted || token.isCancelled) return;
       await showFiloDialog<void>(
         context: context,
-        builder: (c) => AlertDialog(
-          title: Text('${result.questions.length} questions generated'),
+        builder: (c) => FiloModalDialog(
+          title: '${result.questions.length} questions generated',
           content: Text(
             [
               for (final type in aiQuestionTypes)
@@ -347,10 +355,7 @@ class _AiQuizSheetState extends ConsumerState<AiQuizSheet> {
             ].join('\n\n'),
           ),
           actions: [
-            FilledButton(
-              onPressed: () => Navigator.pop(c),
-              child: const Text('Continue'),
-            ),
+            FiloButton(onPressed: () => Navigator.pop(c), label: 'Continue'),
           ],
         ),
       );
@@ -384,210 +389,367 @@ class _AiQuizSheetState extends ConsumerState<AiQuizSheet> {
     final classFiles = ref.watch(classFilesProvider(widget.classId));
     final canPickSources =
         !_busy && !(widget.regenerateType != null && _restoredContext);
+    if (_busy) {
+      final label = widget.regenerateType == null
+          ? 'Generating questions...'
+          : 'Regenerating question...';
+      return Padding(
+        padding: const EdgeInsets.all(FiloSpacing.screen),
+        child: FiloPanel(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              const ExcludeSemantics(
+                child: Image(
+                  image: AssetImage('assets/mascots/thinking.png'),
+                  height: 112,
+                ),
+              ),
+              const SizedBox(height: FiloSpacing.s16),
+              Semantics(
+                liveRegion: true,
+                header: true,
+                child: Text(
+                  label,
+                  textAlign: TextAlign.center,
+                  style: Theme.of(context).textTheme.titleLarge,
+                ),
+              ),
+              const SizedBox(height: FiloSpacing.s12),
+              Text(
+                '$total ${total == 1 ? 'question' : 'questions'} / ${allocation.texts.length} ${allocation.texts.length == 1 ? 'source' : 'sources'}',
+                textAlign: TextAlign.center,
+              ),
+              const SizedBox(height: FiloSpacing.screen),
+              FiloLinearProgressIndicator(
+                semanticsLabel: label,
+                minHeight: 8,
+                borderRadius: BorderRadius.circular(FiloRadii.small),
+              ),
+              const SizedBox(height: FiloSpacing.screen),
+              const Text(
+                'Questions will be added as drafts. Review them before publishing.',
+                textAlign: TextAlign.center,
+              ),
+              const SizedBox(height: FiloSpacing.screen),
+              FiloButton(
+                label: 'Cancel',
+                secondary: true,
+                onPressed: () => _generation?.cancel(),
+              ),
+              const SizedBox(height: FiloSpacing.s12),
+              const Text(
+                'Cancel stops waiting. The server may still finish.',
+                textAlign: TextAlign.center,
+              ),
+              if (!online) ...[
+                const SizedBox(height: FiloSpacing.s16),
+                const Text(
+                  "You're offline. The request may still finish on the server.",
+                  textAlign: TextAlign.center,
+                ),
+              ],
+            ],
+          ),
+        ),
+      );
+    }
     return Padding(
       padding: const EdgeInsets.all(FiloSpacing.screen),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          const Text(
-            'Pick up to 3 files, 10 MB each. Text-based PDF, DOCX, PPTX, TXT, JPEG, PNG and WebP are supported. Scanned PDFs are unsupported.',
-          ),
-          const SizedBox(height: FiloSpacing.s12),
-          if (canPickSources)
-            DefaultTabController(
-              length: 2,
-              child: Column(
-                children: [
-                  TabBar(
-                    isScrollable: true,
-                    tabAlignment: TabAlignment.start,
-                    tabs: [
-                      Tab(
-                        text: online
-                            ? 'Class materials'
-                            : 'Class materials (offline)',
+          FiloPanel(
+            color: Theme.of(context).colorScheme.primaryContainer,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                Row(
+                  children: [
+                    const ExcludeSemantics(
+                      child: Icon(Icons.auto_awesome_outlined),
+                    ),
+                    const SizedBox(width: FiloSpacing.s12),
+                    Expanded(
+                      child: Text(
+                        'Build from your materials',
+                        style: Theme.of(context).textTheme.titleLarge,
                       ),
-                      const Tab(text: 'From phone'),
-                    ],
+                    ),
+                  ],
+                ),
+                const SizedBox(height: FiloSpacing.s8),
+                const Text(
+                  'Choose your sources, then shape your question set.',
+                ),
+                const SizedBox(height: FiloSpacing.s12),
+                Text(
+                  '${_sources.length} of 3 files selected / 10 MB each',
+                  style: Theme.of(context).textTheme.labelLarge,
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: FiloSpacing.s16),
+          FiloPanel(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                Semantics(
+                  header: true,
+                  child: Text(
+                    '1. Source files',
+                    style: Theme.of(context).textTheme.titleMedium,
                   ),
-                  SizedBox(
-                    height: 220,
-                    child: TabBarView(
+                ),
+                const SizedBox(height: FiloSpacing.s8),
+                const Text(
+                  'Text-based PDF, DOCX, PPTX, TXT, JPEG, PNG and WebP. Scanned PDFs are unsupported.',
+                ),
+                const SizedBox(height: FiloSpacing.s12),
+                if (canPickSources)
+                  DefaultTabController(
+                    length: 2,
+                    child: Column(
                       children: [
-                        if (!online)
-                          const Center(
-                            child: Text(
-                              'Connect to choose class materials. You can still read files available through From phone.',
+                        TabBar(
+                          isScrollable: true,
+                          tabAlignment: TabAlignment.start,
+                          tabs: [
+                            Tab(
+                              text: online
+                                  ? 'Class materials'
+                                  : 'Class materials (offline)',
                             ),
-                          )
-                        else
-                          classFiles.when(
-                            data: (entries) => Column(
-                              children: [
-                                Align(
-                                  alignment: Alignment.centerRight,
-                                  child: TextButton(
-                                    onPressed: _refreshFiles,
-                                    child: const Text('Refresh'),
+                            const Tab(text: 'From phone'),
+                          ],
+                        ),
+                        SizedBox(
+                          height: 220,
+                          child: TabBarView(
+                            children: [
+                              if (!online)
+                                const Center(
+                                  child: Text(
+                                    'Connect to choose class materials. You can still read files available through From phone.',
+                                  ),
+                                )
+                              else
+                                classFiles.when(
+                                  data: (entries) => Column(
+                                    children: [
+                                      Align(
+                                        alignment: Alignment.centerRight,
+                                        child: TextButton(
+                                          onPressed: _refreshFiles,
+                                          child: const Text('Refresh'),
+                                        ),
+                                      ),
+                                      Expanded(
+                                        child: entries.isEmpty
+                                            ? const SingleChildScrollView(
+                                                child: EmptyState(
+                                                  showMascot: false,
+                                                  title: 'No class files yet',
+                                                  body: 'Choose a file from your phone or add class materials first.',
+                                                  pose: 'waiting',
+                                                ),
+                                              )
+                                            : ListView(
+                                                children: [
+                                                  for (final entry in entries)
+                                                    ListTile(
+                                                      leading: Icon(
+                                                        _icon(
+                                                          entry.attachment.name,
+                                                        ),
+                                                      ),
+                                                      title: Text(
+                                                        entry.attachment.name,
+                                                      ),
+                                                      subtitle: Text(
+                                                        '${entry.attachment.sizeBytes ?? 0} bytes',
+                                                      ),
+                                                      enabled:
+                                                          _sources.length < 3 &&
+                                                          !_sources.any(
+                                                            (s) =>
+                                                                s.id ==
+                                                                'att:${entry.attachment.id}',
+                                                          ),
+                                                      onTap: () =>
+                                                          _pickClass(entry),
+                                                    ),
+                                                ],
+                                              ),
+                                      ),
+                                    ],
+                                  ),
+                                  loading: () => const Center(
+                                    child: FiloCircularProgressIndicator(),
+                                  ),
+                                  error: (_, _) => Center(
+                                    child: TextButton(
+                                      onPressed: _refreshFiles,
+                                      child: const Text(
+                                        'Retry loading class materials',
+                                      ),
+                                    ),
                                   ),
                                 ),
-                                Expanded(
-                                  child: entries.isEmpty
-                                      ? const Center(
-                                          child: EmptyState(
-                                            title: 'No class files yet',
-                                            body: 'Choose a file from your phone or add class materials first.',
-                                            pose: 'waiting',
-                                          ),
-                                        )
-                                      : ListView(
-                                          children: [
-                                            for (final entry in entries)
-                                              ListTile(
-                                                leading: Icon(
-                                                  _icon(entry.attachment.name),
-                                                ),
-                                                title: Text(
-                                                  entry.attachment.name,
-                                                ),
-                                                subtitle: Text(
-                                                  '${entry.attachment.sizeBytes ?? 0} bytes',
-                                                ),
-                                                enabled:
-                                                    _sources.length < 3 &&
-                                                    !_sources.any(
-                                                      (s) =>
-                                                          s.id ==
-                                                          'att:${entry.attachment.id}',
-                                                    ),
-                                                onTap: () => _pickClass(entry),
-                                              ),
-                                          ],
-                                        ),
-                                ),
-                              ],
-                            ),
-                            loading: () => const Center(
-                              child: FiloCircularProgressIndicator(),
-                            ),
-                            error: (_, _) => Center(
-                              child: TextButton(
-                                onPressed: _refreshFiles,
-                                child: const Text(
-                                  'Retry loading class materials',
+                              Center(
+                                child: OutlinedButton.icon(
+                                  onPressed: _sources.length < 3
+                                      ? _pickPhone
+                                      : null,
+                                  icon: const Icon(Icons.folder_open),
+                                  label: const Text('Select from phone'),
                                 ),
                               ),
-                            ),
-                          ),
-                        Center(
-                          child: OutlinedButton.icon(
-                            onPressed: _sources.length < 3 ? _pickPhone : null,
-                            icon: const Icon(Icons.folder_open),
-                            label: const Text('Select from phone'),
+                            ],
                           ),
                         ),
                       ],
                     ),
                   ),
-                ],
-              ),
-            ),
-          for (final source in _sources)
-            ListTile(
-              contentPadding: EdgeInsets.zero,
-              leading: Icon(_icon(source.name)),
-              title: Text(source.name),
-              subtitle: Text(
-                '${source.size == null ? 'Size unavailable' : '${source.size} bytes'}\n${source.error ?? (source.result == null ? source.progress?.stage ?? 'Reading file...' : 'Ready · ${source.result!.characterCount} characters${source.result!.fromCache ? ' · Cached' : ''}')}',
-              ),
-              trailing: IconButton(
-                tooltip: 'Remove ${source.name}',
-                onPressed: !canPickSources
-                    ? null
-                    : () {
-                        source.cancel.cancel();
-                        setState(() => _sources.remove(source));
-                      },
-                icon: const Icon(Icons.close),
-              ),
-            ),
-          for (final source in _sources) ...[
-            if (source.progress?.total != null &&
-                source.result == null &&
-                source.error == null)
-              Text(
-                '${source.name}: ${source.progress!.completed ?? 0} / ${source.progress!.total}',
-              ),
-            for (final warning in source.result?.warnings ?? <String>[])
-              Text('${source.name}: $warning'),
-          ],
-          for (final warning in allocation.warnings) Text(warning),
-          const SizedBox(height: FiloSpacing.s16),
-          if (widget.regenerateType == null) ...[
-            Text(
-              '$total of 20 questions',
-              style: Theme.of(context).textTheme.titleMedium,
-            ),
-            for (final type in aiQuestionTypes)
-              Row(
-                children: [
-                  Expanded(child: Text(_label(type))),
-                  IconButton(
-                    tooltip: 'Fewer ${_label(type)} questions',
-                    onPressed: !_busy && _counts[type]! > 0
-                        ? () =>
-                              setState(() => _counts[type] = _counts[type]! - 1)
-                        : null,
-                    icon: const Icon(Icons.remove),
-                  ),
-                  Text('${_counts[type]}'),
-                  IconButton(
-                    tooltip: 'More ${_label(type)} questions',
-                    onPressed: !_busy && total < 20
-                        ? () =>
-                              setState(() => _counts[type] = _counts[type]! + 1)
-                        : null,
-                    icon: const Icon(Icons.add),
-                  ),
-                ],
-              ),
-            const SizedBox(height: FiloSpacing.s12),
-            const Text('Difficulty'),
-            Wrap(
-              spacing: 8,
-              children: [
-                for (final level in ['easy', 'medium', 'hard'])
-                  FiloAnimatedChip(
-                    label: Text(
-                      '${level[0].toUpperCase()}${level.substring(1)}',
+                for (final source in _sources)
+                  ListTile(
+                    contentPadding: EdgeInsets.zero,
+                    leading: Icon(_icon(source.name)),
+                    title: Text(source.name),
+                    subtitle: Text(
+                      '${source.size == null ? 'Size unavailable' : '${source.size} bytes'}\n${source.error ?? (source.result == null ? source.progress?.stage ?? 'Reading file...' : 'Ready · ${source.result!.characterCount} characters${source.result!.fromCache ? ' · Cached' : ''}')}',
                     ),
-                    selected: _difficulty == level,
-                    onSelected: _busy
-                        ? null
-                        : (_) => setState(() => _difficulty = level),
+                    trailing: IconButton(
+                      tooltip: 'Remove ${source.name}',
+                      onPressed: !canPickSources
+                          ? null
+                          : () {
+                              source.cancel.cancel();
+                              setState(() => _sources.remove(source));
+                            },
+                      icon: const Icon(Icons.close),
+                    ),
                   ),
+                for (final source in _sources) ...[
+                  if (source.progress?.total != null &&
+                      source.result == null &&
+                      source.error == null)
+                    Text(
+                      '${source.name}: ${source.progress!.completed ?? 0} / ${source.progress!.total}',
+                    ),
+                  for (final warning in source.result?.warnings ?? <String>[])
+                    Text('${source.name}: $warning'),
+                ],
+                for (final warning in allocation.warnings) Text(warning),
               ],
             ),
-            TextField(
-              controller: _topic,
-              enabled: !_busy,
-              maxLength: 200,
-              decoration: const InputDecoration(
-                labelText: 'Topic focus (optional)',
-                helperText: 'Enter a topic from your files, or leave blank to use the full text.',
-              ),
+          ),
+          const SizedBox(height: FiloSpacing.s16),
+          FiloPanel(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                Semantics(
+                  header: true,
+                  child: Text(
+                    '2. Question set',
+                    style: Theme.of(context).textTheme.titleMedium,
+                  ),
+                ),
+                const SizedBox(height: FiloSpacing.s12),
+                if (widget.regenerateType == null) ...[
+                  Text(
+                    '$total of 20 questions',
+                    style: Theme.of(context).textTheme.titleMedium,
+                  ),
+                  for (final type in aiQuestionTypes)
+                    Padding(
+                      padding: const EdgeInsets.symmetric(
+                        vertical: FiloSpacing.s4,
+                      ),
+                      child: Row(
+                        children: [
+                          Expanded(
+                            child: Text(
+                              _label(type),
+                              style: Theme.of(context).textTheme.bodyLarge,
+                            ),
+                          ),
+                          IconButton(
+                            tooltip: 'Fewer ${_label(type)} questions',
+                            onPressed: !_busy && _counts[type]! > 0
+                                ? () => setState(
+                                    () => _counts[type] = _counts[type]! - 1,
+                                  )
+                                : null,
+                            icon: const Icon(Icons.remove),
+                          ),
+                          SizedBox(
+                            width: 28,
+                            child: Text(
+                              '${_counts[type]}',
+                              textAlign: TextAlign.center,
+                              style: Theme.of(context).textTheme.titleMedium,
+                            ),
+                          ),
+                          IconButton(
+                            tooltip: 'More ${_label(type)} questions',
+                            onPressed: !_busy && total < 20
+                                ? () => setState(
+                                    () => _counts[type] = _counts[type]! + 1,
+                                  )
+                                : null,
+                            icon: const Icon(Icons.add),
+                          ),
+                        ],
+                      ),
+                    ),
+                  const SizedBox(height: FiloSpacing.s12),
+                  const Divider(),
+                  const SizedBox(height: FiloSpacing.s12),
+                  Text(
+                    'Difficulty',
+                    style: Theme.of(context).textTheme.titleMedium,
+                  ),
+                  Wrap(
+                    spacing: 8,
+                    children: [
+                      for (final level in ['easy', 'medium', 'hard'])
+                        FiloAnimatedChip(
+                          label: Text(
+                            '${level[0].toUpperCase()}${level.substring(1)}',
+                          ),
+                          selected: _difficulty == level,
+                          onSelected: _busy
+                              ? null
+                              : (_) => setState(() => _difficulty = level),
+                        ),
+                    ],
+                  ),
+                  TextField(
+                    controller: _topic,
+                    enabled: !_busy,
+                    maxLength: 200,
+                    decoration: const InputDecoration(
+                      labelText: 'Topic focus (optional)',
+                      helperText: 'Enter a topic from your files, or leave blank to use the full text.',
+                    ),
+                  ),
+                ] else
+                  Text(
+                    'Regenerate one ${_label(widget.regenerateType!)} question · $_difficulty',
+                  ),
+                const SizedBox(height: FiloSpacing.s8),
+                Text(switch (_difficulty) {
+                  'easy' =>
+                    'Remember and understand: recall facts and explain ideas.',
+                  'medium' => 'Apply and analyze: use ideas in new cases and examine relationships.',
+                  _ => 'Evaluate and create: judge using criteria or develop a justified solution. Objective questions focus on evaluation.',
+                }),
+              ],
             ),
-          ] else
-            Text(
-              'Regenerate one ${_label(widget.regenerateType!)} question · $_difficulty',
-            ),
-          const SizedBox(height: FiloSpacing.s8),
-          Text(switch (_difficulty) {
-            'easy' =>
-              'Remember and understand: recall facts and explain ideas.',
-            'medium' => 'Apply and analyze: use ideas in new cases and examine relationships.',
-            _ => 'Evaluate and create: judge using criteria or develop a justified solution. Objective questions focus on evaluation.',
-          }),
+          ),
           const SizedBox(height: FiloSpacing.s16),
           const Text(aiPrivacyNotice),
           if (!_acknowledged && !_initializing)
@@ -595,19 +757,6 @@ class _AiQuizSheetState extends ConsumerState<AiQuizSheet> {
               onPressed: _privacy,
               child: const Text('Read and acknowledge privacy notice'),
             ),
-          if (_busy) ...[
-            Image.asset(
-              'assets/mascots/thinking.png',
-              height: 120,
-              semanticLabel: 'Generating questions',
-            ),
-            Semantics(liveRegion: true, child: Text('Generating questions...')),
-            TextButton(
-              onPressed: () => _generation?.cancel(),
-              child: const Text('Cancel'),
-            ),
-            const Text('Cancel stops waiting. The server may still finish.'),
-          ],
           if (!online)
             const Text(
               "You're offline. Connect to the internet to generate questions, or create questions manually.",
@@ -621,7 +770,11 @@ class _AiQuizSheetState extends ConsumerState<AiQuizSheet> {
               ),
             ),
           const SizedBox(height: FiloSpacing.s16),
-          FilledButton(
+          FiloButton(
+            label: widget.regenerateType == null
+                ? 'Generate'
+                : 'Regenerate question',
+            icon: Icons.auto_awesome_outlined,
             onPressed:
                 !_busy &&
                     !_initializing &&
@@ -632,18 +785,6 @@ class _AiQuizSheetState extends ConsumerState<AiQuizSheet> {
                     total > 0
                 ? _generate
                 : null,
-            style: FilledButton.styleFrom(
-              minimumSize: const Size(
-                FiloControlSize.compact,
-                FiloControlSize.compact,
-              ),
-              backgroundColor: Theme.of(context).colorScheme.primary,
-            ),
-            child: Text(
-              widget.regenerateType == null
-                  ? 'Generate'
-                  : 'Regenerate question',
-            ),
           ),
         ],
       ),

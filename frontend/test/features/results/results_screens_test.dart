@@ -43,6 +43,56 @@ ResultJson sessionFixture(
 };
 
 void main() {
+  testWidgets(
+    'student card wraps and keeps review and second chance separate',
+    (tester) async {
+      tester.view.physicalSize = const Size(320, 1200);
+      tester.view.devicePixelRatio = 1;
+      addTearDown(tester.view.resetPhysicalSize);
+      addTearDown(tester.view.resetDevicePixelRatio);
+      var reviews = 0;
+      var grants = 0;
+      await tester.pumpWidget(
+        MaterialApp(
+          theme: AppTheme.light,
+          home: MediaQuery(
+            data: const MediaQueryData(textScaler: TextScaler.linear(2)),
+            child: Scaffold(
+              body: SingleChildScrollView(
+                child: ResultStudentRow(
+                  name: 'A student with a long display name',
+                  status: 'Essay to grade',
+                  score: '7/10',
+                  leaves: null,
+                  unreleased: true,
+                  provisional: true,
+                  history: true,
+                  onTap: () => reviews++,
+                  onSecondChance: () => grants++,
+                ),
+              ),
+            ),
+          ),
+        ),
+      );
+      expect(find.text('7/10'), findsOneWidget);
+      expect(find.text('Not available'), findsOneWidget);
+      expect(find.text('Provisional score'), findsOneWidget);
+      expect(find.text('Not released'), findsOneWidget);
+      await tester.tap(find.text('Review attempt'));
+      expect(reviews, 1);
+      await tester.tap(
+        find.byTooltip('Options for A student with a long display name'),
+      );
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Grant second chance'));
+      await tester.pumpAndSettle();
+      expect(grants, 1);
+      expect(reviews, 1);
+      expect(tester.takeException(), isNull);
+    },
+  );
+
   for (final palette in [AppTheme.light, AppTheme.dark]) {
     group('${palette.brightness.name} / 130%', () {
       setUp(

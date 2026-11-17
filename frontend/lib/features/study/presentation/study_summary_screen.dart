@@ -76,6 +76,7 @@ class _SummaryBody extends ConsumerStatefulWidget {
 }
 
 class _SummaryBodyState extends ConsumerState<_SummaryBody> {
+  final _errorToast = StudyErrorToast();
   late final StudySummarySession _session;
   bool _authorizing = false, _allowPop = false;
   @override
@@ -94,7 +95,15 @@ class _SummaryBodyState extends ConsumerState<_SummaryBody> {
   }
 
   void _changed() {
-    if (mounted) setState(() {});
+    if (!mounted) return;
+    _errorToast.update(
+      context,
+      _session.error,
+      isCurrent: () =>
+          ref.read(accountDatabaseProvider).asData?.value ==
+          widget.repository.db,
+    );
+    setState(() {});
   }
 
   @override
@@ -105,6 +114,14 @@ class _SummaryBodyState extends ConsumerState<_SummaryBody> {
   }
 
   Future<void> _generate(bool replacing) async {
+    if (!_session.working && ref.read(aiRequestGuardProvider).isBusy) {
+      showFiloToast(
+        context,
+        studyAiMessages['AI_IN_PROGRESS']!,
+        kind: FiloToastKind.error,
+      );
+      return;
+    }
     if (_authorizing || _session.working) return;
     setState(() => _authorizing = true);
     try {
@@ -146,6 +163,7 @@ class _SummaryBodyState extends ConsumerState<_SummaryBody> {
     final guard = ref.watch(aiRequestGuardProvider);
     ref.watch(aiRequestBusyProvider);
     final pending = _session.pending;
+    final hasSources = sources.asData?.value.isNotEmpty == true;
     final reason = !online
         ? studyAiMessages['OFFLINE']
         : guard.isBusy && !_session.working
@@ -154,9 +172,8 @@ class _SummaryBodyState extends ConsumerState<_SummaryBody> {
         ? 'Loading sources...'
         : sources.hasError
         ? 'Could not read notebook sources. Try again.'
-        : sources.asData?.value.isEmpty != false
-        ? 'Add a readable source to generate a summary.'
-        : sources.requireValue.any((s) => s.extractedText.trim().isEmpty)
+        : hasSources &&
+              sources.requireValue.any((s) => s.extractedText.trim().isEmpty)
         ? studyAiMessages['NO_TEXT']
         : null;
     return PopScope(
@@ -193,46 +210,43 @@ class _SummaryBodyState extends ConsumerState<_SummaryBody> {
             padding: const EdgeInsets.all(FiloSpacing.screen),
             children: [
               const StudyOfflineBanner(),
-              FiloPanel(
-                child: Row(
-                  children: [
-                    Icon(
-                      Icons.subject_rounded,
-                      color: Theme.of(context).colorScheme.primary,
-                      size: 32,
-                    ),
-                    const SizedBox(width: FiloSpacing.s16),
-                    Expanded(
-                      child: Text(
-                        'Summary',
-                        style: Theme.of(context).textTheme.titleLarge,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-              const SizedBox(height: FiloSpacing.screen),
               studyAsync(
                 summary,
                 (saved) => Column(
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
                     if (saved != null) ...[
-                      Text(
-                        'Saved ${MaterialLocalizations.of(context).formatMediumDate(saved.updatedAt.toLocal())}',
-                        style: Theme.of(context).textTheme.labelLarge,
-                      ),
-                      const SizedBox(height: FiloSpacing.s12),
-                      FiloPanel(child: StudyAnswerText(saved.content)),
-                      _usage(StudySummaryUsage.decode(saved.usageJson)),
-                      Align(
-                        alignment: Alignment.centerRight,
-                        child: TextButton.icon(
-                          onPressed: () => _copy(saved.content),
-                          icon: const Icon(Icons.copy_outlined),
-                          label: const Text('Copy summary'),
+                      FiloPanel(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.stretch,
+                          children: [
+                            Wrap(
+                              alignment: WrapAlignment.spaceBetween,
+                              crossAxisAlignment: WrapCrossAlignment.center,
+                              spacing: FiloSpacing.s12,
+                              children: [
+                                Text(
+                                  'Saved ${MaterialLocalizations.of(context).formatMediumDate(saved.updatedAt.toLocal())}',
+                                  style: Theme.of(context).textTheme.labelMedium
+                                      ?.copyWith(
+                                        color: Theme.of(context)
+                                            .colorScheme
+                                            .onSurfaceVariant,
+                                      ),
+                                ),
+                                TextButton.icon(
+                                  onPressed: () => _copy(saved.content),
+                                  icon: const FiloIcon(FiloIcons.copy),
+                                  label: const Text('Copy summary'),
+                                ),
+                              ],
+                            ),
+                            const Divider(height: FiloSpacing.screen),
+                            StudyAnswerText(saved.content),
+                          ],
                         ),
                       ),
+                      _usage(StudySummaryUsage.decode(saved.usageJson)),
                     ] else
                       Padding(
                         padding: const EdgeInsets.symmetric(
@@ -243,16 +257,18 @@ class _SummaryBodyState extends ConsumerState<_SummaryBody> {
                               ? null
                               : EmptyStateAction(
                                   label: 'Summarize sources',
-                                  onPressed: reason != null || _authorizing
+                                  onPressed:
+                                      (reason != null &&
+                                              reason !=
+                                                  studyAiMessages['AI_IN_PROGRESS']) ||
+                                          !hasSources ||
+                                          _authorizing
                                       ? null
                                       : () => _generate(false),
                                 ),
-                          title: _session.error == null
-                              ? 'Ready for a summary?'
-                              : 'Summary unavailable',
-                          body: _session.error ?? 'Add readable sources, then summarize their main ideas.',
-                          pose: _session.error == null ? 'reading' : 'confused',
-                          bob: !_session.working && _session.error == null,
+                          title: 'Ready for a summary?',
+                          body: 'Add readable sources, then summarize their main ideas.',
+                          pose: 'reading',
                         ),
                       ),
                     if (pending != null) ...[
@@ -262,7 +278,7 @@ class _SummaryBodyState extends ConsumerState<_SummaryBody> {
                       _usage(StudySummaryUsage.fromResult(pending)),
                       TextButton.icon(
                         onPressed: () => _copy(pending.value.answer),
-                        icon: const Icon(Icons.copy_outlined),
+                        icon: const FiloIcon(FiloIcons.copy),
                         label: const Text('Copy unsaved summary'),
                       ),
                       FiloButton(
@@ -270,10 +286,6 @@ class _SummaryBodyState extends ConsumerState<_SummaryBody> {
                         onPressed: _session.working ? null : _session.retrySave,
                       ),
                     ],
-                    const SizedBox(height: FiloSpacing.s16),
-                    const Text(
-                      'AI can make mistakes. Check important answers.',
-                    ),
                     const SizedBox(height: FiloSpacing.s16),
                     if (_session.working) ...[
                       if (!_session.saving)
@@ -306,7 +318,12 @@ class _SummaryBodyState extends ConsumerState<_SummaryBody> {
                       FiloButton(
                         label: 'Summarize again',
                         icon: FiloIcons.sparkle,
-                        onPressed: reason != null || _authorizing
+                        onPressed:
+                            (reason != null &&
+                                    reason !=
+                                        studyAiMessages['AI_IN_PROGRESS']) ||
+                                !hasSources ||
+                                _authorizing
                             ? null
                             : () => _generate(true),
                       ),
@@ -315,7 +332,9 @@ class _SummaryBodyState extends ConsumerState<_SummaryBody> {
                 retry: () =>
                     ref.invalidate(studySummaryProvider(widget.notebookId)),
               ),
-              if (reason != null)
+              if (reason != null &&
+                  reason != studyAiMessages['AI_IN_PROGRESS'] &&
+                  reason != studyAiMessages['OFFLINE'])
                 Padding(
                   padding: const EdgeInsets.only(top: FiloSpacing.s12),
                   child: Text(reason),
@@ -325,14 +344,6 @@ class _SummaryBodyState extends ConsumerState<_SummaryBody> {
                   onPressed: () =>
                       ref.invalidate(studySourcesProvider(widget.notebookId)),
                   child: const Text('Retry loading sources'),
-                ),
-              if (_session.error != null)
-                Padding(
-                  padding: const EdgeInsets.only(top: FiloSpacing.s12),
-                  child: Semantics(
-                    liveRegion: true,
-                    child: Text(_session.error!),
-                  ),
                 ),
             ],
           ),

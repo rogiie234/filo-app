@@ -108,9 +108,9 @@ class _DownloadFileCardState extends ConsumerState<DownloadFileCard> {
 
   bool _reporting = false;
   static final _notices = <String>{};
-  void _message(String text) {
+  void _message(String text, {FiloToastKind kind = FiloToastKind.info}) {
     if (mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(text)));
+      showFiloToast(context, text, kind: kind);
     }
   }
 
@@ -125,10 +125,16 @@ class _DownloadFileCardState extends ConsumerState<DownloadFileCard> {
     }
     try {
       if (!await launchUrl(uri, mode: LaunchMode.externalApplication)) {
-        _message('Could not open this link. Try again.');
+        _message(
+          'Could not open this link. Try again.',
+          kind: FiloToastKind.error,
+        );
       }
     } catch (_) {
-      _message('Could not open this link. Try again.');
+      _message(
+        'Could not open this link. Try again.',
+        kind: FiloToastKind.error,
+      );
     }
   }
 
@@ -159,19 +165,20 @@ class _DownloadFileCardState extends ConsumerState<DownloadFileCard> {
       final backup = await showFiloDialog<bool>(
         context: context,
         barrierDismissible: false,
-        builder: (context) => AlertDialog(
-          title: const Text('Your files are kept inside Filo'),
+        builder: (context) => FiloModalDialog(
+          title: 'Your files are kept inside Filo',
           content: const Text(
             'Downloaded files are stored inside Filo on this phone. Uninstalling Filo or clearing its app data removes these files. Drive backup can protect them by saving copies to your own Google Drive.',
           ),
           actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(context, true),
-              child: const Text('Set up Drive backup'),
-            ),
-            FilledButton(
+            FiloButton(
               onPressed: () => Navigator.pop(context, false),
-              child: const Text('Got it'),
+              label: 'Got it',
+            ),
+            FiloButton(
+              secondary: true,
+              onPressed: () => Navigator.pop(context, true),
+              label: 'Set up Drive backup',
             ),
           ],
         ),
@@ -195,19 +202,20 @@ class _DownloadFileCardState extends ConsumerState<DownloadFileCard> {
     }
     final yes = await showFiloDialog<bool>(
       context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Notify your instructor?'),
+      builder: (context) => FiloModalDialog(
+        title: 'Notify your instructor?',
         content: const Text(
           "Report that you can't download this file so your instructor can check its sharing settings.",
         ),
         actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context, false),
-            child: const Text('Cancel'),
-          ),
-          FilledButton(
+          FiloButton(
             onPressed: () => Navigator.pop(context, true),
-            child: const Text('Notify instructor'),
+            label: 'Notify instructor',
+          ),
+          FiloButton(
+            secondary: true,
+            onPressed: () => Navigator.pop(context, false),
+            label: 'Cancel',
           ),
         ],
       ),
@@ -221,19 +229,26 @@ class _DownloadFileCardState extends ConsumerState<DownloadFileCard> {
           .read(supabaseClientProvider)
           .rpc('report_locked_link', params: {'p_post': widget.postId})
           .timeout(const Duration(seconds: 20));
-      _message('Your report was sent to your instructor.');
+      _message(
+        'Your report was sent to your instructor.',
+        kind: FiloToastKind.success,
+      );
     } on PostgrestException catch (error) {
       _message(
         error.message.toLowerCase().contains('already reported')
             ? "You've already reported a link on this post today."
             : "Couldn't send your report. Try again.",
+        kind: FiloToastKind.error,
       );
     } on TimeoutException {
       _message(
         "We couldn't confirm whether your report was sent. Try again when you're connected.",
       );
     } catch (_) {
-      _message("Couldn't send your report. Try again.");
+      _message(
+        "Couldn't send your report. Try again.",
+        kind: FiloToastKind.error,
+      );
     } finally {
       if (mounted) {
         setState(() => _reporting = false);

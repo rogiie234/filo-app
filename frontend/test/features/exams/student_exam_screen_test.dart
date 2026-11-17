@@ -18,6 +18,7 @@ import 'package:filo/features/drive_backup/data/drive_backup_service.dart';
 import 'package:filo/features/home/presentation/home_screen.dart';
 import 'package:filo/features/onboarding/data/profile_repository.dart';
 import 'package:filo/features/exams/application/exam_providers.dart';
+import 'package:filo/features/exams/application/exam_screen_security.dart';
 import 'package:filo/features/exams/application/student_exam_repository.dart';
 import 'package:filo/features/exams/data/exam_store.dart';
 import 'package:filo/features/exams/domain/exam.dart';
@@ -119,6 +120,7 @@ void main() {
     String? sessionId,
     bool home = false,
     Stream<Duration>? countdown,
+    Stream<ExamWindowState>? windows,
     ThemeData? theme,
     double textScale = 1,
   }) async {
@@ -133,6 +135,8 @@ void main() {
           if (home)
             authUserIdProvider.overrideWith((ref) => Stream.value('student')),
           if (home) accountDatabaseProvider.overrideWith((ref) async => db),
+          if (windows != null)
+            examWindowStateProvider.overrideWith((ref) => windows),
           if (countdown != null)
             examCountdownProvider.overrideWith((ref) => countdown),
           studentExamRepositoryProvider.overrideWith((ref) async {
@@ -195,6 +199,64 @@ void main() {
     await tester.pumpWidget(const SizedBox.shrink());
     await tester.pumpAndSettle();
   }
+
+  testWidgets(
+    'obscured assessment blocks answers and restores the same attempt',
+    (tester) async {
+      remote.currentSession = sessionPayload();
+      final windows = StreamController<ExamWindowState>();
+      await mount(tester, sessionId: 'session', windows: windows.stream);
+      windows.add(
+        const ExamWindowState(obscured: true, overlaySupported: true),
+      );
+      await tester.pumpAndSettle();
+      expect(find.text('Assessment hidden'), findsOneWidget);
+      final blur = tester.widget<ImageFiltered>(find.byType(ImageFiltered));
+      expect(blur.enabled, isTrue);
+      expect(
+        find.ancestor(
+          of: find.byType(ImageFiltered),
+          matching: find.byWidgetPredicate(
+            (w) => w is IgnorePointer && w.ignoring,
+          ),
+        ),
+        findsOneWidget,
+      );
+      expect(
+        find.ancestor(
+          of: find.byType(ImageFiltered),
+          matching: find.byWidgetPredicate(
+            (w) => w is ExcludeSemantics && w.excluding,
+          ),
+        ),
+        findsOneWidget,
+      );
+      expect(
+        tester
+            .widget<ExamQuestionCard>(find.byType(ExamQuestionCard).first)
+            .enabled,
+        isFalse,
+      );
+      expect(remote.calls, isNot(contains('submit:session')));
+      expect(repository.active?.sessionId, 'session');
+      windows.add(const ExamWindowState(overlaySupported: true));
+      await tester.pumpAndSettle();
+      expect(find.text('Assessment hidden'), findsNothing);
+      expect(
+        tester.widget<ImageFiltered>(find.byType(ImageFiltered)).enabled,
+        isFalse,
+      );
+      expect(
+        tester
+            .widget<ExamQuestionCard>(find.byType(ExamQuestionCard).first)
+            .enabled,
+        isTrue,
+      );
+      expect(repository.active?.sessionId, 'session');
+      await unmount(tester);
+      await windows.close();
+    },
+  );
 
   testWidgets(
     'offline restart with estimated zero has disabled fields and no timeout',

@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:drift/drift.dart';
 
@@ -143,6 +145,33 @@ final pendingClassRequestsProvider =
 
 final classSyncProvider = AsyncNotifierProvider<ClassSync, void>(ClassSync.new);
 
+enum ClassRefreshStatus { loading, ready, failed }
+
+final classRefreshStatusProvider =
+    StreamProvider.autoDispose<ClassRefreshStatus>((ref) async* {
+      final sync = await ref.watch(syncCoordinatorProvider.future);
+      if (!ref.mounted) return;
+      if (sync == null) {
+        yield ClassRefreshStatus.ready;
+        return;
+      }
+      final changes = StreamController<ClassRefreshStatus>();
+      void update() => changes.add(
+        sync.classesFailed
+            ? ClassRefreshStatus.failed
+            : sync.classesLoaded
+            ? ClassRefreshStatus.ready
+            : ClassRefreshStatus.loading,
+      );
+      sync.addListener(update);
+      ref.onDispose(() {
+        sync.removeListener(update);
+        unawaited(changes.close());
+      });
+      update();
+      yield* changes.stream.distinct();
+    });
+
 class ClassSync extends AsyncNotifier<void> {
   @override
   Future<void> build() async {}
@@ -151,7 +180,12 @@ class ClassSync extends AsyncNotifier<void> {
     state = const AsyncLoading();
     final result = await AsyncValue.guard(() async {
       final coordinator = await ref.read(syncCoordinatorProvider.future);
-      if (ref.mounted) await coordinator?.run();
+      if (ref.mounted) {
+        await coordinator?.refreshClasses();
+        if (coordinator?.classesFailed == true) {
+          throw StateError('Classes could not refresh');
+        }
+      }
     });
     if (ref.mounted) state = result;
   }

@@ -373,13 +373,14 @@ class SubmissionWorkRepository {
         submissionId: submission.id,
       );
     }
-    if (matching.isEmpty)
+    if (matching.isEmpty) {
       await submissions.queueRemoval(
         uploadId,
         null,
         path,
         submissionId: submission.id,
       );
+    }
     await submissions.reconcileRemovals(submission.id);
   });
 

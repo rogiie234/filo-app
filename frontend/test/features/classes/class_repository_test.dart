@@ -235,6 +235,39 @@ void main() {
     await repository.sync();
     expect((await repository.watchClasses().first).length, 1);
   });
+  for (final cached in [false, true]) {
+    test('student tombstone with hidden owner, cached=$cached', () async {
+      if (cached) await repository.sync();
+      remote.data['classes'] = [
+        {...room(), 'deleted_at': stamp},
+      ];
+      remote.data['profiles'] = [profile('student', 'student')];
+      await repository.sync();
+      expect(await db.select(db.cacheClasses).get(), isEmpty);
+      expect(await db.select(db.cacheClassMembers).get(), isEmpty);
+      final cursors = await db.select(db.syncState).get();
+      expect(
+        cursors
+            .singleWhere((row) => row.syncedTableName == 'classes')
+            .lastSyncedAt,
+        DateTime.parse(stamp),
+      );
+      await repository.sync();
+      expect(await repository.watchClasses().first, isEmpty);
+    });
+  }
+  test('instructor retains owned tombstone for recovery', () async {
+    repository = ClassRepository(db, remote, 'teacher');
+    remote.data['classes'] = [
+      {...room(), 'deleted_at': stamp},
+    ];
+    await repository.sync();
+    expect(
+      (await db.select(db.cacheClasses).get()).single.deletedAt,
+      isNotNull,
+    );
+    expect(await repository.watchClasses().first, isEmpty);
+  });
   test('deleted class and RLS-hidden class disappear', () async {
     await repository.sync();
     remote.data['classes'] = [

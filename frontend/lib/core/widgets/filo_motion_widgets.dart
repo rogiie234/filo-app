@@ -1,5 +1,4 @@
 import 'dart:async';
-import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
 
@@ -405,51 +404,10 @@ class FiloLinearProgressIndicator extends StatelessWidget {
 class FiloSuccessMoment extends StatelessWidget {
   const FiloSuccessMoment({super.key});
   @override
-  Widget build(BuildContext context) => ExcludeSemantics(
-    child: RepaintBoundary(
-      child: FiloMotionTween(
-        initialValue: 0,
-        value: 1,
-        duration: FiloAnimation.successDuration,
-        builder: (_, value, _) => SizedBox(
-          width: 144,
-          height: 144,
-          child: Stack(
-            alignment: Alignment.center,
-            children: [
-              Opacity(
-                opacity: 1 - value,
-                child: const Mascot(pose: 'cheerful_note', size: 96),
-              ),
-              Opacity(
-                opacity: value,
-                child: const Mascot(pose: 'cheerful', size: 96),
-              ),
-              if (FiloMotion.enabled(context) && value < 1)
-                for (var i = 0; i < 3; i++)
-                  Align(
-                    alignment: [
-                      const Alignment(-.9, -.6),
-                      const Alignment(.85, -.8),
-                      const Alignment(.9, .5),
-                    ][i],
-                    child: Opacity(
-                      opacity: math.sin(math.pi * value).clamp(0.0, 1.0),
-                      child: Transform.scale(
-                        scale: .5 + value * .5,
-                        child: Icon(
-                          FiloIcons.sparkle,
-                          size: 12.0 + i * 2,
-                          color: Theme.of(context).colorScheme.primary,
-                        ),
-                      ),
-                    ),
-                  ),
-            ],
-          ),
-        ),
-      ),
-    ),
+  Widget build(BuildContext context) => const SizedBox(
+    width: 144,
+    height: 144,
+    child: Center(child: Mascot(pose: 'cheerful_note', size: 96)),
   );
 }
 

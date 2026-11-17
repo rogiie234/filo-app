@@ -42,14 +42,29 @@ void main() {
     expect(
       csv,
       startsWith(
-        '\uFEFF"Student name","Status","Score","Total points","Percentage","Passed","Essays graded","Leave count"\r\n',
+        '\uFEFF"Student name","Status","Score","Total points","Percentage","Passed","Essays graded","Leave count","Student ID","Attempt","Score state","Results released"\r\n',
       ),
     );
-    expect(csv, contains('"Ada","Graded","7","10","70","Yes","Yes","2"\r\n'));
+    expect(
+      csv,
+      contains(
+        '"Ada","Graded","7","10","70","Yes","Yes","2","Ada","1","Final","No"\r\n',
+      ),
+    );
     expect(csv, contains('"Ben","In progress","","10","","","No","3"'));
-    expect(csv, contains('"Cam","Not started","","10","","","No","0"'));
+    expect(
+      csv,
+      contains(
+        '"Cam","Not started","","10","","","No","","Cam","","Unavailable","No"',
+      ),
+    );
     expect(csv, contains('"Dee","Essay to grade","6","10","60","","No","0"'));
-    expect(csv, contains('"Eve","Not started","","10","","","No","0"'));
+    expect(
+      csv,
+      contains(
+        '"Eve","Not started","","10","","","No","","Eve","","Unavailable","No"',
+      ),
+    );
     expect(csv, isNot(contains('"100"')));
     expect(csv, endsWith('\r\n'));
     final absent = fixture(threshold: null);
@@ -132,6 +147,18 @@ void main() {
     },
   );
 
+  test('export distinguishes provisional, released and unavailable data', () {
+    final data = fixture();
+    final csv = resultsCsv(data, monitoringStudents(data));
+    expect(csv, contains('"Dee","1","Provisional","No"'));
+    expect(csv, contains('"Ben","1","Unavailable","No"'));
+    data.json['quiz']['results_released_at'] = '2026-11-17T00:00:00Z';
+    expect(
+      resultsCsv(data, monitoringStudents(data)),
+      contains('"Ada","1","Final","Yes"'),
+    );
+  });
+
   test('safe filenames use Philippine date and fallback', () {
     final now = DateTime.utc(2026, 10, 25, 17);
     expect(
@@ -170,7 +197,9 @@ void main() {
       await tester.pumpAndSettle();
       expect(
         tester
-            .widget<PopupMenuItem<String>>(find.byType(PopupMenuItem<String>))
+            .widget<PopupMenuItem<String>>(
+              find.byType(PopupMenuItem<String>).first,
+            )
             .enabled,
         isTrue,
       );
@@ -182,7 +211,9 @@ void main() {
       await tester.pumpAndSettle();
       expect(
         tester
-            .widget<PopupMenuItem<String>>(find.byType(PopupMenuItem<String>))
+            .widget<PopupMenuItem<String>>(
+              find.byType(PopupMenuItem<String>).first,
+            )
             .enabled,
         isFalse,
       );
@@ -197,7 +228,9 @@ void main() {
     await tester.pumpAndSettle();
     expect(
       tester
-          .widget<PopupMenuItem<String>>(find.byType(PopupMenuItem<String>))
+          .widget<PopupMenuItem<String>>(
+            find.byType(PopupMenuItem<String>).first,
+          )
           .enabled,
       isFalse,
     );
@@ -289,14 +322,16 @@ void main() {
       await tester.pumpAndSettle();
       await tester.tap(find.byTooltip('Results options'));
       await tester.pumpAndSettle();
-      await tester.tap(find.text('Export CSV'));
+      await tester.tap(find.text('Export CSV - All students'));
       await tester.pumpAndSettle();
       expect(calls, 1);
       await tester.tap(find.byTooltip('Results options'));
       await tester.pumpAndSettle();
       expect(
         tester
-            .widget<PopupMenuItem<String>>(find.byType(PopupMenuItem<String>))
+            .widget<PopupMenuItem<String>>(
+              find.byType(PopupMenuItem<String>).first,
+            )
             .enabled,
         isFalse,
       );
@@ -314,7 +349,9 @@ void main() {
       await tester.pumpAndSettle();
       expect(
         tester
-            .widget<PopupMenuItem<String>>(find.byType(PopupMenuItem<String>))
+            .widget<PopupMenuItem<String>>(
+              find.byType(PopupMenuItem<String>).first,
+            )
             .enabled,
         isTrue,
       );

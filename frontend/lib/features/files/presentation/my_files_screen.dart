@@ -659,7 +659,6 @@ class MyFilesScreenState extends ConsumerState<MyFilesScreen> {
                           title: 'Files unavailable',
                           body: 'Retry to read your saved files.',
                           pose: 'confused',
-                          bob: false,
                           action: TextButton(
                             onPressed: () {
                               ref.invalidate(filesRepositoryProvider);
@@ -1334,8 +1333,9 @@ class _NameDialogState extends State<_NameDialog> {
     if (_submitted) return;
     try {
       final name = FilesRepository.validName(_controller.text);
-      if (widget.extension.isNotEmpty)
+      if (widget.extension.isNotEmpty) {
         FilesRepository.validName('$name${widget.extension}');
+      }
       _submitted = true;
       Navigator.pop(context, name);
     } on FileProblem catch (error) {

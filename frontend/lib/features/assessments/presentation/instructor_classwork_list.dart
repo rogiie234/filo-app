@@ -424,7 +424,6 @@ class _InstructorClassworkListState
                         onPressed: online && !_refreshing ? _refresh : null,
                       ),
                       pose: 'confused',
-                      bob: false,
                       showMascot: entries.isEmpty,
                     ),
                   if (failed ||

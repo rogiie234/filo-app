@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 
 import 'package:drift/native.dart';
@@ -10,6 +11,119 @@ import 'package:filo/core/sync/sync_coordinator.dart';
 import 'package:filo/data/local/app_database.dart';
 
 void main() {
+  test('class diagnostic excludes SQL, account values and raw messages', () {
+    final error = SqliteException(
+      extendedResultCode: 275,
+      message: 'private server or account content',
+      causingStatement: 'INSERT INTO cache_profiles VALUES (?)',
+      parametersToStatement: ['private account value'],
+    );
+    expect(classRefreshDiagnostic(error), 'SQLite 275, cache_profiles');
+    expect(
+      classRefreshDiagnostic(error.toString()),
+      'SQLite 275, cache_profiles',
+    );
+    expect(
+      classRefreshDiagnostic('private worker failure'),
+      'Database worker error',
+    );
+    expect(classRefreshDiagnostic(StateError('private')), 'StateError');
+  });
+
+  for (final failClasses in [false, true]) {
+    test('class load state and obsolete errors, fail=$failClasses', () async {
+      const user = '11111111-1111-4111-8111-111111111111';
+      const stamp = '2026-11-16T00:00:00Z';
+      final entered = Completer<void>(), release = Completer<void>();
+      var delayed = false;
+      var serverFails = failClasses;
+      var examRefreshes = 0;
+      final client = SupabaseClient(
+        'https://example.supabase.co',
+        'test-key',
+        httpClient: MockClient((request) async {
+          final table = request.url.pathSegments.last;
+          if (table == 'finalize_accessible_exams') examRefreshes++;
+          if (table == 'classes' && !delayed) {
+            delayed = true;
+            entered.complete();
+            await release.future;
+          }
+          if (table == 'classes' && serverFails) {
+            return http.Response(
+              jsonEncode({'message': 'Unavailable', 'code': 'XX000'}),
+              500,
+              headers: {'content-type': 'application/json'},
+              request: request,
+            );
+          }
+          final next =
+              request.url.queryParameters['id']?.startsWith('gt.') == true ||
+              request.url.queryParameters.containsKey('or');
+          return http.Response(
+            jsonEncode(
+              table == 'profiles' && !next
+                  ? [
+                      {
+                        'id': user,
+                        'role': 'student',
+                        'display_name': 'Student',
+                        'created_at': stamp,
+                        'updated_at': stamp,
+                      },
+                    ]
+                  : [],
+            ),
+            200,
+            headers: {'content-type': 'application/json'},
+            request: request,
+          );
+        }),
+      );
+      final db = AppDatabase(NativeDatabase.memory());
+      final sync = SyncCoordinator(db, client, user, () => true);
+      try {
+        sync.errors['quiz_grades:departed'] = 'Old failure';
+        sync.errors['result:departed'] = 'Old failure';
+        expect(sync.classesLoaded, isFalse);
+        expect(sync.attemptedSync, isFalse);
+        final running = sync.run();
+        await entered.future;
+        expect(sync.syncing, isTrue);
+        expect(examRefreshes, 0);
+        expect(identical(sync.refreshClasses(), sync.refreshClasses()), isTrue);
+        expect(sync.classesLoaded, isFalse);
+        release.complete();
+        await running;
+        expect(sync.attemptedSync, isTrue);
+        expect(sync.classesLoaded, !failClasses);
+        expect(sync.classesFailed, failClasses);
+        final beforeRetry = examRefreshes;
+        serverFails = false;
+        await sync.refreshClasses();
+        expect(sync.classesLoaded, isTrue);
+        expect(sync.classesFailed, isFalse);
+        expect(examRefreshes, beforeRetry);
+
+        expect(sync.errors.containsKey('quiz_grades:departed'), failClasses);
+        expect(sync.errors.containsKey('result:departed'), failClasses);
+        sync.errors.clear();
+        sync.errors['posts'] = 'Read failed';
+        expect(sync.failureSummary, contains('could not refresh'));
+        expect(sync.failureSummary, isNot(contains('could not send')));
+        sync.errors['outbox'] = 'Write failed';
+        expect(sync.failureSummary, contains('could not send'));
+        sync.errors.clear();
+        sync.errors['drive_backup'] = 'Permission required';
+        expect(sync.failureSummary, contains('Backup details'));
+      } finally {
+        if (!release.isCompleted) release.complete();
+        sync.dispose();
+        await client.dispose();
+        await db.close();
+      }
+    });
+  }
   for (final scenario in [
     'deleted',
     'empty',

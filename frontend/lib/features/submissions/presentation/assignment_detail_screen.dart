@@ -534,15 +534,16 @@ class _AssignmentDetailScreenState
     if (item.kind == 'text') {
       await showFiloDialog<void>(
         context: context,
-        builder: (c) => AlertDialog(
-          title: const Text('Your text'),
+        builder: (c) => FiloModalDialog(
+          title: 'Your text',
           content: SingleChildScrollView(
             child: SelectableText(item.textContent ?? ''),
           ),
           actions: [
-            TextButton(
+            FiloButton(
+              secondary: true,
               onPressed: () => Navigator.pop(c),
-              child: const Text('Close'),
+              label: 'Close',
             ),
           ],
         ),
@@ -606,21 +607,22 @@ class _AssignmentDetailScreenState
     final late = _overdue;
     final confirmed = await showFiloDialog<bool>(
       context: context,
-      builder: (dialog) => AlertDialog(
-        title: const Text('Turn in your work?'),
+      builder: (dialog) => FiloModalDialog(
+        title: 'Turn in your work?',
         content: Text(
           late
               ? "Your instructor will receive your work. You won't be able to unsubmit after turning it in."
               : 'Your instructor will receive your work. You can unsubmit only while the countdown is running and before a grade is returned.\n\nYou have up to 10 minutes to unsubmit, or until the deadline, whichever comes first.',
         ),
         actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(dialog, false),
-            child: const Text('Cancel'),
-          ),
-          TextButton(
+          FiloButton(
             onPressed: () => Navigator.pop(dialog, true),
-            child: const Text('Turn in'),
+            label: 'Turn in',
+          ),
+          FiloButton(
+            secondary: true,
+            onPressed: () => Navigator.pop(dialog, false),
+            label: 'Cancel',
           ),
         ],
       ),
@@ -773,19 +775,20 @@ class _AssignmentDetailScreenState
         if (didPop || _busy) return;
         final leave = await showFiloDialog<bool>(
           context: context,
-          builder: (dialog) => AlertDialog(
-            title: const Text('Leave this assignment?'),
+          builder: (dialog) => FiloModalDialog(
+            title: 'Leave this assignment?',
             content: const Text(
               'Unsaved comments, links, text, and selected files will be lost. Saved work stays with this assignment.',
             ),
             actions: [
-              TextButton(
+              FiloButton(
                 onPressed: () => Navigator.pop(dialog, false),
-                child: const Text('Stay'),
+                label: 'Stay',
               ),
-              TextButton(
+              FiloButton(
+                secondary: true,
                 onPressed: () => Navigator.pop(dialog, true),
-                child: const Text('Leave'),
+                label: 'Leave',
               ),
             ],
           ),
@@ -815,19 +818,20 @@ class _AssignmentDetailScreenState
           if (cleanupFailed && mounted) {
             final leaveAnyway = await showFiloDialog<bool>(
               context: context,
-              builder: (dialog) => AlertDialog(
-                title: const Text('Leave with unfinished uploads?'),
+              builder: (dialog) => FiloModalDialog(
+                title: 'Leave with unfinished uploads?',
                 content: const Text(
                   'Some uploads could not be removed from the server. Their state is unconfirmed. Leaving will discard the local Retry and Delete controls.',
                 ),
                 actions: [
-                  TextButton(
+                  FiloButton(
                     onPressed: () => Navigator.pop(dialog, false),
-                    child: const Text('Stay'),
+                    label: 'Stay',
                   ),
-                  TextButton(
+                  FiloButton(
+                    secondary: true,
                     onPressed: () => Navigator.pop(dialog, true),
-                    child: const Text('Leave anyway'),
+                    label: 'Leave anyway',
                   ),
                 ],
               ),

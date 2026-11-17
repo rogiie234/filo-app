@@ -45,6 +45,7 @@ class _StudyBody extends ConsumerStatefulWidget {
 }
 
 class _StudyBodyState extends ConsumerState<_StudyBody> {
+  final _errorToast = StudyErrorToast();
   late final StudyFlashcardSession _session;
   final _scroll = ScrollController();
   int _revision = -1;
@@ -66,6 +67,13 @@ class _StudyBodyState extends ConsumerState<_StudyBody> {
 
   void _changed() {
     if (!mounted) return;
+    _errorToast.update(
+      context,
+      _session.error,
+      isCurrent: () =>
+          ref.read(accountDatabaseProvider).asData?.value ==
+          widget.repository.db,
+    );
     final nextCard = _revision != _session.revision;
     _revision = _session.revision;
     setState(() {});
@@ -126,12 +134,12 @@ class _StudyBodyState extends ConsumerState<_StudyBody> {
             IconButton(
               tooltip: 'Shuffle remaining cards',
               onPressed: enabled && card != null ? _session.shuffle : null,
-              icon: const Icon(Icons.shuffle),
+              icon: const FiloIcon(FiloIcons.shuffle),
             ),
             IconButton(
               tooltip: 'Delete card',
               onPressed: enabled && card != null ? _delete : null,
-              icon: const Icon(Icons.delete_outline),
+              icon: const FiloIcon(FiloIcons.delete),
             ),
           ],
         ),
@@ -198,8 +206,8 @@ class _StudyBodyState extends ConsumerState<_StudyBody> {
                         FiloButton(
                           label: 'Still learning',
                           secondary: true,
-                          leading: Icon(
-                            Icons.school_outlined,
+                          leading: FiloIcon(
+                            FiloIcons.student,
                             color: FiloThemeTokens.of(context).warning,
                           ),
                           onPressed: enabled
@@ -209,7 +217,7 @@ class _StudyBodyState extends ConsumerState<_StudyBody> {
                         const SizedBox(height: FiloSpacing.s12),
                         FiloButton(
                           label: 'Got it',
-                          icon: Icons.check,
+                          icon: FiloIcons.check,
                           onPressed: enabled
                               ? () => _session.mark('known')
                               : null,
@@ -225,9 +233,12 @@ class _StudyBodyState extends ConsumerState<_StudyBody> {
                           'Go back to your notebook to generate another deck.',
                         ),
                       ] else if (_session.error == null) ...[
-                        const Text('Deck complete'),
-                        Text('${_session.known} known'),
-                        Text('${_session.learning} still learning'),
+                        StudyCollectionHeader(
+                          title: 'Deck complete',
+                          body:
+                              '${_session.known} known / ${_session.learning} still learning',
+                          icon: FiloIcons.slides,
+                        ),
                         const SizedBox(height: FiloSpacing.s16),
                         if (_session.learning > 0)
                           FiloButton(
@@ -248,10 +259,6 @@ class _StudyBodyState extends ConsumerState<_StudyBody> {
                         ),
                       if (_session.error != null) ...[
                         const SizedBox(height: FiloSpacing.s16),
-                        Semantics(
-                          liveRegion: true,
-                          child: Text(_session.error!),
-                        ),
                         TextButton(
                           onPressed: !enabled
                               ? null
@@ -261,10 +268,6 @@ class _StudyBodyState extends ConsumerState<_StudyBody> {
                           child: const Text('Try again'),
                         ),
                       ],
-                      const SizedBox(height: FiloSpacing.s16),
-                      const Text(
-                        'AI can make mistakes. Check important answers.',
-                      ),
                     ],
                   ),
             retry: () => ref.invalidate(studyDecksProvider(widget.notebookId)),

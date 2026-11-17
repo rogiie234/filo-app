@@ -468,7 +468,6 @@ class _BackupUnavailable extends StatelessWidget {
           title: 'Backup unavailable',
           body: message,
           pose: 'confused',
-          bob: false,
           action: onRetry == null
               ? null
               : FiloButton(label: 'Retry', onPressed: onRetry),

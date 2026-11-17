@@ -152,6 +152,7 @@ void main() {
       session.setDraft('Explain cells.');
       final sending = session.send();
       await dispatched.future;
+      expect(session.draft, isEmpty);
       final questionId = session.messages.single.id;
       session.cancel();
       await sending;

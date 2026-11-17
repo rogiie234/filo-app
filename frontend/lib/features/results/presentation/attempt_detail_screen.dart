@@ -164,25 +164,27 @@ class _AttemptDetailScreenState extends ConsumerState<AttemptDetailScreen> {
     final choice = await showFiloDialog<String>(
       animationStyle: AnimationStyle.noAnimation,
       context: context,
-      builder: (dialog) => AlertDialog(
-        title: const Text('Save changes before leaving?'),
+      builder: (dialog) => FiloModalDialog(
+        title: 'Save changes before leaving?',
         content: const Text(
           'Save your changes or discard them before leaving this answer.',
         ),
         actions: [
-          TextButton(
+          FiloButton(
             onPressed: () => Navigator.pop(dialog, 'cancel'),
-            child: const Text('Cancel'),
+            label: 'Cancel',
           ),
-          TextButton(
+          FiloButton(
+            text: true,
             onPressed: () => Navigator.pop(dialog, 'discard'),
-            child: const Text('Discard changes'),
+            label: 'Discard changes',
           ),
-          FilledButton(
+          FiloButton(
+            secondary: true,
             onPressed: _online && !_reconcile
                 ? () => Navigator.pop(dialog, 'save')
                 : null,
-            child: const Text('Save'),
+            label: 'Save',
           ),
         ],
       ),
@@ -217,8 +219,8 @@ class _AttemptDetailScreenState extends ConsumerState<AttemptDetailScreen> {
     final value = await showFiloDialog<(int, String)>(
       animationStyle: AnimationStyle.noAnimation,
       context: context,
-      builder: (dialog) => AlertDialog(
-        title: const Text('Change points?'),
+      builder: (dialog) => FiloModalDialog(
+        title: 'Change points?',
         content: SingleChildScrollView(
           child: Form(
             key: form,
@@ -255,11 +257,7 @@ class _AttemptDetailScreenState extends ConsumerState<AttemptDetailScreen> {
           ),
         ),
         actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(dialog),
-            child: const Text('Cancel'),
-          ),
-          FilledButton(
+          FiloButton(
             onPressed: () {
               if (validateFiloForm(form)) {
                 Navigator.pop(dialog, (
@@ -268,7 +266,12 @@ class _AttemptDetailScreenState extends ConsumerState<AttemptDetailScreen> {
                 ));
               }
             },
-            child: const Text('Change points'),
+            label: 'Change points',
+          ),
+          FiloButton(
+            secondary: true,
+            onPressed: () => Navigator.pop(dialog),
+            label: 'Cancel',
           ),
         ],
       ),

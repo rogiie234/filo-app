@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/ai/ai_request_providers.dart';
+import '../../../core/theme/app_theme.dart';
 import '../../../core/connectivity/connectivity_provider.dart';
 import '../../../core/widgets/filo_widgets.dart';
 import '../../../core/widgets/entry_background.dart';
@@ -40,7 +41,7 @@ class StudyChatScreen extends ConsumerWidget {
             surfaceTintColor: Colors.transparent,
             elevation: 0,
             scrolledUnderElevation: 0,
-            title: const Text('Chat'),
+            title: const Text('Filo'),
           ),
           body: studyAsync(
             db,
@@ -82,6 +83,7 @@ class _ChatBody extends ConsumerStatefulWidget {
 class _ChatBodyState extends ConsumerState<_ChatBody> {
   final _input = TextEditingController();
   final _scroll = ScrollController();
+  final _errorToast = StudyErrorToast();
   late final StudyChatSession _session;
   bool _authorizing = false, _allowPop = false;
   int _lastCount = 0;
@@ -105,6 +107,13 @@ class _ChatBodyState extends ConsumerState<_ChatBody> {
 
   void _changed() {
     if (!mounted) return;
+    _errorToast.update(
+      context,
+      _session.error,
+      isCurrent: () =>
+          ref.read(accountDatabaseProvider).asData?.value ==
+          widget.repository.db,
+    );
     final nearEnd = !_scroll.hasClients || _scroll.position.extentAfter < 100;
     final added =
         _session.messages.length != _lastCount ||
@@ -150,6 +159,14 @@ class _ChatBodyState extends ConsumerState<_ChatBody> {
       );
 
   Future<void> _send() async {
+    if (!_session.working && ref.read(aiRequestGuardProvider).isBusy) {
+      showFiloToast(
+        context,
+        studyAiMessages['AI_IN_PROGRESS']!,
+        kind: FiloToastKind.error,
+      );
+      return;
+    }
     if (_authorizing || _session.working) return;
     setState(() => _authorizing = true);
     try {
@@ -234,7 +251,7 @@ class _ChatBodyState extends ConsumerState<_ChatBody> {
         : !online
         ? studyAiMessages['OFFLINE']!
         : _session.working || _authorizing
-        ? 'Preparing an answer...'
+        ? 'Thinking...'
         : busy
         ? studyAiMessages['AI_IN_PROGRESS']!
         : cooldown > Duration.zero
@@ -245,7 +262,7 @@ class _ChatBodyState extends ConsumerState<_ChatBody> {
         ? studyAiMessages['LOAD_FAILED']!
         : null;
     final blocked =
-        reason != null ||
+        (reason != null && reason != studyAiMessages['AI_IN_PROGRESS']) ||
         _session.error == studyAiMessages['LOAD_FAILED'] &&
             _session.messages.isEmpty;
     final modeLabel = _session.working && _session.requestMode != null
@@ -277,7 +294,7 @@ class _ChatBodyState extends ConsumerState<_ChatBody> {
             surfaceTintColor: Colors.transparent,
             elevation: 0,
             scrolledUnderElevation: 0,
-            title: const Text('Chat'),
+            title: const Text('Filo'),
             actions: [
               PopupMenuButton<String>(
                 tooltip: 'Chat options',
@@ -316,24 +333,24 @@ class _ChatBodyState extends ConsumerState<_ChatBody> {
                     Padding(
                       padding: const EdgeInsets.symmetric(
                         horizontal: FiloSpacing.screen,
-                        vertical: FiloSpacing.s12,
                       ),
-                      child: FiloPanel(
-                        padding: const EdgeInsets.all(FiloSpacing.s12),
-                        child: Row(
-                          children: [
-                            Icon(
-                              Icons.auto_stories_outlined,
-                              color: Theme.of(context).colorScheme.primary,
+                      child: DecoratedBox(
+                        decoration: BoxDecoration(
+                          border: Border(
+                            bottom: BorderSide(
+                              color: Theme.of(context)
+                                  .colorScheme
+                                  .outlineVariant,
                             ),
-                            const SizedBox(width: FiloSpacing.s12),
-                            Expanded(
-                              child: Text(
-                                modeLabel,
-                                style: Theme.of(context).textTheme.titleSmall,
-                              ),
-                            ),
-                          ],
+                          ),
+                        ),
+                        child: StudyChatMarker(
+                          label: modeLabel,
+                          leading: FiloIcon(
+                            mode == 'files' ? FiloIcons.book : FiloIcons.globe,
+                            size: 18,
+                            color: Theme.of(context).colorScheme.primary,
+                          ),
                         ),
                       ),
                     ),
@@ -351,7 +368,10 @@ class _ChatBodyState extends ConsumerState<_ChatBody> {
                               ),
                               itemCount:
                                   _session.messages.length +
-                                  (_session.pendingAnswer != null ? 1 : 0) +
+                                  (_session.pendingAnswer != null &&
+                                          !_session.working
+                                      ? 1
+                                      : 0) +
                                   1,
                               itemBuilder: (_, index) {
                                 if (index < _session.messages.length) {
@@ -365,7 +385,8 @@ class _ChatBodyState extends ConsumerState<_ChatBody> {
                                   );
                                 }
                                 if (index == _session.messages.length &&
-                                    _session.pendingAnswer != null) {
+                                    _session.pendingAnswer != null &&
+                                    !_session.working) {
                                   return StudyChatBubble(
                                     content: _session.pendingAnswer!.answer,
                                     role: 'assistant',
@@ -373,40 +394,19 @@ class _ChatBodyState extends ConsumerState<_ChatBody> {
                                     unsaved: true,
                                   );
                                 }
-                                if (_session.working &&
-                                    _session.pendingAnswer == null) {
-                                  return Column(
-                                    children: [
-                                      const Mascot(pose: 'thinking', size: 96),
-                                      Semantics(
-                                        liveRegion: true,
-                                        child: const Text(
-                                          'Preparing an answer...',
+                                if (_session.working) {
+                                  return Semantics(
+                                    liveRegion: true,
+                                    child: StudyChatMarker(
+                                      label: 'Thinking...',
+                                      thinking: true,
+                                      leading: const ExcludeSemantics(
+                                        child: Mascot(
+                                          pose: 'thinking',
+                                          size: 32,
                                         ),
                                       ),
-                                      if (!MediaQuery.disableAnimationsOf(
-                                        context,
-                                      ))
-                                        const Padding(
-                                          padding: EdgeInsets.all(
-                                            FiloSpacing.s12,
-                                          ),
-                                          child: SizedBox(
-                                            width: 20,
-                                            height: 20,
-                                            child:
-                                                FiloCircularProgressIndicator(
-                                                  strokeWidth: 2,
-                                                ),
-                                          ),
-                                        )
-                                      else
-                                        const Text('...'),
-                                      TextButton(
-                                        onPressed: _session.cancel,
-                                        child: const Text('Cancel'),
-                                      ),
-                                    ],
+                                    ),
                                   );
                                 }
                                 return _session.messages.isEmpty &&
@@ -416,14 +416,17 @@ class _ChatBodyState extends ConsumerState<_ChatBody> {
                                           FiloSpacing.s16,
                                         ),
                                         child: EmptyState(
-                                          title: _session.error == null
-                                              ? 'Start a conversation'
+                                          title:
+                                              _session.error !=
+                                                  studyAiMessages['LOAD_FAILED']
+                                              ? 'Hi, I’m Filo.'
                                               : 'Chat unavailable',
-                                          body: _session.error ?? 'Type a question below to study with your sources or general knowledge.',
-                                          pose: _session.error == null
+                                          body: 'Type a question below to study with your sources or general knowledge.',
+                                          pose:
+                                              _session.error !=
+                                                  studyAiMessages['LOAD_FAILED']
                                               ? 'reading'
                                               : 'confused',
-                                          bob: _session.error == null,
                                         ),
                                       )
                                     : const SizedBox.shrink();
@@ -445,15 +448,13 @@ class _ChatBodyState extends ConsumerState<_ChatBody> {
                           crossAxisAlignment: CrossAxisAlignment.stretch,
                           children: [
                             const StudyOfflineBanner(),
-                            const Text(
-                              'AI can make mistakes. Check important answers.',
-                            ),
-                            const SizedBox(height: FiloSpacing.s8),
-                            for (final notice in _session.notices) Text(notice),
-                            if (_session.error != null)
-                              Semantics(
-                                liveRegion: true,
-                                child: Text(_session.error!),
+                            for (final notice in _session.notices)
+                              StudyChatMarker(
+                                label: notice,
+                                leading: const FiloIcon(
+                                  FiloIcons.info,
+                                  size: 18,
+                                ),
                               ),
                             if (_session.error ==
                                     studyAiMessages['LOAD_FAILED'] &&
@@ -465,7 +466,8 @@ class _ChatBodyState extends ConsumerState<_ChatBody> {
                                 ),
                                 child: const Text('Try again'),
                               ),
-                            if (_session.pendingAnswer != null)
+                            if (_session.pendingAnswer != null &&
+                                !_session.working)
                               TextButton(
                                 onPressed: _session.working
                                     ? null
@@ -480,7 +482,8 @@ class _ChatBodyState extends ConsumerState<_ChatBody> {
                                   FiloRadii.large,
                                 ),
                                 border: Border.all(
-                                  color: Theme.of(context).colorScheme.outline,
+                                  color: FiloThemeTokens.of(context)
+                                      .controlBorder,
                                 ),
                               ),
                               child: Row(
@@ -488,6 +491,10 @@ class _ChatBodyState extends ConsumerState<_ChatBody> {
                                 children: [
                                   IconButton(
                                     tooltip: 'Add source files',
+                                    constraints: const BoxConstraints(
+                                      minWidth: 48,
+                                      minHeight: 48,
+                                    ),
                                     onPressed:
                                         _session.working ||
                                             _authorizing ||
@@ -497,7 +504,7 @@ class _ChatBodyState extends ConsumerState<_ChatBody> {
                                             context,
                                             widget.notebookId,
                                           ),
-                                    icon: const Icon(Icons.attach_file),
+                                    icon: const FiloIcon(FiloIcons.add),
                                   ),
                                   Expanded(
                                     child: TextField(
@@ -511,25 +518,41 @@ class _ChatBodyState extends ConsumerState<_ChatBody> {
                                       maxLines: 4,
                                       onChanged: _session.setDraft,
                                       decoration: const InputDecoration(
-                                        labelText: 'Ask a study question...',
+                                        hintText:
+                                            'Ask Filo a study question...',
+                                        isDense: true,
+                                        contentPadding: EdgeInsets.symmetric(
+                                          horizontal: FiloSpacing.s8,
+                                          vertical: FiloSpacing.s12,
+                                        ),
+                                        filled: false,
                                         border: InputBorder.none,
                                         enabledBorder: InputBorder.none,
+                                        disabledBorder: InputBorder.none,
                                         focusedBorder: InputBorder.none,
                                       ),
                                     ),
                                   ),
                                   IconButton.filled(
                                     tooltip: 'Send message',
+                                    constraints: const BoxConstraints(
+                                      minWidth: 48,
+                                      minHeight: 48,
+                                    ),
                                     onPressed:
                                         blocked || _session.draft.trim().isEmpty
                                         ? null
                                         : _send,
-                                    icon: const Icon(Icons.send_rounded),
+                                    icon: const FiloIcon(FiloIcons.send),
                                   ),
                                 ],
                               ),
                             ),
-                            if (reason != null)
+                            if (reason != null &&
+                                reason != studyAiMessages['AI_IN_PROGRESS'] &&
+                                reason != studyAiMessages['OFFLINE'] &&
+                                !_session.working &&
+                                !_authorizing)
                               Padding(
                                 padding: const EdgeInsets.only(
                                   top: FiloSpacing.s8,

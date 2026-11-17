@@ -8,7 +8,7 @@ import '../application/study_providers.dart';
 import 'study_widgets.dart';
 
 enum StudyTool {
-  chat('Chat'),
+  chat('Filo chat'),
   summary('Summary'),
   decks('Flashcards'),
   quizzes('Practice quiz');
@@ -78,7 +78,6 @@ class StudySavedScreen extends ConsumerWidget {
                   title: 'Notebook unavailable',
                   body: 'Return to your notebooks to choose another one.',
                   pose: 'confused',
-                  bob: false,
                 ),
               );
             }
@@ -91,8 +90,6 @@ class StudySavedScreen extends ConsumerWidget {
                   child: Text('Saved content · read only'),
                 ),
                 _content(context, ref),
-                const SizedBox(height: FiloSpacing.screen),
-                const Text('AI can make mistakes. Check important answers.'),
               ],
             );
           },
@@ -318,7 +315,7 @@ class StudySavedScreen extends ConsumerWidget {
             for (final item in items)
               ListTile(
                 title: Text(item.title),
-                trailing: const Icon(Icons.chevron_right),
+                trailing: const FiloIcon(FiloIcons.chevronRight),
                 onTap: () => open(item.id, item.title),
               ),
           ],
@@ -345,7 +342,7 @@ class StudySavedScreen extends ConsumerWidget {
             for (final item in items)
               ListTile(
                 title: Text(item.title),
-                trailing: const Icon(Icons.chevron_right),
+                trailing: const FiloIcon(FiloIcons.chevronRight),
                 onTap: () => open(item.id, item.title),
               ),
           ],
@@ -372,7 +369,7 @@ class StudySavedScreen extends ConsumerWidget {
             for (final item in items)
               ListTile(
                 title: Text(item.title),
-                trailing: const Icon(Icons.chevron_right),
+                trailing: const FiloIcon(FiloIcons.chevronRight),
                 onTap: () => open(item.id, item.title),
               ),
           ],

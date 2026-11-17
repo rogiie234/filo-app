@@ -99,22 +99,59 @@ class StudentResultsEntry extends ConsumerWidget {
         ),
       );
     }
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(
-          data?.error ??
-              (state.hasError ? "Couldn't load results. Try again." : null) ??
-              (data?.data == null
-                  ? resultsWaiting
-                  : studentResultMessage(data!.data!)),
+    final loading = state.isLoading || data?.refreshing == true;
+    final failed = state.hasError || data?.error != null;
+    final message =
+        data?.error ??
+        (state.hasError ? "Couldn't load results. Try again." : null) ??
+        (data?.data == null
+            ? resultsWaiting
+            : studentResultMessage(data!.data!));
+    return Padding(
+      padding: const EdgeInsets.only(top: FiloSpacing.s16),
+      child: FiloPanel(
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Align(
+              alignment: Alignment.centerLeft,
+              child: ExcludeSemantics(
+                child: Icon(
+                  failed ? Icons.info_outline : Icons.hourglass_bottom_rounded,
+                  size: 32,
+                  color: Theme.of(context).colorScheme.onSurfaceVariant,
+                ),
+              ),
+            ),
+            const SizedBox(height: FiloSpacing.s16),
+            Semantics(
+              header: true,
+              child: Text(
+                loading
+                    ? 'Checking results'
+                    : failed
+                    ? 'Results unavailable'
+                    : 'Results not available yet',
+                style: Theme.of(context).textTheme.titleLarge,
+              ),
+            ),
+            const SizedBox(height: FiloSpacing.s8),
+            Semantics(
+              liveRegion: true,
+              child: Text(loading ? 'Loading results...' : message),
+            ),
+            const SizedBox(height: FiloSpacing.s16),
+            FiloButton(
+              secondary: true,
+              label: loading ? 'Checking...' : 'Refresh',
+              icon: Icons.refresh,
+              onPressed: loading
+                  ? null
+                  : () => ref.invalidate(studentResultProvider(quizId)),
+            ),
+          ],
         ),
-        TextButton.icon(
-          onPressed: () => ref.invalidate(studentResultProvider(quizId)),
-          icon: const Icon(Icons.refresh),
-          label: const Text('Refresh'),
-        ),
-      ],
+      ),
     );
   }
 }

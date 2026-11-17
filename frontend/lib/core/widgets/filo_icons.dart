@@ -376,4 +376,10 @@ abstract final class FiloIcons {
     fontFamily: 'FiloPhosphorFill',
     matchTextDirection: false,
   );
+  static const shuffle = IconData(0xe422, fontFamily: 'FiloPhosphorRegular');
+  static const lightbulb = IconData(0xe2dc, fontFamily: 'FiloPhosphorRegular');
+  static const globe = IconData(0xe288, fontFamily: 'FiloPhosphorRegular');
+  static const chat = IconData(0xe168, fontFamily: 'FiloPhosphorRegular');
+  static const history = IconData(0xe1a0, fontFamily: 'FiloPhosphorRegular');
+  static const save = IconData(0xe248, fontFamily: 'FiloPhosphorRegular');
 }

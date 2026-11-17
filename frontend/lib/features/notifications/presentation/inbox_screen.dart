@@ -5,7 +5,6 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/connectivity/connectivity_provider.dart';
 import '../../../core/notifications/push_events.dart';
-import '../../../core/widgets/filo_icons.dart';
 import '../../../core/widgets/filo_widgets.dart';
 import '../../../core/widgets/entry_background.dart';
 import '../../../data/local/app_database.dart';
@@ -150,7 +149,6 @@ class _InboxScreenState extends ConsumerState<InboxScreen> {
         title: 'Notifications unavailable',
         body: 'Retry to read notifications saved on this device.',
         pose: 'confused',
-        bob: false,
         action: TextButton(
           child: const Text('Retry'),
           onPressed: () {
@@ -166,7 +164,6 @@ class _InboxScreenState extends ConsumerState<InboxScreen> {
           title: 'Notifications unavailable',
           body: 'Return and sign in to the account that owns these notifications.',
           pose: 'confused',
-          bob: false,
         ),
       );
     } else if (rows == null) {

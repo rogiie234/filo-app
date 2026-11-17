@@ -11,7 +11,7 @@ const studyAiMessages = {
   'AI_BUSY': 'The AI assistant is busy right now. Your work is saved. Please try again in a few minutes, or create questions manually.',
   'AI_TIMEOUT': 'The AI request timed out. Please try again.',
   'AI_BAD_OUTPUT':
-      'The AI could not prepare this study material. Please try again.',
+      'The AI could not prepare the full requested set. Try fewer items or different source material.',
   'AI_UNAVAILABLE': 'The AI assistant is unavailable. Please try again later.',
   'AI_BLOCKED': "The AI couldn't respond to this request. Try changing your question or source text.",
   'OFFLINE': "You're offline. Connect to the internet to chat or generate study material. You can still open saved study material.",

@@ -184,6 +184,22 @@ void main() {
       expect(bridge.calls, 4);
     },
   );
+  test('delete keeps local removal when scheduling cleanup fails', () async {
+    await repo.saveStudy(id: alarmId, subject: 'History', minute: 610, days: 0);
+    bridge.fail = true;
+    await expectLater(
+      repo.deleteStudy(alarmId),
+      throwsA(isA<StudySchedulingFailure>()),
+    );
+    expect(await repo.readAlarms(), isEmpty);
+    expect(await repo.readSlots(alarmId), isEmpty);
+    expect(await repo.setting('study_alarm:$alarmId'), isNull);
+    expect(await repo.setting('study_error'), isNotEmpty);
+    bridge.fail = false;
+    await repo.reconcileStudy();
+    expect(await repo.setting('study_error'), isEmpty);
+  });
+
   test('interrupted scheduling retains plan and retries without losing local changes', () async {
     bridge.fail = true;
     await expectLater(

@@ -1,7 +1,13 @@
+import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
 
 import 'package:filo/core/supabase/session_gate.dart';
+import 'package:filo/core/supabase/supabase_provider.dart';
+import 'package:filo/core/connectivity/connectivity_provider.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:http/http.dart' as http;
+import 'package:http/testing.dart';
 import 'package:filo/data/local/database_providers.dart';
 import 'package:filo/data/local/user_database_manager.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -90,4 +96,95 @@ void main() {
       }
     },
   );
+  for (final monitorFailure in [
+    StateError('platform unavailable'),
+    TimeoutException('monitor'),
+    null,
+  ]) {
+    for (final marker in [
+      'matching',
+      'missing',
+      'wrong-session',
+      'wrong-device',
+    ]) {
+      test(
+        'monitor $monitorFailure uses only $marker verified marker',
+        () async {
+          var requests = 0;
+          final client = SupabaseClient(
+            'https://example.supabase.co',
+            'test',
+            authOptions: const AuthClientOptions(autoRefreshToken: false),
+            httpClient: MockClient((request) async {
+              requests++;
+              return http.Response('false', 200, request: request);
+            }),
+          );
+          addTearDown(client.dispose);
+          const sessionId = '12345678-1234-1234-1234-123456789abc';
+          await client.auth.recoverSession(
+            jsonEncode({
+              'access_token': token({'session_id': sessionId}),
+              'refresh_token': 'test-refresh',
+              'token_type': 'bearer',
+              'expires_at':
+                  DateTime.now().millisecondsSinceEpoch ~/ 1000 + 3600,
+              'user': {
+                'id': 'user',
+                'aud': 'authenticated',
+                'app_metadata': {},
+                'user_metadata': {},
+                'created_at': '2026-10-15T00:00:00Z',
+              },
+            }),
+          );
+          FlutterSecureStorage.setMockInitialValues({
+            if (marker != 'missing')
+              'filo.offline_verified.user': jsonEncode({
+                'session_id': marker == 'wrong-session' ? 'other' : sessionId,
+                'device_hash': marker == 'wrong-device' ? 'other' : 'device',
+              }),
+          });
+          final container = ProviderContainer(
+            retry: (_, _) => null,
+            overrides: [
+              supabaseClientProvider.overrideWithValue(client),
+              loginSessionProvider.overrideWith(
+                (ref) => Stream.value(client.auth.currentSession),
+              ),
+              deviceHashProvider.overrideWith((ref) async => 'device'),
+              connectivityProvider.overrideWith(
+                (ref) => monitorFailure == null
+                    ? Stream.value(true)
+                    : Stream.error(monitorFailure),
+              ),
+            ],
+          );
+          addTearDown(container.dispose);
+          final subscription = container.listen(
+            verifiedUserIdProvider,
+            (_, _) {},
+          );
+          addTearDown(subscription.close);
+          expect(
+            await container
+                .read(verifiedUserIdProvider.future)
+                .timeout(const Duration(seconds: 3)),
+            monitorFailure != null && marker == 'matching' ? 'user' : null,
+          );
+          if (monitorFailure == null) {
+            expect(requests, greaterThan(0));
+            expect(
+              await const FlutterSecureStorage().read(
+                key: 'filo.offline_verified.user',
+              ),
+              isNull,
+            );
+          } else {
+            expect(requests, 0);
+          }
+        },
+      );
+    }
+  }
 }

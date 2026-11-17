@@ -69,7 +69,6 @@ class ClassClassmatesScreen extends ConsumerWidget {
                       ? 'Could not load classmates. The class may no longer be available.'
                       : 'Connect to the internet to view classmates.',
                   pose: online ? 'confused' : 'sleepy',
-                  bob: false,
                   action: TextButton(
                     onPressed: online ? refresh : null,
                     child: const Text('Retry'),

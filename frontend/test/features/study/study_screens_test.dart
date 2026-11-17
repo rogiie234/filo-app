@@ -129,8 +129,21 @@ void main() {
             find.text("You're offline. Showing saved content."),
             findsOneWidget,
           );
-          await tester.scrollUntilVisible(find.text('New notebook'), 200, scrollable: find.byType(Scrollable).first);
+          await tester.scrollUntilVisible(
+            find.text('New notebook'),
+            200,
+            scrollable: find.byType(Scrollable).first,
+          );
           await tester.pumpAndSettle();
+          expect(
+            find.byWidgetPredicate(
+              (widget) =>
+                  widget is FiloButton &&
+                  widget.label == 'New notebook' &&
+                  widget.iconOnly,
+            ),
+            findsNothing,
+          );
           await tester.tap(find.text('New notebook'));
           await tester.pumpAndSettle();
           final create = find.byWidgetPredicate(
@@ -148,7 +161,7 @@ void main() {
           await settleStudy(tester);
           expect(find.text('No sources added'), findsOneWidget);
           for (final entry in {
-            'Chat': 'Start a conversation',
+            'Filo chat': 'Hi, I’m Filo.',
             'Summary': 'Ready for a summary?',
             'Flashcards': 'No flashcards yet',
             'Practice quiz': 'No practice quizzes yet',
@@ -161,6 +174,18 @@ void main() {
             await tester.tap(find.text(entry.key));
             await settleStudy(tester);
             expect(find.text(entry.value), findsOneWidget);
+            if (entry.key == 'Summary') {
+              expect(find.text('Summary'), findsOneWidget);
+              expect(
+                find.text('Add a readable source to generate a summary.'),
+                findsNothing,
+              );
+              final generate = find.byWidgetPredicate(
+                (widget) =>
+                    widget is FiloButton && widget.label == 'Summarize sources',
+              );
+              expect(tester.widget<FiloButton>(generate).onPressed, isNull);
+            }
             if (entry.key == 'Practice quiz') {
               expect(find.text('Generate practice quiz'), findsOneWidget);
             }
@@ -274,7 +299,14 @@ void main() {
           }
           await tester.pumpWidget(app(const StudyHomeScreen()));
           await settleStudy(tester);
-          await tester.tap(find.text('New notebook'));
+          final add = find.byWidgetPredicate(
+            (widget) =>
+                widget is FiloButton &&
+                widget.label == 'New notebook' &&
+                widget.iconOnly,
+          );
+          expect(add, findsOneWidget);
+          await tester.tap(add);
           await tester.pumpAndSettle();
           expect(
             find.text(

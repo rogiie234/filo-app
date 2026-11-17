@@ -260,8 +260,9 @@ class NotificationDestinationRepository {
               .inFilter('id', missing)
               .timeout(const Duration(seconds: 20));
     checkAccount();
-    if (post != null)
+    if (post != null) {
       await _rememberCache(guard, 'post_attachments', post['id'] as String);
+    }
     final attachments = post == null
         ? <Map<String, dynamic>>[]
         : await client
@@ -370,8 +371,9 @@ class NotificationDestinationRepository {
               .eq('status', 'active')
               .limit(1)
               .timeout(const Duration(seconds: 20));
-          if (members.isNotEmpty)
+          if (members.isNotEmpty) {
             membership = Map<String, dynamic>.from(members.single as Map);
+          }
         } else {
           final member =
               await (db.select(db.cacheClassMembers)..where(
@@ -457,8 +459,9 @@ class NotificationDestinationRepository {
               .eq('status', 'active')
               .limit(1)
               .timeout(const Duration(seconds: 20));
-          if (members.isNotEmpty)
+          if (members.isNotEmpty) {
             membership = Map<String, dynamic>.from(members.single as Map);
+          }
         } else {
           members =
               await (db.select(db.cacheClassMembers)..where(
@@ -475,13 +478,14 @@ class NotificationDestinationRepository {
           throw const NotificationUnavailable();
         }
       }
-      if (online())
+      if (online()) {
         await _prepare(
           room,
           member: membership,
           guard: guard,
           post: table == 'posts' ? item : null,
         );
+      }
       checkAccount();
       return destination;
     } on PostgrestException catch (error) {

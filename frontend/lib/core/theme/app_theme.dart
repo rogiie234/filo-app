@@ -319,12 +319,14 @@ class AppTheme {
       ),
       snackBarTheme: SnackBarThemeData(
         behavior: SnackBarBehavior.floating,
-        backgroundColor: colors.inverseSurface,
-        contentTextStyle: text.bodyMedium?.copyWith(
-          color: colors.onInverseSurface,
-        ),
+        backgroundColor: colors.surface,
+        elevation: 4,
+        insetPadding: const EdgeInsets.all(FiloSpacing.s16),
+        contentTextStyle: text.bodyMedium?.copyWith(color: colors.onSurface),
+        actionTextColor: colors.primary,
         shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(FiloRadii.medium),
+          borderRadius: BorderRadius.circular(FiloRadii.large),
+          side: BorderSide(color: colors.outlineVariant),
         ),
       ),
       dividerTheme: DividerThemeData(color: colors.outline),

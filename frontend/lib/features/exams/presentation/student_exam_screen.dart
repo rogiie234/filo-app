@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:ui' show ImageFilter;
 
 import 'package:flutter/material.dart';
 import 'package:flutter/semantics.dart';
@@ -344,15 +345,17 @@ class _StudentExamScreenState extends ConsumerState<StudentExamScreen> {
         (repository.forcedSubmission || repository.active == null)) {
       _exitWarningRoute = null;
       WidgetsBinding.instance.addPostFrameCallback((_) {
-        if (mounted && open.isActive)
+        if (mounted && open.isActive) {
           Navigator.of(context).removeRoute(open, false);
+        }
       });
     }
     if (_exitWarningScheduled ||
         _exitWarningRoute != null ||
         multiWindow ||
-        !repository.integrity.needsWarning)
+        !repository.integrity.needsWarning) {
       return;
+    }
     _exitWarningScheduled = true;
     final sessionId = repository.active?.sessionId;
     WidgetsBinding.instance.addPostFrameCallback((_) async {
@@ -364,8 +367,9 @@ class _StudentExamScreenState extends ConsumerState<StudentExamScreen> {
           ExamScreenSecurity.multiWindow ||
           WidgetsBinding.instance.lifecycleState != null &&
               WidgetsBinding.instance.lifecycleState !=
-                  AppLifecycleState.resumed)
+                  AppLifecycleState.resumed) {
         return;
+      }
       final route = DialogRoute<bool>(
         context: context,
         barrierDismissible: false,
@@ -393,11 +397,12 @@ class _StudentExamScreenState extends ConsumerState<StudentExamScreen> {
         try {
           await repository.acknowledgeExitWarning();
         } catch (_) {
-          if (mounted)
+          if (mounted) {
             showMessage(
               context,
               'Could not save this warning acknowledgement. Try again.',
             );
+          }
         }
       }
     });
@@ -557,7 +562,7 @@ class _StudentExamScreenState extends ConsumerState<StudentExamScreen> {
                         Text(
                           completion == 'Your answers were submitted.'
                               ? ((r?.completionTimedOut == true)
-                                    ? "Time's up. Your answers were submitted.\n\nYour answers were submitted. Results will be available once everyone has finished or the quiz closes."
+                                    ? "Time's up. Your answers were submitted."
                                     : 'Your answers were submitted.')
                               : completion,
                         ),
@@ -693,7 +698,7 @@ class _StudentExamScreenState extends ConsumerState<StudentExamScreen> {
         .where((q) => examAnswerPresent(answers[q.id]))
         .length;
     final windowState = ref.watch(examWindowStateProvider).asData?.value;
-    final windowBlocked = windowState?.multiWindow == true;
+    final windowBlocked = windowState?.blocked == true;
     final editable =
         !windowBlocked &&
         !r.forcedSubmission &&
@@ -725,7 +730,7 @@ class _StudentExamScreenState extends ConsumerState<StudentExamScreen> {
     final status = !online || savingState == 'Reconnecting...'
         ? 'Reconnecting...'
         : saved;
-    return Column(
+    final content = Column(
       children: [
         _ExamStatusBar(
           key: ValueKey(attempt.sessionId),
@@ -735,7 +740,7 @@ class _StudentExamScreenState extends ConsumerState<StudentExamScreen> {
           status: status,
         ),
         Expanded(
-          child: r.forcedSubmission || windowBlocked
+          child: r.forcedSubmission
               ? ColoredBox(
                   color: Theme.of(context).colorScheme.surface,
                   child: Center(
@@ -746,21 +751,26 @@ class _StudentExamScreenState extends ConsumerState<StudentExamScreen> {
                         child: Column(
                           mainAxisSize: MainAxisSize.min,
                           children: [
-                          Text(
-                          r.forcedSubmission
-                              ? (online
-                                    ? 'Exit limit reached. Submitting your answers...'
-                                    : 'Exit limit reached. Reconnect to finish submitting.')
-                              : 'Return to fullscreen to continue.',
-                          textAlign: TextAlign.center,
-                        ),
-                        if (r.forcedSubmission && r.error != null) ...[
-                          const SizedBox(height: FiloSpacing.s12),
-                          Text(r.error!.message, textAlign: TextAlign.center),
-                          FiloButton(label: 'Retry submission',
-                            onPressed: !online || r.submitting || _busy ? null : _open),
-                        ],
-                        ],
+                            Text(
+                              online
+                                  ? 'Exit limit reached. Submitting your answers...'
+                                  : 'Exit limit reached. Reconnect to finish submitting.',
+                              textAlign: TextAlign.center,
+                            ),
+                            if (r.forcedSubmission && r.error != null) ...[
+                              const SizedBox(height: FiloSpacing.s12),
+                              Text(
+                                r.error!.message,
+                                textAlign: TextAlign.center,
+                              ),
+                              FiloButton(
+                                label: 'Retry submission',
+                                onPressed: !online || r.submitting || _busy
+                                    ? null
+                                    : _open,
+                              ),
+                            ],
+                          ],
                         ),
                       ),
                     ),
@@ -897,6 +907,62 @@ class _StudentExamScreenState extends ConsumerState<StudentExamScreen> {
                   },
                 ),
         ),
+      ],
+    );
+    return Stack(
+      fit: StackFit.expand,
+      children: [
+        ExcludeSemantics(
+          excluding: windowBlocked,
+          child: IgnorePointer(
+            ignoring: windowBlocked,
+            child: ImageFiltered(
+              enabled: windowBlocked,
+              imageFilter: ImageFilter.blur(sigmaX: 18, sigmaY: 18),
+              child: content,
+            ),
+          ),
+        ),
+        if (windowBlocked)
+          Positioned.fill(
+            child: ColoredBox(
+              color: Theme.of(context).colorScheme.surface
+                  .withValues(alpha: .94),
+              child: Center(
+                child: SingleChildScrollView(
+                  padding: const EdgeInsets.all(FiloSpacing.screen),
+                  child: Semantics(
+                    liveRegion: true,
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        const ExcludeSemantics(
+                          child: Icon(Icons.visibility_off_outlined, size: 40),
+                        ),
+                        const SizedBox(height: FiloSpacing.s16),
+                        Text(
+                          'Assessment hidden',
+                          style: Theme.of(context).textTheme.titleLarge,
+                        ),
+                        const SizedBox(height: FiloSpacing.s12),
+                        Text(
+                          windowState?.multiWindow == true
+                              ? 'Return to fullscreen to continue.'
+                              : 'Close floating windows or bubbles and return to the assessment. Tap here after closing them to continue.',
+                          textAlign: TextAlign.center,
+                        ),
+                        const SizedBox(height: FiloSpacing.s12),
+                        const Text(
+                          'The timer keeps running.',
+                          textAlign: TextAlign.center,
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          ),
       ],
     );
   }

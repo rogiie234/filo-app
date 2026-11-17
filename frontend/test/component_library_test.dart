@@ -289,7 +289,6 @@ void main() {
           expect(find.text(label), findsOneWidget);
         }
         expect(find.byType(EmptyState), findsNWidgets(7));
-        expect(find.byType(MascotIdle), findsNothing);
         for (final pose in Mascot.poses) {
           expect(find.text(pose), findsOneWidget);
         }
@@ -327,6 +326,7 @@ void main() {
   testWidgets(
     'toast replacement retains duration and does not queue stale feedback',
     (tester) async {
+      var errorMessage = 'New error';
       await tester.pumpWidget(
         MaterialApp(
           theme: AppTheme.dark,
@@ -337,7 +337,7 @@ void main() {
                   showFiloToast(context, 'Old message');
                   showFiloToast(
                     context,
-                    'New error',
+                    errorMessage,
                     kind: FiloToastKind.error,
                   );
                 },
@@ -351,9 +351,23 @@ void main() {
       await tester.pumpAndSettle();
       expect(find.text('Old message'), findsNothing);
       expect(find.text('New error'), findsOneWidget);
+      final toastContext = tester.element(find.byType(SnackBar));
+      expect(
+        Theme.of(toastContext).snackBarTheme.backgroundColor,
+        Theme.of(toastContext).colorScheme.surface,
+      );
+      expect(find.byIcon(FiloIcons.error), findsOneWidget);
       expect(
         tester.widget<SnackBar>(find.byType(SnackBar)).duration,
         const Duration(seconds: 4),
+      );
+      errorMessage = List.filled(30, 'Detail').join(' ');
+      await tester.tap(find.text('Notify'));
+      await tester.pumpAndSettle();
+      expect(find.text(errorMessage), findsOneWidget);
+      expect(
+        tester.widget<SnackBar>(find.byType(SnackBar)).duration,
+        const Duration(seconds: 6),
       );
       await tester.pumpWidget(const SizedBox.shrink());
     },

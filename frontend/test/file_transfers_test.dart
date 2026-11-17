@@ -34,12 +34,17 @@ class _Drive implements DriveApi {
   final uploaded = <String, List<int>>{};
   final started = <String>[];
   bool confirm = true;
+  bool permissionDenied = false;
   DriveResponse response(int status, Map<String, Object?> body) =>
       DriveResponse(status, _Headers(), jsonEncode(body));
   @override
   Future<DriveResponse> metadata(String id) async {
-    if (id == 'folder')
+    if (permissionDenied) {
+      throw const DrivePermissionRequired('Reconnect Drive.');
+    }
+    if (id == 'folder') {
       return response(200, {'mimeType': 'application/vnd.google-apps.folder'});
+    }
     if (failed.contains(id)) throw const DriveFailure('This file was refused.');
     final bytes = uploaded[id];
     return bytes == null
@@ -161,10 +166,11 @@ void main() {
         Stream<Uint8List> body() async* {
           yield Uint8List.fromList([65, 66]);
           if (fail) {
-            if (cancelled)
+            if (cancelled) {
               manager.cancel('attachment');
-            else
+            } else {
               throw const SocketException('interrupted');
+            }
           }
           yield Uint8List.fromList([67]);
         }
@@ -258,6 +264,24 @@ void main() {
     return service;
   }
 
+  test(
+    'Drive permission recovery survives reload until explicitly disabled',
+    () async {
+      final row = await add('keep.txt');
+      final service = await backup(_Drive()..permissionDenied = true, [row]);
+      await service.run(localFileId: row.id);
+      expect(service.permissionRequired, isTrue);
+      expect(service.enabled, isFalse);
+      final reopened = await backup(_Drive(), []);
+      expect(reopened.permissionRequired, isTrue);
+      await reopened.disable();
+      await service.reload();
+      expect(service.permissionRequired, isFalse);
+      expect((await files.get(row.id))!.backedUpAt, isNull);
+      expect(await files.storage.file(row.relativePath).exists(), isTrue);
+    },
+  );
+
   for (final confirmed in [true, false]) {
     test(
       'real backup marks completion only with matching Drive receipt: $confirmed',
@@ -265,13 +289,14 @@ void main() {
         final row = await add('keep.txt');
         final api = _Drive()..confirm = confirmed;
         final service = await backup(api, [row]);
-        if (confirmed)
+        if (confirmed) {
           await service.backupLocalFile(row, files);
-        else
+        } else {
           await expectLater(
             service.backupLocalFile(row, files),
             throwsA(isA<DriveFailure>()),
           );
+        }
         final job =
             (await db
                     .customSelect('SELECT * FROM drive_backup_jobs')

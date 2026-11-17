@@ -1,3 +1,5 @@
+import 'package:filo/features/study/domain/study_ai.dart';
+
 import 'dart:async';
 
 import 'package:drift/native.dart';
@@ -116,29 +118,106 @@ void main() {
     settings: quizSettings,
     questions: quizInputs,
   );
+  testWidgets('AI busy uses a transient toast and retries without inline error', (
+    tester,
+  ) async {
+    invoke = (_, _, _) async => throw const StudyAiFailure('AI_BUSY');
+    await tester.pumpWidget(app(StudyQuizGenerateScreen(notebookId: notebook)));
+    await pumpQuiz(tester);
+    await tester.enterText(find.byType(TextField), 'Cells');
+    await tester.pump();
+    await tap(tester, button('Generate'));
+    const message =
+        'The AI assistant is busy right now. Please try again in a few minutes.';
+    expect(find.text(message), findsOneWidget);
+    expect(
+      find.descendant(of: find.byType(SnackBar), matching: find.text(message)),
+      findsOneWidget,
+    );
+    expect(calls, 1);
+    await tester.pump(const Duration(seconds: 5));
+    await pumpQuiz(tester);
+    expect(find.text(message), findsNothing);
+    await tester.enterText(find.byType(TextField), 'Cells again');
+    await tester.pump();
+    expect(find.byType(SnackBar), findsNothing);
+    await tap(tester, button('Generate'));
+    expect(find.text(message), findsOneWidget);
+    expect(calls, 2);
+    await close(tester);
+  });
+
+  testWidgets('library uses empty CTA then circular add for saved items', (
+    tester,
+  ) async {
+    Finder circle() => find.byWidgetPredicate(
+      (widget) =>
+          widget is FiloButton &&
+          widget.label == 'Generate practice quiz' &&
+          widget.iconOnly,
+    );
+    await tester.pumpWidget(app(StudyQuizzesScreen(notebookId: notebook)));
+    await pumpQuiz(tester);
+    expect(circle(), findsNothing);
+    expect(button('Generate practice quiz'), findsOneWidget);
+    await tester.runAsync(() => quiz());
+    await pumpQuiz(tester);
+    expect(circle(), findsOneWidget);
+    await tap(tester, circle());
+    expect(find.text('How many questions?'), findsOneWidget);
+    await close(tester);
+  });
+
   testWidgets('setup defaults, topic, partial results and save', (
     tester,
   ) async {
     await tester.pumpWidget(app(StudyQuizGenerateScreen(notebookId: notebook)));
     await pumpQuiz(tester);
+    final counts = find.byType(FiloFilterChip);
+    expect(counts, findsNWidgets(4));
     expect(
       tester
-          .widget<DropdownButtonFormField<int>>(
-            find.byType(DropdownButtonFormField<int>),
+          .widget<FiloFilterChip>(
+            find.widgetWithText(FiloFilterChip, '10 questions'),
           )
-          .initialValue,
-      10,
+          .selected,
+      isTrue,
     );
+    await tester.tap(find.widgetWithText(FiloFilterChip, '20 questions'));
+    await tester.pump();
+    expect(
+      tester
+          .widget<FiloFilterChip>(
+            find.widgetWithText(FiloFilterChip, '20 questions'),
+          )
+          .selected,
+      isTrue,
+    );
+    expect(
+      tester
+          .widget<FiloFilterChip>(
+            find.widgetWithText(FiloFilterChip, '10 questions'),
+          )
+          .selected,
+      isFalse,
+    );
+    await tester.tap(find.widgetWithText(FiloFilterChip, '10 questions'));
+    await tester.pump();
     expect(find.byType(CheckboxListTile), findsNWidgets(3));
     expect(tester.widget<FiloButton>(button('Generate')).onPressed, isNull);
     await tester.enterText(find.byType(TextField), 'Cells');
     await tester.pump();
     await tap(tester, button('Generate'));
     expect(calls, 1);
-    expect(find.text('Quiz saved.'), findsOneWidget);
-    expect(find.text('1 invalid question was dropped.'), findsOneWidget);
+    expect(find.textContaining('Practice quiz created.'), findsOneWidget);
+    expect(find.text('Practice quiz'), findsOneWidget);
+    expect(button('Take quiz'), findsNothing);
     expect(
-      find.text('9 requested questions were not returned.'),
+      find.textContaining('1 invalid question was dropped.'),
+      findsOneWidget,
+    );
+    expect(
+      find.textContaining('9 requested questions were not returned.'),
       findsOneWidget,
     );
     expect(tester.takeException(), isNull);
@@ -201,6 +280,14 @@ void main() {
       expect(calls, 0);
       await tap(tester, button('Generate'));
       await tap(tester, button('OK'));
+      expect(find.text('Preparing your practice quiz...'), findsOneWidget);
+      expect(find.byType(FiloLinearProgressIndicator), findsOneWidget);
+      expect(
+        find.text(
+          'Cancel stops waiting on this phone. The server may still finish.',
+        ),
+        findsOneWidget,
+      );
       expect(calls, 1);
       await tap(tester, button('Cancel'));
       expect(guard.isBusy, isFalse);

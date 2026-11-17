@@ -736,7 +736,7 @@ void main() {
               scrollable: find.byType(Scrollable).first,
             );
             await Scrollable.ensureVisible(
-              tester.element(find.text(file!.name)),
+              tester.element(find.text(file.name)),
               alignment: .5,
             );
             await tester.pumpAndSettle();

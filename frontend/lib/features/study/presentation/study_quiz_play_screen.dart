@@ -89,6 +89,7 @@ class _QuizPlayer extends ConsumerStatefulWidget {
 }
 
 class _QuizPlayerState extends ConsumerState<_QuizPlayer> {
+  final _errorToast = StudyErrorToast();
   late final StudyQuizSession _session;
   final _text = TextEditingController();
   final _scroll = ScrollController();
@@ -109,7 +110,15 @@ class _QuizPlayerState extends ConsumerState<_QuizPlayer> {
   }
 
   void _changed() {
-    if (mounted) setState(() {});
+    if (!mounted) return;
+    _errorToast.update(
+      context,
+      _session.error,
+      isCurrent: () =>
+          ref.read(accountDatabaseProvider).asData?.value ==
+          widget.repository.db,
+    );
+    setState(() {});
   }
 
   @override
@@ -174,7 +183,7 @@ class _QuizPlayerState extends ConsumerState<_QuizPlayer> {
               if (s.savedId != null)
                 IconButton(
                   tooltip: 'History',
-                  icon: const Icon(Icons.history),
+                  icon: const FiloIcon(FiloIcons.history),
                   onPressed: () => Navigator.push(
                     context,
                     MaterialPageRoute<void>(
@@ -204,9 +213,7 @@ class _QuizPlayerState extends ConsumerState<_QuizPlayer> {
                     title: s.error == null
                         ? 'No questions in this quiz'
                         : 'Quiz unavailable',
-                    body:
-                        s.error ??
-                        'Return to practice quizzes to generate a new quiz.',
+                    body: 'Return to practice quizzes to generate a new quiz.',
                     pose: s.error == null ? 'reading' : 'confused',
                     primaryAction: s.error == null
                         ? null
@@ -229,7 +236,6 @@ class _QuizPlayerState extends ConsumerState<_QuizPlayer> {
                         ? 'Attempt not confirmed saved'
                         : 'Attempt saved.',
                   ),
-                  if (s.error != null) Text(s.error!),
                   if (!s.saving && s.savedId == null)
                     FiloButton(label: 'Try saving again', onPressed: s.save),
                   if (s.savedId != null) ...[
@@ -262,16 +268,41 @@ class _QuizPlayerState extends ConsumerState<_QuizPlayer> {
                       correct: s.results[i].correct,
                     ),
                 ] else if (q != null) ...[
-                  Semantics(
-                    liveRegion: true,
-                    child: Text(
-                      'Question ${s.index + 1} of ${s.questions.length}',
+                  FiloPanel(
+                    color: Theme.of(context).colorScheme.primaryContainer,
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: [
+                        Wrap(
+                          spacing: FiloSpacing.s12,
+                          runSpacing: FiloSpacing.s8,
+                          crossAxisAlignment: WrapCrossAlignment.center,
+                          children: [
+                            Semantics(
+                              liveRegion: true,
+                              child: Text(
+                                'Question ${s.index + 1} of ${s.questions.length}',
+                                style: Theme.of(context).textTheme.titleMedium,
+                              ),
+                            ),
+                            Chip(
+                              label: Text(switch (q.type) {
+                                'multiple_choice' => 'Multiple choice',
+                                'true_false' => 'True or false',
+                                _ => 'Identification',
+                              }),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: FiloSpacing.s12),
+                        FiloLinearProgressIndicator(
+                          value: s.results.length / s.questions.length,
+                          semanticsLabel: 'Quiz progress',
+                          minHeight: 8,
+                          borderRadius: BorderRadius.circular(FiloRadii.small),
+                        ),
+                      ],
                     ),
-                  ),
-                  const SizedBox(height: FiloSpacing.s8),
-                  FiloLinearProgressIndicator(
-                    value: s.results.length / s.questions.length,
-                    semanticsLabel: 'Quiz progress',
                   ),
                   const SizedBox(height: FiloSpacing.screen),
                   FiloPanel(
@@ -350,8 +381,6 @@ class _QuizPlayerState extends ConsumerState<_QuizPlayer> {
                     ),
                   ],
                 ],
-                const SizedBox(height: FiloSpacing.screen),
-                const Text('AI can make mistakes. Check important answers.'),
               ],
             ),
           ),
@@ -407,8 +436,8 @@ class QuizResultPanel extends StatelessWidget {
           children: [
             Row(
               children: [
-                Icon(
-                  correct ? Icons.check_circle_outline : Icons.info_outline,
+                FiloIcon(
+                  correct ? FiloIcons.checkCircle : FiloIcons.info,
                   color: correct
                       ? Theme.of(context).colorScheme.primary
                       : Theme.of(context).colorScheme.error,
@@ -493,8 +522,6 @@ class StudyQuizHistoryScreen extends StatelessWidget {
                   ),
                   retry: () => ref.invalidate(studyQuestionsProvider(quizId)),
                 ),
-                const SizedBox(height: FiloSpacing.s16),
-                const Text('AI can make mistakes. Check important answers.'),
               ],
             ),
           ),

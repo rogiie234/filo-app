@@ -30,8 +30,9 @@ class StudentResultsRepository {
     if (!online()) throw ResultsFailure(resultsOffline(ResultsAction.load));
     try {
       // Class grade refresh supplies a freshly RLS-read quiz; standalone reads still fetch it.
-      if (knownQuiz != null && knownQuiz['id'] != quizId)
+      if (knownQuiz != null && knownQuiz['id'] != quizId) {
         throw const FormatException('Quiz identity mismatch');
+      }
       final quiz = knownQuiz ?? await remote.quiz(quizId, instructor: false);
       await cache.authorize(quiz['class_id'] as String, instructor: false);
       final raw = await remote.mySession(quizId);

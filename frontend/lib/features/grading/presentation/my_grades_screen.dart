@@ -1,7 +1,5 @@
 import '../../../core/widgets/entry_background.dart';
 import '../../../core/widgets/filo_widgets.dart';
-import '../../../core/theme/filo_design_tokens.dart';
-import '../../../core/theme/filo_motion.dart';
 
 import 'dart:async';
 
@@ -35,8 +33,10 @@ class _MyGradesScreenState extends ConsumerState<MyGradesScreen> {
       await ref.read(gradingSyncProvider(widget.classId).future);
     } catch (_) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text("Couldn't load grades. Try again.")),
+        showFiloToast(
+          context,
+          "Couldn't load grades. Try again.",
+          kind: FiloToastKind.error,
         );
       }
     }
@@ -124,6 +124,9 @@ class _MyGradesScreenState extends ConsumerState<MyGradesScreen> {
                             padding: const EdgeInsets.all(FiloSpacing.screen),
                             children: [
                               Card(
+                                margin: const EdgeInsets.only(
+                                  bottom: FiloSpacing.s16,
+                                ),
                                 child: Padding(
                                   padding: const EdgeInsets.all(
                                     FiloSpacing.s20,
@@ -183,6 +186,9 @@ class _MyGradesScreenState extends ConsumerState<MyGradesScreen> {
                                         ? (attempt?['passed'] as bool?)
                                         : null;
                                     return Card(
+                                      margin: const EdgeInsets.only(
+                                        bottom: FiloSpacing.s16,
+                                      ),
                                       child: Padding(
                                         padding: const EdgeInsets.all(
                                           FiloSpacing.s16,
@@ -261,6 +267,9 @@ class _MyGradesScreenState extends ConsumerState<MyGradesScreen> {
                                     final feedback =
                                         grade?['feedback']?.toString() ?? '';
                                     return Card(
+                                      margin: const EdgeInsets.only(
+                                        bottom: FiloSpacing.s16,
+                                      ),
                                       child: Padding(
                                         padding: const EdgeInsets.all(
                                           FiloSpacing.s16,

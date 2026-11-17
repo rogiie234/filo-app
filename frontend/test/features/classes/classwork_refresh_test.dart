@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:filo/core/connectivity/connectivity_provider.dart';
 import 'package:filo/core/theme/app_theme.dart';
+import 'package:filo/core/widgets/filo_widgets.dart';
 import 'package:filo/data/local/app_database.dart';
 import 'package:filo/features/assessments/application/instructor_quiz_providers.dart';
 import 'package:filo/features/assessments/domain/quiz_draft.dart';
@@ -274,6 +275,82 @@ void main() {
       await tester.pumpWidget(const SizedBox.shrink());
     },
   );
+  testWidgets('instructor empty Stream and Classwork hide duplicate plus', (
+    tester,
+  ) async {
+    final posts = StreamController<List<ClassPost>>.broadcast();
+    addTearDown(posts.close);
+    final container = ProviderContainer(
+      overrides: [
+        classSyncLifecycleProvider.overrideWith((ref) {}),
+        pendingClassRequestsProvider.overrideWith((ref) => Stream.value({})),
+        classFilesProvider('class').overrideWith((ref) => Stream.value([])),
+        postSyncLifecycleProvider('class').overrideWith((ref) {}),
+        postSyncProvider('class').overrideWith((ref) async {}),
+        streamLoadedProvider('class').overrideWith((ref) => Stream.value(true)),
+        connectivityProvider.overrideWith((ref) => Stream.value(true)),
+        classCardsProvider.overrideWith((ref) => Stream.value([_room])),
+        streamPostsProvider('class').overrideWith((ref) async* {
+          yield <ClassPost>[];
+          yield* posts.stream;
+        }),
+        classworkLoadedProvider('instructor_classwork_posts:class')
+            .overrideWith((ref) => Stream.value(true)),
+        instructorAssignmentsRefreshProvider('class')
+            .overrideWith((ref) async {}),
+        instructorQuizListRefreshProvider('class').overrideWith((ref) async {}),
+        instructorQuizzesProvider('class')
+            .overrideWith((ref) => Stream.value([])),
+      ],
+    );
+    addTearDown(container.dispose);
+    await tester.pumpWidget(
+      UncontrolledProviderScope(
+        container: container,
+        child: MaterialApp(
+          theme: AppTheme.light,
+          home: ClassScreen(
+            classId: 'class',
+            profile: AccountProfile.fromJson({
+              'id': 'teacher',
+              'role': 'instructor',
+              'display_name': 'Teacher',
+            }),
+          ),
+        ),
+      ),
+    );
+    Future<void> settle() async {
+      for (var i = 0; i < 12; i++) {
+        await tester.pump(const Duration(milliseconds: 50));
+      }
+    }
+
+    Finder plus(String label) => find.byWidgetPredicate(
+      (w) => w is FiloButton && w.iconOnly && w.label == label,
+    );
+    await settle();
+    expect(find.text('No class updates yet'), findsOneWidget);
+    expect(plus('Create post'), findsNothing);
+    await tester.tap(find.text('Classwork').last);
+    await settle();
+    expect(find.text('No classwork yet'), findsOneWidget);
+    expect(plus('New assessment'), findsNothing);
+    posts.add([_posts.first]);
+    await settle();
+    expect(plus('New assessment'), findsOneWidget);
+    await tester.tap(find.text('Stream').last);
+    await settle();
+    expect(plus('Create post'), findsOneWidget);
+    posts.add([]);
+    await settle();
+    expect(plus('Create post'), findsNothing);
+    await tester.tap(find.text('Classwork').last);
+    await settle();
+    expect(plus('New assessment'), findsNothing);
+    await tester.pumpWidget(const SizedBox.shrink());
+  });
+
   for (final knownEmpty in [false, true]) {
     testWidgets('Stream known-empty=$knownEmpty while refresh is pending', (
       tester,

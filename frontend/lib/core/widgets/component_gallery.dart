@@ -1,5 +1,4 @@
 import 'dart:async';
-import 'dart:typed_data';
 
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
@@ -455,13 +454,11 @@ class _ComponentGalleryState extends State<ComponentGallery> {
                   title: 'No saved content',
                   body: 'Connect and refresh to load content on this device.',
                   pose: 'sleepy',
-                  bob: false,
                 ),
                 EmptyState(
                   title: 'Example unavailable',
                   body: 'Retry to load this example.',
                   pose: 'confused',
-                  bob: false,
                   action: FiloButton(
                     label: 'Retry mascot example',
                     onPressed: () => setState(
@@ -469,7 +466,11 @@ class _ComponentGalleryState extends State<ComponentGallery> {
                     ),
                   ),
                 ),
-                const EmptyState(title: 'No results yet.', body: 'Results appear after work is submitted and released.', showMascot: false),
+                const EmptyState(
+                  title: 'No results yet.',
+                  body: 'Results appear after work is submitted and released.',
+                  showMascot: false,
+                ),
               ]),
               _section('Progress and loading', [
                 FiloProgressBar(

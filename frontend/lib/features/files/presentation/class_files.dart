@@ -158,7 +158,6 @@ class _ClassFilesState extends ConsumerState<ClassFiles> {
           else
             EmptyState(
               pose: failed ? 'confused' : 'sleepy',
-              bob: false,
               primaryAction: EmptyStateAction(
                 label: failed ? 'Retry' : 'Refresh',
                 onPressed: !online

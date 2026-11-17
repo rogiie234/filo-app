@@ -43,7 +43,6 @@ class _ChatHistory extends ConsumerWidget {
                   title: 'No chats yet',
                   body: 'Start a chat in this notebook to see your conversation here.',
                   pose: 'reading',
-                  bob: false,
                 );
               }
               return ListView.builder(
@@ -56,7 +55,7 @@ class _ChatHistory extends ConsumerWidget {
                     subtitle: Text(
                       '${MaterialLocalizations.of(context).formatMediumDate(chat.lastMessageAt.toLocal())} · $days ${days == 1 ? 'day' : 'days'} left',
                     ),
-                    trailing: const Icon(Icons.chevron_right),
+                    trailing: const FiloIcon(FiloIcons.chevronRight),
                     onTap: () => Navigator.pop(context, chat.id),
                   );
                 },

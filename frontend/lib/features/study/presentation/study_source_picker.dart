@@ -21,7 +21,11 @@ Future<void> showStudySourcePicker(BuildContext context, String notebookId) =>
         builder: (_, ref, _) => studyAsync(
           ref.watch(accountDatabaseProvider),
           (db) => db == null
-              ? const EmptyState(title: 'Files unavailable', body: 'Sign in again to access files for this account.', pose: 'confused')
+              ? const EmptyState(
+                  title: 'Files unavailable',
+                  body: 'Sign in again to access files for this account.',
+                  pose: 'confused',
+                )
               : StudySourcePicker(key: ObjectKey(db), notebookId: notebookId),
         ),
       ),
@@ -181,7 +185,6 @@ class _StudySourcePickerState extends ConsumerState<StudySourcePicker> {
                   title: 'Saved files unavailable',
                   body: 'Reopen the picker to retry reading files on this device.',
                   pose: 'confused',
-                  bob: false,
                 ),
               ),
             Padding(
@@ -220,7 +223,6 @@ class _StudySourcePickerState extends ConsumerState<StudySourcePicker> {
             title: 'No saved files here',
             body: 'Add files in Files or download class materials before choosing a source.',
             pose: 'folder',
-            bob: false,
           ),
         ),
       );

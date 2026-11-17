@@ -65,8 +65,9 @@ void main() {
                     'deleted_at': null,
                   };
                 } else if (name == 'save_question') {
-                  if (failure == 'timeout')
+                  if (failure == 'timeout') {
                     throw TimeoutException('Lost save receipt');
+                  }
                   if (failing) {
                     return http.Response(
                       jsonEncode({'code': '22023', 'message': 'Save rejected'}),

@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:ui' show SemanticsAction;
 
 import 'package:filo/core/connectivity/connectivity_provider.dart';
 import 'package:filo/core/theme/app_theme.dart';
@@ -14,6 +15,84 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {
+  testWidgets(
+    'gradebook labels repeated scores with student and assessment context',
+    (tester) async {
+      final semantics = tester.ensureSemantics();
+      addTearDown(semantics.dispose);
+      final data = GradingData(
+        userId: 'teacher',
+        loaded: true,
+        members: [
+          for (final name in ['Ada', 'Ben'])
+            {
+              'student_id': name,
+              'status': 'active',
+              'profiles': {'display_name': name},
+            },
+        ],
+        assignments: [
+          {
+            'id': 'post',
+            'title': 'A long assessment title that needs its full label',
+            'points': 10,
+          },
+        ],
+        quizzes: [
+          {'id': 'quiz', 'title': 'Unstarted quiz', 'total_points': 10},
+        ],
+        submissions: [
+          for (final name in ['Ada', 'Ben'])
+            {
+              'id': name,
+              'post_id': 'post',
+              'student_id': name,
+              'status': 'turned_in',
+              'items': <Json>[],
+            },
+        ],
+        grades: [
+          for (final name in ['Ada', 'Ben'])
+            {'submission_id': name, 'score': 5},
+        ],
+      );
+      await tester.pumpWidget(
+        ProviderScope(
+          overrides: [
+            connectivityProvider.overrideWith((ref) => Stream.value(false)),
+            classesProvider.overrideWith((ref) => Stream.value([])),
+            gradingSyncProvider('class').overrideWith((ref) async {}),
+            gradingDataProvider('class')
+                .overrideWith((ref) => Stream.value(data)),
+          ],
+          child: MaterialApp(
+            theme: AppTheme.light,
+            home: const GradebookScreen(classId: 'class'),
+          ),
+        ),
+      );
+      await tester.pump();
+      await tester.pump();
+      await tester.tap(find.text('Table'));
+      await tester.pump();
+      for (final name in ['Ada', 'Ben']) {
+        final label =
+            '$name, A long assessment title that needs its full label, 5';
+        expect(find.bySemanticsLabel(label), findsOneWidget);
+        expect(find.byTooltip(label), findsOneWidget);
+        final unstarted = tester.getSemantics(
+          find.bySemanticsLabel('$name, Unstarted quiz, \u2014'),
+        );
+        expect(
+          unstarted.getSemanticsData().hasAction(SemanticsAction.tap),
+          isFalse,
+        );
+      }
+      expect(tester.takeException(), isNull);
+      await tester.pumpWidget(const SizedBox());
+    },
+  );
+
   for (final route in <Widget>[
     const GradebookScreen(classId: 'class'),
     const SubmissionsScreen(classId: 'class', postId: 'post'),

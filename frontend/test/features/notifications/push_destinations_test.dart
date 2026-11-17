@@ -343,8 +343,9 @@ void main() {
         httpClient: MockClient((request) async {
           final table = request.url.pathSegments.last;
           requests.add(table);
-          if (mode == 'attachment failure' && table == 'post_attachments')
+          if (mode == 'attachment failure' && table == 'post_attachments') {
             throw StateError('Attachment load failed');
+          }
           if (mode == 'transport') {
             throw StateError('synthetic transport failure');
           }
@@ -532,20 +533,23 @@ void main() {
             if (!instructor) 'profiles',
             if (!joinRequest && !studyClass) 'post_attachments',
           ]);
-          if (!joinRequest && !studyClass)
+          if (!joinRequest && !studyClass) {
             expect(
               (await db.select(db.cachePostAttachments).get()).single.postId,
               targetId,
             );
+          }
           expect(await db.select(db.syncState).get(), isEmpty);
-          if (!joinRequest && !studyClass)
+          if (!joinRequest && !studyClass) {
             expect((await db.select(db.cachePosts).get()).single.id, targetId);
+          }
           expect((await db.select(db.cacheClasses).get()).single.id, classId);
-          if (!instructor)
+          if (!instructor) {
             expect(
               (await db.select(db.cacheClassMembers).get()).single.status,
               'active',
             );
+          }
           if (!studyClass) {
             expect(
               (await db.select(db.cacheNotifications).get()).single.readAt,

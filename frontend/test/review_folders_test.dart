@@ -237,6 +237,9 @@ void main() {
       expect(container.read(reviewQueueCountProvider), 3);
       expect(find.text('Math / A'), findsOneWidget);
       expect(find.text('Science / A'), findsOneWidget);
+      expect(find.text('2 to grade'), findsOneWidget);
+      expect(find.text('1 ready to return or release'), findsOneWidget);
+      expect(find.byIcon(Icons.school_outlined), findsNWidgets(2));
       await tester.tap(find.text('Math / A'));
       await tester.pumpAndSettle();
       expect(find.text('Activity 1 / Assignment'), findsOneWidget);

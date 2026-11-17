@@ -16,7 +16,7 @@ const aiErrorMessages = {
       'Your last request is still being processed. Try again in a minute.',
   'AI_TIMEOUT': 'The AI request timed out. Please try again.',
   'AI_BAD_OUTPUT':
-      'The AI could not produce valid questions. Try different source text.',
+      'The AI could not prepare all requested questions. Try fewer questions or different source text.',
   'NO_TEXT': 'No readable text found in this file.',
   'TOO_LARGE': 'The request is too large. Use a smaller text selection.',
   'NOT_ALLOWED': 'You are not allowed to generate questions for this quiz.',
@@ -61,7 +61,7 @@ class AiQuizClient {
     required this.invoke,
     required this.isOnline,
     required this.currentUser,
-    this.timeout = const Duration(seconds: 60),
+    this.timeout = const Duration(seconds: 120),
     AiRequestGuard? guard,
     this.invokeCancellable,
   }) : guard = guard ?? AiRequestGuard();

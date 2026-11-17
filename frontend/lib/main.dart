@@ -7,7 +7,8 @@ import 'package:flutter/foundation.dart'
         defaultTargetPlatform,
         TargetPlatform,
         kDebugMode,
-        debugPrint;
+        debugPrint,
+        debugPrintStack;
 import 'package:flutter/services.dart' show rootBundle;
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -45,11 +46,19 @@ Future<void> main() async {
       url: AppConfig.supabaseUrl,
       publishableKey: AppConfig.supabaseAnonKey,
     );
-  } catch (_) {
+  } catch (error, stack) {
+    // Log the category and call sites, never session contents or raw responses.
+    if (kDebugMode) {
+      debugPrint(
+        '[Filo startup] Supabase initialization failed (${error.runtimeType}).',
+      );
+      debugPrintStack(stackTrace: stack);
+    }
     runApp(
-      const StartupErrorApp(
+      StartupErrorApp(
         message:
-            'Could not start Filo. Check your connection and restart the app.',
+            'Filo could not initialize. Restart the app and try again.'
+            '${kDebugMode ? '\nDiagnostic: ${error.runtimeType}' : ''}',
       ),
     );
     return;

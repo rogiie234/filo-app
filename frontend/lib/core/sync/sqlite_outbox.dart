@@ -6,8 +6,9 @@ import '../../data/local/app_database.dart';
 import 'outbox_processor.dart';
 
 class SqliteOutbox implements OutboxStore {
-  SqliteOutbox(this.db, {this.includeLeaveEvents = true});
+  SqliteOutbox(this.db, {this.includeLeaveEvents = true, this.leaveSessionId});
   final bool includeLeaveEvents;
+  final String? leaveSessionId;
   final AppDatabase db;
   @override
   Future<QueuedAction?> claim(DateTime now) => db.transaction(() async {
@@ -18,11 +19,14 @@ class SqliteOutbox implements OutboxStore {
       SELECT o.* FROM outbox o LEFT JOIN outbox_schedule s ON s.id=o.id
       WHERE o.status IN ('pending','processing')
         AND (${includeLeaveEvents ? '1=1' : "o.action_type != 'leave_event'"})
+        AND (? IS NULL OR (o.action_type='leave_event' AND json_extract(o.payload,'\$.session_id')=?))
         AND (s.next_at IS NULL OR s.next_at <= ?)
         AND (s.lease_until IS NULL OR s.lease_until <= ?)
       ORDER BY o.created_at,o.id LIMIT 1
     ''',
           variables: [
+            Variable(leaveSessionId),
+            Variable(leaveSessionId),
             Variable(now.toIso8601String()),
             Variable(now.toIso8601String()),
           ],

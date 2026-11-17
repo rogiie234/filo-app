@@ -231,7 +231,6 @@ class _FileViewerScreenState extends ConsumerState<FileViewerScreen> {
                     }),
                   ),
                   pose: 'confused',
-                  bob: false,
                   showMascot: widget.showMascot,
                 ),
               );
@@ -249,7 +248,6 @@ class _FileViewerScreenState extends ConsumerState<FileViewerScreen> {
                       title: 'File missing on device',
                       body: 'Download the file again if its class source is still available.',
                       pose: 'confused',
-                      bob: false,
                       showMascot: widget.showMascot,
                     ),
                     if (_row.sourceAttachmentId != null &&
@@ -315,7 +313,6 @@ class _FileViewerScreenState extends ConsumerState<FileViewerScreen> {
                           title: 'Image preview unavailable',
                           body: 'Try opening this image in another app from the file menu.',
                           pose: 'confused',
-                          bob: false,
                           showMascot: widget.showMascot,
                         ),
                       ),
@@ -360,7 +357,6 @@ class _FileViewerScreenState extends ConsumerState<FileViewerScreen> {
                                   onPressed: () => setState(() {}),
                                 ),
                                 pose: 'confused',
-                                bob: false,
                                 showMascot: widget.showMascot,
                               ),
                             )

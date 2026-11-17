@@ -144,7 +144,6 @@ class _StorageScreenState extends ConsumerState<StorageScreen> {
                       ? error.message
                       : "Couldn't read storage usage. Try again.",
                   pose: 'confused',
-                  bob: false,
                   action: FiloButton(
                     label: 'Retry',
                     onPressed:

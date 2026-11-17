@@ -54,7 +54,6 @@ class _RemoteFilePreviewState extends State<RemoteFilePreview> {
           return EmptyState(
             title: 'Preview unavailable',
             body: 'Retry to load a preview of this file.',
-            bob: false,
             action: TextButton(onPressed: _retry, child: const Text('Retry')),
           );
         }

@@ -126,6 +126,31 @@ class _ClassScreenState extends ConsumerState<ClassScreen> {
                   ?.value[widget.classId] ??
               0
         : 0;
+    final classPosts = state.posts
+        .where(
+          (post) => post.classId == room.id && !_hiddenPosts.contains(post.id),
+        )
+        .toList();
+    final streamAssessments = live && instructor
+        ? ref
+              .watch(
+                assessmentStreamProvider((classId: room.id, student: false)),
+              )
+              .items
+        : <StreamAssessment>[];
+    final hasStreamContent = classStreamItems(
+      classPosts,
+      streamAssessments,
+      room.id,
+    ).isNotEmpty;
+    final hasClassworkContent =
+        classPosts.any((post) => post.postType == 'assignment') ||
+        (live &&
+            instructor &&
+            (ref.watch(instructorQuizzesProvider(room.id)).value?.isNotEmpty ??
+                false));
+    final showClassAction =
+        !live || (_tab == 0 ? hasStreamContent : hasClassworkContent);
     final classAction = SafeArea(
       top: false,
       bottom: false,
@@ -277,7 +302,7 @@ class _ClassScreenState extends ConsumerState<ClassScreen> {
                             : 'Connect to the internet to create an assessment.'),
                 ),
               ),
-            if (instructor && _tab != 2) classAction,
+            if (instructor && _tab != 2 && showClassAction) classAction,
             FiloNavigationBar(
               selectedIndex: _tab,
               onDestinationSelected: (value) => setState(() => _tab = value),
@@ -910,7 +935,6 @@ class _ClassScreenState extends ConsumerState<ClassScreen> {
           body: 'Reconnect and retry; saved class updates remain available.',
           pose: 'confused',
           showMascot: allItems.isEmpty,
-          bob: false,
           action: TextButton(
             onPressed: online
                 ? () {
@@ -962,7 +986,6 @@ class _ClassScreenState extends ConsumerState<ClassScreen> {
           title: 'No saved class updates',
           body: 'Connect and refresh to load class updates.',
           pose: 'sleepy',
-          bob: false,
         ),
       if (allItems.isEmpty &&
           (!live ||

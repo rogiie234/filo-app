@@ -11,8 +11,6 @@ import '../theme/app_theme.dart';
 import 'filo_confirmation_dialog.dart';
 import 'filo_components.dart';
 import 'filo_button.dart';
-import 'mascot_idle.dart';
-export 'mascot_idle.dart';
 export 'filo_components.dart';
 export 'filo_file_type.dart';
 
@@ -49,15 +47,9 @@ class Brand extends StatelessWidget {
 }
 
 class Mascot extends StatelessWidget {
-  const Mascot({
-    super.key,
-    this.pose = 'waving',
-    this.size = 220,
-    this.bob = false,
-  });
+  const Mascot({super.key, this.pose = 'waving', this.size = 220});
   final String pose;
   final double size;
-  final bool bob;
   static const poses = [
     'waving',
     'curious',
@@ -88,7 +80,7 @@ class Mascot extends StatelessWidget {
         ),
       ),
     );
-    return bob ? MascotIdle(child: image) : image;
+    return image;
   }
 }
 
@@ -130,7 +122,6 @@ class EmptyState extends StatelessWidget {
     this.message = '',
     this.illustration,
     this.pose = 'curious',
-    this.bob = false,
     this.showMascot = true,
     this.primaryAction,
     this.secondaryAction,
@@ -143,7 +134,6 @@ class EmptyState extends StatelessWidget {
   final String message;
   final Widget? illustration;
   final String pose;
-  final bool bob;
   final bool showMascot;
   final EmptyStateAction? primaryAction, secondaryAction;
   final List<Widget> children;
@@ -164,8 +154,7 @@ class EmptyState extends StatelessWidget {
             if (illustration != null || showMascot) ...[
               ExcludeSemantics(
                 child: Center(
-                  child:
-                      illustration ?? Mascot(pose: pose, size: 120, bob: bob),
+                  child: illustration ?? Mascot(pose: pose, size: 120),
                 ),
               ),
               const SizedBox(height: FiloSpacing.s20),

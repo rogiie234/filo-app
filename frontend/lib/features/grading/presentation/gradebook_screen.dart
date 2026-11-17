@@ -1,6 +1,5 @@
 import '../../../core/widgets/entry_background.dart';
 import '../../../core/widgets/filo_widgets.dart';
-import '../../../core/theme/filo_motion.dart';
 
 import 'dart:async';
 
@@ -11,7 +10,6 @@ import 'package:share_plus/share_plus.dart';
 import '../../files/data/account_temporary_file.dart';
 import '../../../core/supabase/auth_providers.dart';
 
-import '../../../core/widgets/filo_icon.dart';
 import '../../../core/connectivity/connectivity_provider.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../classes/application/class_providers.dart';
@@ -111,8 +109,10 @@ class _GradebookScreenState extends ConsumerState<GradebookScreen> {
       await ref.read(gradingSyncProvider(widget.classId).future);
     } catch (_) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text("Couldn't load grades. Try again.")),
+        showFiloToast(
+          context,
+          "Couldn't load grades. Try again.",
+          kind: FiloToastKind.error,
         );
       }
     }
@@ -193,8 +193,10 @@ class _GradebookScreenState extends ConsumerState<GradebookScreen> {
       );
     } catch (_) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text("Couldn't export grades. Try again.")),
+        showFiloToast(
+          context,
+          "Couldn't export grades. Try again.",
+          kind: FiloToastKind.error,
         );
       }
     } finally {
@@ -571,25 +573,44 @@ class _GradebookTableState extends State<_GradebookTable> {
     super.dispose();
   }
 
-  Widget _cell(String text, {bool mint = false, VoidCallback? tap}) => SizedBox(
+  Widget _cell(
+    String text, {
+    bool mint = false,
+    VoidCallback? tap,
+    String? label,
+  }) => SizedBox(
     width: 140,
     height: 72 * MediaQuery.textScalerOf(context).scale(1),
     child: Material(
       color: mint
           ? FiloThemeTokens.of(context).mint
           : Theme.of(context).colorScheme.surface,
-      child: InkWell(
+      child: Semantics(
+        label: label ?? text,
+        button: tap != null,
         onTap: tap,
-        child: Container(
-          alignment: Alignment.centerLeft,
-          padding: const EdgeInsets.symmetric(horizontal: FiloSpacing.s12),
-          decoration: BoxDecoration(
-            border: Border(
-              bottom: BorderSide(color: Theme.of(context).colorScheme.outline),
-              right: BorderSide(color: Theme.of(context).colorScheme.outline),
+        excludeSemantics: true,
+        child: Tooltip(
+          message: label ?? text,
+          excludeFromSemantics: true,
+          child: InkWell(
+            onTap: tap,
+            child: Container(
+              alignment: Alignment.centerLeft,
+              padding: const EdgeInsets.symmetric(horizontal: FiloSpacing.s12),
+              decoration: BoxDecoration(
+                border: Border(
+                  bottom: BorderSide(
+                    color: Theme.of(context).colorScheme.outline,
+                  ),
+                  right: BorderSide(
+                    color: Theme.of(context).colorScheme.outline,
+                  ),
+                ),
+              ),
+              child: Text(text, maxLines: 3, overflow: TextOverflow.ellipsis),
             ),
           ),
-          child: Text(text, maxLines: 3, overflow: TextOverflow.ellipsis),
         ),
       ),
     ),
@@ -650,13 +671,25 @@ class _GradebookTableState extends State<_GradebookTable> {
                                 assignment,
                                 widget.members[i]['student_id'].toString(),
                               ),
-                              tap: () => openGradebookItem(
-                                context,
-                                widget.classId,
-                                widget.data,
-                                assignment,
-                                widget.members[i]['student_id'].toString(),
-                              ),
+                              label:
+                                  '${gradebookName(widget.members[i])}, ${assignment['title']}, ${gradebookItemCell(widget.data, assignment, widget.members[i]['student_id'].toString())}',
+                              tap:
+                                  assignment['is_quiz'] == true &&
+                                      widget.data.quizAttempt(
+                                            assignment['id'] as String,
+                                            widget.members[i]['student_id']
+                                                .toString(),
+                                          ) ==
+                                          null
+                                  ? null
+                                  : () => openGradebookItem(
+                                      context,
+                                      widget.classId,
+                                      widget.data,
+                                      assignment,
+                                      widget.members[i]['student_id']
+                                          .toString(),
+                                    ),
                             ),
                         ],
                       ),

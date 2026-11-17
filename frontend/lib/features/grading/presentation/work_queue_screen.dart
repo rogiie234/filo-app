@@ -90,8 +90,9 @@ List<WorkQueueEntry> instructorReviewEntries(
     if (post == null ||
         grade?['returned_at'] != null ||
         (grade == null &&
-            (sub['status'] != 'turned_in' || sub['submitted_at'] == null)))
+            (sub['status'] != 'turned_in' || sub['submitted_at'] == null))) {
       continue;
+    }
     final profile = members[sub['student_id']]?['profiles'];
     entries.add(
       WorkQueueEntry(
@@ -115,8 +116,9 @@ List<WorkQueueEntry> instructorReviewEntries(
   for (final quiz in data.quizzes) {
     if (quiz['status'] != 'published' ||
         quiz['deleted_at'] != null ||
-        quiz['results_released_at'] != null)
+        quiz['results_released_at'] != null) {
       continue;
+    }
     final attempts = attemptsByQuiz[quiz['id']] ?? <Json>[];
     final monitoring = QuizMonitoring({'quiz': quiz, 'sessions': attempts});
     final blocked = monitoring.releaseBlocked(now);
@@ -486,7 +488,6 @@ class _WorkQueueScreenState extends ConsumerState<WorkQueueScreen> {
                     'Saved work is shown when available; reconnect and retry.',
                 showMascot: empty,
                 pose: 'confused',
-                bob: false,
                 action: TextButton.icon(
                   onPressed: online ? _refresh : null,
                   icon: const FiloIcon(FiloIcons.refresh, size: 18),
@@ -516,7 +517,6 @@ class _WorkQueueScreenState extends ConsumerState<WorkQueueScreen> {
                     : _taskFilter == 'Done'
                     ? 'waiting'
                     : 'clock',
-                bob: queue.loaded,
                 title: (!queue.loaded || (!online && empty))
                     ? 'No saved work'
                     : _taskFilter == 'Done'
@@ -689,18 +689,58 @@ class _WorkQueueScreenState extends ConsumerState<WorkQueueScreen> {
             FiloSpacing.screen,
           ),
           children: [
-            Text(
-              widget.student ? 'To-do' : 'To review',
-              style: Theme.of(context).textTheme.headlineMedium,
-            ),
-            const SizedBox(height: FiloSpacing.s8),
-            Text(
-              'Student work, ready for your feedback.',
-              style: Theme.of(context).textTheme.bodyLarge?.copyWith(
-                color: Theme.of(context).colorScheme.onSurfaceVariant,
+            FiloPanel(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  Semantics(
+                    header: true,
+                    child: Text(
+                      'To review',
+                      style: Theme.of(context).textTheme.headlineMedium,
+                    ),
+                  ),
+                  const SizedBox(height: FiloSpacing.s8),
+                  Text(
+                    'Student work, ready for your feedback.',
+                    style: Theme.of(context).textTheme.bodyLarge?.copyWith(
+                      color: Theme.of(context).colorScheme.onSurfaceVariant,
+                    ),
+                  ),
+                  if (queue.entries.isNotEmpty) ...[
+                    const SizedBox(height: FiloSpacing.s16),
+                    Wrap(
+                      spacing: FiloSpacing.s8,
+                      runSpacing: FiloSpacing.s8,
+                      children: [
+                        Chip(
+                          avatar: const Icon(
+                            Icons.rate_review_outlined,
+                            size: 18,
+                          ),
+                          label: Text(
+                            '${queue.entries.where((e) => e.group == 'To grade').length} to grade',
+                          ),
+                        ),
+                        Chip(
+                          avatar: const Icon(Icons.outbox_outlined, size: 18),
+                          label: Text(
+                            '${activities.fold<int>(0, (n, a) => n + a.ready)} ready to return or release',
+                          ),
+                        ),
+                        if (activities.any((a) => a.awaiting > 0))
+                          Chip(
+                            label: Text(
+                              '${activities.fold<int>(0, (n, a) => n + a.awaiting)} awaiting release',
+                            ),
+                          ),
+                      ],
+                    ),
+                  ],
+                ],
               ),
             ),
-            const SizedBox(height: FiloSpacing.s16),
+            const SizedBox(height: FiloSpacing.screen),
             if (!online) const OfflineBanner(),
             if (queue.failed)
               EmptyState(
@@ -708,7 +748,6 @@ class _WorkQueueScreenState extends ConsumerState<WorkQueueScreen> {
                 body:
                     'Saved work is shown when available; reconnect and retry.',
                 pose: 'confused',
-                bob: false,
                 showMascot: queue.entries.isEmpty,
                 action: TextButton(
                   onPressed: online ? _refresh : null,
@@ -741,7 +780,6 @@ class _WorkQueueScreenState extends ConsumerState<WorkQueueScreen> {
                 (!queue.loaded || !online))
               EmptyState(
                 pose: queue.loaded ? 'clock' : 'sleepy',
-                bob: queue.loaded,
                 title: 'No saved work',
                 body: 'Connect and refresh to load work for review.',
                 primaryAction: EmptyStateAction(
@@ -750,58 +788,104 @@ class _WorkQueueScreenState extends ConsumerState<WorkQueueScreen> {
                 ),
               ),
             for (final room in rooms)
-              Card(
+              Padding(
                 key: ValueKey('review-class:${room.id}'),
-                child: ExpansionTile(
-                  key: PageStorageKey('review-class:${room.id}'),
-                  leading: const FiloIcon(FiloIcons.folder),
-                  title: Text('${room.course} / ${room.section}'),
-                  subtitle: Text(
-                    [
-                      if (room.schoolYear?.isNotEmpty == true) room.schoolYear!,
-                      'Pending submissions: ${byClass[room.id]!.fold<int>(0, (count, activity) => count + activity.entries.length)}',
-                    ].join(' / '),
-                  ),
-                  children: [
-                    for (final activity in byClass[room.id]!)
-                      ListTile(
-                        key: ValueKey(activity.id),
-                        contentPadding: const EdgeInsets.all(FiloSpacing.s16),
-                        leading: const FiloIcon(FiloIcons.folder),
-                        title: Text(
-                          '${activity.first.title} / ${activity.first.activityLabel}',
+                padding: const EdgeInsets.only(bottom: FiloSpacing.s16),
+                child: FiloPanel(
+                  padding: EdgeInsets.zero,
+                  child: ExpansionTile(
+                    key: PageStorageKey('review-class:${room.id}'),
+                    tilePadding: const EdgeInsets.all(FiloSpacing.s16),
+                    childrenPadding: const EdgeInsets.fromLTRB(12, 0, 12, 12),
+                    shape: const RoundedRectangleBorder(),
+                    collapsedShape: const RoundedRectangleBorder(),
+                    leading: ExcludeSemantics(
+                      child: Container(
+                        padding: const EdgeInsets.all(12),
+                        decoration: BoxDecoration(
+                          color: Theme.of(context).colorScheme.primaryContainer,
+                          borderRadius: BorderRadius.circular(FiloRadii.medium),
                         ),
-                        subtitle: Text(
-                          [
-                            activity.summary,
-                            if (activity.awaiting > 0)
-                              activity.entries
-                                  .firstWhere(
-                                    (e) => e.group == 'Awaiting release',
-                                  )
-                                  .status,
-                          ].join('\n'),
+                        child: Icon(
+                          Icons.school_outlined,
+                          color: Theme.of(context)
+                              .colorScheme
+                              .onPrimaryContainer,
                         ),
-                        trailing: const FiloIcon(FiloIcons.chevronRight),
-                        onTap: () async {
-                          await Navigator.of(context).push(
-                            MaterialPageRoute<void>(
-                              builder: (_) =>
-                                  activity.first.type == WorkQueueItemType.quiz
-                                  ? InstructorResultsScreen(
-                                      quizId: activity.first.postId,
-                                    )
-                                  : SubmissionsScreen(
-                                      classId: room.id,
-                                      postId: activity.first.postId,
-                                    ),
-                            ),
-                          );
-                          if (mounted)
-                            ref.invalidate(gradingSyncProvider(room.id));
-                        },
                       ),
-                  ],
+                    ),
+                    title: Text(
+                      '${room.course} / ${room.section}',
+                      style: Theme.of(context).textTheme.titleMedium,
+                    ),
+                    subtitle: Text(
+                      [
+                        if (room.schoolYear?.isNotEmpty == true)
+                          room.schoolYear!,
+                        'Pending submissions: ${byClass[room.id]!.fold<int>(0, (count, activity) => count + activity.entries.length)}',
+                      ].join('\n'),
+                    ),
+                    children: [
+                      for (final activity in byClass[room.id]!)
+                        Padding(
+                          padding: const EdgeInsets.only(top: FiloSpacing.s8),
+                          child: FiloPanel(
+                            padding: EdgeInsets.zero,
+                            color: Theme.of(context)
+                                .colorScheme
+                                .surfaceContainerLow,
+                            child: ListTile(
+                              key: ValueKey(activity.id),
+                              contentPadding: const EdgeInsets.all(
+                                FiloSpacing.s16,
+                              ),
+                              leading: ExcludeSemantics(
+                                child: Icon(
+                                  activity.first.type == WorkQueueItemType.quiz
+                                      ? Icons.quiz_outlined
+                                      : Icons.assignment_outlined,
+                                ),
+                              ),
+                              title: Text(
+                                '${activity.first.title} / ${activity.first.activityLabel}',
+                                style: Theme.of(context).textTheme.titleMedium,
+                              ),
+                              subtitle: Text(
+                                [
+                                  activity.summary,
+                                  if (activity.awaiting > 0)
+                                    activity.entries
+                                        .firstWhere(
+                                          (e) => e.group == 'Awaiting release',
+                                        )
+                                        .status,
+                                ].join('\n'),
+                              ),
+                              trailing: const FiloIcon(FiloIcons.chevronRight),
+                              onTap: () async {
+                                await Navigator.of(context).push(
+                                  MaterialPageRoute<void>(
+                                    builder: (_) =>
+                                        activity.first.type ==
+                                            WorkQueueItemType.quiz
+                                        ? InstructorResultsScreen(
+                                            quizId: activity.first.postId,
+                                          )
+                                        : SubmissionsScreen(
+                                            classId: room.id,
+                                            postId: activity.first.postId,
+                                          ),
+                                  ),
+                                );
+                                if (mounted) {
+                                  ref.invalidate(gradingSyncProvider(room.id));
+                                }
+                              },
+                            ),
+                          ),
+                        ),
+                    ],
+                  ),
                 ),
               ),
           ],

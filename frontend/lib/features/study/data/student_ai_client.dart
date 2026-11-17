@@ -22,7 +22,7 @@ class StudentAiClient {
     required this.currentAccount,
     required this.guard,
     bool Function()? sessionExpired,
-    this.timeout = const Duration(seconds: 60),
+    this.timeout = const Duration(seconds: 120),
   }) : sessionExpired = sessionExpired ?? (() => false);
 
   final StudyAiInvoke invoke;

@@ -13,6 +13,32 @@ void main() {
     debugDefaultTargetPlatformOverride = null;
   });
 
+  test('native obscured events reach the assessment and recover without split screen', () async {
+    debugDefaultTargetPlatformOverride = TargetPlatform.android;
+    const events = EventChannel('com.filo.filo/exam_window');
+    messenger.setMockStreamHandler(
+      events,
+      MockStreamHandler.inline(
+        onListen: (_, sink) {
+          for (final obscured in [true, false]) {
+            sink.success({
+              'multi_window': false,
+              'overlay_supported': true,
+              'obscured': obscured,
+            });
+          }
+          sink.endOfStream();
+        },
+      ),
+    );
+    final received = await ExamScreenSecurity.windowStates().toList().timeout(
+      const Duration(seconds: 3),
+    );
+    expect(received.map((s) => s.blocked), [true, false]);
+    expect(received.every((s) => s.overlaySupported && !s.multiWindow), isTrue);
+    messenger.setMockStreamHandler(events, null);
+  });
+
   test(
     'Android enables and restores secure window through the native channel',
     () async {

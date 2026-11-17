@@ -68,6 +68,14 @@ class ClassRepository {
         )
         .map((r) => r['class_id'])
         .toSet();
+    // Deleted class tombstones revoke student access; their owner profile is hidden.
+    revoked.addAll(
+      changes['classes']!
+          .where(
+            (row) => row['owner_id'] != userId && row['deleted_at'] != null,
+          )
+          .map((row) => row['id']),
+    );
 
     await db.transaction(() async {
       for (final profile in profiles) {

@@ -76,7 +76,6 @@ class _StudyNotebookScreenState extends ConsumerState<StudyNotebookScreen> {
                         title: 'Notebook unavailable',
                         body: 'Return to your notebooks to choose another one.',
                         pose: 'confused',
-                        bob: false,
                       ),
                     ),
                   ],
@@ -114,8 +113,9 @@ class _StudyNotebookScreenState extends ConsumerState<StudyNotebookScreen> {
                             notebook,
                             action,
                           );
-                          if (deleted && context.mounted)
+                          if (deleted && context.mounted) {
                             Navigator.pop(context);
+                          }
                         },
                       ),
                     ],
@@ -286,15 +286,13 @@ class _StudyNotebookScreenState extends ConsumerState<StudyNotebookScreen> {
                                         FiloRadii.medium,
                                       ),
                                     ),
-                                    child: Icon(
+                                    child: FiloIcon(
                                       switch (tool) {
-                                        StudyTool.chat =>
-                                          Icons.chat_bubble_outline_rounded,
-                                        StudyTool.summary =>
-                                          Icons.subject_rounded,
-                                        StudyTool.decks => Icons.style_outlined,
+                                        StudyTool.chat => FiloIcons.chat,
+                                        StudyTool.summary => FiloIcons.notes,
+                                        StudyTool.decks => FiloIcons.slides,
                                         StudyTool.quizzes =>
-                                          Icons.quiz_outlined,
+                                          FiloIcons.assessment,
                                       },
                                       color: Theme.of(context)
                                           .colorScheme
@@ -308,7 +306,9 @@ class _StudyNotebookScreenState extends ConsumerState<StudyNotebookScreen> {
                                         .titleMedium,
                                   ),
                                   subtitle: Text(savedCount(ref, tool, id)),
-                                  trailing: const Icon(Icons.chevron_right),
+                                  trailing: const FiloIcon(
+                                    FiloIcons.chevronRight,
+                                  ),
                                   onTap: () => Navigator.push(
                                     context,
                                     MaterialPageRoute<void>(
@@ -325,9 +325,6 @@ class _StudyNotebookScreenState extends ConsumerState<StudyNotebookScreen> {
                               ),
                             ),
                           ),
-                        const Text(
-                          'AI can make mistakes. Check important answers.',
-                        ),
                       ],
                     ),
                   ),

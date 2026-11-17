@@ -118,10 +118,52 @@ class _StudyAlarmsState extends ConsumerState<StudyAlarmsScreen>
   }
 
   Future<void> _edit([StudyAlarm? alarm]) async {
-    await Navigator.of(context).push(
-      MaterialPageRoute<void>(builder: (_) => StudyAlarmEditor(alarm: alarm)),
-    );
+    if (alarm == null) {
+      await showFiloBottomSheet<void>(
+        context: context,
+        title: 'New study alarm',
+        builder: (_) => const StudyAlarmEditor(asDrawer: true),
+      );
+    } else {
+      await Navigator.of(context).push(
+        MaterialPageRoute<void>(builder: (_) => StudyAlarmEditor(alarm: alarm)),
+      );
+    }
     if (mounted) await _refresh();
+  }
+
+  Future<void> _delete(StudyAlarm alarm) async {
+    if (_busy) return;
+    final confirmed = await showFiloConfirmation(
+      context,
+      title: 'Delete alarm?',
+      message: 'This study alarm will stop.',
+      confirmLabel: 'Delete',
+      cancelLabel: 'Cancel',
+      confirmDestructive: true,
+      icon: FiloIcons.delete,
+    );
+    if (!confirmed || !mounted) return;
+    setState(() => _busy = true);
+    try {
+      final repo = await ref.read(studyAlarmRepositoryProvider.future);
+      if (repo.db != _boundDb || !repo.isCurrent()) return;
+      await repo.deleteStudy(alarm.id);
+      await _refresh();
+    } on StudySchedulingFailure {
+      if (mounted) {
+        setState(() {
+          _status = null;
+          _error = 'Alarm deleted, but scheduling cleanup failed. Tap Retry.';
+        });
+      }
+    } catch (_) {
+      if (mounted) {
+        setState(() => _error = 'Could not finish deleting the alarm. Retry.');
+      }
+    } finally {
+      if (mounted) setState(() => _busy = false);
+    }
   }
 
   @override
@@ -152,12 +194,39 @@ class _StudyAlarmsState extends ConsumerState<StudyAlarmsScreen>
       }
     }
     final locale = MaterialLocalizations.of(context);
+    final showAdd =
+        !repo.isLoading &&
+        !repo.hasError &&
+        repo.hasValue &&
+        !alarms.isLoading &&
+        !alarms.hasError &&
+        alarms.hasValue &&
+        alarms.requireValue.isNotEmpty;
     return EntryBackground(
       verification: true,
       breeze: true,
       variation: 1,
       child: Scaffold(
         backgroundColor: Colors.transparent,
+        floatingActionButtonLocation: FloatingActionButtonLocation.endFloat,
+        floatingActionButton: showAdd
+            ? Padding(
+                padding: const EdgeInsets.only(
+                  right: 8,
+                  bottom: FiloSpacing.s16,
+                ),
+                child: SizedBox(
+                  width: 72,
+                  child: FiloButton(
+                    label: 'New alarm',
+                    icon: FiloIcons.add,
+                    iconOnly: true,
+                    minHeight: 72,
+                    onPressed: _busy ? null : () => _edit(),
+                  ),
+                ),
+              )
+            : null,
         appBar: AppBar(
           backgroundColor: Colors.transparent,
           surfaceTintColor: Colors.transparent,
@@ -179,22 +248,23 @@ class _StudyAlarmsState extends ConsumerState<StudyAlarmsScreen>
         ),
         body: SafeArea(
           child: ListView(
-            padding: const EdgeInsets.all(FiloSpacing.screen),
+            padding: EdgeInsets.fromLTRB(
+              FiloSpacing.screen,
+              FiloSpacing.screen,
+              FiloSpacing.screen,
+              showAdd ? 136 : FiloSpacing.screen,
+            ),
             children: [
               const StudyOfflineBanner(),
-              if (alarms.asData?.value.isNotEmpty ?? false)
-                FiloButton(
-                  label: 'New alarm',
-                  icon: Icons.add,
-                  onPressed:
-                      repo.hasValue &&
-                          !repo.isLoading &&
-                          !repo.hasError &&
-                          !_busy
-                      ? () => _edit()
-                      : null,
-                ),
-              const SizedBox(height: FiloSpacing.s16),
+              StudyCollectionHeader(
+                title: 'A little time to study.',
+                body: 'Choose a time that works for you. Your reminders stay on this device.',
+                icon: Icons.alarm_outlined,
+                summary:
+                    !alarms.isLoading && !alarms.hasError && alarms.hasValue
+                    ? '${alarms.requireValue.where((a) => a.enabled).length} on / ${alarms.requireValue.length} saved'
+                    : null,
+              ),
               if (_error != null) ...[
                 Semantics(liveRegion: true, child: Text(_error!)),
                 TextButton(onPressed: _refresh, child: const Text('Retry')),
@@ -244,7 +314,6 @@ class _StudyAlarmsState extends ConsumerState<StudyAlarmsScreen>
                   body:
                       'Check your account and retry to load your saved alarms.',
                   pose: 'confused',
-                  bob: false,
                 ),
                 TextButton(
                   onPressed: () {
@@ -276,54 +345,101 @@ class _StudyAlarmsState extends ConsumerState<StudyAlarmsScreen>
                   Padding(
                     padding: const EdgeInsets.only(bottom: FiloSpacing.s12),
                     child: FiloPanel(
-                      child: Row(
+                      color: alarm.enabled
+                          ? Theme.of(context).colorScheme.surface
+                          : Theme.of(context).colorScheme.surfaceContainerLow,
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.stretch,
                         children: [
-                          const Mascot(pose: 'clock', size: 48),
-                          const SizedBox(width: FiloSpacing.s12),
-                          Expanded(
-                            child: InkWell(
-                              onTap: _busy ? null : () => _edit(alarm),
-                              child: Padding(
-                                padding: const EdgeInsets.symmetric(
-                                  vertical: FiloSpacing.s12,
-                                ),
-                                child: Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    Text(
-                                      alarm.subject,
-                                      style: Theme.of(context)
-                                          .textTheme
-                                          .titleMedium,
+                          Row(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Expanded(
+                                child: InkWell(
+                                  onTap: _busy ? null : () => _edit(alarm),
+                                  borderRadius: BorderRadius.circular(
+                                    FiloRadii.small,
+                                  ),
+                                  child: Padding(
+                                    padding: const EdgeInsets.symmetric(
+                                      vertical: FiloSpacing.s12,
                                     ),
-                                    Text(
+                                    child: Text(
                                       TimeOfDay(
                                         hour: alarm.minuteOfDay ~/ 60,
                                         minute: alarm.minuteOfDay % 60,
                                       ).format(context),
                                       style: Theme.of(context)
                                           .textTheme
-                                          .headlineSmall,
+                                          .headlineMedium,
                                     ),
-                                    Text(
-                                      studyRepeatLabel(
-                                        alarm.repeatDays,
-                                        locale,
-                                      ),
-                                    ),
-                                  ],
+                                  ),
                                 ),
                               ),
-                            ),
+                              Semantics(
+                                label:
+                                    '${alarm.subject}, ${alarm.enabled ? 'on' : 'off'}',
+                                child: FiloSwitch(
+                                  value: alarm.enabled,
+                                  onChanged: _busy
+                                      ? null
+                                      : (v) => _toggle(alarm, v),
+                                ),
+                              ),
+                              PopupMenuButton<String>(
+                                tooltip: 'Options for ${alarm.subject}',
+                                enabled: !_busy,
+                                itemBuilder: (_) => const [
+                                  PopupMenuItem(
+                                    value: 'delete',
+                                    child: Text('Delete alarm'),
+                                  ),
+                                ],
+                                onSelected: (_) => _delete(alarm),
+                              ),
+                            ],
                           ),
-                          Semantics(
-                            label:
-                                '${alarm.subject}, ${alarm.enabled ? 'on' : 'off'}',
-                            child: FiloSwitch(
-                              value: alarm.enabled,
-                              onChanged: _busy
-                                  ? null
-                                  : (v) => _toggle(alarm, v),
+                          const Divider(),
+                          InkWell(
+                            onTap: _busy ? null : () => _edit(alarm),
+                            borderRadius: BorderRadius.circular(
+                              FiloRadii.small,
+                            ),
+                            child: Padding(
+                              padding: const EdgeInsets.symmetric(
+                                vertical: FiloSpacing.s12,
+                              ),
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    alarm.subject,
+                                    style: Theme.of(context)
+                                        .textTheme
+                                        .titleMedium,
+                                  ),
+                                  const SizedBox(height: FiloSpacing.s8),
+                                  Wrap(
+                                    spacing: FiloSpacing.s12,
+                                    runSpacing: FiloSpacing.s8,
+                                    children: [
+                                      Text(
+                                        studyRepeatLabel(
+                                          alarm.repeatDays,
+                                          locale,
+                                        ),
+                                      ),
+                                      Text(
+                                        alarm.enabled ? 'On' : 'Off',
+                                        style: Theme.of(context)
+                                            .textTheme
+                                            .labelLarge,
+                                      ),
+                                      const Icon(Icons.edit_outlined, size: 20),
+                                    ],
+                                  ),
+                                ],
+                              ),
                             ),
                           ),
                         ],
@@ -339,8 +455,9 @@ class _StudyAlarmsState extends ConsumerState<StudyAlarmsScreen>
 }
 
 class StudyAlarmEditor extends ConsumerStatefulWidget {
-  const StudyAlarmEditor({super.key, this.alarm});
+  const StudyAlarmEditor({super.key, this.alarm, this.asDrawer = false});
   final StudyAlarm? alarm;
+  final bool asDrawer;
   @override
   ConsumerState<StudyAlarmEditor> createState() => _StudyAlarmEditorState();
 }
@@ -480,29 +597,24 @@ class _StudyAlarmEditorState extends ConsumerState<StudyAlarmEditor> {
   }
 
   Future<void> _delete() async {
-    final confirmed = await showFiloDialog<bool>(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Delete alarm?'),
-        content: const Text('This study alarm will stop.'),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context, false),
-            child: const Text('Cancel'),
-          ),
-          TextButton(
-            onPressed: () => Navigator.pop(context, true),
-            child: const Text('Delete'),
-          ),
-        ],
-      ),
+    if (_busy) return;
+    final confirmed = await showFiloConfirmation(
+      context,
+      title: 'Delete alarm?',
+      message: 'This study alarm will stop.',
+      confirmLabel: 'Delete',
+      cancelLabel: 'Cancel',
+      confirmDestructive: true,
+      icon: FiloIcons.delete,
     );
-    if (confirmed != true || !mounted) return;
+    if (!confirmed || !mounted) return;
     setState(() => _busy = true);
     try {
       final repo = await ref.read(studyAlarmRepositoryProvider.future);
       if (repo.db != _boundDb || !repo.isCurrent()) return;
       await repo.deleteStudy(_id);
+      if (mounted && repo.isCurrent()) Navigator.pop(context);
+    } on StudySchedulingFailure {
       if (mounted) Navigator.pop(context);
     } catch (_) {
       if (mounted) {
@@ -517,6 +629,16 @@ class _StudyAlarmEditorState extends ConsumerState<StudyAlarmEditor> {
   Widget build(BuildContext context) {
     final account = ref.watch(studyAlarmRepositoryProvider);
     if (account.isLoading || account.hasError || !account.hasValue) {
+      if (widget.asDrawer) {
+        return Padding(
+          padding: const EdgeInsets.all(FiloSpacing.screen),
+          child: account.hasError
+              ? const Text(
+                  'Student account unavailable. Return and sign in again.',
+                )
+              : const Center(child: FiloCircularProgressIndicator()),
+        );
+      }
       return EntryBackground(
         verification: true,
         breeze: true,
@@ -542,6 +664,12 @@ class _StudyAlarmEditorState extends ConsumerState<StudyAlarmEditor> {
     }
     _boundDb ??= account.requireValue.db;
     if (_boundDb != account.requireValue.db) {
+      if (widget.asDrawer) {
+        return const Padding(
+          padding: EdgeInsets.all(FiloSpacing.screen),
+          child: Text('Account changed. Reopen study alarms.'),
+        );
+      }
       return EntryBackground(
         verification: true,
         breeze: true,
@@ -577,45 +705,52 @@ class _StudyAlarmEditorState extends ConsumerState<StudyAlarmEditor> {
         ),
       );
     }
-    return EntryBackground(
-      verification: true,
-      breeze: true,
-      variation: 1,
-      child: Scaffold(
-        backgroundColor: Colors.transparent,
-        appBar: AppBar(
-          backgroundColor: Colors.transparent,
-          surfaceTintColor: Colors.transparent,
-          elevation: 0,
-          scrolledUnderElevation: 0,
-          title: Text(
-            widget.alarm == null ? 'New study alarm' : 'Edit study alarm',
+    final form = Form(
+      key: _form,
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          const StudyOfflineBanner(),
+          if (account.hasError)
+            const Text(
+              'Student account unavailable. Return and sign in again.',
+            ),
+          TextFormField(
+            controller: _subject,
+            maxLength: 120,
+            enabled: !_busy,
+            decoration: const InputDecoration(
+              labelText: 'Subject',
+              prefixIcon: Icon(Icons.menu_book_outlined),
+            ),
+            validator: (v) =>
+                v == null || v.trim().isEmpty ? 'Enter a subject.' : null,
           ),
-        ),
-        body: SafeArea(
-          child: Form(
-            key: _form,
-            child: ListView(
-              padding: const EdgeInsets.all(FiloSpacing.screen),
+          const SizedBox(height: FiloSpacing.s16),
+          FiloPanel(
+            color: Theme.of(context).colorScheme.primaryContainer,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                const StudyOfflineBanner(),
-                if (account.hasError)
-                  const Text(
-                    'Student account unavailable. Return and sign in again.',
-                  ),
-                TextFormField(
-                  controller: _subject,
-                  maxLength: 120,
-                  enabled: !_busy,
-                  decoration: const InputDecoration(labelText: 'Subject'),
-                  validator: (v) =>
-                      v == null || v.trim().isEmpty ? 'Enter a subject.' : null,
-                ),
-                const SizedBox(height: FiloSpacing.s16),
                 ListTile(
+                  contentPadding: EdgeInsets.zero,
+                  leading: Icon(
+                    Icons.schedule_rounded,
+                    color: Theme.of(context).colorScheme.onPrimaryContainer,
+                  ),
                   title: const Text('Time'),
-                  subtitle: Text(_time.format(context)),
-                  trailing: const Icon(Icons.schedule),
+                  subtitle: Text(
+                    _time.format(context),
+                    style: Theme.of(context).textTheme.headlineMedium?.copyWith(
+                      color: Theme.of(context).colorScheme.onPrimaryContainer,
+                      fontWeight: FontWeight.w800,
+                    ),
+                  ),
+                  trailing: Icon(
+                    Icons.edit_outlined,
+                    color: Theme.of(context).colorScheme.onPrimaryContainer,
+                  ),
                   onTap: _busy
                       ? null
                       : () async {
@@ -627,13 +762,38 @@ class _StudyAlarmEditorState extends ConsumerState<StudyAlarmEditor> {
                         },
                 ),
                 const SizedBox(height: FiloSpacing.s16),
-                const Text('Repeat days'),
+                Divider(
+                  color: Theme.of(context).colorScheme.onPrimaryContainer
+                      .withValues(alpha: .2),
+                ),
+                const SizedBox(height: FiloSpacing.s8),
+                Semantics(
+                  header: true,
+                  child: Text(
+                    'Repeat days',
+                    style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                      color: Theme.of(context).colorScheme.onPrimaryContainer,
+                    ),
+                  ),
+                ),
+                const SizedBox(height: FiloSpacing.s8),
                 Wrap(
-                  spacing: 8,
+                  spacing: FiloSpacing.s8,
+                  runSpacing: FiloSpacing.s4,
                   children: [
                     for (var day = 1; day <= 7; day++)
                       FiloAnimatedChip.filter(
-                        label: Text(locale.narrowWeekdays[day % 7]),
+                        label: Text(
+                          const [
+                            'Mon',
+                            'Tue',
+                            'Wed',
+                            'Thu',
+                            'Fri',
+                            'Sat',
+                            'Sun',
+                          ][day - 1],
+                        ),
                         tooltip: const [
                           'Monday',
                           'Tuesday',
@@ -658,41 +818,86 @@ class _StudyAlarmEditorState extends ConsumerState<StudyAlarmEditor> {
                 if (_days == 0)
                   Text(
                     'Once: ${locale.formatFullDate(nextStudyOnce(DateTime.now(), _time.hour * 60 + _time.minute))}',
-                  ),
-                const SizedBox(height: FiloSpacing.s16),
-                DropdownButtonFormField<String>(
-                  itemHeight: null,
-                  initialValue: _link ?? '',
-                  items: links,
-                  isExpanded: true,
-                  decoration: const InputDecoration(
-                    labelText: 'Open when tapped (optional)',
-                  ),
-                  onChanged: _busy
-                      ? null
-                      : (v) => setState(() => _link = v == '' ? null : v),
-                ),
-                if (_error != null) ...[
-                  Semantics(liveRegion: true, child: Text(_error!)),
-                  TextButton(
-                    onPressed: _busy ? null : _loadLinks,
-                    child: const Text('Retry links'),
-                  ),
-                ],
-                const SizedBox(height: FiloSpacing.screen),
-                FiloButton(
-                  label: _busy ? 'Saving…' : 'Save',
-                  onPressed: _busy || !account.hasValue || account.hasError
-                      ? null
-                      : _save,
-                ),
-                if (widget.alarm != null)
-                  TextButton(
-                    onPressed: _busy ? null : _delete,
-                    child: const Text('Delete alarm'),
+                    style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                      color: Theme.of(context).colorScheme.onPrimaryContainer,
+                    ),
                   ),
               ],
             ),
+          ),
+          const SizedBox(height: FiloSpacing.s16),
+          DropdownButtonFormField<String>(
+            itemHeight: null,
+            initialValue: _link ?? '',
+            items: links,
+            isExpanded: true,
+            decoration: const InputDecoration(
+              labelText: 'Open when tapped (optional)',
+              prefixIcon: Icon(Icons.link_rounded),
+            ),
+            onChanged: _busy
+                ? null
+                : (v) => setState(() => _link = v == '' ? null : v),
+          ),
+          if (_error != null) ...[
+            const SizedBox(height: FiloSpacing.s12),
+            Semantics(
+              liveRegion: true,
+              child: Text(
+                _error!,
+                style: TextStyle(color: Theme.of(context).colorScheme.error),
+              ),
+            ),
+            TextButton(
+              onPressed: _busy ? null : _loadLinks,
+              child: const Text('Retry links'),
+            ),
+          ],
+          const SizedBox(height: FiloSpacing.screen),
+          FiloButton(
+            label: _busy ? 'Saving…' : 'Save',
+            onPressed: _busy || !account.hasValue || account.hasError
+                ? null
+                : _save,
+          ),
+          if (widget.alarm != null)
+            TextButton(
+              onPressed: _busy ? null : _delete,
+              child: const Text('Delete alarm'),
+            ),
+        ],
+      ),
+    );
+    if (widget.asDrawer) {
+      return Padding(
+        padding: const EdgeInsets.fromLTRB(
+          FiloSpacing.screen,
+          FiloSpacing.s8,
+          FiloSpacing.screen,
+          0,
+        ),
+        child: form,
+      );
+    }
+    return EntryBackground(
+      verification: true,
+      breeze: true,
+      variation: 1,
+      child: Scaffold(
+        backgroundColor: Colors.transparent,
+        appBar: AppBar(
+          backgroundColor: Colors.transparent,
+          surfaceTintColor: Colors.transparent,
+          elevation: 0,
+          scrolledUnderElevation: 0,
+          title: Text(
+            widget.alarm == null ? 'New study alarm' : 'Edit study alarm',
+          ),
+        ),
+        body: SafeArea(
+          child: ListView(
+            padding: const EdgeInsets.all(FiloSpacing.screen),
+            children: [form],
           ),
         ),
       ),

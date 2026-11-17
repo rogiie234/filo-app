@@ -131,11 +131,40 @@ void main() {
     await tester.pump(const Duration(milliseconds: 1));
   }
 
+  testWidgets('thinking dots animate and respect reduced motion', (
+    tester,
+  ) async {
+    Widget view(bool reduced) => MaterialApp(
+      home: MediaQuery(
+        data: MediaQueryData(disableAnimations: reduced),
+        child: const Scaffold(body: StudyThinkingLabel()),
+      ),
+    );
+    await tester.pumpWidget(view(false));
+    String visibleDots() {
+      final text = tester.widget<Text>(find.byType(Text).last);
+      final spans = (text.textSpan! as TextSpan).children!;
+      return (spans[1] as TextSpan).text!;
+    }
+
+    expect(visibleDots(), '.');
+    await tester.pump(const Duration(milliseconds: 450));
+    expect(visibleDots(), '..');
+    await tester.pumpWidget(view(true));
+    expect(visibleDots(), '...');
+    await tester.pump(const Duration(seconds: 2));
+    expect(visibleDots(), '...');
+    await tester.pumpWidget(const SizedBox.shrink());
+    expect(tester.takeException(), isNull);
+  });
+
   testWidgets(
     'send and copy, cooldown, persisted history and confirmed deletion at 130% text',
     (tester) async {
       await tester.pumpWidget(app());
       await pumpChat(tester);
+      expect(find.widgetWithText(AppBar, 'Filo'), findsOneWidget);
+      expect(find.text('Hi, I’m Filo.'), findsOneWidget);
       expect(find.text('General knowledge'), findsOneWidget);
       await enter(tester, 'Explain cells');
       tester.testTextInput.hide();
@@ -193,7 +222,7 @@ void main() {
       );
       await tester.tap(find.widgetWithText(FiloButton, 'Delete chat'));
       await pumpChat(tester);
-      expect(find.text('Start a conversation'), findsOneWidget);
+      expect(find.text('Hi, I’m Filo.'), findsOneWidget);
       expect(await db.select(db.chatMessages).get(), isEmpty);
       expect(tester.takeException(), isNull);
       await disposeApp(tester);
@@ -201,7 +230,7 @@ void main() {
   );
 
   testWidgets(
-    'offline history is readable and sending is disabled with its reason',
+    'offline history is readable and sending is disabled with offline status',
     (tester) async {
       final repo = StudyChatRepository(db);
       final id = await repo.create(notebook, 'Saved chat');
@@ -228,7 +257,11 @@ void main() {
             .onPressed,
         isNull,
       );
-      expect(find.text(studyAiMessages['OFFLINE']!), findsOneWidget);
+      expect(find.text(studyAiMessages['OFFLINE']!), findsNothing);
+      expect(
+        find.text("You're offline. Showing saved content."),
+        findsOneWidget,
+      );
       expect(calls, 0);
       await disposeApp(tester);
     },
@@ -266,54 +299,91 @@ void main() {
   });
 
   testWidgets(
-    'thinking cancel preserves the question, late output is ignored, and retry is explicit',
+    'sending clears composer and thinking has no cancel or save flash',
     (tester) async {
       final reply = Completer<dynamic>();
       invoke = (_, _, _) => reply.future;
       await tester.pumpWidget(app());
       await pumpChat(tester);
       await enter(tester, 'Question');
-      tester.testTextInput.hide();
-      await pumpChat(tester);
       expect(
-        find.byWidgetPredicate(
-          (widget) => widget is Mascot && widget.pose == 'thinking',
-        ),
-        findsOneWidget,
+        tester.widget<TextField>(find.byType(TextField)).controller!.text,
+        isEmpty,
       );
-      await tester.scrollUntilVisible(
-        find.text('Cancel'),
-        100,
-        scrollable: find.byType(Scrollable).first,
-      );
-      await tester.tap(find.text('Cancel'));
-      await pumpChat(tester);
+      expect(find.byType(StudyThinkingLabel), findsOneWidget);
+      expect(find.text('Cancel'), findsNothing);
+      expect(find.text('Not confirmed saved'), findsNothing);
       reply.complete({
-        'answer': 'Late answer',
+        'answer': 'Saved answer',
         'mode': 'general',
         'truncated': false,
       });
-      await pumpChat(tester);
-      expect(find.text('Late answer'), findsNothing);
-      expect(
-        tester.widget<TextField>(find.byType(TextField)).controller!.text,
-        'Question',
-      );
+      for (var i = 0; i < 20; i++) {
+        await tester.pump(const Duration(milliseconds: 25));
+        expect(find.text('Not confirmed saved'), findsNothing);
+        expect(find.text('Try saving again'), findsNothing);
+        expect(find.text('Thinking...'), findsNothing);
+      }
+      expect(find.text('Saved answer'), findsOneWidget);
+      expect(find.byType(StudyThinkingLabel), findsNothing);
       expect(calls, 1);
-      elapsed = const Duration(seconds: 3);
-      await tester.pump(const Duration(seconds: 3));
-      invoke = (_, _, _) async => {
-        'answer': 'Retried answer',
-        'mode': 'general',
-        'truncated': false,
-      };
-      await tester.tap(find.byTooltip('Send message'));
-      await pumpChat(tester);
-      expect(calls, 2);
       expect((await db.select(db.chatMessages).get()).length, 2);
       await disposeApp(tester);
     },
   );
+
+  testWidgets('Filo bubbles wrap at narrow width with enlarged text', (
+    tester,
+  ) async {
+    tester.view.physicalSize = const Size(320, 740);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+    await tester.pumpWidget(
+      MaterialApp(
+        theme: AppTheme.light,
+        home: MediaQuery(
+          data: const MediaQueryData(textScaler: TextScaler.linear(2)),
+          child: Scaffold(
+            body: SingleChildScrollView(
+              padding: const EdgeInsets.all(24),
+              child: Column(
+                children: [
+                  StudyChatBubble(
+                    key: const ValueKey('question'),
+                    content: 'Explain this idea in a few simple steps.',
+                    role: 'user',
+                    mode: 'general',
+                  ),
+                  StudyChatBubble(
+                    key: const ValueKey('answer'),
+                    content: '**A useful idea**\n- Read the example carefully.\n- Check the source.',
+                    role: 'assistant',
+                    mode: 'files',
+                    unsaved: true,
+                    time: DateTime(2026, 11, 16, 10, 30),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+    await pumpChat(tester);
+    expect(find.text('Filo'), findsOneWidget);
+    expect(find.text('You'), findsOneWidget);
+    expect(find.text('Answers use your files'), findsOneWidget);
+    expect(find.text('Not confirmed saved'), findsOneWidget);
+    expect(find.byTooltip('Copy answer'), findsOneWidget);
+    expect(find.text('Delivered'), findsNothing);
+    expect(
+      tester.getSize(find.byKey(const ValueKey('answer'))).width,
+      lessThanOrEqualTo(272),
+    );
+    expect(tester.takeException(), isNull);
+    await disposeApp(tester);
+  });
 
   testWidgets('file mode uses saved notebook text', (tester) async {
     await NotebookSourceRepository(db).add(

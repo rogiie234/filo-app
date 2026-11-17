@@ -46,6 +46,84 @@ Widget studyAsync<T>(
   return builder(value.requireValue);
 }
 
+class StudyErrorToast {
+  String? _lastMessage;
+
+  void update(
+    BuildContext context,
+    String? message, {
+    required bool Function() isCurrent,
+  }) {
+    if (message == _lastMessage) return;
+    _lastMessage = message;
+    if (message == null) return;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (context.mounted && isCurrent() && _lastMessage == message) {
+        showFiloToast(context, message, kind: FiloToastKind.error);
+      }
+    });
+  }
+}
+
+class StudyGenerationStatus extends StatelessWidget {
+  const StudyGenerationStatus({
+    super.key,
+    required this.label,
+    required this.saving,
+    required this.onCancel,
+  });
+
+  final String label;
+  final bool saving;
+  final VoidCallback onCancel;
+
+  @override
+  Widget build(BuildContext context) => FiloPanel(
+    color: Theme.of(context).colorScheme.primaryContainer,
+    child: Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        ExcludeSemantics(
+          child: FiloIcon(
+            saving ? FiloIcons.save : FiloIcons.sparkle,
+            size: 40,
+            color: Theme.of(context).colorScheme.onPrimaryContainer,
+          ),
+        ),
+        const SizedBox(height: FiloSpacing.s16),
+        Semantics(
+          liveRegion: true,
+          child: Text(
+            label,
+            textAlign: TextAlign.center,
+            style: Theme.of(context).textTheme.titleMedium?.copyWith(
+              color: Theme.of(context).colorScheme.onPrimaryContainer,
+            ),
+          ),
+        ),
+        const SizedBox(height: FiloSpacing.s16),
+        FiloLinearProgressIndicator(
+          semanticsLabel: label,
+          minHeight: 6,
+          borderRadius: BorderRadius.circular(FiloRadii.large),
+        ),
+        if (!saving) ...[
+          const SizedBox(height: FiloSpacing.screen),
+          FiloButton(label: 'Cancel', secondary: true, onPressed: onCancel),
+          const SizedBox(height: FiloSpacing.s12),
+          Text(
+            'Cancel stops waiting on this phone. The server may still finish.',
+            textAlign: TextAlign.center,
+            style: Theme.of(context).textTheme.bodySmall?.copyWith(
+              color: Theme.of(context).colorScheme.onPrimaryContainer,
+            ),
+          ),
+        ],
+      ],
+    ),
+  );
+}
+
 class StudyOfflineBanner extends ConsumerWidget {
   const StudyOfflineBanner({super.key});
   @override
@@ -164,3 +242,73 @@ Future<bool> editNotebook(
 }
 
 IconData studyFileIcon(String name) => FiloFileDetails.fromName(name).type.icon;
+
+/// Shared introduction for the on-device study collections and reminders.
+class StudyCollectionHeader extends StatelessWidget {
+  const StudyCollectionHeader({
+    super.key,
+    required this.title,
+    required this.body,
+    required this.icon,
+    this.summary,
+  });
+  final String title, body;
+  final IconData icon;
+  final String? summary;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    return Padding(
+      padding: const EdgeInsets.only(bottom: FiloSpacing.screen),
+      child: FiloPanel(
+        color: theme.colorScheme.primaryContainer,
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            ExcludeSemantics(
+              child: Container(
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: theme.colorScheme.surface,
+                  borderRadius: BorderRadius.circular(FiloRadii.medium),
+                ),
+                child: FiloIcon(
+                  icon,
+                  size: 28,
+                  color: theme.colorScheme.primary,
+                ),
+              ),
+            ),
+            const SizedBox(height: FiloSpacing.s16),
+            Semantics(
+              header: true,
+              child: Text(
+                title,
+                style: theme.textTheme.headlineSmall?.copyWith(
+                  color: theme.colorScheme.onPrimaryContainer,
+                ),
+              ),
+            ),
+            const SizedBox(height: FiloSpacing.s8),
+            Text(
+              body,
+              style: theme.textTheme.bodyMedium?.copyWith(
+                color: theme.colorScheme.onPrimaryContainer,
+              ),
+            ),
+            if (summary != null) ...[
+              const SizedBox(height: FiloSpacing.s16),
+              Text(
+                summary!,
+                style: theme.textTheme.labelLarge?.copyWith(
+                  color: theme.colorScheme.onPrimaryContainer,
+                ),
+              ),
+            ],
+          ],
+        ),
+      ),
+    );
+  }
+}

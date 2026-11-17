@@ -51,8 +51,9 @@ class FilesRepository {
           if (existing == null) {
             await db.into(db.localFiles).insert(row);
           } else if (await storage.file(existing.relativePath).exists()) {
-            if (existing.relativePath != row.relativePath)
+            if (existing.relativePath != row.relativePath) {
               await target.delete();
+            }
           } else {
             await db.transaction(() async {
               await (db.delete(
@@ -76,8 +77,9 @@ class FilesRepository {
     )) {
       if (entry is! File ||
           indexed.containsKey(entry.path) ||
-          !entry.path.endsWith('.deleting'))
+          !entry.path.endsWith('.deleting')) {
         continue;
+      }
       final original = entry.path.substring(
         0,
         entry.path.length - '.deleting'.length,

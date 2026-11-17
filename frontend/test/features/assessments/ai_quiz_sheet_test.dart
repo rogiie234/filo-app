@@ -212,8 +212,8 @@ void main() {
       await tester.pumpAndSettle();
       expect(await cache.privacyAccepted(), true);
       expect(find.textContaining('Ready · 4 characters'), findsOneWidget);
-      final button = tester.widget<FilledButton>(
-        find.widgetWithText(FilledButton, 'Generate'),
+      final button = tester.widget<FiloButton>(
+        find.byWidgetPredicate((w) => w is FiloButton && w.label == 'Generate'),
       );
       expect(button.onPressed, isNull);
       expect(tester.takeException(), isNull);
@@ -238,11 +238,26 @@ void main() {
       );
       await tester.pumpWidget(screen(cache, client));
       await tester.pumpAndSettle();
-      final generate = find.widgetWithText(FilledButton, 'Generate');
+      final generate = find.byWidgetPredicate(
+        (w) => w is FiloButton && w.label == 'Generate',
+      );
       await tester.ensureVisible(generate);
       await tester.tap(generate);
       await tester.pump();
-      final cancel = find.widgetWithText(TextButton, 'Cancel');
+      expect(find.text('Generating questions...'), findsOneWidget);
+      expect(find.byTooltip('More Essay questions'), findsNothing);
+      expect(find.text('11 questions / 1 source'), findsOneWidget);
+      expect(
+        tester
+            .widget<FiloLinearProgressIndicator>(
+              find.byType(FiloLinearProgressIndicator),
+            )
+            .value,
+        isNull,
+      );
+      final cancel = find.byWidgetPredicate(
+        (w) => w is FiloButton && w.label == 'Cancel',
+      );
       await tester.ensureVisible(cancel);
       await tester.tap(cancel);
       await tester.pumpAndSettle();

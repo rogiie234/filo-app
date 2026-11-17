@@ -223,22 +223,48 @@ void showFiloToast(
   FiloToastKind kind = FiloToastKind.info,
 }) {
   _dismissSheetToast?.call();
-  final duration = Duration(seconds: kind == FiloToastKind.error ? 4 : 3);
+  final duration = Duration(
+    seconds: message.length > 100
+        ? 6
+        : kind == FiloToastKind.error
+        ? 4
+        : 3,
+  );
   final theme = Theme.of(context);
   final colors = theme.colorScheme;
+  final accent = switch (kind) {
+    FiloToastKind.success => colors.primary,
+    FiloToastKind.error => colors.error,
+    FiloToastKind.info => colors.onSurfaceVariant,
+  };
   final content = Row(
+    crossAxisAlignment: CrossAxisAlignment.start,
     children: [
-      FiloIcon(
-        switch (kind) {
-          FiloToastKind.success => FiloIcons.checkCircle,
-          FiloToastKind.error => FiloIcons.error,
-          FiloToastKind.info => FiloIcons.info,
-        },
-        color: colors.onInverseSurface,
-        size: 20,
+      ExcludeSemantics(
+        child: Container(
+          padding: const EdgeInsets.all(FiloSpacing.s8),
+          decoration: BoxDecoration(
+            color: accent.withValues(alpha: 0.12),
+            borderRadius: BorderRadius.circular(FiloRadii.medium),
+          ),
+          child: FiloIcon(
+            switch (kind) {
+              FiloToastKind.success => FiloIcons.checkCircle,
+              FiloToastKind.error => FiloIcons.error,
+              FiloToastKind.info => FiloIcons.info,
+            },
+            color: accent,
+            size: 20,
+          ),
+        ),
       ),
       const SizedBox(width: FiloSpacing.s12),
-      Expanded(child: Text(message)),
+      Expanded(
+        child: Padding(
+          padding: const EdgeInsets.symmetric(vertical: FiloSpacing.s8),
+          child: Text(message),
+        ),
+      ),
     ],
   );
   final messenger = ScaffoldMessenger.of(context);
@@ -269,13 +295,17 @@ void showFiloToast(
               child: Semantics(
                 liveRegion: true,
                 child: Material(
-                  color: colors.inverseSurface,
-                  borderRadius: BorderRadius.circular(FiloRadii.medium),
+                  color: colors.surface,
+                  elevation: 4,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(FiloRadii.large),
+                    side: BorderSide(color: colors.outlineVariant),
+                  ),
                   child: Padding(
                     padding: const EdgeInsets.all(FiloSpacing.s16),
                     child: DefaultTextStyle(
                       style: theme.textTheme.bodyMedium!.copyWith(
-                        color: colors.onInverseSurface,
+                        color: colors.onSurface,
                       ),
                       child: content,
                     ),

@@ -342,7 +342,6 @@ class _ClassworkListState extends ConsumerState<ClassworkList> {
             title: 'Classwork could not refresh',
             body: 'Saved work is shown when available; reconnect and retry.',
             pose: 'confused',
-            bob: false,
             showMascot: empty,
           ),
           TextButton(
@@ -390,7 +389,6 @@ class _ClassworkListState extends ConsumerState<ClassworkList> {
               title: 'No saved classwork',
               body: 'Connect and refresh to load classwork on this device.',
               pose: 'sleepy',
-              bob: false,
             )
           else
             TextButton(
@@ -400,7 +398,6 @@ class _ClassworkListState extends ConsumerState<ClassworkList> {
         else if (work.isEmpty && !empty)
           EmptyState(
             pose: statusKnown ? 'curious' : 'thinking',
-            bob: statusKnown,
             title: statusKnown
                 ? 'No matching classwork'
                 : 'Statuses not loaded',

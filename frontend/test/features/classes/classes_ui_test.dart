@@ -176,6 +176,7 @@ void main() {
     double scale = 1,
     bool? notificationAccess,
     Stream<int>? unread,
+    Stream<ClassRefreshStatus>? refreshStatus,
     ThemeData? theme,
     Size viewport = const Size(390, 844),
   }) async {
@@ -217,6 +218,9 @@ void main() {
             yield* network.stream;
           }),
           classSyncLifecycleProvider.overrideWith((ref) {}),
+          classRefreshStatusProvider.overrideWith(
+            (ref) => refreshStatus ?? Stream.value(ClassRefreshStatus.ready),
+          ),
           unreadNotificationCountProvider.overrideWith(
             (ref) => unread ?? Stream.value(0),
           ),
@@ -301,6 +305,38 @@ void main() {
     });
     return Harness(repo, network, cards, rooms, capture);
   }
+
+  testClasses('unconfirmed empty classes shows loading or retry, not empty', (
+    tester,
+  ) async {
+    final status = StreamController<ClassRefreshStatus>.broadcast();
+    _classCleanups.add(status.close);
+    await launch(
+      tester,
+      empty: true,
+      refreshStatus: () async* {
+        yield ClassRefreshStatus.ready;
+        yield* status.stream;
+      }(),
+    );
+    status.add(ClassRefreshStatus.loading);
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 100));
+    expect(find.text('No classes yet.'), findsNothing);
+    expect(find.byType(ClassCardSkeleton), findsOneWidget);
+    status.add(ClassRefreshStatus.failed);
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 100));
+    expect(find.text('No classes yet.'), findsNothing);
+    expect(find.text('Classes could not refresh'), findsOneWidget);
+    expect(
+      tester.getTopLeft(find.text('Classes could not refresh')).dy,
+      greaterThan(tester.getTopLeft(find.byType(TextField).first).dy),
+    );
+    status.add(ClassRefreshStatus.ready);
+    await tester.pumpAndSettle();
+    expect(find.text('No classes yet.'), findsOneWidget);
+  });
 
   for (final role in [AccountRole.student, AccountRole.instructor]) {
     testClasses(
@@ -559,11 +595,48 @@ void main() {
       expect(find.text('alex@example.invalid'), findsOneWidget);
       expect(find.text(role.label), findsOneWidget);
       expect(find.text('Theme'), findsOneWidget);
+      expect(find.text('Delete account'), findsNothing);
+      await tester.drag(find.byType(ListView).last, const Offset(0, -2200));
+      await tester.pumpAndSettle();
+      expect(find.text('Delete account'), findsNothing);
       await tester.scrollUntilVisible(
-        find.text('Delete account'),
+        find.text('Pull up firmly for account options.'),
         250,
         scrollable: find.byType(Scrollable).last,
       );
+      final settingsScroll = tester.state<ScrollableState>(
+        find.byType(Scrollable).last,
+      );
+      settingsScroll.position.jumpTo(settingsScroll.position.maxScrollExtent);
+      await tester.pump();
+      expect(find.text('Delete account'), findsNothing);
+      await tester.drag(find.byType(ListView).last, const Offset(0, -60));
+      await tester.pumpAndSettle();
+      expect(find.text('Delete account'), findsNothing);
+      await tester.drag(find.byType(ListView).last, const Offset(0, -320));
+      await tester.pumpAndSettle();
+      expect(find.text('Delete account'), findsOneWidget);
+      await tester.pageBack();
+      await tester.pumpAndSettle();
+      await tester.tap(find.byTooltip('Your account'));
+      await tester.pumpAndSettle();
+      expect(find.text('Delete account'), findsNothing);
+      final semantics = tester.ensureSemantics();
+      await tester.scrollUntilVisible(
+        find.text('Pull up firmly for account options.'),
+        250,
+        scrollable: find.byType(Scrollable).last,
+      );
+      final accountOptions = find.bySemanticsLabel(
+        'Show account deletion options',
+      );
+      tester.binding.pipelineOwner.semanticsOwner!.performAction(
+        tester.getSemantics(accountOptions).id,
+        ui.SemanticsAction.tap,
+      );
+      await tester.pumpAndSettle();
+      semantics.dispose();
+      expect(find.text('Delete account'), findsOneWidget);
       expect(
         tester
             .widget<ListTile>(
