@@ -2,6 +2,7 @@ import { candidateSchema } from "./pipeline.ts";
 import { candidate, flatItem, plannedObjective, fetchFixture, directFetchFixture, source } from "./quality_fixtures.ts";
 import { createClient } from "@supabase/supabase-js";
 import { createHandler } from "./handler.ts";
+import { generateDirect } from "./direct.ts";
 import {
   bounded, buildPrompt, emptyCounts, errors, generate, QuizError, readLimited,
   modelItems, modelRequest, rejectionCategory, responseSchema, sampleOutput, types, validateInput, validateOutput,
@@ -514,6 +515,42 @@ Deno.test("overlapping requests run once; refusal never finalizes the active row
 });
 
 
+Deno.test("direct fills nine of ten without replacing retained questions or accepting repeats", async () => {
+  const input = validateInput({ texts: [{ file_name: "lesson.txt", text: source }],
+    counts: { ...emptyCounts(), true_false: 10 }, difficulty: "easy" });
+  const questions = Array.from({ length: 10 }, (_, i) => ({ prompt: `Statement ${i}`, points: 1,
+    explanation: "Synthetic explanation.", evidence: source.slice(0, 80), correct_boolean: true }));
+  let calls = 0;
+  const provider: typeof fetch = (_url, init) => {
+    const request = JSON.parse(JSON.parse(String(init!.body)).contents[0].parts[0].text);
+    calls++;
+    if (calls > 1) {
+      equal(request.counts, { ...emptyCounts(), true_false: 1 });
+      equal(request.current_prompts.length, 9);
+    }
+    const selected = calls === 1 ? questions.slice(0, 9) : calls === 2 ? [questions[0]] : [questions[9]];
+    return Promise.resolve(Response.json({ candidates: [{ finishReason: "STOP", content: { parts: [{ text: JSON.stringify({
+      multiple_choice: [], true_false: selected, identification: [], essay: [],
+    }) }] } }] }));
+  };
+  const result = await generateDirect(input, "key", "model", Date.now() + 110000, provider);
+  equal(calls, 3); equal(result.questions.map((q) => q.prompt), questions.map((q) => q.prompt));
+  equal(result.missing_by_type, emptyCounts());
+  calls = 0;
+  const incomplete = harness({ provider: async (url, init) => {
+    const envelope = await (await directFetchFixture()(url, init)).json();
+    const groups = JSON.parse(envelope.candidates[0].content.parts[0].text);
+    groups.essay = [];
+    envelope.candidates[0].content.parts[0].text = JSON.stringify(groups);
+    return Response.json(envelope);
+  } });
+  equal((await (await incomplete.request()).json()).error.code, "AI_BAD_OUTPUT");
+  equal(incomplete.providerCalls(), 3);
+  equal(incomplete.calls.at(-1)!.payload?.p_status, "failed");
+  await rejects("AI_TIMEOUT", () => generateDirect(input, "key", "model", Date.now(), provider));
+  equal(calls, 0);
+});
+
 Deno.test("hosted direct-v2 keeps public shape and finalizes a single provider call", async () => {
   const fixture = directFetchFixture();
   const h = harness({ provider: async (url, init) => {
@@ -531,22 +568,22 @@ Deno.test("hosted direct-v2 keeps public shape and finalizes a single provider c
   equal(h.calls.at(-1)!.payload, { p_id: logId, p_status: "success", p_error: null });
 });
 
-Deno.test("hosted direct-v2 preserves partial results and finalizes malformed output without repair", async () => {
+Deno.test("hosted direct replenishes missing types and fails incomplete output after bounded retries", async () => {
   const fixture = directFetchFixture();
   const partial = harness({ provider: async (url, init) => {
     const envelope = await (await fixture(url, init)).json();
     const groups = JSON.parse(envelope.candidates[0].content.parts[0].text);
-    groups.essay[0].points = 2;
+    if (partial.providerCalls() === 1) groups.essay[0].points = 2;
     envelope.candidates[0].content.parts[0].text = JSON.stringify(groups);
     return Response.json(envelope);
   } });
   const response = await partial.request();
-  equal(response.status, 200); equal(partial.providerCalls(), 1);
+  equal(response.status, 200); equal(partial.providerCalls(), 2);
   const result = await response.json();
-  equal(result.questions.length, 3); equal(result.missing_by_type.essay, 1); equal(result.dropped_by_type.essay, 1);
+  equal(result.questions.length, 4); equal(result.missing_by_type.essay, 0); equal(result.dropped_by_type.essay, 1);
   equal(partial.calls.at(-1)!.payload?.p_status, "success");
   const invalid = harness({ provider: async () => Response.json({ candidates: [] }) });
   equal((await (await invalid.request()).json()).error.code, "AI_BAD_OUTPUT");
-  equal(invalid.providerCalls(), 1);
+  equal(invalid.providerCalls(), 3);
   equal(invalid.calls.at(-1)!.payload, { p_id: logId, p_status: "failed", p_error: "AI_BAD_OUTPUT" });
 });

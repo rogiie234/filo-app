@@ -67,6 +67,8 @@ Deno.test("trusted prompt boundaries resist closing markers and omit metadata", 
   equal(data.match(/<\/filo_sources>/g)?.length, 1);
   equal(data.match(/<\/filo_messages>/g)?.length, 1);
   assert(data.includes("\\u003c/filo_sources\\u003e"));
+  assert(prompt.systemInstruction.parts[0].text.includes("You are Filo, the friendly AI study assistant"));
+  assert(prompt.systemInstruction.parts[0].text.includes("For questions about your identity"));
   const encoded = JSON.stringify(prompt);
   for (const secret of ["local-private-name.txt", "private-user-id", "private@example.invalid"]) assert(!encoded.includes(secret));
   assert(prompt.systemInstruction.parts[0].text.includes("Never switch to general knowledge"));

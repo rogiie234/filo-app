@@ -15,6 +15,7 @@ export function createHandler(kind: Kind, overrides: Partial<Dependencies> = {})
   const deps: Dependencies = { authenticate, env: (name) => Deno.env.get(name), fetch, log: console.log,
     sleep: (ms) => new Promise((resolve) => setTimeout(resolve, ms)), ...overrides };
   return async (request: Request): Promise<Response> => {
+    const deadline = Date.now() + 110000;
     if (request.method === "OPTIONS") return new Response(null, { status: 204, headers: corsHeaders });
     if (request.method !== "POST") return json({ error: { code: "INVALID_REQUEST", message: "Use POST for this request." } }, 405);
     const trace = devTrace(request, kind === "flashcards" ? "ai-flashcards" : "ai-mock-quiz", deps.env, deps.log);
@@ -63,7 +64,7 @@ export function createHandler(kind: Kind, overrides: Partial<Dependencies> = {})
           fail(testMode as ErrorCode);
         } else fail("AI_UNAVAILABLE");
       } else {
-        result = await generate(input, deps.env("GEMINI_API_KEY") ?? "", deps.env("GEMINI_MODEL") ?? "", trace.fetch(deps.fetch));
+        result = await generate(input, deps.env("GEMINI_API_KEY") ?? "", deps.env("GEMINI_MODEL") ?? "", trace.fetch(deps.fetch), deadline);
       }
     } catch (error) {
       failure = knownError(error) ? error.code : "AI_UNAVAILABLE";

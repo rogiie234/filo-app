@@ -36,7 +36,8 @@ const tf = () => ({ type: "true_false", prompt: "Is this true?", correct_boolean
 const identification = () => ({ type: "identification", prompt: "Name the term.", accepted_answers: ["Term"], explanation: "This is the term." });
 const reply = (text: string, finishReason = "STOP") => ({ candidates: [{ finishReason, content: { parts: [{ text }] } }] });
 const provider = (kind: Kind): typeof fetch => () => Promise.resolve(Response.json(reply(JSON.stringify(
-  kind === "flashcards" ? [{ front: "One idea?", back: "One answer." }] : [mc(), tf(), identification()],
+  kind === "flashcards" ? Array.from({ length: 5 }, (_, i) => ({ front: `Idea ${i}?`, back: "One answer." }))
+    : [mc(), tf(), identification(), { ...mc(), prompt: "Another option?" }, { ...tf(), prompt: "Another statement?" }],
 ))));
 
 Deno.test("study input validates counts, source and topic boundaries without retaining names", async () => {
@@ -114,7 +115,7 @@ Deno.test("prompt isolates learner data and preserves source-only, privacy and J
   }
 });
 
-Deno.test("generation retries only zero usable output and returns the successful attempt counts", async () => {
+Deno.test("generation retries unusable output and requires the full requested count", async () => {
   for (const kind of kinds) {
     let calls = 0;
     const recovered: typeof fetch = (url, init) => {
@@ -123,15 +124,73 @@ Deno.test("generation retries only zero usable output and returns the successful
       return ++calls === 1 ? Promise.resolve(Response.json(reply("not JSON"))) : provider(kind)(url, init);
     };
     const result = await generate(input(kind), "key", "model", recovered);
-    equal(calls, 2); assert(result.missing < 5); equal(result.dropped, 0);
+    equal(calls, 2); equal(result.missing, 0); equal(result.dropped, 0);
     calls = 0;
     await rejects("AI_BAD_OUTPUT", () => generate(input(kind), "key", "model", () => {
       calls++; return Promise.resolve(Response.json(reply("[]")));
-    })); equal(calls, 2);
+    })); equal(calls, 3);
     calls = 0;
     await generate(input(kind), "key", "model", (url, init) => { calls++; return provider(kind)(url, init); }); equal(calls, 1);
     for (const [key, model] of [["", "model"], ["key", "bad/model"]]) await rejects("AI_UNAVAILABLE", () => generate(input(kind), key, model, recovered));
   }
+});
+
+Deno.test("short study batches retain valid items and reject repeats across replenishment", async () => {
+  for (const kind of kinds) {
+    let calls = 0;
+    const values = kind === "flashcards"
+      ? Array.from({ length: 10 }, (_, i) => ({ front: `Idea ${i}`, back: "Answer" }))
+      : Array.from({ length: 10 }, (_, i) => ({ ...[mc(), tf(), identification()][i % 3], prompt: `Statement ${i}` }));
+    const result = await generate({ ...input(kind), count: 10 }, "key", "model", (_url, init) => {
+      const request = JSON.parse(String(init!.body));
+      calls++;
+      if (calls > 1) {
+        assert(request.systemInstruction.parts[0].text.includes("Create 1 NEW"));
+        assert(request.contents[0].parts[0].text.includes("Idea 0") || request.contents[0].parts[0].text.includes("Statement 0"));
+      }
+      const batch = calls === 1 ? values.slice(0, 9) : calls === 2 ? [values[0]] : [values[9]];
+      return Promise.resolve(Response.json(reply(JSON.stringify(batch))));
+    });
+    equal(calls, 3); equal(result.missing, 0); equal(result.dropped, 1);
+    equal(("cards" in result ? result.cards : result.questions).map((item) => "front" in item ? item.front : item.prompt),
+      values.map((item) => "front" in item ? item.front : item.prompt));
+    calls = 0;
+    await rejects("AI_BAD_OUTPUT", () => generate({ ...input(kind), count: 10 }, "key", "model", () => {
+      calls++; return Promise.resolve(Response.json(reply(JSON.stringify(values.slice(0, 9)))));
+    }));
+    equal(calls, 3);
+    calls = 0;
+    await rejects("AI_TIMEOUT", () => generate({ ...input(kind), count: 10 }, "key", "model", () => {
+      calls++; return Promise.resolve(Response.json(reply("[]")));
+    }, Date.now()));
+    equal(calls, 0);
+  }
+});
+
+Deno.test("practice enforces balanced types in selected order and replenishes only missing types", async () => {
+  const settings = { ...input("practice_quiz"), count: 10, types: ["identification", "true_false", "multiple_choice"] as const };
+  const value = { ...settings, types: [...settings.types] };
+  let calls = 0;
+  const result = await generate(value, "key", "model", (_url, init) => {
+    calls++;
+    const system = JSON.parse(String(init!.body)).systemInstruction.parts[0].text;
+    const counts = calls === 1 ? { multiple_choice: 3, true_false: 3, identification: 4 }
+      : { multiple_choice: 0, true_false: 3, identification: 4 };
+    assert(system.includes(JSON.stringify(counts)));
+    const items = calls === 1 ? Array.from({ length: 10 }, (_, i) => ({ ...mc(), prompt: `MC ${i}` }))
+      : [...Array.from({ length: 3 }, (_, i) => ({ ...tf(), prompt: `TF ${i}` })),
+        ...Array.from({ length: 4 }, (_, i) => ({ ...identification(), prompt: `ID ${i}` }))];
+    return Promise.resolve(Response.json(reply(JSON.stringify(items))));
+  });
+  assert("questions" in result);
+  equal(calls, 2); equal(result.missing, 0); equal(result.dropped, 7);
+  equal(value.types.map((type) => result.questions.filter((q) => q.type === type).length), [4, 3, 3]);
+  calls = 0;
+  await rejects("AI_BAD_OUTPUT", () => generate(value, "key", "model", () => {
+    calls++;
+    return Promise.resolve(Response.json(reply(JSON.stringify(Array.from({ length: 10 }, (_, i) => ({ ...mc(), prompt: `Only MC ${i}` }))))));
+  }));
+  equal(calls, 3);
 });
 
 Deno.test("provider errors, safety blocks and empty output retain chat mappings without retry", async () => {
@@ -152,10 +211,9 @@ Deno.test("provider errors, safety blocks and empty output retain chat mappings 
   await rejects("AI_UNAVAILABLE", () => generate(value, "key", "model", () => Promise.reject(new Error("private network error"))));
   await rejects("AI_TIMEOUT", () => generate(value, "key", "model", () => Promise.reject(new DOMException("private", "AbortError"))));
   await rejects("AI_UNAVAILABLE", () => generate(value, "key", "model", () => Promise.resolve(Response.json(reply("[]", "OTHER")))));
-  const result = await generate(value, "key", "model", () => Promise.resolve(Response.json({ candidates: [{ finishReason: "MAX_TOKENS", content: {
+  await rejects("AI_BAD_OUTPUT", () => generate(value, "key", "model", () => Promise.resolve(Response.json({ candidates: [{ finishReason: "MAX_TOKENS", content: {
     parts: [{ thought: true, text: "private reasoning" }, { text: '[{"front":"one","back":"answer"}]' }],
-  } }] })));
-  equal(result.missing, 4);
+  } }] }))));
 });
 
 const devUrl = "https://fiobwfzmqcffbpixzvbq.supabase.co";
@@ -283,7 +341,7 @@ Deno.test("DEV sample and every simulated error retain authorization, ledger and
 Deno.test("bad output finalizes once and finalization retries are bounded and idempotent", async () => {
   for (const kind of kinds) {
     const bad = harness(kind, { provider: () => Promise.resolve(Response.json(reply("[]"))) });
-    equal((await (await bad.request()).json()).error.code, "AI_BAD_OUTPUT"); equal(bad.providerCalls(), 2);
+    equal((await (await bad.request()).json()).error.code, "AI_BAD_OUTPUT"); equal(bad.providerCalls(), 3);
     equal(bad.calls.filter((call) => call.name === "begin_ai_request").length, 1);
     equal(bad.calls.at(-1)!.payload, { p_id: logId, p_status: "failed", p_error: "AI_BAD_OUTPUT" });
     for (const finishFailures of [1, 2]) {

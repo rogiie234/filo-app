@@ -138,7 +138,7 @@ export function directFetchFixture(): typeof fetch {
     const input = JSON.parse(body.contents[0].parts[0].text) as Input;
     const questions = JSON.parse(sampleOutput(input)) as Record<string, unknown>[];
     const grouped = Object.fromEntries(types.map((type) => [type, questions.filter((q) => q.type === type)
-      .map(({ type: _type, ...q }) => ({ ...q, evidence: "Synthetic test evidence.",
+      .map(({ type: _type, ...q }) => ({ ...q, evidence: input.texts[0].slice(0, 80),
         ...(type === "essay" ? { sample_answer: "A synthetic answer.", rubric: [{ key_point: "A synthetic point.", points: 1 }] } : {}),
       }))]));
     return Response.json({ candidates: [{ finishReason: "STOP", content: { parts: [{ text: JSON.stringify(grouped) }] } }] });

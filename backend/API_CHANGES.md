@@ -2514,3 +2514,36 @@ Forward migration 20261111100000_reject_null_essay_score.sql prepared NOT APPLIE
 ## Class purge retry rotation and client paging - 2026-11-11
 Prepared NOT APPLIED migration20261111110000_rotate_class_purge_attempts.sql: private RLS class_purge_attempts metadata/FK cascade; service-only claim_deleted_class_purges()->table(id uuid), max25eligible classes with persisted attempt ordering. Unattempted/least-recently attempted classes rotate past failed batches.14day/explicit permanent eligibility, Storage cleanup/final checks and scheduler-secret authorization unchanged. Deploy updated purge-deleted ONLY AFTER migration; no deploy performed. Adds no client RPC/grant; not a long-lived exclusive lease or increased schedule throughput guarantee. Maintained rollback temp-clone class_purge_rotation.sql NOT RUN; canonical workspace QA classes report.
 Results/client catalog reads use ID cursors until empty. Student grade refresh reuses fresh class-scoped RLS metadata and batches3session/result requests; existing server release checks/local authorization/invalidation retained. No public result payload change; elapsed-time improvement unmeasured. Owner regression/runtime acceptance pending.
+
+
+## Exact requested AI counts - 2026-11-16
+
+Owner direction supersedes earlier partial-success behavior. Study practice quizzes
+and flashcards and the live instructor direct pipeline retain validated items and
+request only the shortfall, up to three provider calls total under one request slot.
+Retained fronts/prompts are supplied as untrusted exclusion data. Normalized repeated
+fronts/prompts are rejected across calls; semantic similarity is not independently
+verified. Source support and existing format/difficulty rules remain mandatory.
+Successful generation requires the full requested total; instructor generation also
+requires every requested type count. No fabricated padding or partial success.
+Exhausted incomplete/malformed output returns AI_BAD_OUTPUT; provider, safety and
+network errors keep existing mappings without automatic provider-error retries.
+Each call remains capped at45s within a110s handler deadline, reserving10s for
+finalization. Clients now wait120s. No new RPC/schema, dependency or daily quota.
+The existing client still accepts legacy partial-response shapes for compatibility;
+this policy takes effect after deploying the changed functions. Failed generation
+adds/saves no new set; existing saved work is retained. Existing save-retry and
+instructor draft/review/publish controls remain separate from generation.
+
+Maintained regressions prepared, NOT RUN: study_test.ts and quiz_test.ts cover
+completion, missing-only replenishment, repeated prompts, exhausted shortfalls,
+one request slot/finalization, and no dispatch after deadline. Student client error
+copy expectation updated. Tests/analyzer/build/device/live checks and deployment
+NOT RUN; runtime and explicit owner acceptance PENDING. Canonical criteria and
+owner steps: workspace qa/M11-AI-STUDY-MODULE-ACCEPTANCE.md and
+qa/M10-AI-QUIZ-GENERATION-ACCEPTANCE.md. Prior evidence remains historical/scoped.
+
+
+## AI evidence and student type balance - 2026-11-17
+
+No public request/response schema changes. ai-generate-quiz direct parsing now rejects evidence not matched by the existing grounded() helper against an individual supplied source (NFKC/whitespace normalization, minimum 12 normalized UTF-16 code units). Rejected items use existing replenishment/full-set failure behavior; quotation presence does not prove answer correctness. ai-mock-quiz now enforces evenly allocated selected-type quotas, assigning remainders in selection order; retries request only missing type counts. An incomplete mix returns AI_BAD_OUTPUT after existing bounded retries, never partial success. Flashcard behavior unchanged. Redeploy ai-generate-quiz and ai-mock-quiz for live effect; not deployed by this task. Local mocked evidence and remaining owner checks: workspace qa/M10-AI-QUIZ-GENERATION-ACCEPTANCE.md and qa/M11-AI-STUDY-MODULE-ACCEPTANCE.md.

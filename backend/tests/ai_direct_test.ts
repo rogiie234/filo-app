@@ -6,7 +6,7 @@ import type { Input, QuestionType } from "../supabase/functions/ai-generate-quiz
 
 function assert(value: unknown, message = "Assertion failed"): asserts value { if (!value) throw new Error(message); }
 function equal(a: unknown, b: unknown) { assert(JSON.stringify(a) === JSON.stringify(b), `${JSON.stringify(a)} != ${JSON.stringify(b)}`); }
-const input = (): Input => ({ ...request(), counts: { multiple_choice: 6, true_false: 2, identification: 2, essay: 1 } });
+const input = (): Input => ({ ...request(), texts: [...request().texts, "Synthetic test evidence."], counts: { multiple_choice: 6, true_false: 2, identification: 2, essay: 1 } });
 const usageMetadata = { promptTokenCount: 100, cachedContentTokenCount: 0, candidatesTokenCount: 50, thoughtsTokenCount: 0, totalTokenCount: 150 };
 const output = (settings = input()): Record<string, unknown>[] => JSON.parse(sampleOutput(settings)).map((q: Record<string, unknown>) => ({
   ...q, evidence: "Synthetic test evidence.",
@@ -49,7 +49,7 @@ Deno.test("direct comparison generates11mixed items with exactly one call and a 
   assert(!JSON.stringify(report).includes("private-key"));
 });
 
-Deno.test("direct comparison retains partial valid output without semantic rejection or repair", async () => {
+Deno.test("direct comparison fails incomplete output after three calls without partial success", async () => {
   const rows = output();
   rows[0].correct_index = 99;
   rows[1].prompt = rows[2].prompt;
@@ -57,20 +57,17 @@ Deno.test("direct comparison retains partial valid output without semantic rejec
   const report = await captureQuality(input(), "private-key", "fixture-model", async () => {
     calls++; return response(JSON.stringify(grouped(rows)));
   }, "direct");
-  equal(calls, 1); equal(report.error, null); equal(report.summary.returned, 9);
-  equal(report.summary.missing_by_type.multiple_choice, 2);
-  equal(report.result!.dropped_by_type.multiple_choice, 2);
-  assert(report.events.some((e) => e.stage === "result" && e.independently_verified === false));
+  equal(calls, 3); equal(report.error, "AI_BAD_OUTPUT"); equal(report.result, null);
 });
 
-Deno.test("direct comparison invalid JSON and truncated output stop after two attempts with usage retained", async () => {
+Deno.test("direct comparison invalid JSON and truncated output stop after three attempts with usage retained", async () => {
   for (const [text, finish] of [["not json", "STOP"], [JSON.stringify(grouped()), "MAX_TOKENS"], ["[]", "STOP"]]) {
     let calls = 0;
     const report = await captureQuality(input(), "private-key", "fixture-model", async () => {
       calls++; return response(text, finish);
     }, "direct");
-    equal(calls, 2); equal(report.error, "AI_BAD_OUTPUT"); equal(report.result, null);
-    equal(report.summary.tokens.totalTokenCount.observed_total, 300);
+    equal(calls, 3); equal(report.error, "AI_BAD_OUTPUT"); equal(report.result, null);
+    equal(report.summary.tokens.totalTokenCount.observed_total, 450);
   }
 });
 
@@ -127,6 +124,18 @@ Deno.test("direct comparison uses existing validated request and regeneration li
   equal(report.summary.returned, 1);
 });
 
+
+Deno.test("direct rejects fabricated, stitched and trivial evidence while accepting source whitespace", () => {
+  for (const evidence of ["A fabricated quotation.", "Synthetic", "evidence."]) {
+    const rows = grouped(); rows.essay[0].evidence = evidence;
+    const result = parseDirectOutput(JSON.stringify(rows), input());
+    equal(result.questions.length, 10); equal(result.missing_by_type.essay, 1);
+  }
+  const rows = grouped(); rows.essay[0].evidence = "Synthetic\n test  evidence.";
+  equal(parseDirectOutput(JSON.stringify(rows), input()).questions.length, 11);
+  const settings = { ...input(), texts: ["Synthetic test", "evidence."] };
+  equal(parseDirectOutput(JSON.stringify(grouped()), settings).questions.length, 0);
+});
 
 Deno.test("direct-v2 requires common fields and essay metadata locally without inventing content", () => {
   for (const type of types) for (const field of ["prompt", "points", "explanation", "evidence", ...(type === "essay" ? ["sample_answer", "rubric"] : [])]) {
