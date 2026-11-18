@@ -117,7 +117,6 @@ final postSyncProvider = FutureProvider.autoDispose.family<void, String>((
   await coordinator.run();
   if (!ref.mounted) return;
   if ([
-    'queue',
     'class_access',
     'classes',
     'posts',

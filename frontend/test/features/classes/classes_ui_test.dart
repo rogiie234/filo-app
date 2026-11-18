@@ -1,3 +1,5 @@
+import 'package:filo/features/tutorial/tutorial_repository.dart';
+import 'package:filo/features/tutorial/tutorial_host.dart';
 import 'package:filo/core/widgets/entry_background.dart';
 import 'package:filo/features/home/presentation/home_screen.dart';
 import 'package:filo/features/settings/application/theme_settings.dart';
@@ -48,6 +50,18 @@ const cachedRoom = ClassRoom(
   schoolYear: '2026-2027',
   joinCode: 'FILO26',
 );
+
+class TourFixtureRepository extends TutorialRepository {
+  TourFixtureRepository(super.database, {required bool firstVisit})
+    : dismissedIds = firstVisit ? <String>{} : {'main_v1', 'class_v1'};
+  final Set<String> dismissedIds;
+  @override
+  Future<bool> dismissed(String id) async => dismissedIds.contains(id);
+  @override
+  Future<void> dismiss(String id, {required bool completed}) async {
+    dismissedIds.add(id);
+  }
+}
 
 class UiRepository extends ClassRepository {
   UiRepository(AppDatabase db, this.publish)
@@ -172,6 +186,7 @@ void main() {
     AccountRole role = AccountRole.student,
     bool online = true,
     bool empty = false,
+    bool firstVisit = false,
     bool homeThemeFailure = false,
     double scale = 1,
     bool? notificationAccess,
@@ -188,6 +203,7 @@ void main() {
     addTearDown(tester.platformDispatcher.clearTextScaleFactorTestValue);
     final db = AppDatabase(NativeDatabase.memory());
     final settings = FakeSettingsRepository();
+    final tours = TourFixtureRepository(db, firstVisit: firstVisit);
     final network = StreamController<bool>.broadcast();
     final cards = StreamController<List<ClassRoom>>.broadcast();
     final rooms = <ClassRoom>[if (!empty) cachedRoom];
@@ -199,6 +215,7 @@ void main() {
     await tester.pumpWidget(
       ProviderScope(
         overrides: [
+          tutorialRepositoryProvider.overrideWith((ref) async => tours),
           if (homeThemeFailure)
             themeSettingsRepositoryProvider.overrideWith(
               (ref) async => throw StateError('fixture theme read failure'),
@@ -1039,4 +1056,86 @@ void main() {
       expect(heading, findsNothing);
     },
   );
+  for (final role in AccountRole.values) {
+    testClasses(
+      '${role.name} tutorial covers real shell highlights and replay',
+      (tester) async {
+        await launch(tester, role: role, firstVisit: true, empty: true);
+        expect(find.text('Meet Filo'), findsOneWidget);
+        await tester.tap(find.text('Show me'));
+        await tester.pumpAndSettle();
+        await tester.tap(find.text('Next'));
+        await tester.pumpAndSettle();
+        expect(find.text('Retry highlight'), findsNothing);
+        expect(
+          find.text(
+            role == AccountRole.student ? 'Join a class' : 'Create a class',
+          ),
+          findsOneWidget,
+        );
+        await tester.tap(find.text('Next'));
+        await tester.pumpAndSettle();
+        expect(
+          find.text(
+            role == AccountRole.student ? 'Your to-do list' : 'Work to review',
+          ),
+          findsOneWidget,
+        );
+        expect(find.text('Retry highlight'), findsNothing);
+        await tester.tap(find.text('Next'));
+        await tester.pumpAndSettle();
+        expect(find.text('Your files'), findsOneWidget);
+        expect(find.text('Retry highlight'), findsNothing);
+        await tester.tap(find.text('Next'));
+        await tester.pumpAndSettle();
+        if (role == AccountRole.student) {
+          expect(find.text('Study with your materials'), findsOneWidget);
+          expect(find.text('Retry highlight'), findsNothing);
+          await tester.tap(find.text('Next'));
+          await tester.pumpAndSettle();
+        }
+        expect(find.text('Ready to explore'), findsOneWidget);
+        expect(find.text('Retry highlight'), findsNothing);
+        await tester.tap(find.text('Got it'));
+        await tester.pumpAndSettle();
+        expect(find.text('Meet Filo'), findsNothing);
+        await tester.tap(find.byTooltip('Your account'));
+        await tester.pumpAndSettle();
+        await tester.ensureVisible(find.text('Replay tutorial'));
+        await tester.tap(find.text('Replay tutorial'));
+        await tester.pumpAndSettle();
+        expect(find.text('Meet Filo'), findsOneWidget);
+        expect(tester.takeException(), isNull);
+      },
+    );
+    testClasses(
+      '${role.name} class tour explains class sections and can replay',
+      (tester) async {
+        await launch(tester, role: role, firstVisit: true);
+        await tester.tap(find.text('Skip tutorial'));
+        await tester.pumpAndSettle();
+        await tester.tap(find.text('Computing'));
+        await tester.pumpAndSettle();
+        expect(find.text('Inside your class'), findsOneWidget);
+        await tester.tap(find.text('Show me'));
+        await tester.pumpAndSettle();
+        expect(find.text('Retry highlight'), findsNothing);
+        await tester.tap(find.text('Next'));
+        await tester.pumpAndSettle();
+        expect(find.text('Retry highlight'), findsNothing);
+        expect(
+          tester.widget<TutorialHost>(find.byType(TutorialHost).last).id,
+          'class_v1',
+        );
+        await tester.tap(find.text('Skip tutorial'));
+        await tester.pumpAndSettle();
+        await tester.tap(find.byTooltip('Class menu'));
+        await tester.pumpAndSettle();
+        await tester.tap(find.text('Replay class tutorial'));
+        await tester.pumpAndSettle();
+        expect(find.text('Inside your class'), findsOneWidget);
+        expect(tester.takeException(), isNull);
+      },
+    );
+  }
 }

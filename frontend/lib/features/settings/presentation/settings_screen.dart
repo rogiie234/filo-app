@@ -19,7 +19,12 @@ import 'privacy_notice_screen.dart';
 import 'delete_account_screen.dart';
 
 class SettingsScreen extends ConsumerStatefulWidget {
-  const SettingsScreen({required this.profile, super.key});
+  const SettingsScreen({
+    required this.profile,
+    this.allowTutorialReplay = false,
+    super.key,
+  });
+  final bool allowTutorialReplay;
   final AccountProfile profile;
 
   @override
@@ -319,6 +324,17 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                     ),
                   ),
                   const SizedBox(height: FiloSpacing.screen),
+                  if (widget.allowTutorialReplay) ...[
+                    _heading('Help'),
+                    _group([
+                      _entry(
+                        'Replay tutorial',
+                        FiloIcons.settings,
+                        subtitle: 'Take a guided tour with Filo',
+                        onTap: () => Navigator.of(context).pop(true),
+                      ),
+                    ]),
+                  ],
                   _heading('Preferences'),
                   _group([
                     _entry(

@@ -55,6 +55,62 @@ class _RouteCapture extends NavigatorObserver {
 }
 
 void main() {
+  for (final student in [true, false]) {
+    testWidgets('failed Stream reads retry quietly for student=$student', (
+      tester,
+    ) async {
+      var postCalls = 0, assessmentCalls = 0;
+      final key = (classId: 'class', student: student);
+      tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.resumed);
+      await tester.pumpWidget(
+        ProviderScope(
+          overrides: [
+            connectivityProvider.overrideWith((ref) => Stream.value(true)),
+            streamPostsProvider('class').overrideWith((ref) => Stream.value([])),
+            streamLoadedProvider('class').overrideWith((ref) => Stream.value(true)),
+            postSyncProvider('class').overrideWith((ref) async {
+              if (++postCalls == 1) throw StateError('Synthetic read failure');
+            }),
+            instructorQuizzesProvider('class').overrideWith((ref) => Stream.value([])),
+            instructorQuizListRefreshProvider('class').overrideWith((ref) async {
+              if (++assessmentCalls == 1) throw StateError('Synthetic read failure');
+            }),
+            studentQuizCatalogProvider.overrideWith((ref) {
+              assessmentCalls++;
+              return Stream.value(StudentQuizCatalog(
+                const [],
+                loaded: true,
+                failed: assessmentCalls == 1,
+              ));
+            }),
+          ],
+          child: Consumer(builder: (context, ref, _) {
+            ref.watch(classStreamRetryProvider(key));
+            ref.watch(postSyncProvider('class'));
+            if (student) {
+              ref.watch(studentQuizCatalogProvider);
+            } else {
+              ref.watch(instructorQuizListRefreshProvider('class'));
+            }
+            return const SizedBox();
+          }),
+        ),
+      );
+      await tester.pump();
+      await tester.pump();
+      expect(postCalls, 1);
+      expect(assessmentCalls, 1);
+      await tester.pump(const Duration(seconds: 30));
+      await tester.pump();
+      await tester.pump();
+      expect(postCalls, 2);
+      expect(assessmentCalls, 2);
+      await tester.pump(const Duration(seconds: 30));
+      expect(postCalls, 2);
+      expect(assessmentCalls, 2);
+      await tester.pumpWidget(const SizedBox());
+    });
+  }
   test('feed deduplicates namespaced IDs, hides drafts/deleted/foreign records and sorts by publication', () {
     final post = ClassPost(
       id: 'same',
@@ -282,11 +338,8 @@ void main() {
         container.invalidate(assessmentStreamProvider(key));
         await tester.pumpAndSettle();
         expect(find.byType(StreamAssessmentCard), findsOneWidget);
-        expect(find.text('Class updates could not refresh'), findsOneWidget);
-        final retry = tester.widget<TextButton>(
-          find.widgetWithText(TextButton, 'Retry').first,
-        );
-        expect(retry.onPressed, isNull);
+        expect(find.text('Class updates could not refresh'), findsNothing);
+        expect(find.widgetWithText(TextButton, 'Retry'), findsNothing);
         feed = const AssessmentStreamData([], loading: true);
         container.invalidate(assessmentStreamProvider(key));
         await tester.pumpAndSettle();

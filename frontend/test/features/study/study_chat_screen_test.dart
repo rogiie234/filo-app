@@ -311,6 +311,14 @@ void main() {
         isEmpty,
       );
       expect(find.byType(StudyThinkingLabel), findsOneWidget);
+      final composer = tester.widget<TextField>(find.byType(TextField));
+      expect(composer.enabled, isTrue);
+      expect(composer.readOnly, isTrue);
+      expect(
+        tester.widget<EditableText>(find.byType(EditableText)).focusNode.hasFocus,
+        isTrue,
+      );
+      expect(tester.testTextInput.isVisible, isTrue);
       expect(find.text('Cancel'), findsNothing);
       expect(find.text('Not confirmed saved'), findsNothing);
       reply.complete({
@@ -325,6 +333,8 @@ void main() {
         expect(find.text('Thinking...'), findsNothing);
       }
       expect(find.text('Saved answer'), findsOneWidget);
+      expect(tester.widget<TextField>(find.byType(TextField)).readOnly, isFalse);
+      expect(tester.testTextInput.isVisible, isTrue);
       expect(find.byType(StudyThinkingLabel), findsNothing);
       expect(calls, 1);
       expect((await db.select(db.chatMessages).get()).length, 2);

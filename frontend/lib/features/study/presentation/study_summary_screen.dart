@@ -210,6 +210,16 @@ class _SummaryBodyState extends ConsumerState<_SummaryBody> {
             padding: const EdgeInsets.all(FiloSpacing.screen),
             children: [
               const StudyOfflineBanner(),
+              if (_session.working) ...[
+                StudyGenerationStatus(
+                  label: _session.saving
+                      ? 'Saving summary...'
+                      : 'Preparing your summary...',
+                  saving: _session.saving,
+                  onCancel: _session.cancel,
+                ),
+                const SizedBox(height: FiloSpacing.s16),
+              ],
               studyAsync(
                 summary,
                 (saved) => Column(
@@ -247,7 +257,7 @@ class _SummaryBodyState extends ConsumerState<_SummaryBody> {
                         ),
                       ),
                       _usage(StudySummaryUsage.decode(saved.usageJson)),
-                    ] else
+                    ] else if (!_session.working)
                       Padding(
                         padding: const EdgeInsets.symmetric(
                           vertical: FiloSpacing.screen,
@@ -287,34 +297,7 @@ class _SummaryBodyState extends ConsumerState<_SummaryBody> {
                       ),
                     ],
                     const SizedBox(height: FiloSpacing.s16),
-                    if (_session.working) ...[
-                      if (!_session.saving)
-                        const Mascot(pose: 'thinking', size: 120),
-                      Semantics(
-                        liveRegion: true,
-                        child: Text(
-                          _session.saving
-                              ? 'Saving summary...'
-                              : 'Preparing your summary...',
-                        ),
-                      ),
-                      if (!MediaQuery.disableAnimationsOf(context))
-                        const Padding(
-                          padding: EdgeInsets.all(FiloSpacing.s16),
-                          child: Center(
-                            child: FiloCircularProgressIndicator(
-                              semanticsLabel: 'Preparing summary',
-                            ),
-                          ),
-                        ),
-                      if (!_session.saving) ...[
-                        FiloButton(label: 'Cancel', onPressed: _session.cancel),
-                        const SizedBox(height: FiloSpacing.s8),
-                        const Text(
-                          'Cancel stops waiting on this phone. The server may still finish.',
-                        ),
-                      ],
-                    ] else if (pending == null && saved != null)
+                    if (!_session.working && pending == null && saved != null)
                       FiloButton(
                         label: 'Summarize again',
                         icon: FiloIcons.sparkle,

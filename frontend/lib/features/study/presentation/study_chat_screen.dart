@@ -115,13 +115,13 @@ class _ChatBodyState extends ConsumerState<_ChatBody> {
           widget.repository.db,
     );
     final nearEnd = !_scroll.hasClients || _scroll.position.extentAfter < 100;
+    final hasPending = _session.pendingAnswer != null && !_session.working;
     final added =
-        _session.messages.length != _lastCount ||
-        (_session.pendingAnswer != null) != _hadPending;
+        _session.messages.length != _lastCount || hasPending != _hadPending;
     final ownMessage =
         _session.messages.isNotEmpty && _session.messages.last.role == 'user';
     _lastCount = _session.messages.length;
-    _hadPending = _session.pendingAnswer != null;
+    _hadPending = hasPending;
     if (_input.text != _session.draft) {
       _input.value = TextEditingValue(
         text: _session.draft,
@@ -509,11 +509,12 @@ class _ChatBodyState extends ConsumerState<_ChatBody> {
                                   Expanded(
                                     child: TextField(
                                       controller: _input,
-                                      enabled:
-                                          !_session.working &&
-                                          !_authorizing &&
-                                          !_session.loading &&
-                                          _session.pendingAnswer == null,
+                                      enabled: !_session.loading,
+                                      // Keep keyboard focus while the request is in flight.
+                                      readOnly:
+                                          _session.working ||
+                                          _authorizing ||
+                                          _session.pendingAnswer != null,
                                       minLines: 1,
                                       maxLines: 4,
                                       onChanged: _session.setDraft,

@@ -8,6 +8,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:filo/core/connectivity/connectivity_provider.dart';
 import 'package:filo/core/theme/app_theme.dart';
+import 'package:filo/core/supabase/auth_providers.dart';
 import 'package:filo/features/results/application/results_providers.dart';
 import 'package:filo/features/results/presentation/instructor_results_screen.dart';
 import 'package:filo/features/results/domain/results.dart';
@@ -169,8 +170,11 @@ void main() {
     expect(resultsCsvFilename('x' * 200, now).length, lessThan(110));
   });
 
-  Widget screen(QuizMonitoring? data) => ProviderScope(
+  Widget screen(QuizMonitoring? data, {Stream<String?>? account}) => ProviderScope(
     overrides: [
+      authUserIdProvider.overrideWith(
+        (ref) => account ?? Stream.value('instructor'),
+      ),
       connectivityProvider.overrideWith((ref) => Stream.value(false)),
       quizMonitoringProvider('quiz').overrideWith(
         (ref) => Stream.value(
@@ -238,7 +242,7 @@ void main() {
   });
 
   testWidgets(
-    'writes under the existing cache directory and reaches share sheet',
+    'writes account-scoped CSV and reaches share sheet for both export scopes',
     (tester) async {
       const pathChannel = MethodChannel('plugins.flutter.io/path_provider');
       const shareChannel = MethodChannel('dev.fluttercommunity.plus/share');
@@ -257,10 +261,15 @@ void main() {
           final args = call.arguments as Map;
           sharedPath = (args['paths'] as List).single as String;
           final file = File(sharedPath!);
-          expect(file.parent.parent.path, root.path);
+          expect(file.parent.parent.parent.parent.parent.path, root.path);
+          expect(
+            file.parent.parent.parent.uri.pathSegments
+                .where((p) => p.isNotEmpty).last,
+            'instructor',
+          );
           expect(
             file.parent.uri.pathSegments.where((p) => p.isNotEmpty).last,
-            startsWith('filo-results-'),
+            startsWith('work-'),
           );
           final bytes = await file.readAsBytes();
           expect(
@@ -279,21 +288,27 @@ void main() {
         messenger.setMockMethodCallHandler(shareChannel, null);
         if (await root.exists()) await root.delete(recursive: true);
       });
-      await tester.pumpWidget(screen(fixture()));
+      final identity = Completer<String?>();
+      await tester.pumpWidget(
+        screen(fixture(), account: Stream.fromFuture(identity.future)),
+      );
       await tester.pumpAndSettle();
       final menu = tester.widget<PopupMenuButton<String>>(
         find.byType(PopupMenuButton<String>),
       );
       await tester.runAsync(() async {
         // Start disk I/O and its completion in the real async zone.
-        shared = Completer<void>();
-        menu.onSelected!('csv');
-        await shared.future.timeout(const Duration(seconds: 5));
-        await Future.doWhile(() async {
-          if (await root.list().isEmpty) return false;
-          await Future<void>.delayed(const Duration(milliseconds: 10));
-          return true;
-        }).timeout(const Duration(seconds: 5));
+        for (final scope in ['csv', 'visible']) {
+          shared = Completer<void>();
+          menu.onSelected!(scope);
+          if (!identity.isCompleted) identity.complete('instructor');
+          await shared.future.timeout(const Duration(seconds: 5));
+          await Future.doWhile(() async {
+            if (!await File(sharedPath!).exists()) return false;
+            await Future<void>.delayed(const Duration(milliseconds: 10));
+            return true;
+          }).timeout(const Duration(seconds: 5));
+        }
       });
       await tester.pumpAndSettle();
       expect(sharedPath, isNotNull);
@@ -310,7 +325,7 @@ void main() {
       var calls = 0;
       TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
           .setMockMethodCallHandler(channel, (call) {
-            expect(call.method, 'getTemporaryDirectory');
+            expect(call.method, 'getApplicationSupportDirectory');
             calls++;
             return path.future;
           });

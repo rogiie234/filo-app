@@ -396,13 +396,15 @@ class _AiQuizSheetState extends ConsumerState<AiQuizSheet> {
       return Padding(
         padding: const EdgeInsets.all(FiloSpacing.screen),
         child: FiloPanel(
+          color: Theme.of(context).colorScheme.primaryContainer,
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              const ExcludeSemantics(
-                child: Image(
-                  image: AssetImage('assets/mascots/thinking.png'),
-                  height: 112,
+              ExcludeSemantics(
+                child: FiloIcon(
+                  FiloIcons.sparkle,
+                  size: 40,
+                  color: Theme.of(context).colorScheme.onPrimaryContainer,
                 ),
               ),
               const SizedBox(height: FiloSpacing.s16),
@@ -412,7 +414,9 @@ class _AiQuizSheetState extends ConsumerState<AiQuizSheet> {
                 child: Text(
                   label,
                   textAlign: TextAlign.center,
-                  style: Theme.of(context).textTheme.titleLarge,
+                  style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                    color: Theme.of(context).colorScheme.onPrimaryContainer,
+                  ),
                 ),
               ),
               const SizedBox(height: FiloSpacing.s12),
@@ -423,8 +427,8 @@ class _AiQuizSheetState extends ConsumerState<AiQuizSheet> {
               const SizedBox(height: FiloSpacing.screen),
               FiloLinearProgressIndicator(
                 semanticsLabel: label,
-                minHeight: 8,
-                borderRadius: BorderRadius.circular(FiloRadii.small),
+                minHeight: 6,
+                borderRadius: BorderRadius.circular(FiloRadii.large),
               ),
               const SizedBox(height: FiloSpacing.screen),
               const Text(

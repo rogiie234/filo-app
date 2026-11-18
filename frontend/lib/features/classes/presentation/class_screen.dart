@@ -1,3 +1,5 @@
+import '../../tutorial/tutorial_host.dart';
+
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -41,6 +43,10 @@ class ClassScreen extends ConsumerStatefulWidget {
 }
 
 class _ClassScreenState extends ConsumerState<ClassScreen> {
+  final _tourTargets = {
+    for (final id in ['stream', 'classwork', 'files', 'menu']) id: GlobalKey(),
+  };
+  int _tutorialReplay = 0;
   int _tab = 0;
   String? _streamFilter;
   String? _openedSection;
@@ -52,6 +58,12 @@ class _ClassScreenState extends ConsumerState<ClassScreen> {
     if (live) {
       ref.watch(classSyncLifecycleProvider);
       ref.watch(postSyncLifecycleProvider(widget.classId));
+      ref.watch(
+        classStreamRetryProvider((
+          classId: widget.classId,
+          student: widget.profile!.role == AccountRole.student,
+        )),
+      );
     }
     final cards = live ? ref.watch(classCardsProvider) : null;
     if (live && cards!.isLoading && !cards.hasValue && !cards.hasError) {
@@ -177,154 +189,212 @@ class _ClassScreenState extends ConsumerState<ClassScreen> {
         ),
       ),
     );
-    return EntryBackground(
-      verification: true,
-      breeze: true,
-      variation: 1,
-      child: Scaffold(
-        backgroundColor: Colors.transparent,
-        appBar: AppBar(
-          backgroundColor: Colors.transparent,
-          surfaceTintColor: Colors.transparent,
-          toolbarHeight:
-              64.0 +
-              (MediaQuery.textScalerOf(context).scale(20) - 20).clamp(
-                0,
-                double.infinity,
-              ),
-          titleSpacing: FiloSpacing.s8,
-          elevation: 0,
-          scrolledUnderElevation: 0,
-          leading: IconButton(
-            tooltip: 'Back to classes',
-            icon: const FiloIcon(FiloIcons.back),
-            onPressed: () => live ? Navigator.pop(context) : context.pop(),
-          ),
-          title: Text(
-            const ['Stream', 'Classwork', 'Class files'][_tab],
-            style: Theme.of(context).textTheme.headlineMedium
-                ?.copyWith(fontSize: 24),
-          ),
-          actions: [
-            Padding(
-              padding: const EdgeInsets.only(right: FiloSpacing.s12),
-              child: IconButton.filledTonal(
-                tooltip: 'Class menu',
-                style: IconButton.styleFrom(
-                  minimumSize: const Size(48, 48),
-                  foregroundColor: Theme.of(context)
-                      .colorScheme
-                      .onPrimaryContainer,
-                  backgroundColor: Theme.of(context)
-                      .colorScheme
-                      .primaryContainer,
-                ),
-                icon: Badge(
-                  isLabelVisible: pendingCount > 0,
-                  backgroundColor: Theme.of(context).colorScheme.error,
-                  child: const FiloIcon(FiloIcons.moreVertical),
-                ),
-                onPressed: () => _menu(room, live, instructor, pendingCount),
-              ),
-            ),
-          ],
+    return TutorialHost(
+      key: ValueKey('class_tutorial_${widget.profile?.id}'),
+      id: 'class_v1',
+      enabled: live,
+      replay: _tutorialReplay,
+      targets: _tourTargets,
+      onDestination: (index) => setState(() => _tab = index),
+      steps: [
+        const TutorialStep(
+          'Inside your class',
+          'Let me show you the main class sections. This tour only explains the controls.',
+          'waving',
+          destination: 0,
         ),
-        body: Column(
-          children: [
-            if (room.archived)
-              const Padding(
-                padding: EdgeInsets.all(FiloSpacing.s12),
-                child: Text('This class is archived.'),
+        const TutorialStep(
+          'Class stream',
+          'Read class updates and posts here. Next, we will open Classwork.',
+          'cheerful',
+          target: 'stream',
+          destination: 0,
+        ),
+        TutorialStep(
+          'Classwork',
+          instructor
+              ? 'Manage assignments, quizzes and exams here. Creating and publishing are separate actions you choose yourself.'
+              : 'Find your assignments, quizzes and exams here. Open an activity to read its instructions before starting.',
+          'thinking',
+          target: 'classwork',
+          destination: 1,
+        ),
+        const TutorialStep(
+          'Class files',
+          'Find materials shared in this class here. Internet access is needed for files that have not been downloaded.',
+          'folder',
+          target: 'files',
+          destination: 2,
+        ),
+        TutorialStep(
+          'Class options',
+          instructor
+              ? 'Open this menu for class details, students and join requests. Archived classes remain read-only.'
+              : 'Open this menu for class details and your classmates. Archived classes remain read-only.',
+          'curious',
+          target: 'menu',
+          destination: 0,
+        ),
+        const TutorialStep(
+          'You are ready',
+          'Explore at your own pace. You can replay this class tour from the class menu.',
+          'cheerful_note',
+        ),
+      ],
+      child: EntryBackground(
+        verification: true,
+        breeze: true,
+        variation: 1,
+        child: Scaffold(
+          backgroundColor: Colors.transparent,
+          appBar: AppBar(
+            backgroundColor: Colors.transparent,
+            surfaceTintColor: Colors.transparent,
+            toolbarHeight:
+                64.0 +
+                (MediaQuery.textScalerOf(context).scale(20) - 20).clamp(
+                  0,
+                  double.infinity,
+                ),
+            titleSpacing: FiloSpacing.s8,
+            elevation: 0,
+            scrolledUnderElevation: 0,
+            leading: IconButton(
+              tooltip: 'Back to classes',
+              icon: const FiloIcon(FiloIcons.back),
+              onPressed: () => live ? Navigator.pop(context) : context.pop(),
+            ),
+            title: Text(
+              const ['Stream', 'Classwork', 'Class files'][_tab],
+              style: Theme.of(context).textTheme.headlineMedium
+                  ?.copyWith(fontSize: 24),
+            ),
+            actions: [
+              Padding(
+                padding: const EdgeInsets.only(right: FiloSpacing.s12),
+                child: IconButton.filledTonal(
+                  key: _tourTargets['menu'],
+                  tooltip: 'Class menu',
+                  style: IconButton.styleFrom(
+                    minimumSize: const Size(48, 48),
+                    foregroundColor: Theme.of(context)
+                        .colorScheme
+                        .onPrimaryContainer,
+                    backgroundColor: Theme.of(context)
+                        .colorScheme
+                        .primaryContainer,
+                  ),
+                  icon: Badge(
+                    isLabelVisible: pendingCount > 0,
+                    backgroundColor: Theme.of(context).colorScheme.error,
+                    child: const FiloIcon(FiloIcons.moreVertical),
+                  ),
+                  onPressed: () => _menu(room, live, instructor, pendingCount),
+                ),
               ),
-            if (live && ref.watch(classSyncProvider).hasError)
-              TextButton(
-                onPressed: () => ref.read(classSyncProvider.notifier).refresh(),
-                child: const Text('Could not refresh. Retry'),
+            ],
+          ),
+          body: Column(
+            children: [
+              if (room.archived)
+                const Padding(
+                  padding: EdgeInsets.all(FiloSpacing.s12),
+                  child: Text('This class is archived.'),
+                ),
+              if (live && ref.watch(classSyncProvider).hasError)
+                TextButton(
+                  onPressed: () =>
+                      ref.read(classSyncProvider.notifier).refresh(),
+                  child: const Text('Could not refresh. Retry'),
+                ),
+              Expanded(
+                child: IndexedStack(
+                  index: _tab,
+                  children: [
+                    _refresh(_stream(state, room)),
+                    if (live && instructor)
+                      InstructorClassworkList(
+                        classId: room.id,
+                        showHeading: false,
+                        archived: room.archived,
+                        active: _tab == 1,
+                        onCreate: () => _createContent(room, post: false),
+                      )
+                    else
+                      ClassworkList(
+                        classId: room.id,
+                        showHeading: false,
+                        instructor: instructor,
+                        live: live,
+                        previewPosts: state.posts,
+                        onOpen: _openStreamPost,
+                      ),
+                    _refresh(
+                      ClassFiles(
+                        showHeading: false,
+                        hasSamples: !live && room.id == 'it119',
+                        classId: live ? room.id : null,
+                        onAddFiles: instructor && !room.archived
+                            ? () => _createContent(room, post: true)
+                            : null,
+                      ),
+                    ),
+                  ],
+                ),
               ),
-            Expanded(
-              child: IndexedStack(
-                index: _tab,
-                children: [
-                  _refresh(_stream(state, room)),
-                  if (live && instructor)
-                    InstructorClassworkList(
-                      classId: room.id,
-                      showHeading: false,
-                      archived: room.archived,
-                      active: _tab == 1,
-                      onCreate: () => _createContent(room, post: false),
-                    )
-                  else
-                    ClassworkList(
-                      classId: room.id,
-                      showHeading: false,
-                      instructor: instructor,
-                      live: live,
-                      previewPosts: state.posts,
-                      onOpen: _openStreamPost,
-                    ),
-                  _refresh(
-                    ClassFiles(
-                      showHeading: false,
-                      hasSamples: !live && room.id == 'it119',
-                      classId: live ? room.id : null,
-                      onAddFiles: instructor && !room.archived
-                          ? () => _createContent(room, post: true)
-                          : null,
-                    ),
+            ],
+          ),
+          bottomNavigationBar: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              if (live &&
+                  instructor &&
+                  _tab != 2 &&
+                  (room.archived ||
+                      ref.watch(connectivityProvider).asData?.value != true))
+                Padding(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: FiloSpacing.screen,
+                  ),
+                  child: Text(
+                    room.archived
+                        ? 'This class is archived and read-only.'
+                        : _tab == 0
+                        ? (ref.watch(connectivityProvider).asData?.value == true
+                              ? ''
+                              : 'Connect to the internet to post or upload files.')
+                        : (ref.watch(connectivityProvider).asData?.value == true
+                              ? ''
+                              : 'Connect to the internet to create an assessment.'),
+                  ),
+                ),
+              if (instructor && _tab != 2 && showClassAction) classAction,
+              FiloNavigationBar(
+                selectedIndex: _tab,
+                onDestinationSelected: (value) => setState(() => _tab = value),
+                destinations: [
+                  NavigationDestination(
+                    key: _tourTargets['stream'],
+                    icon: FiloIcon(FiloIcons.stream),
+                    selectedIcon: FiloIcon(FiloIcons.streamSelected),
+                    label: 'Stream',
+                  ),
+                  NavigationDestination(
+                    key: _tourTargets['classwork'],
+                    icon: const FiloIcon(FiloIcons.assessment),
+                    selectedIcon: FiloIcon(FiloIcons.assessmentSelected),
+                    label: 'Classwork',
+                  ),
+                  NavigationDestination(
+                    key: _tourTargets['files'],
+                    icon: const FiloIcon(FiloIcons.folder),
+                    selectedIcon: FiloIcon(FiloIcons.folderSelected),
+                    label: 'Files',
                   ),
                 ],
               ),
-            ),
-          ],
-        ),
-        bottomNavigationBar: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            if (live &&
-                instructor &&
-                _tab != 2 &&
-                (room.archived ||
-                    ref.watch(connectivityProvider).asData?.value != true))
-              Padding(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: FiloSpacing.screen,
-                ),
-                child: Text(
-                  room.archived
-                      ? 'This class is archived and read-only.'
-                      : _tab == 0
-                      ? (ref.watch(connectivityProvider).asData?.value == true
-                            ? ''
-                            : 'Connect to the internet to post or upload files.')
-                      : (ref.watch(connectivityProvider).asData?.value == true
-                            ? ''
-                            : 'Connect to the internet to create an assessment.'),
-                ),
-              ),
-            if (instructor && _tab != 2 && showClassAction) classAction,
-            FiloNavigationBar(
-              selectedIndex: _tab,
-              onDestinationSelected: (value) => setState(() => _tab = value),
-              destinations: const [
-                NavigationDestination(
-                  icon: FiloIcon(FiloIcons.stream),
-                  selectedIcon: FiloIcon(FiloIcons.streamSelected),
-                  label: 'Stream',
-                ),
-                NavigationDestination(
-                  icon: FiloIcon(FiloIcons.assessment),
-                  selectedIcon: FiloIcon(FiloIcons.assessmentSelected),
-                  label: 'Classwork',
-                ),
-                NavigationDestination(
-                  icon: FiloIcon(FiloIcons.folder),
-                  selectedIcon: FiloIcon(FiloIcons.folderSelected),
-                  label: 'Files',
-                ),
-              ],
-            ),
-          ],
+            ],
+          ),
         ),
       ),
     );
@@ -342,6 +412,15 @@ class _ClassScreenState extends ConsumerState<ClassScreen> {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
+            if (live)
+              ListTile(
+                leading: const Icon(Icons.help_outline),
+                title: const Text('Replay class tutorial'),
+                onTap: () {
+                  Navigator.of(context).pop();
+                  setState(() => _tutorialReplay++);
+                },
+              ),
             Padding(
               padding: const EdgeInsets.symmetric(
                 horizontal: FiloSpacing.screen,
@@ -925,44 +1004,6 @@ class _ClassScreenState extends ConsumerState<ClassScreen> {
         ),
       if (live && ref.watch(connectivityProvider).asData?.value == false)
         const OfflineBanner(),
-      if (live &&
-          (cached!.hasError ||
-              sync!.hasError ||
-              confirmation?.hasError == true ||
-              assessmentData.failed))
-        EmptyState(
-          title: 'Class updates could not refresh',
-          body: 'Reconnect and retry; saved class updates remain available.',
-          pose: 'confused',
-          showMascot: allItems.isEmpty,
-          action: TextButton(
-            onPressed: online
-                ? () {
-                    if (cached.hasError) {
-                      ref.invalidate(streamPostsProvider(room.id));
-                    }
-                    if (confirmation?.hasError == true) {
-                      ref.invalidate(streamLoadedProvider(room.id));
-                    }
-                    ref.invalidate(postSyncProvider(room.id));
-                    if (state.role == PreviewRole.instructor) {
-                      ref.invalidate(
-                        instructorQuizListRefreshProvider(room.id),
-                      );
-                    } else {
-                      ref.invalidate(studentQuizCatalogProvider);
-                    }
-                    ref.invalidate(
-                      assessmentStreamProvider((
-                        classId: room.id,
-                        student: state.role == PreviewRole.student,
-                      )),
-                    );
-                  }
-                : null,
-            child: const Text('Retry'),
-          ),
-        ),
       if (live &&
           items.isEmpty &&
           !cached!.hasError &&

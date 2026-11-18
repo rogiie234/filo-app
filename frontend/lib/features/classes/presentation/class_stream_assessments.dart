@@ -11,9 +11,62 @@ import '../../assessments/presentation/assessment_form_screen.dart';
 import '../../exams/application/exam_providers.dart';
 import '../../exams/domain/student_quiz_status.dart';
 import '../../exams/presentation/student_quiz_detail_screen.dart';
+import '../../posts/application/post_providers.dart';
 import '../domain/prototype_models.dart';
 
 typedef StreamClass = ({String classId, bool student});
+
+final classStreamRetryProvider = Provider.autoDispose.family<void, StreamClass>((
+  ref,
+  key,
+) {
+  void retry() {
+    if (WidgetsBinding.instance.lifecycleState != AppLifecycleState.resumed ||
+        ref.read(connectivityProvider).asData?.value != true) {
+      return;
+    }
+    final posts = ref.read(streamPostsProvider(key.classId));
+    if (posts.hasError && !posts.isLoading) {
+      ref.invalidate(streamPostsProvider(key.classId));
+    }
+    final loaded = ref.read(streamLoadedProvider(key.classId));
+    if (loaded.hasError && !loaded.isLoading) {
+      ref.invalidate(streamLoadedProvider(key.classId));
+    }
+    final sync = ref.read(postSyncProvider(key.classId));
+    if (sync.hasError && !sync.isLoading) {
+      ref.invalidate(postSyncProvider(key.classId));
+    }
+    if (key.student) {
+      final catalog = ref.read(studentQuizCatalogProvider);
+      if (!catalog.isLoading &&
+          (catalog.hasError ||
+              catalog.value?.failed == true &&
+                  catalog.value?.refreshing != true)) {
+        ref.invalidate(studentQuizCatalogProvider);
+      }
+    } else {
+      final cached = ref.read(instructorQuizzesProvider(key.classId));
+      if (cached.hasError && !cached.isLoading) {
+        ref.invalidate(instructorQuizzesProvider(key.classId));
+      }
+      final refresh = ref.read(instructorQuizListRefreshProvider(key.classId));
+      if (refresh.hasError && !refresh.isLoading) {
+        ref.invalidate(instructorQuizListRefreshProvider(key.classId));
+      }
+    }
+  }
+
+  final timer = Timer.periodic(const Duration(seconds: 30), (_) => retry());
+  final lifecycle = AppLifecycleListener(onResume: retry);
+  ref.listen(connectivityProvider, (_, next) {
+    if (next.asData?.value == true) retry();
+  });
+  ref.onDispose(() {
+    timer.cancel();
+    lifecycle.dispose();
+  });
+});
 
 class StreamAssessment {
   StreamAssessment(Map<String, dynamic> row, {this.studentStatus})

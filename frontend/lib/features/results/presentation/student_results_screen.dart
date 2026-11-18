@@ -64,7 +64,7 @@ class StudentResultsScreen extends ConsumerWidget {
                       number: entry.$1 + 1,
                     ),
               ] else if (data?.data != null)
-                Text(studentResultMessage(data!.data!)),
+                StudentResultsEntry(quizId: quizId),
             ],
           ),
         ),
@@ -83,22 +83,20 @@ String studentResultMessage(StudentResultData data) {
 }
 
 class StudentResultsEntry extends ConsumerWidget {
-  const StudentResultsEntry({super.key, required this.quizId});
+  const StudentResultsEntry({
+    super.key,
+    required this.quizId,
+    this.submissionConfirmed = false,
+  });
   final String quizId;
+  final bool submissionConfirmed;
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final state = ref.watch(studentResultProvider(quizId));
     final data = state.asData?.value;
-    if (data?.data?.result != null) {
-      return FiloButton(
-        label: 'View results',
-        onPressed: () => Navigator.of(context).push(
-          FiloInstantRoute<void>(
-            builder: (_) => StudentResultsScreen(quizId: quizId),
-          ),
-        ),
-      );
-    }
+    final submitted =
+        submissionConfirmed || data?.data?.session?.submitted == true;
+    final released = data?.data?.result != null;
     final loading = state.isLoading || data?.refreshing == true;
     final failed = state.hasError || data?.error != null;
     final message =
@@ -117,7 +115,11 @@ class StudentResultsEntry extends ConsumerWidget {
               alignment: Alignment.centerLeft,
               child: ExcludeSemantics(
                 child: Icon(
-                  failed ? Icons.info_outline : Icons.hourglass_bottom_rounded,
+                  submitted
+                      ? Icons.check_circle_outline
+                      : failed
+                      ? Icons.info_outline
+                      : Icons.hourglass_bottom_rounded,
                   size: 32,
                   color: Theme.of(context).colorScheme.onSurfaceVariant,
                 ),
@@ -127,7 +129,9 @@ class StudentResultsEntry extends ConsumerWidget {
             Semantics(
               header: true,
               child: Text(
-                loading
+                submitted
+                    ? 'Answers submitted'
+                    : loading
                     ? 'Checking results'
                     : failed
                     ? 'Results unavailable'
@@ -136,19 +140,36 @@ class StudentResultsEntry extends ConsumerWidget {
               ),
             ),
             const SizedBox(height: FiloSpacing.s8),
+            if (submitted) ...[
+              const Text("You're done. You can leave this screen."),
+              const SizedBox(height: FiloSpacing.screen),
+              Text(
+                released ? 'Results ready' : 'Results',
+                style: Theme.of(context).textTheme.titleSmall,
+              ),
+              const SizedBox(height: FiloSpacing.s8),
+            ],
             Semantics(
               liveRegion: true,
-              child: Text(loading ? 'Loading results...' : message),
+              child: Text(
+                released
+                    ? 'Your results are ready to view.'
+                    : loading
+                    ? 'Checking result availability...'
+                    : message,
+              ),
             ),
-            const SizedBox(height: FiloSpacing.s16),
-            FiloButton(
-              secondary: true,
-              label: loading ? 'Checking...' : 'Refresh',
-              icon: Icons.refresh,
-              onPressed: loading
-                  ? null
-                  : () => ref.invalidate(studentResultProvider(quizId)),
-            ),
+            if (released) ...[
+              const SizedBox(height: FiloSpacing.s16),
+              FiloButton(
+                label: 'View results',
+                onPressed: () => Navigator.of(context).push(
+                  FiloInstantRoute<void>(
+                    builder: (_) => StudentResultsScreen(quizId: quizId),
+                  ),
+                ),
+              ),
+            ],
           ],
         ),
       ),

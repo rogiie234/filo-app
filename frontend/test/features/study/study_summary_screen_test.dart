@@ -18,6 +18,7 @@ import 'package:filo/features/study/domain/study_summary_usage.dart';
 import 'package:filo/features/study/presentation/study_chat_message.dart';
 import 'package:filo/features/study/presentation/study_privacy.dart';
 import 'package:filo/features/study/presentation/study_summary_screen.dart';
+import 'package:filo/features/study/presentation/study_widgets.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -250,13 +251,20 @@ void main() {
       ),
     );
     expect(find.text('Preparing your summary...'), findsOneWidget);
-    expect(find.byType(Mascot), findsOneWidget);
+    expect(find.byType(StudyGenerationStatus), findsOneWidget);
+    expect(find.byType(FiloLinearProgressIndicator), findsOneWidget);
+    expect(find.byType(Mascot), findsNothing);
+    expect(
+      tester.getTopLeft(find.byType(StudyGenerationStatus)).dy,
+      lessThan(tester.getTopLeft(find.byType(StudyAnswerText)).dy),
+    );
     expect(
       tester.widget<StudyAnswerText>(find.byType(StudyAnswerText)).text,
       'Old summary',
     );
     await tap(tester, button('Cancel'));
     expect(find.text('Preparing your summary...'), findsNothing);
+    expect(find.byType(StudyGenerationStatus), findsNothing);
     expect(find.text(studyAiMessages['CANCELLED']!), findsOneWidget);
     expect(guard.isBusy, isFalse);
     response.complete({

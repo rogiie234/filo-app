@@ -529,7 +529,11 @@ class _StudentExamScreenState extends ConsumerState<StudentExamScreen> {
                                   quiz.session == null &&
                                   quiz.closesAt != null &&
                                   !quiz.closesAt!.isAfter(now)
-                          ? StudentResultsEntry(quizId: widget.request.quizId)
+                          ? StudentResultsEntry(
+                              quizId: widget.request.quizId,
+                              submissionConfirmed:
+                                  quiz?.session?.submitted == true,
+                            )
                           : null,
                       message:
                           quiz?.session?.submitted == true ||
@@ -559,16 +563,20 @@ class _StudentExamScreenState extends ConsumerState<StudentExamScreen> {
                   ? ListView(
                       padding: const EdgeInsets.all(FiloSpacing.screen),
                       children: [
-                        Text(
-                          completion == 'Your answers were submitted.'
-                              ? ((r?.completionTimedOut == true)
-                                    ? "Time's up. Your answers were submitted."
-                                    : 'Your answers were submitted.')
-                              : completion,
-                        ),
+                        if (completion != 'Your answers were submitted.' ||
+                            r?.completionTimedOut == true)
+                          Text(
+                            completion == 'Your answers were submitted.'
+                                ? "Time's up. Your answers were submitted."
+                                : completion,
+                          ),
                         if (completion == 'Your answers were submitted.' ||
                             r?.completionExitLimit == true)
-                          StudentResultsEntry(quizId: widget.request.quizId),
+                          StudentResultsEntry(
+                            quizId: widget.request.quizId,
+                            submissionConfirmed:
+                                completion == 'Your answers were submitted.',
+                          ),
                         if (_essay &&
                             (completion == 'Your answers were submitted.' ||
                                 r?.completionExitLimit == true)) ...[

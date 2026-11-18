@@ -101,6 +101,7 @@ class FiloNavigationBar extends StatelessWidget {
                   destinations: [
                     for (var i = 0; i < destinations.length; i++)
                       NavigationDestination(
+                        key: destinations[i].key,
                         label: destinations[i].label,
                         tooltip: destinations[i].tooltip,
                         enabled: destinations[i].enabled,

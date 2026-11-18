@@ -108,7 +108,12 @@ class FiloPanel extends StatelessWidget {
 enum EmptyStateVariant { fullScreen, inline }
 
 class EmptyStateAction {
-  const EmptyStateAction({required this.label, required this.onPressed});
+  const EmptyStateAction({
+    required this.label,
+    required this.onPressed,
+    this.key,
+  });
+  final Key? key;
   final String label;
   final VoidCallback? onPressed;
 }
@@ -183,7 +188,11 @@ class EmptyState extends StatelessWidget {
             ],
             if (primaryAction case final primary?) ...[
               const SizedBox(height: FiloSpacing.s20),
-              FiloButton(label: primary.label, onPressed: primary.onPressed),
+              FiloButton(
+                key: primary.key,
+                label: primary.label,
+                onPressed: primary.onPressed,
+              ),
             ],
             if (action != null) ...[
               const SizedBox(height: FiloSpacing.s20),

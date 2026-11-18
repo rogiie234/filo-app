@@ -71,13 +71,14 @@ class _InstructorResultsScreenState
   Future<void> _export(QuizMonitoring data, List<ResultJson> rows) async {
     if (_exporting || rows.isEmpty) return;
     setState(() => _exporting = true);
-    final owner = ref.read(authUserIdProvider).asData?.value;
-    if (owner == null) {
-      setState(() => _exporting = false);
-      return;
-    }
     AccountTemporaryFile? temporary;
     try {
+      final owner = await ref.read(authUserIdProvider.future);
+      if (!mounted) return;
+      if (owner == null) {
+        showMessage(context, 'Sign in again to export results.');
+        return;
+      }
       // Capture the displayed snapshot before awaiting platform operations.
       final csv = resultsCsv(data, rows);
       final title = data.quiz['title'] as String? ?? 'Quiz';
@@ -93,12 +94,14 @@ class _InstructorResultsScreenState
       if (!mounted || ref.read(authUserIdProvider).asData?.value != owner) {
         return;
       }
-      final current = ref
-          .read(quizMonitoringProvider(widget.quizId))
-          .asData
-          ?.value
-          .data;
-      if (current == null) return;
+      final current = await ref.read(quizMonitoringProvider(widget.quizId).future);
+      if (!mounted || ref.read(authUserIdProvider).asData?.value != owner) {
+        return;
+      }
+      if (current.data == null) {
+        showMessage(context, 'Reopen results before exporting.');
+        return;
+      }
       final box = context.findRenderObject() as RenderBox?;
       await SharePlus.instance.share(
         ShareParams(

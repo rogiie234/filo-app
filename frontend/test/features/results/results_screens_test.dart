@@ -276,6 +276,51 @@ void main() {
         );
       });
 
+      for (final confirmed in [false, true]) {
+        a11yScreenTest(
+          'completion confirmation $confirmed survives result lookup failure',
+          (tester) async {
+            await tester.pumpWidget(
+              ProviderScope(
+                overrides: [
+                  studentResultProvider('quiz').overrideWith(
+                    (ref) => Stream.value(
+                      const ResultsState<StudentResultData>(
+                        error: "Couldn't load results. Try again.",
+                      ),
+                    ),
+                  ),
+                ],
+                child: MaterialApp(
+                  theme: palette,
+                  home: Scaffold(
+                    body: SingleChildScrollView(
+                      child: StudentResultsEntry(
+                        quizId: 'quiz',
+                        submissionConfirmed: confirmed,
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+            );
+            await tester.pump();
+            await tester.pump(const Duration(milliseconds: 50));
+            expect(
+              find.text('Answers submitted'),
+              confirmed ? findsOneWidget : findsNothing,
+            );
+            expect(
+              find.text("You're done. You can leave this screen."),
+              confirmed ? findsOneWidget : findsNothing,
+            );
+            expect(find.text("Couldn't load results. Try again."), findsOneWidget);
+            expect(find.widgetWithText(FiloButton, 'Refresh'), findsNothing);
+            expect(find.text('View results'), findsNothing);
+            await tester.pumpWidget(const SizedBox());
+          },
+        );
+      }
       a11yScreenTest(
         'released score-only result is readable offline at 130 percent',
         (tester) async {
